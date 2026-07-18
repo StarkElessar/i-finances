@@ -1,0 +1,93 @@
+.root {
+    --grid-border-color: #d9dee8;
+
+    overflow: hidden;
+    border: 1px solid var(--grid-border-color);
+    border-radius: 8px;
+}
+
+.frame {
+    overflow: auto;
+    overscroll-behavior-inline: contain;
+
+    max-inline-size: 100%;
+    block-size: 100%;
+
+    background-color: #fff;
+    box-shadow: 0 12px 32px rgb(24 33 47 / 8%);
+}
+
+.table {
+    table-layout: fixed;
+    border-spacing: 0;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+
+    th,
+    td {
+        box-sizing: border-box;
+        padding: 13px 16px;
+        border-block-end: 1px solid #e7ebf1;
+
+        text-align: start;
+        vertical-align: middle;
+
+        &:not(:last-child) {
+            border-inline-end: 1px solid color-mix(in srgb, var(--grid-border-color), transparent 60%);
+        }
+    }
+
+    th {
+        position: sticky;
+        z-index: 1;
+        inset-block-start: 0;
+
+        font-size: 0.75rem;
+        font-weight: 800;
+        line-height: 1.2;
+        color: #4d5a6b;
+        text-transform: uppercase;
+
+        background-color: #f6f8fb;
+    }
+
+    tbody tr {
+        transition: background-color 160ms ease;
+
+        &:hover {
+            background-color: #f8fbff;
+        }
+
+        &:last-child td {
+            border-block-end: 0;
+        }
+    }
+}
+
+.head {
+    position: sticky;
+    inset-block-start: 0;
+}
+
+.resizer {
+    --transparent: 99%;
+
+    cursor: col-resize;
+
+    position: absolute;
+    z-index: 2;
+    inset-block: 0;
+    inset-inline-end: 0;
+
+    inline-size: 6px;
+
+    background-color: color-mix(in srgb, #000, transparent var(--transparent));
+
+    &:hover {
+        --transparent: 96%;
+    }
+
+    &:active {
+        --transparent: 93%;
+    }
+}
