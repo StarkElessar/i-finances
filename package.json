@@ -8,6 +8,7 @@
 		"preview": "vite preview",
 		"generate": "plop",
 		"g:component": "plop component",
+		"g:view": "plop view",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",
 		"lint:fix": "pnpm run lint:js:fix && pnpm run lint:css:fix",
 		"lint:js:fix": "eslint \"src/**/*.{js,ts,jsx,tsx}\" --fix",

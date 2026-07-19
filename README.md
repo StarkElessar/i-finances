@@ -44,6 +44,23 @@ pnpm g:component BrandPanel src/views/sign-in/ui --no-css
 pnpm g:component BrandPanel src/views/sign-in/ui --no-type
 ```
 
+## Generating views with routes
+
+Use the view generator to create a route file, a view component and an SCSS module:
+
+```bash
+pnpm g:view CashFlow
+```
+
+This creates `src/routes/(app)/cash-flow.tsx`, `src/views/cash-flow/page.tsx` and `src/views/cash-flow/cash-flow.module.scss`.
+
+Optional route flags:
+
+```bash
+pnpm g:view ResetPassword --group auth --route reset-password
+pnpm g:view AccountSettings --route settings/account
+```
+
 ## Building
 
 Solid apps are built with _presets_, which optimise your project for deployment to different environments.

@@ -1,0 +1,16 @@
+import css from './{{styleFileName}}';
+
+import { Title } from '@solidjs/meta';
+
+import { Container } from '~/shared/ui';
+
+export function {{pageComponentName}}() {
+    return (
+        <Container class={css.page}>
+            <Title>{{pageTitle}}</Title>
+            <header class={css.header}>
+                <h1 class={css.title}>{{pageTitle}}</h1>
+            </header>
+        </Container>
+    );
+}
