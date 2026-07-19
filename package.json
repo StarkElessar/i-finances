@@ -9,18 +9,29 @@
 		"generate": "plop",
 		"g:component": "plop component",
 		"g:view": "plop view",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "tsx scripts/migrate-db.ts",
+		"db:seed": "tsx scripts/seed-auth-user.ts",
+		"test": "vitest run",
+		"test:watch": "vitest",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",
 		"lint:fix": "pnpm run lint:js:fix && pnpm run lint:css:fix",
 		"lint:js:fix": "eslint \"src/**/*.{js,ts,jsx,tsx}\" --fix",
 		"lint:css:fix": "stylelint \"**/*.scss\" --allow-empty-input --fix"
 	},
 	"dependencies": {
+		"@node-rs/argon2": "^2.0.2",
+		"@simplewebauthn/browser": "^13.3.0",
+		"@simplewebauthn/server": "^13.3.2",
 		"@solidjs/meta": "^0.29.4",
 		"@solidjs/router": "^0.15.0",
 		"@solidjs/start": "2.0.0-alpha.3",
 		"@solidjs/vite-plugin-nitro-2": "^0.3.0",
+		"better-sqlite3": "^12.11.1",
+		"drizzle-orm": "^0.45.2",
 		"solid-js": "^1.9.5",
-		"vite": "^8.1.4"
+		"vite": "^8.1.4",
+		"zod": "^4.4.3"
 	},
 	"engines": {
 		"node": ">=22"
@@ -30,7 +41,9 @@
 		"@stylistic/eslint-plugin": "^5.10.0",
 		"@stylistic/stylelint-config": "^5.0.0",
 		"@stylistic/stylelint-plugin": "^5.2.1",
+		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^26.1.1",
+		"drizzle-kit": "^0.31.10",
 		"eslint": "^9.0.0",
 		"eslint-plugin-simple-import-sort": "^13.0.0",
 		"globals": "^17.7.0",
@@ -45,8 +58,10 @@
 		"stylelint-order": "^8.1.1",
 		"stylelint-scss": "^7.2.0",
 		"stylelint-use-logical": "^2.1.3",
+		"tsx": "^4.23.1",
 		"typescript": "~6.0.3",
 		"typescript-eslint": "^8.63.0",
-		"typescript7": "npm:typescript@7.0.2"
+		"typescript7": "npm:typescript@7.0.2",
+		"vitest": "^4.1.10"
 	}
 }
