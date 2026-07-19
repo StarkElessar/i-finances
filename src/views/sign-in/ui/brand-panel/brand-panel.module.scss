@@ -1,0 +1,15 @@
+.logo {
+	--size: 36px;
+
+	display: grid;
+	place-content: center;
+	inline-size: var(--size);
+	font-weight: 600;
+	aspect-ratio: 1;
+	border-radius: 8px;
+	background-color: var(--color-primary);
+	font-size: 16px;
+	line-height: var(--size);
+	color: #fff;
+	margin-block-end: var(--space-8);
+}
