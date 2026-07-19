@@ -12,6 +12,8 @@ app.config.timestamp_*.js
 # Environment
 .env
 .env*.local
+/data/*.sqlite
+/data/*.sqlite-*
 
 # dependencies
 /node_modules
