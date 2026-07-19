@@ -5,6 +5,7 @@ dist
 .netlify
 .vinxi
 .nitro
+.solid-start
 app.config.timestamp_*.js
 
 # Environment
