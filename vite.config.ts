@@ -1,10 +1,17 @@
-import { defineConfig } from "vite";
-import { nitroV2Plugin as nitro } from "@solidjs/vite-plugin-nitro-2";
-
-import { solidStart } from "@solidjs/start/config";
+import { solidStart } from '@solidjs/start/config';
+import { nitroV2Plugin as nitro } from '@solidjs/vite-plugin-nitro-2';
+import { defineConfig } from 'vite';
 
 export default defineConfig({
-  plugins: [solidStart(),
-    nitro()
-  ]
+    css: {
+        modules: {
+            localsConvention: 'camelCaseOnly'
+        }
+    },
+    plugins: [
+        solidStart({
+            middleware: './src/middleware.ts'
+        }),
+        nitro()
+    ]
 });

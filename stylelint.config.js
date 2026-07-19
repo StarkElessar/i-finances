@@ -26,7 +26,11 @@ export default {
                 'ignoreProperties': ['-webkit-box-orient']
             }
         ],
-        // Разрешаем только kebab-case id
+        // Разрешаем только kebab-case для локальных CSS Modules классов и id
+        'selector-class-pattern': [
+            '^[a-z]+(?:-[a-z0-9]+)*$',
+            { resolveNestedSelectors: true }
+        ],
         'selector-id-pattern': [
             '^[a-z]+(?:-[a-z0-9]+)*$',
             { resolveNestedSelectors: true }

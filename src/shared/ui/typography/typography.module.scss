@@ -1,0 +1,116 @@
+.root {
+    font-family: var(--font-family-sans);
+    text-wrap: pretty;
+}
+
+.display {
+    font-size: var(--font-size-display);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-display);
+    letter-spacing: -0.025em;
+}
+
+.heading-1 {
+    font-size: var(--font-size-heading-1);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-heading);
+    letter-spacing: -0.02em;
+}
+
+.heading-2 {
+    font-size: var(--font-size-heading-2);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-heading);
+    letter-spacing: -0.015em;
+}
+
+.heading-3 {
+    font-size: var(--font-size-heading-3);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-heading);
+}
+
+.body-lg {
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-body-lg);
+}
+
+.body-md {
+    font-size: var(--font-size-body-md);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-body-md);
+}
+
+.body-sm,
+.caption {
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-regular);
+    line-height: var(--line-height-body-sm);
+}
+
+.label {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-body-sm);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.tone-primary {
+    color: var(--color-text-primary);
+}
+
+.tone-secondary {
+    color: var(--color-text-secondary);
+}
+
+.tone-tertiary {
+    color: var(--color-text-tertiary);
+}
+
+.tone-danger {
+    color: var(--color-danger);
+}
+
+.tone-success {
+    color: var(--color-success);
+}
+
+.tone-inherit {
+    color: inherit;
+}
+
+.weight-regular {
+    font-weight: var(--font-weight-regular);
+}
+
+.weight-medium {
+    font-weight: var(--font-weight-medium);
+}
+
+.weight-semibold {
+    font-weight: var(--font-weight-semibold);
+}
+
+.weight-bold {
+    font-weight: var(--font-weight-bold);
+}
+
+.align-start {
+    text-align: start;
+}
+
+.align-center {
+    text-align: center;
+}
+
+.align-end {
+    text-align: end;
+}
+
+.truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
