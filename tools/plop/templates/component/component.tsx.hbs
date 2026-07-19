@@ -1,0 +1,12 @@
+{{#if includeCss}}import css from './{{componentFileName}}.module.scss';
+
+{{/if}}{{#if includeType}}type Props = Record<string, never>;
+
+{{/if}}export function {{componentName}}({{#if includeType}}_props: Props{{/if}}) {
+    return (
+{{#if includeCss}}        <div class={css.root}>
+        </div>
+{{else}}        <div>
+        </div>
+{{/if}}    );
+}

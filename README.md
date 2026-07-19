@@ -23,6 +23,27 @@ npm run dev
 npm run dev -- --open
 ```
 
+## Generating UI components
+
+Use the local Plop generator to scaffold component folders with a TSX file, an `index.ts` re-export and an SCSS module:
+
+```bash
+pnpm g:component
+```
+
+The command is interactive by default. You can also pass the component name and target directory directly:
+
+```bash
+pnpm g:component BrandPanel src/views/sign-in/ui
+```
+
+Optional flags:
+
+```bash
+pnpm g:component BrandPanel src/views/sign-in/ui --no-css
+pnpm g:component BrandPanel src/views/sign-in/ui --no-type
+```
+
 ## Building
 
 Solid apps are built with _presets_, which optimise your project for deployment to different environments.
