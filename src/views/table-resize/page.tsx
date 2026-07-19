@@ -1,4 +1,4 @@
-import css from './page.module.scss';
+import css from './table-resize.module.scss';
 
 import type { TableResizeMockRow } from './model';
 import { iconLabels, tableResizeMockRows } from './model';
@@ -37,7 +37,7 @@ const columns: GridColumn<TableResizeMockRow>[] = [
         width: 100,
         accessor: (row) => row.icon,
         clientTemplate: ({ dataItem }) => (
-            <span class={css['icon-badge']} title={dataItem.icon}>
+            <span class={css.iconBadge} title={dataItem.icon}>
                 {iconLabels[dataItem.icon]}
             </span>
         )
@@ -48,7 +48,7 @@ const columns: GridColumn<TableResizeMockRow>[] = [
         width: 160,
         accessor: (row) => row.link,
         clientTemplate: ({ dataItem }) => (
-            <a class={css['row-link']} href={dataItem.link}>
+            <a class={css.rowLink} href={dataItem.link}>
                 Open
             </a>
         )
