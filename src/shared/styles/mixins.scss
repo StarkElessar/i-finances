@@ -1,0 +1,19 @@
+@use "./functions" as fn;
+
+@mixin media-mn($width, $base: 16px) {
+    @media (min-width: fn.em($width, $base)) {
+        @content;
+    }
+}
+
+@mixin media-mx($width, $base: 16px) {
+    @media (max-width: fn.em($width, $base)) {
+        @content;
+    }
+}
+
+@mixin media-mn-mx($min-width, $max-width, $base: 16px) {
+    @media (min-width: fn.em($min-width, $base)) and (max-width: fn.em($max-width, $base)) {
+        @content;
+    }
+}
