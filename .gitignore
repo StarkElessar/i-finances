@@ -6,6 +6,7 @@ dist
 .vinxi
 .nitro
 .solid-start
+.pnpm-store
 app.config.timestamp_*.js
 
 # Environment
