@@ -20,6 +20,16 @@
     margin-block: var(--space-4) var(--space-6);
 }
 
+.error {
+    min-block-size: 1.25em;
+    margin: var(--space-4) 0 0;
+
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body-sm);
+    color: var(--color-danger);
+    text-align: center;
+}
+
 .or {
     position: relative;
     inline-size: 100%;
