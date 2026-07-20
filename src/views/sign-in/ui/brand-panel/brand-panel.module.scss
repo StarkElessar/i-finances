@@ -1,15 +1,64 @@
-.logo {
-	--size: 36px;
+.item {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
 
-	display: grid;
-	place-content: center;
-	inline-size: var(--size);
-	font-weight: 600;
-	aspect-ratio: 1;
-	border-radius: 8px;
-	background-color: var(--color-primary);
-	font-size: 16px;
-	line-height: var(--size);
-	color: #fff;
-	margin-block-end: var(--space-8);
+    min-inline-size: 0;
+    padding: var(--space-12);
+
+    background-color: var(--color-surface);
+}
+
+.logo {
+    --size: 2.25rem;
+
+    display: grid;
+    place-content: center;
+
+    aspect-ratio: 1;
+    inline-size: var(--size);
+    margin-block-end: var(--space-8);
+    border-radius: var(--radius-md);
+
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--size);
+    color: var(--color-text-inverse);
+
+    background-color: var(--color-primary);
+}
+
+.intro {
+    max-inline-size: 28rem;
+}
+
+.title {
+    margin-block-end: var(--space-4);
+}
+
+.details {
+    max-inline-size: 28rem;
+}
+
+.privacy {
+    margin-block-end: var(--space-8);
+}
+
+.sub-item {
+    display: grid;
+    gap: var(--space-2);
+}
+
+@media (width <= 47.999rem) {
+    .item {
+        padding: var(--space-8);
+    }
+
+    .logo {
+        margin-block-end: var(--space-5);
+    }
+
+    .details {
+        display: none;
+    }
 }
