@@ -1,6 +1,8 @@
+@use "~/shared/styles/functions" as fn;
+
 .container {
-	inline-size: 100%;
-	max-inline-size: 1200px;
-	padding-inline: 20px;
-	margin-inline: auto;
+    inline-size: 100%;
+    max-inline-size: fn.rem(1200);
+    margin-inline: auto;
+    padding-inline: fn.rem(20);
 }
