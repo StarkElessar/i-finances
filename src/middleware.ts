@@ -1,12 +1,19 @@
 import { createMiddleware } from '@solidjs/start/middleware';
 import type { FetchEvent } from '@solidjs/start/server';
 
-import { getMockIsAuth } from '~/shared/lib/auth/mock-auth-state';
+import { getSessionFromRequest } from '~/server/auth/require-user';
+import { validateReturnPath } from '~/server/auth/validate-return-path';
 
 const SIGN_IN_PATH = '/sign-in';
 const UI_KIT_PATH = '/ui-kit';
 const REDIRECT_STATUS_CODE = 302;
 const DOCUMENT_METHODS = new Set(['GET', 'HEAD']);
+const SECURITY_HEADERS = {
+    'x-content-type-options': 'nosniff',
+    'x-frame-options': 'DENY',
+    'referrer-policy': 'strict-origin-when-cross-origin',
+    'permissions-policy': 'camera=(), microphone=(), geolocation=()'
+} as const;
 
 /**
  * Проверяет, относится ли путь к публичным auth-страницам.
@@ -47,26 +54,80 @@ function createSignInRedirectUrl(requestUrl: URL): URL {
 }
 
 /**
- * Выполняет временный серверный guard для неавторизованных пользователей.
+ * Собирает URL возврата для пользователя, который уже авторизован.
  */
-function handleAuthGuardRequest(event: FetchEvent): Response | void {
-    if (getMockIsAuth()) {
-        return;
-    }
+function createAuthenticatedRedirectUrl(requestUrl: URL): URL {
+    return new URL(validateReturnPath(requestUrl.searchParams.get('from')), requestUrl.origin);
+}
 
+/**
+ * Applies baseline security headers without overriding explicit route headers.
+ */
+function applySecurityHeaders(headers: Headers): void {
+    for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+        if (!headers.has(name)) {
+            headers.set(name, value);
+        }
+    }
+}
+
+/**
+ * Creates a mutable redirect response with the shared security headers.
+ */
+function createRedirectResponse(url: URL, status: number): Response {
+    const response = new Response(null, {
+        status,
+        headers: {
+            location: url.toString()
+        }
+    });
+
+    applySecurityHeaders(response.headers);
+
+    return response;
+}
+
+/**
+ * Выполняет серверный guard для неавторизованных document navigation.
+ */
+async function handleAuthGuardRequest(event: FetchEvent): Promise<Response | void> {
     if (!isDocumentRequest(event.request)) {
         return;
     }
 
     const requestUrl = new URL(event.request.url);
 
-    if (isPublicAuthPath(requestUrl.pathname) || isPublicDevelopmentPath(requestUrl.pathname)) {
+    if (isPublicDevelopmentPath(requestUrl.pathname)) {
         return;
     }
 
-    return Response.redirect(createSignInRedirectUrl(requestUrl), REDIRECT_STATUS_CODE);
+    const session = await getSessionFromRequest(event.request);
+
+    if (isPublicAuthPath(requestUrl.pathname)) {
+        return session
+            ? createRedirectResponse(createAuthenticatedRedirectUrl(requestUrl), REDIRECT_STATUS_CODE)
+            : undefined;
+    }
+
+    if (session) {
+        return;
+    }
+
+    return createRedirectResponse(createSignInRedirectUrl(requestUrl), REDIRECT_STATUS_CODE);
+}
+
+/**
+ * Adds baseline security headers to non-short-circuited responses.
+ */
+function handleSecurityHeaders(event: FetchEvent, response: { body?: unknown }): void {
+    applySecurityHeaders(event.response.headers);
+
+    if (response.body instanceof Response) {
+        applySecurityHeaders(response.body.headers);
+    }
 }
 
 export default createMiddleware({
-    onRequest: handleAuthGuardRequest
+    onRequest: handleAuthGuardRequest,
+    onBeforeResponse: handleSecurityHeaders
 });
