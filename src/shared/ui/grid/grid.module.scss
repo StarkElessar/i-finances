@@ -1,3 +1,5 @@
+@use "~/shared/styles/functions" as fn;
+
 .root {
     --grid-border-color: #d9dee8;
 
@@ -21,7 +23,7 @@
     table-layout: fixed;
     border-spacing: 0;
     border-collapse: collapse;
-    font-size: 0.92rem;
+    font-size: fn.rem(14.72);
 
     th,
     td {
@@ -42,7 +44,7 @@
         z-index: 1;
         inset-block-start: 0;
 
-        font-size: 0.75rem;
+        font-size: fn.rem(12);
         font-weight: 800;
         line-height: 1.2;
         color: #4d5a6b;
