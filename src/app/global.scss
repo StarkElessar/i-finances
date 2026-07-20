@@ -58,10 +58,24 @@ body {
     background-color: var(--color-surface);
 }
 
+.header-inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-5) var(--space-7);
+    align-items: center;
+    justify-content: space-between;
+}
+
 .navigation {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-7);
     align-items: center;
+}
+
+.logout-form {
+    flex: none;
+    margin-inline-start: auto;
 }
 
 .page {
