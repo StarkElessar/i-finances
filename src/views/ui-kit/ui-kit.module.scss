@@ -1,3 +1,6 @@
+@use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
+
 .page {
     overflow: auto;
     flex-grow: 1;
@@ -6,13 +9,13 @@
 
 .content {
     inline-size: 100%;
-    max-inline-size: 76rem;
+    max-inline-size: fn.rem(1216);
     margin-inline: auto;
     padding: var(--space-11) var(--space-8) var(--space-12);
 }
 
 .hero {
-    max-inline-size: 46rem;
+    max-inline-size: fn.rem(736);
     margin-block-end: var(--space-12);
 }
 
@@ -36,7 +39,7 @@
 .section-heading {
     display: grid;
     gap: var(--space-2);
-    max-inline-size: 44rem;
+    max-inline-size: fn.rem(704);
 }
 
 .panel {
@@ -54,7 +57,7 @@
 
 .type-row {
     display: grid;
-    grid-template-columns: 7rem minmax(0, 1fr);
+    grid-template-columns: fn.rem(112) minmax(0, 1fr);
     gap: var(--space-7);
     align-items: baseline;
 
@@ -95,7 +98,7 @@ code {
 }
 
 .swatch-color {
-    block-size: 4.5rem;
+    block-size: fn.rem(72);
     margin-block-end: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-sm);
@@ -176,7 +179,7 @@ code {
 
     > div {
         display: grid;
-        grid-template-columns: 2rem minmax(0, 1fr);
+        grid-template-columns: fn.rem(32) minmax(0, 1fr);
         gap: var(--space-5);
         align-items: center;
     }
@@ -190,32 +193,32 @@ code {
 }
 
 .space-4 {
-    inline-size: 0.25rem;
+    inline-size: fn.rem(4);
 }
 
 .space-8 {
-    inline-size: 0.5rem;
+    inline-size: fn.rem(8);
 }
 
 .space-12 {
-    inline-size: 0.75rem;
+    inline-size: fn.rem(12);
 }
 
 .space-16 {
-    inline-size: 1rem;
+    inline-size: fn.rem(16);
 }
 
 .space-24 {
-    inline-size: 1.5rem;
+    inline-size: fn.rem(24);
 }
 
 .space-32 {
-    inline-size: 2rem;
+    inline-size: fn.rem(32);
 }
 
 .radius-samples {
     display: grid;
-    grid-template-columns: repeat(4, minmax(3rem, 1fr));
+    grid-template-columns: repeat(4, minmax(fn.rem(48), 1fr));
     gap: var(--space-5);
 
     > div {
@@ -245,13 +248,13 @@ code {
     border-radius: var(--radius-xl);
 }
 
-@media (width <= 63.999rem) {
+@include mx.media-mx(1023.984) {
     .color-grid {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
 
-@media (width <= 47.999rem) {
+@include mx.media-mx(767.984) {
     .content {
         padding: var(--space-9) var(--space-6) var(--space-11);
     }
@@ -276,7 +279,7 @@ code {
     }
 }
 
-@media (width <= 29.999rem) {
+@include mx.media-mx(479.984) {
     .color-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }

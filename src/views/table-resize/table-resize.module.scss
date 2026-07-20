@@ -1,3 +1,6 @@
+@use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
+
 .page {
     display: flex;
     flex-direction: column;
@@ -21,7 +24,7 @@
 .title {
     max-inline-size: none;
 
-    font-size: 1.75rem;
+    font-size: fn.rem(28);
     font-weight: 700;
     line-height: 1.2;
     color: #18212f;
@@ -32,7 +35,7 @@
     max-inline-size: none;
     margin: 6px 0 0;
 
-    font-size: 0.95rem;
+    font-size: fn.rem(15.2);
     line-height: 1.4;
     color: #667085;
 }
@@ -44,7 +47,7 @@
     border: 1px solid #d7dde8;
     border-radius: 999px;
 
-    font-size: 0.82rem;
+    font-size: fn.rem(13.12);
     font-weight: 700;
     line-height: 1;
     color: #24535c;
@@ -62,7 +65,7 @@
     border: 1px solid #c9d7f0;
     border-radius: 8px;
 
-    font-size: 0.74rem;
+    font-size: fn.rem(11.84);
     font-weight: 800;
     line-height: 1;
     color: #263e74;
@@ -86,7 +89,7 @@
     }
 }
 
-@media (width < 640px) {
+@include mx.media-mx(639.984) {
     .page {
         padding: 20px 12px;
     }
