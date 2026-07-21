@@ -1,6 +1,19 @@
 export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
 export { Button } from './button';
 export { Container } from './container';
+export type {
+    ContextMenuAlign,
+    ContextMenuAnchor,
+    ContextMenuContentProps,
+    ContextMenuItemProps,
+    ContextMenuItemVariant,
+    ContextMenuLabelProps,
+    ContextMenuRootProps,
+    ContextMenuSeparatorProps,
+    ContextMenuTriggerMode,
+    ContextMenuTriggerProps
+} from './context-menu';
+export { ContextMenu } from './context-menu';
 export { Counter } from './counter';
 export type {
     GridCellTemplateContext,

@@ -1,0 +1,65 @@
+@use "~/shared/styles/functions" as fn;
+
+.root {
+    flex: none;
+    margin-inline-start: auto;
+}
+
+.trigger {
+    display: inline-grid;
+    place-items: center;
+
+    inline-size: var(--control-size-md);
+    block-size: var(--control-size-md);
+    padding: 0;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-round);
+
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-primary);
+
+    background: var(--color-primary-soft);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard),
+        color var(--duration-fast) var(--ease-standard);
+
+    &:hover,
+    &[aria-expanded="true"] {
+        border-color: var(--color-primary);
+        color: var(--color-text-inverse);
+        background: var(--color-primary);
+    }
+}
+
+.content {
+    inline-size: min(#{fn.rem(292)}, calc(100vw - var(--space-8)));
+}
+
+.viewer {
+    display: grid;
+    gap: var(--space-1);
+}
+
+.viewer-name {
+    overflow: hidden;
+    font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.viewer-meta {
+    overflow: hidden;
+
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body-sm);
+    color: var(--color-text-secondary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.logout-form {
+    margin: 0;
+}

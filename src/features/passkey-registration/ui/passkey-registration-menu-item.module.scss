@@ -1,0 +1,14 @@
+.root {
+    display: grid;
+}
+
+.feedback {
+    margin: var(--space-1) var(--space-4) var(--space-2);
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body-sm);
+    color: var(--color-success);
+}
+
+.feedback-error {
+    color: var(--color-danger);
+}

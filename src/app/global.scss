@@ -52,32 +52,6 @@ body {
     min-block-size: 100dvh;
 }
 
-.header {
-    padding-block: var(--space-4);
-    border-block-end: 1px solid var(--color-border);
-    background-color: var(--color-surface);
-}
-
-.header-inner {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-5) var(--space-7);
-    align-items: center;
-    justify-content: space-between;
-}
-
-.navigation {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--space-7);
-    align-items: center;
-}
-
-.logout-form {
-    flex: none;
-    margin-inline-start: auto;
-}
-
 .page {
     overflow: hidden;
     display: flex;
