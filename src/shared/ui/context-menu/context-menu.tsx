@@ -368,7 +368,7 @@ function ContextMenuContent(props: ContextMenuContentProps) {
         dragStartY = event.clientY;
         dragStartTime = performance.now();
         setIsDragging(true);
-        contentElement?.setPointerCapture(event.pointerId);
+        event.currentTarget.setPointerCapture(event.pointerId);
     };
     const handlePointerMove: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
         if (!isDragging()) {
@@ -383,9 +383,13 @@ function ContextMenuContent(props: ContextMenuContentProps) {
 
         setDragOffset(nextOffset);
     };
-    const handlePointerUp: JSX.EventHandler<HTMLDivElement, PointerEvent> = () => {
+    const handlePointerUp: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
         if (!isDragging()) {
             return;
+        }
+
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
         }
 
         const elapsed = Math.max(1, performance.now() - dragStartTime);
@@ -395,6 +399,13 @@ function ContextMenuContent(props: ContextMenuContentProps) {
             resetDrag();
             context.closeMenu();
             return;
+        }
+
+        resetDrag();
+    };
+    const handlePointerCancel: JSX.EventHandler<HTMLDivElement, PointerEvent> = (event) => {
+        if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+            event.currentTarget.releasePointerCapture(event.pointerId);
         }
 
         resetDrag();
@@ -458,14 +469,20 @@ function ContextMenuContent(props: ContextMenuContentProps) {
                 )}
                 id={context.contentId}
                 onKeyDown={handleKeyDown}
-                onPointerDown={handlePointerDown}
-                onPointerMove={handlePointerMove}
-                onPointerUp={handlePointerUp}
                 role='menu'
                 style={contentStyle()}
             >
                 <Show when={context.isMobile()}>
-                    <div aria-hidden='true' class={css.sheetHandle}/>
+                    <div
+                        aria-hidden='true'
+                        class={css.sheetDragZone}
+                        onPointerCancel={handlePointerCancel}
+                        onPointerDown={handlePointerDown}
+                        onPointerMove={handlePointerMove}
+                        onPointerUp={handlePointerUp}
+                    >
+                        <div class={css.sheetHandle}/>
+                    </div>
                 </Show>
                 {props.children}
             </div>
