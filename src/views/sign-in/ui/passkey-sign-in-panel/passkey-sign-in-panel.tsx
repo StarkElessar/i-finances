@@ -4,7 +4,7 @@ import {
     browserSupportsWebAuthn,
     startAuthentication
 } from '@simplewebauthn/browser';
-import { createSignal } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 
 import { Button, Typography } from '~/shared/ui';
 import {
@@ -112,7 +112,9 @@ export function PasskeySignInPanel(props: PasskeySignInPanelProps) {
             <Button type='button' fullWidth loading={isPending()} onClick={handlePasskeySignIn}>
                 Войти с ключом доступа
             </Button>
-            <p class={css.error} role='alert'>{error()}</p>
+            <Show when={error()}>
+                {(content) => <p class={css.error} role='alert'>{content()}</p>}
+            </Show>
             <div class={css.or} data-text='или'/>
             <Button type='button' fullWidth variant='secondary' disabled={isPending()} onClick={props.onUsePassword}>
                 Войти по логину и паролю

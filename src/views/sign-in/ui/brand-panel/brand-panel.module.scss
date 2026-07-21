@@ -1,12 +1,17 @@
-.item {
-    display: flex;
+@use "~/shared/styles/mixins" as mx;
+
+.root {
     flex-direction: column;
     justify-content: space-between;
 
     min-inline-size: 0;
-    padding: var(--space-12);
+    padding: var(--space-10);
 
     background-color: var(--color-surface);
+
+    @include mx.media-mn(960) {
+        padding: var(--space-12);
+    }
 }
 
 .logo {
@@ -44,13 +49,13 @@
     margin-block-end: var(--space-8);
 }
 
-.sub-item {
+.item {
     display: grid;
     gap: var(--space-2);
 }
 
 @media (width <= 47.999rem) {
-    .item {
+    .root {
         padding: var(--space-8);
     }
 

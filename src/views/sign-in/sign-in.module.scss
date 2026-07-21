@@ -1,3 +1,5 @@
+@use "~/shared/styles/mixins" as mx;
+
 .page {
     overflow-y: auto;
     display: grid;
@@ -18,7 +20,17 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
 
-    background-color: var(--color-border);
+    @include mx.media-mn(768) {
+        background-color: var(--color-border);
+    }
+}
+
+.welcome {
+    display: none;
+
+    @include mx.media-mn(768) {
+        display: flex;
+    }
 }
 
 @media (width <= 47.999rem) {

@@ -1,4 +1,5 @@
 @use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
 
 .root {
     flex: none;
@@ -35,7 +36,9 @@
 }
 
 .content {
-    inline-size: min(#{fn.rem(292)}, calc(100vw - var(--space-8)));
+    @include mx.media-mn(640) {
+        inline-size: min(#{fn.rem(292)}, calc(100vw - var(--space-8)));
+    }
 }
 
 .viewer {

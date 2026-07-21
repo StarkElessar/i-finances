@@ -68,7 +68,7 @@ export function SignInPage() {
         <div class={css.page}>
             <Container>
                 <div class={css.wrapper}>
-                    <BrandPanel/>
+                    <BrandPanel classRoot={css.welcome}/>
                     <Show
                         when={method() === 'password'}
                         fallback={<PasskeySignInPanel onUsePassword={showPasswordSignIn} returnTo={readSearchParam(searchParams.from)}/>}

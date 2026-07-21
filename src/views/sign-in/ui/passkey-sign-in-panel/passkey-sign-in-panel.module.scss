@@ -1,14 +1,23 @@
+@use "~/shared/styles/mixins" as mx;
+
 .root {
     display: grid;
     place-content: center;
     place-items: center;
 
     min-inline-size: 0;
-    padding: var(--space-12);
+    padding-block: var(--space-10);
 
     text-align: center;
 
-    background-color: var(--color-surface);
+    @include mx.media-mn(768) {
+        padding-inline: var(--space-10);
+        background-color: var(--color-surface);
+    }
+
+    @include mx.media-mn(960) {
+        padding: var(--space-12);
+    }
 }
 
 .title {
@@ -63,17 +72,15 @@
 
         color: var(--color-text-secondary);
 
-        background-color: var(--color-surface);
+        background-color: var(--color-canvas);
+
+        @include mx.media-mn(768) {
+            background-color: var(--color-surface);
+        }
     }
 }
 
 .no-key {
     max-inline-size: 23rem;
     margin-block-start: var(--space-4);
-}
-
-@media (width <= 47.999rem) {
-    .root {
-        padding: var(--space-9) var(--space-8);
-    }
 }

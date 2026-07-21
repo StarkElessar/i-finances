@@ -1,6 +1,6 @@
 import css from './password-sign-in-panel.module.scss';
 
-import { createSignal } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 import { z } from 'zod';
 
 import { Button, TextField, Typography } from '~/shared/ui';
@@ -146,7 +146,9 @@ export function PasswordSignInPanel(props: PasswordSignInPanelProps) {
                     type='password'
                     value={password()}
                 />
-                <p class={css.error} role='alert'>{formError()}</p>
+                <Show when={formError()}>
+                    {(content) => <p class={css.error} role='alert'>{content()}</p>}
+                </Show>
                 <Button type='submit' fullWidth loading={isPending()}>
                     Войти
                 </Button>
