@@ -17,9 +17,7 @@ export default function AppLayout(props: RouteSectionProps) {
     return (
         <CurrentViewerProvider viewer={currentViewer}>
             <AppHeader/>
-            <main class='page'>
-                {props.children}
-            </main>
+            {props.children}
         </CurrentViewerProvider>
     );
 }
