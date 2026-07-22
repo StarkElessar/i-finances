@@ -1,0 +1,78 @@
+@use "~/shared/styles/functions" as fn;
+
+.root {
+    position: relative;
+
+    display: inline-flex;
+    flex: none;
+
+    inline-size: fn.rem(44);
+    block-size: fn.rem(24);
+
+    vertical-align: middle;
+}
+
+.input {
+    cursor: pointer;
+
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+
+    inline-size: 100%;
+    block-size: 100%;
+    margin: 0;
+
+    opacity: 0;
+
+    &:focus-visible + .control {
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+
+    &:checked + .control {
+        background-color: var(--color-primary);
+
+        &::before {
+            transform: translateX(1.25rem);
+        }
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+
+        + .control {
+            opacity: 0.6;
+        }
+    }
+}
+
+.control {
+    position: absolute;
+    inset: 0;
+
+    border-radius: fn.rem(999);
+
+    background-color: var(--color-border-strong);
+
+    transition:
+        background-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard),
+        opacity var(--duration-fast) var(--ease-standard);
+
+    &::before {
+        content: "";
+
+        position: absolute;
+        inset-block-start: fn.rem(3);
+        inset-inline-start: fn.rem(3);
+
+        inline-size: fn.rem(18);
+        block-size: fn.rem(18);
+        border-radius: var(--radius-round);
+
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-sm);
+
+        transition: transform var(--duration-fast) var(--ease-standard);
+    }
+}
