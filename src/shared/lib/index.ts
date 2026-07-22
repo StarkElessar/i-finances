@@ -1,3 +1,5 @@
+export type { AccountColorValue } from './account-color';
+export { ACCOUNT_COLORS, AccountColor } from './account-color';
 export type { AccountTypeMeta, AccountTypeValue } from './account-type';
 export { ACCOUNT_TYPE_META_BY_TYPE, ACCOUNT_TYPES, AccountType, getAccountTypeMeta } from './account-type';
 export type { ClassValue } from './cn';

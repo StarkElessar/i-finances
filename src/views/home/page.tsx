@@ -3,8 +3,12 @@ import css from './home.module.scss';
 import type { JSX } from 'solid-js';
 import { createMemo, createSignal, For, Show } from 'solid-js';
 
+import type { CreateAccountDialogValue } from './ui/create-account-dialog';
+import { CreateAccountDialog } from './ui/create-account-dialog';
+
 import type { AccountTypeValue, CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
+    AccountColor,
     AccountType,
     cn,
     convertCurrency,
@@ -12,10 +16,9 @@ import {
     formatCurrency,
     formatDate,
     getAccountTypeMeta,
-    getCurrencySymbol,
     sumMoney
 } from '~/shared/lib';
-import { AccountIcon, Button, Container, Dialog, TextField } from '~/shared/ui';
+import { AccountIcon, Button, Container } from '~/shared/ui';
 
 type AccountItem = {
     id: string;
@@ -40,12 +43,11 @@ const FAMILY_TOTAL_EXCHANGE_RATES = {
 } satisfies CurrencyExchangeRates;
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
-const ACCOUNT_COLOR_OPTIONS = ['#3f77a8', '#147a50', '#a15c00', '#c82d4d', '#6b5bd2', '#526078'] as const;
 
 const INITIAL_ACCOUNTS: AccountItem[] = [
     {
         balance: 5_848.86,
-        color: '#147a50',
+        color: AccountColor.GREEN,
         currency: CurrencyCode.BYN,
         description: 'Семья',
         id: 'cash-byn',
@@ -56,7 +58,7 @@ const INITIAL_ACCOUNTS: AccountItem[] = [
     },
     {
         balance: 5_550,
-        color: '#3f77a8',
+        color: AccountColor.BLUE,
         currency: CurrencyCode.USD,
         description: 'Семья',
         id: 'reserve-usd',
@@ -67,7 +69,7 @@ const INITIAL_ACCOUNTS: AccountItem[] = [
     },
     {
         balance: 2_825,
-        color: '#6b5bd2',
+        color: AccountColor.VIOLET,
         currency: CurrencyCode.EUR,
         description: 'Личный резерв',
         id: 'reserve-eur',
@@ -78,7 +80,7 @@ const INITIAL_ACCOUNTS: AccountItem[] = [
     },
     {
         balance: 127,
-        color: '#526078',
+        color: AccountColor.SLATE,
         currency: CurrencyCode.USD,
         description: 'Биржа',
         id: 'bybit-usdt',
@@ -95,32 +97,6 @@ function getAccountItemStyle(account: AccountItem): JSX.CSSProperties {
     };
 }
 
-function getColorSwatchStyle(color: string): JSX.CSSProperties {
-    return {
-        'background-color': color
-    };
-}
-
-function getCurrencyOptionLabel(currency: CurrencyCodeValue): string {
-    return `${currency} ${getCurrencySymbol(currency)}`;
-}
-
-function parseBalanceInput(value: string): number {
-    const normalizedValue = value.trim().replace(',', '.');
-
-    if (!normalizedValue) {
-        return 0;
-    }
-
-    const amount = Number(normalizedValue);
-
-    if (!Number.isFinite(amount)) {
-        return 0;
-    }
-
-    return amount;
-}
-
 function createAccountId(): string {
     return `account-${Date.now()}`;
 }
@@ -135,13 +111,6 @@ export function HomePage() {
     const [accountsList, setAccountsList] = createSignal<AccountItem[]>(INITIAL_ACCOUNTS);
     const [activeAccountId, setActiveAccountId] = createSignal(INITIAL_ACCOUNTS[0].id);
     const [isCreateAccountDialogOpen, setIsCreateAccountDialogOpen] = createSignal(false);
-    const [newAccountName, setNewAccountName] = createSignal('');
-    const [newAccountBalance, setNewAccountBalance] = createSignal('');
-    const [newAccountCurrency, setNewAccountCurrency] = createSignal<CurrencyCodeValue>(CurrencyCode.BYN);
-    const [newAccountColor, setNewAccountColor] = createSignal<string>(ACCOUNT_COLOR_OPTIONS[0]);
-    const [newAccountType, setNewAccountType] = createSignal<AccountTypeValue>(AccountType.CARD);
-    const [isNewAccountColorAccentEnabled, setIsNewAccountColorAccentEnabled] = createSignal(false);
-    const [isNewAccountIncludedInFamilyTotal, setIsNewAccountIncludedInFamilyTotal] = createSignal(true);
 
     const activeAccount = createMemo(() => {
         return accountsList().find((account) => account.id === activeAccountId()) ?? accountsList()[0];
@@ -168,78 +137,24 @@ export function HomePage() {
             .map(formatExchangeRateLabel);
     });
 
-    const resetNewAccountForm = () => {
-        setNewAccountName('');
-        setNewAccountBalance('');
-        setNewAccountCurrency(CurrencyCode.BYN);
-        setNewAccountColor(ACCOUNT_COLOR_OPTIONS[0]);
-        setNewAccountType(AccountType.CARD);
-        setIsNewAccountColorAccentEnabled(false);
-        setIsNewAccountIncludedInFamilyTotal(true);
-    };
-
     const handleOpenCreateAccountDialog = () => {
         setIsCreateAccountDialogOpen(true);
     };
 
-    const handleCloseCreateAccountDialog = () => {
-        setIsCreateAccountDialogOpen(false);
-        resetNewAccountForm();
+    const handleCreateAccountDialogOpenChange = (open: boolean) => {
+        setIsCreateAccountDialogOpen(open);
     };
 
-    const handleNameInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-        setNewAccountName(event.currentTarget.value);
-    };
-
-    const handleBalanceInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-        setNewAccountBalance(event.currentTarget.value);
-    };
-
-    const handleCurrencyChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
-        const value = event.currentTarget.value;
-
-        if (CurrencyCode.isCurrencyCode(value)) {
-            setNewAccountCurrency(value);
-        }
-    };
-
-    const handleCustomColorInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-        setNewAccountColor(event.currentTarget.value);
-    };
-
-    const handleColorAccentChange = (event: Event & { currentTarget: HTMLInputElement }) => {
-        setIsNewAccountColorAccentEnabled(event.currentTarget.checked);
-    };
-
-    const handleFamilyTotalChange = (event: Event & { currentTarget: HTMLInputElement }) => {
-        setIsNewAccountIncludedInFamilyTotal(event.currentTarget.checked);
-    };
-
-    const handleCreateAccountSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
-        event.preventDefault();
-
-        const name = newAccountName().trim();
-
-        if (!name) {
-            return;
-        }
-
+    const handleCreateAccount = (accountValue: CreateAccountDialogValue) => {
         const account: AccountItem = {
-            balance: parseBalanceInput(newAccountBalance()),
-            color: newAccountColor(),
-            currency: newAccountCurrency(),
+            ...accountValue,
             description: 'Новый счет',
-            id: createAccountId(),
-            isColorAccentEnabled: isNewAccountColorAccentEnabled(),
-            isIncludedInFamilyTotal: isNewAccountIncludedInFamilyTotal(),
-            name,
-            type: newAccountType()
+            id: createAccountId()
         };
 
         setAccountsList((accounts) => [...accounts, account]);
         setActiveAccountId(account.id);
         setIsCreateAccountDialogOpen(false);
-        resetNewAccountForm();
     };
 
     return (
@@ -359,158 +274,11 @@ export function HomePage() {
                 </main>
             </div>
 
-            <Dialog.Root
+            <CreateAccountDialog
                 open={isCreateAccountDialogOpen()}
-                onOpenChange={(open) => {
-                    if (!open) {
-                        handleCloseCreateAccountDialog();
-                    }
-                }}
-            >
-                <Dialog.Content
-                    as='form'
-                    onSubmit={handleCreateAccountSubmit}
-                >
-                    <Dialog.Header closeLabel='Закрыть окно создания счета'>
-                        <Dialog.Kicker>Новый счет</Dialog.Kicker>
-                        <Dialog.Title>Создание счета</Dialog.Title>
-                    </Dialog.Header>
-
-                    <Dialog.Body>
-                        <div class={css.formGrid}>
-                            <TextField
-                                class={css.formFieldFull}
-                                label='Название счета'
-                                placeholder='Например, Основная карта'
-                                required
-                                value={newAccountName()}
-                                onInput={handleNameInput}
-                            />
-
-                            <TextField
-                                inputMode='decimal'
-                                label='Начальный баланс'
-                                placeholder='0,00'
-                                step='0.01'
-                                type='number'
-                                value={newAccountBalance()}
-                                endContent={<span>{newAccountCurrency()}</span>}
-                                onInput={handleBalanceInput}
-                            />
-
-                            <label class={css.fieldGroup}>
-                                <span class={css.formLabel}>Валюта счета</span>
-                                <select
-                                    class={css.select}
-                                    value={newAccountCurrency()}
-                                    onChange={handleCurrencyChange}
-                                >
-                                    <For each={ACCOUNT_CURRENCY_OPTIONS}>
-                                        {(currency) => (
-                                            <option value={currency}>{getCurrencyOptionLabel(currency)}</option>
-                                        )}
-                                    </For>
-                                </select>
-                            </label>
-
-                            <div class={css.formFieldFull}>
-                                <div class={css.formLabel}>Тип счета</div>
-                                <div class={css.typeOptions}>
-                                    <For each={AccountType.values()}>
-                                        {(accountType) => {
-                                            const accountTypeMeta = getAccountTypeMeta(accountType);
-
-                                            return (
-                                                <label
-                                                    class={cn(
-                                                        css.typeOption,
-                                                        newAccountType() === accountType && css.typeOptionActive
-                                                    )}
-                                                >
-                                                    <input
-                                                        checked={newAccountType() === accountType}
-                                                        name='account-type'
-                                                        type='radio'
-                                                        value={accountType}
-                                                        onChange={() => setNewAccountType(accountType)}
-                                                    />
-                                                    <AccountIcon accountType={accountType}/>
-                                                    <span>{accountTypeMeta.label}</span>
-                                                </label>
-                                            );
-                                        }}
-                                    </For>
-                                </div>
-                            </div>
-
-                            <div class={css.formFieldFull}>
-                                <div class={css.formLabel}>Цвет счета</div>
-                                <div class={css.colorOptions}>
-                                    <For each={ACCOUNT_COLOR_OPTIONS}>
-                                        {(color) => (
-                                            <button
-                                                aria-label={`Выбрать цвет ${color}`}
-                                                class={cn(
-                                                    css.colorSwatch,
-                                                    newAccountColor() === color && css.colorSwatchActive
-                                                )}
-                                                style={getColorSwatchStyle(color)}
-                                                type='button'
-                                                onClick={() => setNewAccountColor(color)}
-                                            />
-                                        )}
-                                    </For>
-                                    <label class={css.customColor}>
-                                        <span>Свой</span>
-                                        <input
-                                            aria-label='Выбрать свой цвет счета'
-                                            type='color'
-                                            value={newAccountColor()}
-                                            onInput={handleCustomColorInput}
-                                        />
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div class={css.booleanOptions}>
-                                <label class={css.checkboxRow}>
-                                    <input
-                                        checked={isNewAccountColorAccentEnabled()}
-                                        type='checkbox'
-                                        onChange={handleColorAccentChange}
-                                    />
-                                    <span>Выделить счет цветом</span>
-                                </label>
-
-                                <label class={css.switchRow}>
-                                    <span>Учитывать в &quot;Всего по семье&quot;</span>
-                                    <span class={css.switch}>
-                                        <input
-                                            checked={isNewAccountIncludedInFamilyTotal()}
-                                            class={css.switchInput}
-                                            type='checkbox'
-                                            onChange={handleFamilyTotalChange}
-                                        />
-                                        <span class={css.switchControl}/>
-                                    </span>
-                                </label>
-                            </div>
-                        </div>
-                    </Dialog.Body>
-
-                    <Dialog.Footer>
-                        <Dialog.Action
-                            closeOnClick
-                            intent='cancel'
-                        >
-                            Отмена
-                        </Dialog.Action>
-                        <Dialog.Action disabled={!newAccountName().trim()} type='submit'>
-                            Создать
-                        </Dialog.Action>
-                    </Dialog.Footer>
-                </Dialog.Content>
-            </Dialog.Root>
+                onCreateAccount={handleCreateAccount}
+                onOpenChange={handleCreateAccountDialogOpenChange}
+            />
         </>
     );
 }
