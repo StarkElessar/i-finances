@@ -1,3 +1,5 @@
+export type { AccentColorValue } from './accent-color';
+export { ACCENT_COLORS, AccentColor } from './accent-color';
 export type { AccountColorValue } from './account-color';
 export { ACCOUNT_COLORS, AccountColor } from './account-color';
 export type { AccountTypeMeta, AccountTypeValue } from './account-type';

@@ -1,11 +1,11 @@
 import css from './create-account-dialog.module.scss';
 
-import type { JSX } from 'solid-js';
 import { createSignal, For } from 'solid-js';
 
 import type { AccountTypeValue, CurrencyCodeValue } from '~/shared/lib';
 import { AccountColor, AccountType, cn, CurrencyCode, getAccountTypeMeta, getCurrencySymbol } from '~/shared/lib';
 import { AccountIcon, Dialog, TextField, Typography } from '~/shared/ui';
+import { ColorPicker } from '~/shared/ui/color-picker';
 import { Switch } from '~/shared/ui/switch';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
@@ -26,12 +26,6 @@ export type CreateAccountDialogProps = {
     onOpenChange: (open: boolean) => void;
     onCreateAccount: (account: CreateAccountDialogValue) => void;
 };
-
-function getColorSwatchStyle(color: string): JSX.CSSProperties {
-    return {
-        'background-color': color
-    };
-}
 
 function getCurrencyOptionLabel(currency: CurrencyCodeValue): string {
     return `${currency} ${getCurrencySymbol(currency)}`;
@@ -100,10 +94,6 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
         if (CurrencyCode.isCurrencyCode(value)) {
             setAccountCurrency(value);
         }
-    };
-
-    const handleCustomColorInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
-        setAccountColor(event.currentTarget.value);
     };
 
     const handleColorAccentChange = (event: Event & { currentTarget: HTMLInputElement }) => {
@@ -217,39 +207,12 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                             </select>
                         </label>
 
-                        <div class={css.formFieldFull}>
-                            <div class={css.formLabel}>Цвет счета</div>
-                            <div class={css.colorOptions}>
-                                <For each={AccountColor.values()}>
-                                    {(color) => (
-                                        <button
-                                            aria-label={`Выбрать цвет ${color}`}
-                                            class={cn(
-                                                css.colorSwatch,
-                                                accountColor() === color && css.colorSwatchActive
-                                            )}
-                                            style={getColorSwatchStyle(color)}
-                                            type='button'
-                                            onClick={() => setAccountColor(color)}
-                                        />
-                                    )}
-                                </For>
-                                <label
-                                    class={cn(
-                                        css.customColor,
-                                        !AccountColor.isAccountColor(accountColor()) && css.customColorActive
-                                    )}
-                                >
-                                    <span>Свой</span>
-                                    <input
-                                        aria-label='Выбрать свой цвет счета'
-                                        type='color'
-                                        value={accountColor()}
-                                        onInput={handleCustomColorInput}
-                                    />
-                                </label>
-                            </div>
-                        </div>
+                        <ColorPicker
+                            class={css.formFieldFull}
+                            label='Цвет счета'
+                            value={accountColor()}
+                            onChange={setAccountColor}
+                        />
 
                         <div class={css.booleanOptions}>
                             <label class={css.switchRow}>

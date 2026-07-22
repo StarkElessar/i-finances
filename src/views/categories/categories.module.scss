@@ -1,0 +1,83 @@
+@use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
+
+.root {
+    overflow: auto;
+    flex: 1 1 0;
+
+    min-block-size: 0;
+    padding-block: var(--space-7) calc(var(--space-12) + fn.rem(72));
+
+    background-color: var(--color-canvas);
+
+    @include mx.media-mn(960) {
+        padding-block: var(--space-9);
+    }
+}
+
+.page {
+    display: grid;
+    gap: var(--space-8);
+    align-content: start;
+    inline-size: 100%;
+}
+
+.header {
+    display: flex;
+    gap: var(--space-3);
+    align-items: start;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+}
+
+.header-content {
+    display: grid;
+    gap: var(--space-2);
+    min-inline-size: 0;
+}
+
+.title {
+    margin: 0;
+
+    font-size: var(--font-size-heading-1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    color: var(--color-text-primary);
+}
+
+.description {
+    color: var(--color-text-secondary);
+}
+
+.add-button {
+    flex: none;
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+
+    @include mx.media-mn(640) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @include mx.media-mn(1180) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.empty-state {
+    display: grid;
+    gap: var(--space-5);
+    justify-items: start;
+
+    padding: var(--space-8);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+
+    color: var(--color-text-secondary);
+
+    background-color: var(--color-surface);
+}
