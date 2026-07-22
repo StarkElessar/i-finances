@@ -1,0 +1,167 @@
+@use "~/shared/styles/functions" as fn;
+
+.root {
+    --category-color: var(--color-primary);
+    --category-progress: 0%;
+
+    cursor: pointer;
+
+    display: grid;
+    grid-template-columns: fn.rem(44) minmax(0, 1fr);
+    gap: var(--space-5);
+
+    inline-size: 100%;
+    min-block-size: fn.rem(128);
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    color: var(--color-text-primary);
+    text-align: start;
+
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard),
+        transform var(--duration-fast) var(--ease-standard);
+
+    &:hover {
+        transform: translateY(fn.rem(-1));
+        border-color: var(--color-border-strong);
+        box-shadow: var(--shadow-md);
+    }
+
+    &:focus-visible {
+        border-color: var(--category-color);
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 2px;
+    }
+}
+
+.icon {
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(40);
+    block-size: fn.rem(40);
+    border: 1px solid color-mix(in srgb, var(--category-color) 34%, var(--color-border));
+    border-radius: var(--radius-md);
+
+    color: var(--category-color);
+
+    background-color: color-mix(in srgb, var(--category-color) 12%, var(--color-surface));
+
+    span {
+        inline-size: fn.rem(14);
+        block-size: fn.rem(14);
+        border: 2px solid currentcolor;
+        border-radius: var(--radius-xs);
+    }
+}
+
+.content {
+    display: grid;
+    gap: var(--space-1);
+    min-inline-size: 0;
+}
+
+.title-row {
+    display: flex;
+    gap: var(--space-4);
+    align-items: baseline;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+}
+
+.title {
+    overflow: hidden;
+
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-body-lg);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.percent {
+    flex: none;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+}
+
+.spent {
+    overflow: hidden;
+    color: var(--color-text-tertiary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+
+    strong {
+        color: var(--color-text-primary);
+    }
+}
+
+.progress-track {
+    overflow: hidden;
+    grid-column: 1 / -1;
+
+    block-size: fn.rem(4);
+    border-radius: fn.rem(999);
+
+    background-color: var(--color-surface-strong);
+}
+
+.progress-bar {
+    display: block;
+
+    inline-size: var(--category-progress);
+    block-size: 100%;
+    border-radius: inherit;
+
+    background-color: var(--category-color);
+
+    transition:
+        inline-size var(--duration-normal) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
+}
+
+.footer {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+}
+
+.limit-state {
+    flex: none;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-danger);
+}
+
+.over-budget {
+    .progress-bar {
+        background-color: var(--color-danger);
+    }
+
+    .percent {
+        color: var(--color-danger);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .root,
+    .progress-bar {
+        transition: none;
+    }
+}
