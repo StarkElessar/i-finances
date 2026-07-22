@@ -335,7 +335,7 @@ export function CategoriesPage() {
                                     <CategoryCard
                                         category={category}
                                         currency={CATEGORY_FAMILY_CURRENCY}
-                                        isDragging={dragState()?.categoryId === category.id}
+                                        isDragging={activeDragState()?.categoryId === category.id}
                                         summary={getCategoryBudgetSummary(
                                             category,
                                             INITIAL_OPERATIONS,
@@ -378,20 +378,20 @@ export function CategoriesPage() {
                 </div>
             </Show>
 
-            <Show keyed when={activeDragState()}>
+            <Show when={activeDragState()}>
                 {(state) => (
-                    <Show keyed when={draggedCategory()}>
+                    <Show when={draggedCategory()}>
                         {(category) => (
                             <div
                                 aria-hidden='true'
-                                class={cn(css.dragPreview, state.isOverDeleteZone && css.dragPreviewDanger)}
-                                style={getDragPreviewStyle(state, category)}
+                                class={cn(css.dragPreview, state().isOverDeleteZone && css.dragPreviewDanger)}
+                                style={getDragPreviewStyle(state(), category())}
                             >
                                 <span class={css.dragPreviewIcon}>
                                     <span/>
                                 </span>
                                 <span class={css.dragPreviewContent}>
-                                    <span class={css.dragPreviewTitle}>{category.name}</span>
+                                    <span class={css.dragPreviewTitle}>{category().name}</span>
                                     <span>Категория</span>
                                 </span>
                             </div>
