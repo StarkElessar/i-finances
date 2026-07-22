@@ -6,4 +6,4 @@ const importedData = importOperationsCsv(rawOperationsCsv);
 
 export const INITIAL_OPERATIONS = importedData.operations;
 export const INITIAL_OPERATION_CATEGORIES = importedData.categories;
-export const INITIAL_PAYEES = importedData.payees;
+export const INITIAL_CONTACTS = importedData.contacts;

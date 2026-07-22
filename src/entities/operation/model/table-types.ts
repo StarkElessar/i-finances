@@ -2,7 +2,7 @@ import type { OperationWithBalance } from './types';
 
 export type OperationPeriodMode = 'week' | 'month' | 'year';
 export type OperationSortDirection = 'asc' | 'desc';
-export type OperationSortField = 'date' | 'category' | 'payee' | 'amount' | 'balance';
+export type OperationSortField = 'date' | 'category' | 'contact' | 'amount' | 'balance';
 
 export type OperationSort = {
     direction: OperationSortDirection;

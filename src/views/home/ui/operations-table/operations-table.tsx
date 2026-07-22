@@ -74,7 +74,7 @@ const PERIOD_LABELS: Record<OperationPeriodMode, string> = {
 };
 
 const PERIOD_MODES: OperationPeriodMode[] = ['week', 'month', 'year'];
-const SORT_FIELDS: OperationSortField[] = ['date', 'amount', 'balance', 'category', 'payee'];
+const SORT_FIELDS: OperationSortField[] = ['date', 'amount', 'balance', 'category', 'contact'];
 const FALLBACK_CATEGORY_COLOR = '#778398';
 
 const columns: GridColumn<OperationTableItem>[] = [
@@ -175,9 +175,9 @@ const columns: GridColumn<OperationTableItem>[] = [
         )
     },
     {
-        accessor: (item) => item.kind === 'operation' ? item.operation.payeeName : '',
-        header: 'Получатель / плательщик',
-        id: 'payee',
+        accessor: (item) => item.kind === 'operation' ? item.operation.contactName : '',
+        header: 'Контакт',
+        id: 'contact',
         minWidth: 180,
         sortable: true,
         width: 244,
@@ -186,10 +186,10 @@ const columns: GridColumn<OperationTableItem>[] = [
                 {(item) => (
                     <span
                         class={css.referenceCell}
-                        title={item().operation.payeeName ?? 'Без получателя'}
+                        title={item().operation.contactName ?? 'Без контакта'}
                     >
                         <Building2 aria-hidden='true' size={15}/>
-                        <span>{item().operation.payeeName ?? 'Без получателя'}</span>
+                        <span>{item().operation.contactName ?? 'Без контакта'}</span>
                     </span>
                 )}
             </Show>
@@ -536,7 +536,7 @@ function GroupIcon(props: { group: OperationGroup }) {
         return <span aria-hidden='true' class={css.groupCategoryIcon}><span/></span>;
     }
 
-    if (props.group.type === 'payee') {
+    if (props.group.type === 'contact') {
         return <Building2 aria-hidden='true' size={15}/>;
     }
 

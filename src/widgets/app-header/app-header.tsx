@@ -20,6 +20,7 @@ const DESKTOP_NAVIGATION_QUERY = '(min-width: 60em)';
 const NAV_LINKS: NavigationLink[] = [
     { href: '/', label: 'Главная' },
     { href: '/categories', label: 'Категории' },
+    { href: '/contacts', label: 'Контакты' },
     { href: '/stats', label: 'Статистика' },
     { href: '/table-resize', label: 'Таблица и ресайз колонок' }
 ];

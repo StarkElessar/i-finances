@@ -1,0 +1,196 @@
+@use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
+
+.root {
+    overflow: auto;
+    flex: 1 1 0;
+
+    min-block-size: 0;
+    padding-block: var(--space-7) calc(var(--space-12) + fn.rem(72));
+
+    background-color: var(--color-canvas);
+
+    @include mx.media-mn(960) {
+        padding-block: var(--space-9);
+    }
+}
+
+.page {
+    display: grid;
+    gap: var(--space-7);
+    align-content: start;
+    inline-size: 100%;
+}
+
+.header {
+    display: flex;
+    gap: var(--space-3);
+    align-items: start;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+}
+
+.header-content {
+    display: grid;
+    gap: var(--space-2);
+    min-inline-size: 0;
+}
+
+.title {
+    margin: 0;
+
+    font-size: var(--font-size-heading-1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    color: var(--color-text-primary);
+}
+
+.description {
+    color: var(--color-text-secondary);
+}
+
+.add-button {
+    flex: none;
+}
+
+.toolbar {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.search {
+    inline-size: min(100%, fn.rem(460));
+}
+
+.filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.segmented {
+    scrollbar-width: none;
+
+    overflow-x: auto;
+    display: inline-flex;
+    flex: none;
+    gap: var(--space-1);
+
+    max-inline-size: 100%;
+    padding: fn.rem(3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-subtle);
+
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
+.segment {
+    cursor: default;
+
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+    justify-content: center;
+
+    min-block-size: fn.rem(34);
+    padding-inline: var(--space-4);
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+
+    background-color: transparent;
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
+
+    &:not(.segment-active) {
+        cursor: pointer;
+
+        &:hover {
+            color: var(--color-text-primary);
+            background-color: var(--color-surface);
+        }
+
+        &:focus-visible {
+            border-color: var(--color-primary);
+            outline: none;
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+    }
+}
+
+.segment-active {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.count {
+    min-inline-size: fn.rem(20);
+    padding-inline: var(--space-2);
+    border-radius: var(--radius-round);
+
+    font-size: var(--font-size-body-sm);
+    text-align: center;
+
+    background-color: var(--color-surface-strong);
+}
+
+.grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--space-5);
+
+    @include mx.media-mn(640) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    @include mx.media-mn(1180) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.empty-state {
+    display: grid;
+    gap: var(--space-3);
+    justify-items: start;
+
+    padding: var(--space-8);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-lg);
+
+    color: var(--color-text-secondary);
+
+    background-color: var(--color-surface);
+
+    strong {
+        color: var(--color-text-primary);
+    }
+}
+
+@media (width <= 640px) {
+    .filter-row {
+        display: grid;
+        justify-content: stretch;
+    }
+
+    .segmented {
+        inline-size: 100%;
+    }
+
+    .segment {
+        flex: 1 0 auto;
+    }
+}

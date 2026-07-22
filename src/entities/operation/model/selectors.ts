@@ -78,7 +78,7 @@ export function filterOperationRows(
             operation.title,
             operation.comment,
             operation.categoryName ?? '',
-            operation.payeeName ?? ''
+            operation.contactName ?? ''
         ].join('\n').toLocaleLowerCase('ru-BY');
 
         return searchableValue.includes(normalizedQuery);
@@ -94,7 +94,7 @@ export function createOperationGroups(
         return createDateGroups(visibleRows, allAccountRows, sort.direction);
     }
 
-    if (sort.field === 'category' || sort.field === 'payee') {
+    if (sort.field === 'category' || sort.field === 'contact') {
         return createNamedGroups(visibleRows, sort);
     }
 
@@ -150,7 +150,7 @@ function createNamedGroups(
             return operation.categoryName || 'Без категории';
         }
 
-        return operation.payeeName || 'Без получателя';
+        return operation.contactName || 'Без контакта';
     });
     const names = [...rowsByName.keys()].toSorted((left, right) => {
         const result = NAME_COLLATOR.compare(left, right);

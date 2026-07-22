@@ -1,0 +1,79 @@
+@use "~/shared/styles/functions" as fn;
+
+.dialog {
+    --dialog-inline-size: #{fn.rem(620)};
+}
+
+.form {
+    display: grid;
+    gap: var(--space-6);
+}
+
+.type-field {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.type-content {
+    display: grid;
+    gap: var(--space-1);
+    min-inline-size: 0;
+}
+
+.type-label {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.type-hint {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+}
+
+.preview-block {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.preview-label {
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+}
+
+.footer {
+    align-items: center;
+}
+
+.footer-spacer {
+    flex: 1 1 auto;
+}
+
+.footer-actions {
+    display: flex;
+    gap: var(--space-4);
+}
+
+@media (width <= 640px) {
+    .footer {
+        display: flex;
+    }
+
+    .footer-spacer {
+        display: none;
+    }
+
+    .footer-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        flex: 1 1 100%;
+    }
+}

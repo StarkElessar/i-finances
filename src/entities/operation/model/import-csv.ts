@@ -3,7 +3,7 @@ import { parse } from 'csv-parse/browser/esm/sync';
 import type { Operation, OperationCategoryReference } from './types';
 
 import { CASH_ACCOUNT_ID } from '~/entities/account';
-import type { Payee } from '~/entities/payee';
+import type { Contact } from '~/entities/contact';
 import { ACCENT_COLORS, amountToMinorUnits, CurrencyCode } from '~/shared/lib';
 
 type CsvOperationRecord = {
@@ -18,8 +18,8 @@ type CsvOperationRecord = {
 
 export type ImportedOperationsData = {
     categories: OperationCategoryReference[];
+    contacts: Contact[];
     operations: Operation[];
-    payees: Payee[];
 };
 
 const CSV_HEADER = 'Дата;Сумма;Название;Получатель/Плательщик;IBAN контакта;Категория;Комментарий';
@@ -42,17 +42,17 @@ export function importOperationsCsv(rawCsv: string): ImportedOperationsData {
         return record;
     });
     const categoryByName = createCategoryReferences(records);
-    const payeeByName = createPayees(records);
+    const contactByName = createContacts(records);
 
     return {
         categories: [...categoryByName.values()],
+        contacts: [...contactByName.values()],
         operations: records.map((record, sourceOrder) => createOperation(
             record,
             sourceOrder,
             categoryByName,
-            payeeByName
-        )),
-        payees: [...payeeByName.values()]
+            contactByName
+        ))
     };
 }
 
@@ -89,36 +89,43 @@ function createCategoryReferences(records: readonly CsvOperationRecord[]): Map<s
     return categoryByName;
 }
 
-function createPayees(records: readonly CsvOperationRecord[]): Map<string, Payee> {
-    const payeeByName = new Map<string, Payee>();
+function createContacts(records: readonly CsvOperationRecord[]): Map<string, Contact> {
+    const contactByName = new Map<string, Contact>();
 
     records.forEach((record) => {
         const name = normalizeCsvQuotes(normalizeText(record['Получатель/Плательщик']));
 
-        if (!name || payeeByName.has(name)) {
+        if (!name || contactByName.has(name)) {
             return;
         }
 
-        payeeByName.set(name, {
-            id: createStableEntityId('payee', name),
+        const timestamp = `${parseCsvDate(record['Дата'])}T12:00:00.000Z`;
+        const colorIndex = contactByName.size % ACCENT_COLORS.length;
+
+        contactByName.set(name, {
+            color: ACCENT_COLORS[colorIndex],
+            createdAt: timestamp,
+            id: createStableEntityId('contact', name),
             isArchived: false,
+            legalName: null,
             name,
-            type: 'unknown'
+            type: 'unknown',
+            updatedAt: timestamp
         });
     });
 
-    return payeeByName;
+    return contactByName;
 }
 
 function createOperation(
     record: CsvOperationRecord,
     sourceOrder: number,
     categoryByName: ReadonlyMap<string, OperationCategoryReference>,
-    payeeByName: ReadonlyMap<string, Payee>
+    contactByName: ReadonlyMap<string, Contact>
 ): Operation {
     const signedAmountMinor = parseCsvAmountMinor(record['Сумма']);
     const categoryName = normalizeText(record['Категория']) || null;
-    const payeeName = normalizeCsvQuotes(normalizeText(record['Получатель/Плательщик'])) || null;
+    const contactName = normalizeCsvQuotes(normalizeText(record['Получатель/Плательщик'])) || null;
     const happenedOn = parseCsvDate(record['Дата']);
     const timestamp = `${happenedOn}T12:00:00.000Z`;
 
@@ -129,12 +136,12 @@ function createOperation(
         categoryId: categoryName ? categoryByName.get(categoryName)?.id ?? null : null,
         categoryName,
         comment: normalizeText(record['Комментарий']),
+        contactId: contactName ? contactByName.get(contactName)?.id ?? null : null,
+        contactName,
         createdAt: timestamp,
         currency: CurrencyCode.BYN,
         happenedOn,
         id: `operation-imported-${sourceOrder + 1}`,
-        payeeId: payeeName ? payeeByName.get(payeeName)?.id ?? null : null,
-        payeeName,
         sourceOrder,
         title: normalizeText(record['Название']) || 'Без названия',
         type: signedAmountMinor < 0 ? 'expense' : 'income',

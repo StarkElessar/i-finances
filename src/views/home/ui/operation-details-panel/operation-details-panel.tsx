@@ -78,8 +78,8 @@ export function OperationDetailsPanel(props: OperationDetailsPanelProps) {
                                 <dd>{operation().categoryName ?? 'Без категории'}</dd>
                             </div>
                             <div>
-                                <dt>Получатель / плательщик</dt>
-                                <dd>{operation().payeeName ?? 'Не указан'}</dd>
+                                <dt>Контакт</dt>
+                                <dd>{operation().contactName ?? 'Не указан'}</dd>
                             </div>
                             <div>
                                 <dt>Баланс после операции</dt>

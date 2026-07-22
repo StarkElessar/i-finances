@@ -9,12 +9,12 @@ export type Operation = {
     categoryId: string | null;
     categoryName: string | null;
     comment: string;
+    contactId: string | null;
+    contactName: string | null;
     createdAt: string;
     currency: CurrencyCodeValue;
     happenedOn: string;
     id: string;
-    payeeId: string | null;
-    payeeName: string | null;
     sourceOrder: number;
     title: string;
     type: OperationType;

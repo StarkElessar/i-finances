@@ -12,10 +12,16 @@ describe('importOperationsCsv', () => {
 
         expect(importedData.operations).toHaveLength(791);
         expect(importedData.categories).toHaveLength(30);
-        expect(importedData.payees).toHaveLength(116);
+        expect(importedData.contacts).toHaveLength(116);
+        expect(importedData.contacts[0]).toMatchObject({
+            isArchived: false,
+            legalName: null,
+            type: 'unknown'
+        });
+        expect(importedData.contacts[0].color).toMatch(/^#[\da-f]{6}$/i);
     });
 
-    it('normalizes money, dates and escaped payee quotes', () => {
+    it('normalizes money, dates and escaped contact quotes', () => {
         const importedData = importOperationsCsv(rawCsv);
         const [income, expense] = importedData.operations;
 
@@ -27,7 +33,7 @@ describe('importOperationsCsv', () => {
         });
         expect(expense).toMatchObject({
             amountMinor: 4_794,
-            payeeName: 'ООО "Парфюм Трейд"',
+            contactName: 'ООО "Парфюм Трейд"',
             type: 'expense'
         });
     });

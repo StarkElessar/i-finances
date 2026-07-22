@@ -61,12 +61,12 @@ describe('operation periods and search', () => {
         expect(matches.every((operation) => operation.amountMinor === 4_794)).toBe(true);
     });
 
-    it('searches title, comment, category and payee for text queries', () => {
+    it('searches title, comment, category and contact for text queries', () => {
         const matches = filterOperationRows(cashRows, julyRange, 'чистые родники');
 
         expect(matches.length).toBeGreaterThan(0);
         expect(matches.every((operation) => (
-            operation.payeeName?.toLocaleLowerCase('ru-BY').includes('чистые родники')
+            operation.contactName?.toLocaleLowerCase('ru-BY').includes('чистые родники')
         ))).toBe(true);
     });
 });
