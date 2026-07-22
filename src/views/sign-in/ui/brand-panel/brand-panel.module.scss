@@ -14,27 +14,12 @@
     }
 }
 
-.logo {
-    --size: 2.25rem;
-
-    display: grid;
-    place-content: center;
-
-    aspect-ratio: 1;
-    inline-size: var(--size);
-    margin-block-end: var(--space-8);
-    border-radius: var(--radius-md);
-
-    font-size: var(--font-size-body-lg);
-    font-weight: var(--font-weight-semibold);
-    line-height: var(--size);
-    color: var(--color-text-inverse);
-
-    background-color: var(--color-primary);
-}
-
 .intro {
     max-inline-size: 28rem;
+}
+
+.logo {
+	margin-block-end: var(--space-8);
 }
 
 .title {

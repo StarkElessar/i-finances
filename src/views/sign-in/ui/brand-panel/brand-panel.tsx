@@ -2,6 +2,7 @@ import css from './brand-panel.module.scss';
 
 import { cn } from '~/shared/lib';
 import { Typography } from '~/shared/ui';
+import { AppLogo } from '~/shared/ui/app-logo';
 
 /**
  * Presents the product promise and privacy context beside the sign-in flow.
@@ -10,7 +11,7 @@ export function BrandPanel(props: { classRoot?: string }) {
     return (
         <div class={cn(css.root, props.classRoot)}>
             <div class={css.intro}>
-                <div class={css.logo}>iF</div>
+                <AppLogo class={css.logo}/>
                 <Typography class={css.title} variant='heading-1'>Семейные финансы без лишнего</Typography>
                 <Typography tone='primary' variant='body-lg'>
                     Счета, операции и бюджеты в одном приватном пространстве для вашей семьи.

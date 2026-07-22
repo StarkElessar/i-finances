@@ -66,7 +66,7 @@ export function SignInPage() {
 
     return (
         <div class={css.page}>
-            <Container>
+            <Container useMaxSize>
                 <div class={css.wrapper}>
                     <BrandPanel classRoot={css.welcome}/>
                     <Show

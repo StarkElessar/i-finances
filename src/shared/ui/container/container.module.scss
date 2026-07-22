@@ -2,7 +2,10 @@
 
 .container {
     inline-size: 100%;
-    max-inline-size: fn.rem(1200);
     margin-inline: auto;
     padding-inline: fn.rem(20);
+}
+
+.max-size {
+	max-inline-size: fn.rem(1200);
 }
