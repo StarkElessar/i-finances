@@ -1,32 +1,27 @@
+import { ACCENT_COLORS, AccentColor, type AccentColorValue } from './accent-color';
+
 export abstract class AccountColor {
-    static readonly AMBER = '#a15c00' as const;
+    static readonly AMBER = AccentColor.AMBER;
 
-    static readonly BLUE = '#3f77a8' as const;
+    static readonly BLUE = AccentColor.BLUE;
 
-    static readonly GREEN = '#147a50' as const;
+    static readonly GREEN = AccentColor.GREEN;
 
-    static readonly ROSE = '#c82d4d' as const;
+    static readonly ROSE = AccentColor.ROSE;
 
-    static readonly SLATE = '#526078' as const;
+    static readonly SLATE = AccentColor.SLATE;
 
-    static readonly VIOLET = '#6b5bd2' as const;
+    static readonly VIOLET = AccentColor.VIOLET;
 
     static values(): AccountColorValue[] {
         return [...ACCOUNT_COLORS];
     }
 
     static isAccountColor(value: string): value is AccountColorValue {
-        return ACCOUNT_COLORS.includes(value as AccountColorValue);
+        return ACCENT_COLORS.includes(value as AccountColorValue);
     }
 }
 
-export const ACCOUNT_COLORS = [
-    AccountColor.BLUE,
-    AccountColor.GREEN,
-    AccountColor.AMBER,
-    AccountColor.ROSE,
-    AccountColor.VIOLET,
-    AccountColor.SLATE
-] as const;
+export const ACCOUNT_COLORS = ACCENT_COLORS;
 
-export type AccountColorValue = typeof ACCOUNT_COLORS[number];
+export type AccountColorValue = AccentColorValue;
