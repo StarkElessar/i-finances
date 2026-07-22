@@ -226,9 +226,7 @@ function ContextMenuRoot(props: ContextMenuRootProps) {
     onMount(() => {
         const breakpoint = props.mobileBreakpoint ?? DEFAULT_MOBILE_BREAKPOINT;
         const mediaQuery = window.matchMedia(`(max-width: ${breakpoint / 16}em)`);
-        const syncMobileState = (): void => {
-            setIsMobile(mediaQuery.matches);
-        };
+        const syncMobileState = () => setIsMobile(mediaQuery.matches);
 
         syncMobileState();
         mediaQuery.addEventListener('change', syncMobileState);
