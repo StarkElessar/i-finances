@@ -27,3 +27,15 @@ export function AmountLabel() {
     return null;
 }
 ```
+
+## Responsive Styles
+
+Write responsive SCSS mobile-first: base styles must target the smallest viewport, and larger viewport overrides must be added with `min-width` media queries.
+
+Always use the local responsive mixins from `src/shared/styles/mixins.scss` instead of raw `@media` queries. In SCSS modules, import them as:
+
+```scss
+@use "~/shared/styles/mixins" as mx;
+```
+
+Prefer `@include mx.media-mn(...)` for adaptive layout changes. Use `media-mx` or `media-mn-mx` only when the design requirement is explicitly max-width or bounded-range specific.
