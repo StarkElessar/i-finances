@@ -4,7 +4,9 @@
     --category-color: var(--color-primary);
     --category-progress: 0%;
 
-    cursor: pointer;
+    touch-action: none;
+    cursor: grab;
+    user-select: none;
 
     display: grid;
     grid-template-columns: fn.rem(44) minmax(0, 1fr);
@@ -24,19 +26,22 @@
 
     transition:
         border-color var(--duration-fast) var(--ease-standard),
+        opacity var(--duration-fast) var(--ease-standard),
         box-shadow var(--duration-fast) var(--ease-standard),
         transform var(--duration-fast) var(--ease-standard);
 
-    &:hover {
-        transform: translateY(fn.rem(-1));
-        border-color: var(--color-border-strong);
-        box-shadow: var(--shadow-md);
-    }
+    &:not(.dragging) {
+        &:hover {
+            transform: translateY(fn.rem(-1));
+            border-color: var(--color-border-strong);
+            box-shadow: var(--shadow-md);
+        }
 
-    &:focus-visible {
-        border-color: var(--category-color);
-        outline: 3px solid var(--color-focus-ring);
-        outline-offset: 2px;
+        &:focus-visible {
+            border-color: var(--category-color);
+            outline: 3px solid var(--color-focus-ring);
+            outline-offset: 2px;
+        }
     }
 }
 
@@ -157,6 +162,12 @@
     .percent {
         color: var(--color-danger);
     }
+}
+
+.dragging {
+    cursor: grabbing;
+    transform: scale(0.98);
+    opacity: 0.34;
 }
 
 @media (prefers-reduced-motion: reduce) {

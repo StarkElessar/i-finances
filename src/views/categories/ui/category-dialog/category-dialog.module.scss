@@ -1,7 +1,12 @@
 @use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
 
 .dialog {
-    --dialog-inline-size: #{fn.rem(520)};
+    --dialog-inline-size: 100%;
+
+    @include mx.media-mn(640) {
+        --dialog-inline-size: #{fn.rem(520)};
+    }
 }
 
 .form {

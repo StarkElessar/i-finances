@@ -81,3 +81,172 @@
 
     background-color: var(--color-surface);
 }
+
+.delete-zone {
+    pointer-events: none;
+
+    position: fixed;
+    z-index: 45;
+    inset-block-end: calc(env(safe-area-inset-bottom) + fn.rem(92));
+    inset-inline-start: 50%;
+    transform: translate(-50%, fn.rem(16)) scale(0.94);
+
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: center;
+
+    inline-size: min(calc(100vw - var(--space-8)), fn.rem(420));
+    min-block-size: fn.rem(96);
+    padding: var(--space-7) var(--space-8);
+    border-radius: fn.rem(34);
+
+    color: var(--color-danger);
+
+    visibility: hidden;
+    opacity: 0;
+    background:
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-danger) 28%, transparent), transparent 68%),
+        linear-gradient(135deg, rgb(255 240 243 / 86%), rgb(255 255 255 / 76%));
+    backdrop-filter: blur(18px) saturate(1.2);
+    box-shadow:
+        0 fn.rem(22) fn.rem(60) rgb(200 45 77 / 18%),
+        inset 0 1px 0 rgb(255 255 255 / 62%);
+
+    transition:
+        color var(--duration-fast) var(--ease-standard),
+        opacity var(--duration-normal) var(--ease-standard),
+        transform var(--duration-normal) var(--ease-standard),
+        visibility var(--duration-normal) var(--ease-standard);
+
+    @include mx.media-mn(960) {
+        inset-block-end: var(--space-9);
+    }
+}
+
+.delete-zone-visible {
+    transform: translate(-50%, 0) scale(1);
+    visibility: visible;
+    opacity: 1;
+}
+
+.delete-zone-active {
+    transform: translate(-50%, fn.rem(-4)) scale(1.04);
+    color: var(--color-text-inverse);
+    background:
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--color-danger) 54%, transparent), transparent 70%),
+        linear-gradient(135deg, color-mix(in srgb, var(--color-danger) 86%, #7a1027), var(--color-danger));
+    box-shadow:
+        0 fn.rem(26) fn.rem(76) rgb(200 45 77 / 34%),
+        0 0 fn.rem(42) rgb(200 45 77 / 18%),
+        inset 0 1px 0 rgb(255 255 255 / 26%);
+}
+
+.delete-zone-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(52);
+    block-size: fn.rem(52);
+    border-radius: var(--radius-round);
+
+    background-color: rgb(255 255 255 / 34%);
+    box-shadow: inset 0 1px 0 rgb(255 255 255 / 32%);
+
+    transition: transform var(--duration-fast) var(--ease-standard);
+
+    svg {
+        display: block;
+    }
+
+    .delete-zone-active & {
+        transform: scale(1.08);
+    }
+}
+
+.delete-zone-text {
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+}
+
+.drag-preview {
+    --category-color: var(--color-primary);
+    --drag-x: 0;
+    --drag-y: 0;
+
+    pointer-events: none;
+
+    position: fixed;
+    z-index: 46;
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    transform: translate(calc(var(--drag-x) - 50%), calc(var(--drag-y) - 50%)) rotate(-1deg);
+
+    display: grid;
+    grid-template-columns: fn.rem(40) minmax(0, 1fr);
+    gap: var(--space-4);
+    align-items: center;
+
+    inline-size: min(calc(100vw - var(--space-8)), fn.rem(280));
+    padding: var(--space-5);
+    border: 1px solid color-mix(in srgb, var(--category-color) 24%, var(--color-border));
+    border-radius: var(--radius-lg);
+
+    color: var(--color-text-primary);
+
+    background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
+    backdrop-filter: blur(14px);
+    box-shadow: var(--shadow-md);
+}
+
+.drag-preview-danger {
+    border-color: color-mix(in srgb, var(--color-danger) 42%, transparent);
+    box-shadow: 0 fn.rem(16) fn.rem(42) rgb(200 45 77 / 18%);
+}
+
+.drag-preview-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(40);
+    block-size: fn.rem(40);
+    border: 1px solid color-mix(in srgb, var(--category-color) 34%, var(--color-border));
+    border-radius: var(--radius-md);
+
+    color: var(--category-color);
+
+    background-color: color-mix(in srgb, var(--category-color) 12%, var(--color-surface));
+
+    span {
+        inline-size: fn.rem(14);
+        block-size: fn.rem(14);
+        border: 2px solid currentcolor;
+        border-radius: var(--radius-xs);
+    }
+}
+
+.drag-preview-content {
+    display: grid;
+    gap: var(--space-1);
+    min-inline-size: 0;
+    color: var(--color-text-tertiary);
+}
+
+.drag-preview-title {
+    overflow: hidden;
+
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .delete-zone,
+    .delete-zone-icon {
+        transition: none;
+    }
+}

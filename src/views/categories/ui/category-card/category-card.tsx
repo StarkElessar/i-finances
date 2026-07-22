@@ -12,7 +12,12 @@ export type CategoryCardProps = {
     currency: CurrencyCodeValue;
     summary: CategoryBudgetSummary;
     class?: string;
+    isDragging?: boolean;
     onClick?: () => void;
+    onPointerCancel?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
+    onPointerDown?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
+    onPointerMove?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
+    onPointerUp?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
 };
 
 function getCategoryCardStyle(category: Category, summary: CategoryBudgetSummary): JSX.CSSProperties {
@@ -41,10 +46,19 @@ function getPercentLabel(summary: CategoryBudgetSummary): string {
 export function CategoryCard(props: CategoryCardProps) {
     return (
         <button
-            class={cn(css.root, props.summary.isOverBudget && css.overBudget, props.class)}
+            class={cn(
+                css.root,
+                props.summary.isOverBudget && css.overBudget,
+                props.isDragging && css.dragging,
+                props.class
+            )}
             style={getCategoryCardStyle(props.category, props.summary)}
             type='button'
             onClick={props.onClick}
+            onPointerCancel={props.onPointerCancel}
+            onPointerDown={props.onPointerDown}
+            onPointerMove={props.onPointerMove}
+            onPointerUp={props.onPointerUp}
         >
             <span class={css.icon} aria-hidden='true'>
                 <span/>

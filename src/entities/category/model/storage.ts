@@ -21,7 +21,7 @@ export function readCategoriesFromStorage(storage: Storage): Category[] | undefi
             .map(normalizeStoredCategory)
             .filter((category): category is Category => Boolean(category));
 
-        return categories.length > 0 ? categories : undefined;
+        return categories;
     }
     catch {
         return undefined;
