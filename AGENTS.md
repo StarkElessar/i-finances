@@ -39,3 +39,27 @@ Always use the local responsive mixins from `src/shared/styles/mixins.scss` inst
 ```
 
 Prefer `@include mx.media-mn(...)` for adaptive layout changes. Use `media-mx` or `media-mn-mx` only when the design requirement is explicitly max-width or bounded-range specific.
+
+## Interactive Styles
+
+Do not apply hover effects, focus effects, or `cursor: pointer` to elements that are already active, selected, current, or checked.
+
+When an interactive element has an active class or selected state, guard hover, focus, and pointer-cursor styles with `:not(...)` or an equivalent condition:
+
+```scss
+.option {
+    &:not(.option-active) {
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--color-border-strong);
+        }
+
+        &:focus-visible {
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+    }
+}
+```
+
+Active elements should keep their active visual treatment on hover and focus. Avoid interactions that make the selected state look unstable, clickable again, or unclear.
