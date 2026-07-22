@@ -61,6 +61,7 @@ export function ContactDialog(props: ContactDialogProps) {
     const submitLabel = () => isEditMode() ? 'Сохранить' : 'Добавить контакт';
     const normalizedName = () => name().trim().replace(/\s+/g, ' ');
     const normalizedLegalName = () => legalName().trim().replace(/\s+/g, ' ');
+    const isSubmitDisabled = () => normalizedName().length === 0;
     const dialogValue = (): ContactDialogValue => ({
         color: color(),
         legalName: isCompany() ? normalizedLegalName() || null : null,
@@ -69,16 +70,14 @@ export function ContactDialog(props: ContactDialogProps) {
     });
 
     createEffect(() => {
-        if (!props.open) {
-            return;
+        if (props.open) {
+            const initialValue = props.initialValue;
+
+            setColor(initialValue?.color ?? DEFAULT_CONTACT_COLOR);
+            setLegalName(initialValue?.legalName ?? '');
+            setName(initialValue?.name ?? '');
+            setType(initialValue?.type ?? 'person');
         }
-
-        const initialValue = props.initialValue;
-
-        setColor(initialValue?.color ?? DEFAULT_CONTACT_COLOR);
-        setLegalName(initialValue?.legalName ?? '');
-        setName(initialValue?.name ?? '');
-        setType(initialValue?.type ?? 'person');
     });
 
     const handleCompanyChange = (event: Event & { currentTarget: HTMLInputElement }) => {
@@ -100,17 +99,16 @@ export function ContactDialog(props: ContactDialogProps) {
 
     const handleSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
         event.preventDefault();
+        const submitName = normalizedName();
 
-        if (!normalizedName()) {
-            return;
+        if (submitName.length > 0) {
+            props.onSubmit({
+                color: color(),
+                legalName: isCompany() ? normalizedLegalName() || null : null,
+                name: submitName,
+                type: type()
+            });
         }
-
-        props.onSubmit({
-            color: color(),
-            legalName: isCompany() ? normalizedLegalName() || null : null,
-            name: normalizedName(),
-            type: type()
-        });
     };
 
     return (
@@ -184,7 +182,7 @@ export function ContactDialog(props: ContactDialogProps) {
                     <span class={css.footerSpacer}/>
                     <div class={css.footerActions}>
                         <Dialog.Action closeOnClick intent='cancel'>Отмена</Dialog.Action>
-                        <Button disabled={!normalizedName()} type='submit'>{submitLabel()}</Button>
+                        <Button disabled={isSubmitDisabled()} type='submit'>{submitLabel()}</Button>
                     </div>
                 </Dialog.Footer>
             </Dialog.Content>

@@ -22,23 +22,30 @@ export function filterContacts(
     const normalizedQuery = normalizeSearchValue(filter.query);
 
     return contacts
-        .filter((contact) => contact.isArchived === filter.archived)
-        .filter((contact) => filter.type === 'all' || contact.type === filter.type)
         .filter((contact) => {
-            if (!normalizedQuery) {
-                return true;
-            }
+            const matchesArchive = contact.isArchived === filter.archived;
+            const matchesType = filter.type === 'all' || contact.type === filter.type;
 
-            return [contact.name, contact.legalName ?? '']
-                .some((value) => normalizeSearchValue(value).includes(normalizedQuery));
+            return matchesArchive
+                && matchesType
+                && (
+                    normalizedQuery.length === 0
+                    || normalizeSearchValue(contact.name).includes(normalizedQuery)
+                    || (
+                        contact.legalName !== null
+                        && normalizeSearchValue(contact.legalName).includes(normalizedQuery)
+                    )
+                );
         })
         .toSorted((left, right) => CONTACT_COLLATOR.compare(left.name, right.name));
 }
 
 export function getSelectableContacts(contacts: readonly Contact[]): Contact[] {
-    return contacts
-        .filter((contact) => !contact.isArchived)
-        .toSorted((left, right) => CONTACT_COLLATOR.compare(left.name, right.name));
+    return filterContacts(contacts, {
+        archived: false,
+        query: '',
+        type: 'all'
+    });
 }
 
 export function getContactMonthlyExpensesById(
@@ -49,19 +56,17 @@ export function getContactMonthlyExpensesById(
 
     operations.forEach((operation) => {
         if (
-            operation.type !== 'expense'
-            || operation.contactId === null
-            || !isSameMonth(operation.happenedOn, monthDate)
+            operation.type === 'expense'
+            && operation.contactId !== null
+            && isSameMonth(operation.happenedOn, monthDate)
         ) {
-            return;
+            const currentAmount = expensesByContactId.get(operation.contactId) ?? 0;
+
+            expensesByContactId.set(
+                operation.contactId,
+                currentAmount + operation.amountInFamilyCurrencyMinor
+            );
         }
-
-        const currentAmount = expensesByContactId.get(operation.contactId) ?? 0;
-
-        expensesByContactId.set(
-            operation.contactId,
-            currentAmount + operation.amountInFamilyCurrencyMinor
-        );
     });
 
     return expensesByContactId;
