@@ -1,0 +1,109 @@
+@use "~/shared/styles/functions" as fn;
+
+.dialog {
+    --dialog-inline-size: #{fn.rem(520)};
+}
+
+.form {
+    display: grid;
+    gap: var(--space-5);
+}
+
+.preview-block {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.preview-label {
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-body-sm);
+}
+
+.preview-card {
+    --category-color: var(--color-primary);
+
+    display: grid;
+    grid-template-columns: fn.rem(40) minmax(0, 1fr);
+    gap: var(--space-5);
+
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.preview-icon {
+    display: inline-flex;
+    grid-column: 1;
+    grid-row: 1 / span 2;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(40);
+    block-size: fn.rem(40);
+    border: 1px solid color-mix(in srgb, var(--category-color) 34%, var(--color-border));
+    border-radius: var(--radius-md);
+
+    color: var(--category-color);
+
+    background-color: color-mix(in srgb, var(--category-color) 12%, var(--color-surface));
+
+    span {
+        inline-size: fn.rem(14);
+        block-size: fn.rem(14);
+        border: 2px solid currentcolor;
+        border-radius: var(--radius-xs);
+    }
+}
+
+.preview-content {
+    display: grid;
+    gap: var(--space-1);
+    min-inline-size: 0;
+    color: var(--color-text-tertiary);
+}
+
+.preview-title {
+    overflow: hidden;
+
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.preview-progress {
+    overflow: hidden;
+    grid-column: 1 / -1;
+
+    block-size: fn.rem(4);
+    border-radius: fn.rem(999);
+
+    background-color: var(--color-surface-strong);
+
+    span {
+        display: block;
+
+        inline-size: 0;
+        block-size: 100%;
+        border-radius: inherit;
+
+        background-color: var(--category-color);
+    }
+}
+
+.preview-footer {
+    display: flex;
+    grid-column: 1 / -1;
+    gap: var(--space-3);
+    align-items: center;
+    justify-content: space-between;
+
+    min-inline-size: 0;
+
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+}
