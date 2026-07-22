@@ -137,6 +137,7 @@
 }
 
 .icon-only {
+    flex-shrink: 0;
     padding-inline: 0;
 
     &.size-sm {
