@@ -84,6 +84,7 @@
 
 .delete-zone {
     pointer-events: none;
+    will-change: transform, opacity;
 
     position: fixed;
     z-index: 45;
@@ -91,6 +92,7 @@
     inset-inline-start: 50%;
     transform: translate(-50%, fn.rem(16)) scale(0.94);
 
+    contain: layout paint style;
     display: flex;
     gap: var(--space-4);
     align-items: center;
@@ -173,17 +175,17 @@
 
 .drag-preview {
     --category-color: var(--color-primary);
-    --drag-x: 0;
-    --drag-y: 0;
 
     pointer-events: none;
+    will-change: transform;
 
     position: fixed;
     z-index: 46;
     inset-block-start: 0;
     inset-inline-start: 0;
-    transform: translate(calc(var(--drag-x) - 50%), calc(var(--drag-y) - 50%)) rotate(-1deg);
+    transform: translate3d(-50%, -50%, 0) rotate(-1deg);
 
+    contain: layout paint style;
     display: grid;
     grid-template-columns: fn.rem(40) minmax(0, 1fr);
     gap: var(--space-4);
@@ -196,8 +198,7 @@
 
     color: var(--color-text-primary);
 
-    background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
-    backdrop-filter: blur(14px);
+    background-color: color-mix(in srgb, var(--color-surface) 98%, var(--category-color));
     box-shadow: var(--shadow-md);
 }
 

@@ -2,13 +2,13 @@ import css from './categories.module.scss';
 
 import { Title } from '@solidjs/meta';
 import type { JSX } from 'solid-js';
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 
 import { CategoryCard } from './ui/category-card';
 import type { CategoryDialogMode, CategoryDialogValue } from './ui/category-dialog';
 import { CategoryDialog } from './ui/category-dialog';
 
-import type { Category } from '~/entities/category';
+import type { Category, CategoryBudgetSummary } from '~/entities/category';
 import {
     CATEGORY_FAMILY_CURRENCY,
     getCategoryBudgetSummary,
@@ -22,12 +22,11 @@ import { Button, Container } from '~/shared/ui';
 
 const DRAG_START_THRESHOLD_PX = 8;
 
-type CategoryDragState = {
+type CategoryDragSession = {
     categoryId: string;
     clientX: number;
     clientY: number;
     hasMoved: boolean;
-    isOverDeleteZone: boolean;
     pointerId: number;
     startX: number;
     startY: number;
@@ -57,12 +56,27 @@ function toDialogValue(category: Category): CategoryDialogValue {
     };
 }
 
-function getDragPreviewStyle(state: CategoryDragState, category: Category): JSX.CSSProperties {
+function getDragPreviewStyle(category: Category): JSX.CSSProperties {
     return {
-        '--category-color': category.color,
-        '--drag-x': `${state.clientX}px`,
-        '--drag-y': `${state.clientY}px`
+        '--category-color': category.color
     };
+}
+
+function getDragPreviewTransform(clientX: number, clientY: number): string {
+    return `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%) rotate(-1deg)`;
+}
+
+function getCategorySummary(
+    summaries: ReadonlyMap<string, CategoryBudgetSummary>,
+    categoryId: string
+): CategoryBudgetSummary {
+    const summary = summaries.get(categoryId);
+
+    if (summary === undefined) {
+        throw new Error(`Category summary not found: ${categoryId}`);
+    }
+
+    return summary;
 }
 
 function isPointInsideElement(x: number, y: number, element: HTMLElement | undefined): boolean {
@@ -86,11 +100,15 @@ function releasePointerCapture(element: HTMLElement, pointerId: number): void {
 
 export function CategoriesPage() {
     let deleteZoneElement: HTMLDivElement | undefined;
+    let dragFrameId: number | undefined;
+    let dragPreviewElement: HTMLDivElement | undefined;
+    let dragSession: CategoryDragSession | undefined;
     const [categories, setCategories] = createSignal<Category[]>(INITIAL_CATEGORIES);
     const [isStorageReady, setIsStorageReady] = createSignal(false);
     const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
     const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
-    const [dragState, setDragState] = createSignal<CategoryDragState>();
+    const [draggedCategoryId, setDraggedCategoryId] = createSignal<string>();
+    const [isDragOverDeleteZone, setIsDragOverDeleteZone] = createSignal(false);
     const [suppressedClickCategoryId, setSuppressedClickCategoryId] = createSignal<string>();
     const [monthDate] = createSignal(new Date());
 
@@ -114,24 +132,23 @@ export function CategoriesPage() {
         return category ? toDialogValue(category) : undefined;
     });
 
-    const activeDragState = createMemo(() => {
-        const state = dragState();
+    const categorySummaries = createMemo(() => {
+        const currentMonth = monthDate();
 
-        if (state === undefined || !state.hasMoved) {
-            return undefined;
-        }
-
-        return state;
+        return new Map(categories().map((category) => [
+            category.id,
+            getCategoryBudgetSummary(category, INITIAL_OPERATIONS, currentMonth)
+        ]));
     });
 
     const draggedCategory = createMemo(() => {
-        const state = dragState();
+        const categoryId = draggedCategoryId();
 
-        if (state === undefined) {
+        if (categoryId === undefined) {
             return undefined;
         }
 
-        return categories().find((category) => category.id === state.categoryId);
+        return categories().find((category) => category.id === categoryId);
     });
 
     onMount(() => {
@@ -151,6 +168,56 @@ export function CategoriesPage() {
 
         writeCategoriesToStorage(window.localStorage, categories());
     });
+
+    onCleanup(() => {
+        if (dragFrameId !== undefined) {
+            window.cancelAnimationFrame(dragFrameId);
+        }
+    });
+
+    const updateDragVisuals = () => {
+        dragFrameId = undefined;
+
+        if (dragSession === undefined || !dragSession.hasMoved) {
+            return;
+        }
+
+        const isOverDeleteZone = isPointInsideElement(
+            dragSession.clientX,
+            dragSession.clientY,
+            deleteZoneElement
+        );
+
+        if (dragPreviewElement !== undefined) {
+            dragPreviewElement.style.transform = getDragPreviewTransform(
+                dragSession.clientX,
+                dragSession.clientY
+            );
+        }
+
+        setIsDragOverDeleteZone(isOverDeleteZone);
+    };
+
+    const scheduleDragVisualUpdate = () => {
+        if (dragFrameId !== undefined) {
+            return;
+        }
+
+        dragFrameId = window.requestAnimationFrame(updateDragVisuals);
+    };
+
+    const resetDragSession = () => {
+        if (dragFrameId !== undefined) {
+            window.cancelAnimationFrame(dragFrameId);
+            dragFrameId = undefined;
+        }
+
+        dragSession = undefined;
+        setDraggedCategoryId(undefined);
+        setIsDragOverDeleteZone(false);
+        deleteZoneElement = undefined;
+        dragPreviewElement = undefined;
+    };
 
     const handleOpenCreateDialog = () => {
         setEditingCategoryId(undefined);
@@ -196,74 +263,77 @@ export function CategoriesPage() {
 
         event.currentTarget.setPointerCapture(event.pointerId);
         setSuppressedClickCategoryId(undefined);
-        setDragState({
+        dragSession = {
             categoryId,
             clientX: event.clientX,
             clientY: event.clientY,
             hasMoved: false,
-            isOverDeleteZone: false,
             pointerId: event.pointerId,
             startX: event.clientX,
             startY: event.clientY
-        });
+        };
     };
 
     const handleCategoryPointerMove = (event: PointerEvent & { currentTarget: HTMLButtonElement }) => {
-        const state = dragState();
+        const session = dragSession;
 
-        if (state === undefined || state.pointerId !== event.pointerId) {
+        if (session === undefined || session.pointerId !== event.pointerId) {
             return;
         }
 
-        const distance = Math.hypot(event.clientX - state.startX, event.clientY - state.startY);
-        const hasMoved = state.hasMoved || distance >= DRAG_START_THRESHOLD_PX;
+        session.clientX = event.clientX;
+        session.clientY = event.clientY;
 
-        if (hasMoved) {
-            event.preventDefault();
+        if (!session.hasMoved) {
+            const distance = Math.hypot(event.clientX - session.startX, event.clientY - session.startY);
+
+            if (distance < DRAG_START_THRESHOLD_PX) {
+                return;
+            }
+
+            session.hasMoved = true;
+            setDraggedCategoryId(session.categoryId);
         }
 
-        setDragState({
-            ...state,
-            clientX: event.clientX,
-            clientY: event.clientY,
-            hasMoved,
-            isOverDeleteZone: hasMoved && isPointInsideElement(event.clientX, event.clientY, deleteZoneElement)
-        });
+        event.preventDefault();
+        scheduleDragVisualUpdate();
     };
 
     const handleCategoryPointerUp = (event: PointerEvent & { currentTarget: HTMLButtonElement }) => {
-        const state = dragState();
+        const session = dragSession;
 
-        if (state === undefined || state.pointerId !== event.pointerId) {
+        if (session === undefined || session.pointerId !== event.pointerId) {
             return;
         }
 
         releasePointerCapture(event.currentTarget, event.pointerId);
 
-        if (state.hasMoved) {
+        if (session.hasMoved) {
             event.preventDefault();
-            setSuppressedClickCategoryId(state.categoryId);
+            setSuppressedClickCategoryId(session.categoryId);
             window.setTimeout(() => setSuppressedClickCategoryId(undefined), 0);
         }
 
-        const shouldDelete = state.hasMoved && isPointInsideElement(event.clientX, event.clientY, deleteZoneElement);
+        const shouldDelete = session.hasMoved
+            && isPointInsideElement(event.clientX, event.clientY, deleteZoneElement);
+        const categoryId = session.categoryId;
 
-        setDragState(undefined);
+        resetDragSession();
 
         if (shouldDelete) {
-            handleDeleteCategory(state.categoryId);
+            handleDeleteCategory(categoryId);
         }
     };
 
     const handleCategoryPointerCancel = (event: PointerEvent & { currentTarget: HTMLButtonElement }) => {
-        const state = dragState();
+        const session = dragSession;
 
-        if (state === undefined || state.pointerId !== event.pointerId) {
+        if (session === undefined || session.pointerId !== event.pointerId) {
             return;
         }
 
         releasePointerCapture(event.currentTarget, event.pointerId);
-        setDragState(undefined);
+        resetDragSession();
     };
 
     const handleCategorySubmit = (value: CategoryDialogValue) => {
@@ -335,12 +405,8 @@ export function CategoriesPage() {
                                     <CategoryCard
                                         category={category}
                                         currency={CATEGORY_FAMILY_CURRENCY}
-                                        isDragging={activeDragState()?.categoryId === category.id}
-                                        summary={getCategoryBudgetSummary(
-                                            category,
-                                            INITIAL_OPERATIONS,
-                                            monthDate()
-                                        )}
+                                        isDragging={draggedCategoryId() === category.id}
+                                        summary={getCategorySummary(categorySummaries(), category.id)}
                                         onClick={() => handleCategoryClick(category.id)}
                                         onPointerCancel={(event) => handleCategoryPointerCancel(event)}
                                         onPointerDown={(event) => handleCategoryPointerDown(category.id, event)}
@@ -354,7 +420,7 @@ export function CategoriesPage() {
                 </Container>
             </main>
 
-            <Show when={dragState()}>
+            <Show when={draggedCategoryId()}>
                 <div
                     ref={(element) => {
                         deleteZoneElement = element;
@@ -362,8 +428,8 @@ export function CategoriesPage() {
                     aria-hidden='true'
                     class={cn(
                         css.deleteZone,
-                        dragState()?.hasMoved && css.deleteZoneVisible,
-                        dragState()?.isOverDeleteZone && css.deleteZoneActive
+                        css.deleteZoneVisible,
+                        isDragOverDeleteZone() && css.deleteZoneActive
                     )}
                 >
                     <span class={css.deleteZoneIcon}>
@@ -378,25 +444,31 @@ export function CategoriesPage() {
                 </div>
             </Show>
 
-            <Show when={activeDragState()}>
-                {(state) => (
-                    <Show when={draggedCategory()}>
-                        {(category) => (
-                            <div
-                                aria-hidden='true'
-                                class={cn(css.dragPreview, state().isOverDeleteZone && css.dragPreviewDanger)}
-                                style={getDragPreviewStyle(state(), category())}
-                            >
-                                <span class={css.dragPreviewIcon}>
-                                    <span/>
-                                </span>
-                                <span class={css.dragPreviewContent}>
-                                    <span class={css.dragPreviewTitle}>{category().name}</span>
-                                    <span>Категория</span>
-                                </span>
-                            </div>
-                        )}
-                    </Show>
+            <Show when={draggedCategory()}>
+                {(category) => (
+                    <div
+                        ref={(element) => {
+                            dragPreviewElement = element;
+
+                            if (dragSession !== undefined) {
+                                element.style.transform = getDragPreviewTransform(
+                                    dragSession.clientX,
+                                    dragSession.clientY
+                                );
+                            }
+                        }}
+                        aria-hidden='true'
+                        class={cn(css.dragPreview, isDragOverDeleteZone() && css.dragPreviewDanger)}
+                        style={getDragPreviewStyle(category())}
+                    >
+                        <span class={css.dragPreviewIcon}>
+                            <span/>
+                        </span>
+                        <span class={css.dragPreviewContent}>
+                            <span class={css.dragPreviewTitle}>{category().name}</span>
+                            <span>Категория</span>
+                        </span>
+                    </div>
                 )}
             </Show>
 
