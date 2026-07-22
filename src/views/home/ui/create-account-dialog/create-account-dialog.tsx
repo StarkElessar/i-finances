@@ -5,7 +5,7 @@ import { createSignal, For } from 'solid-js';
 
 import type { AccountTypeValue, CurrencyCodeValue } from '~/shared/lib';
 import { AccountColor, AccountType, cn, CurrencyCode, getAccountTypeMeta, getCurrencySymbol } from '~/shared/lib';
-import { AccountIcon, Dialog, TextField } from '~/shared/ui';
+import { AccountIcon, Dialog, TextField, Typography } from '~/shared/ui';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 const DEFAULT_ACCOUNT_COLOR = AccountColor.BLUE;
@@ -144,12 +144,43 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                 onSubmit={handleCreateAccountSubmit}
             >
                 <Dialog.Header closeLabel='Закрыть окно создания счета'>
-                    <Dialog.Kicker>Новый счет</Dialog.Kicker>
                     <Dialog.Title>Создание счета</Dialog.Title>
+                    <Typography tone='secondary'>Добавьте карту, наличные или накопления семьи</Typography>
                 </Dialog.Header>
 
                 <Dialog.Body>
                     <div class={css.formGrid}>
+                        <div class={css.formFieldFull}>
+                            <div class={css.formLabel}>Тип счета</div>
+                            <div class={css.typeOptions}>
+                                <For each={AccountType.values()}>
+                                    {(currentAccountType) => {
+                                        const accountTypeMeta = getAccountTypeMeta(currentAccountType);
+
+                                        return (
+                                            <label
+                                                class={cn(
+                                                    css.typeOption,
+                                                    accountType() === currentAccountType && css.typeOptionActive
+                                                )}
+                                            >
+                                                <input
+                                                    checked={accountType() === currentAccountType}
+                                                    name='account-type'
+                                                    type='radio'
+                                                    value={currentAccountType}
+                                                    onChange={() => setAccountType(currentAccountType)}
+                                                />
+                                                <AccountIcon accountType={currentAccountType} class={css.typeIcon}/>
+                                                <span>{accountTypeMeta.label}</span>
+                                                <span class={css.typeDescription}>{accountTypeMeta.description}</span>
+                                            </label>
+                                        );
+                                    }}
+                                </For>
+                            </div>
+                        </div>
+
                         <TextField
                             class={css.formFieldFull}
                             label='Название счета'
@@ -184,36 +215,6 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                                 </For>
                             </select>
                         </label>
-
-                        <div class={css.formFieldFull}>
-                            <div class={css.formLabel}>Тип счета</div>
-                            <div class={css.typeOptions}>
-                                <For each={AccountType.values()}>
-                                    {(currentAccountType) => {
-                                        const accountTypeMeta = getAccountTypeMeta(currentAccountType);
-
-                                        return (
-                                            <label
-                                                class={cn(
-                                                    css.typeOption,
-                                                    accountType() === currentAccountType && css.typeOptionActive
-                                                )}
-                                            >
-                                                <input
-                                                    checked={accountType() === currentAccountType}
-                                                    name='account-type'
-                                                    type='radio'
-                                                    value={currentAccountType}
-                                                    onChange={() => setAccountType(currentAccountType)}
-                                                />
-                                                <AccountIcon accountType={currentAccountType}/>
-                                                <span>{accountTypeMeta.label}</span>
-                                            </label>
-                                        );
-                                    }}
-                                </For>
-                            </div>
-                        </div>
 
                         <div class={css.formFieldFull}>
                             <div class={css.formLabel}>Цвет счета</div>

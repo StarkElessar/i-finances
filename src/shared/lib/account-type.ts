@@ -19,28 +19,33 @@ export abstract class AccountType {
 export const ACCOUNT_TYPES = [
     AccountType.CARD,
     AccountType.CASH,
-    AccountType.OTHER,
-    AccountType.SAVINGS
+    AccountType.SAVINGS,
+    AccountType.OTHER
 ] as const;
 
 export type AccountTypeValue = typeof ACCOUNT_TYPES[number];
 
 export type AccountTypeMeta = Readonly<{
     label: string;
+    description: string;
 }>;
 
 export const ACCOUNT_TYPE_META_BY_TYPE: Readonly<Record<AccountTypeValue, AccountTypeMeta>> = {
     [AccountType.CARD]: {
-        label: 'Карта'
+        label: 'Карта',
+        description: 'Дебетовая или кредитная'
     },
     [AccountType.CASH]: {
-        label: 'Наличные'
-    },
-    [AccountType.OTHER]: {
-        label: 'Другое'
+        label: 'Наличные',
+        description: 'Кошелёк или сейф'
     },
     [AccountType.SAVINGS]: {
-        label: 'Накопления'
+        label: 'Накопления',
+        description: 'Цель или подушка'
+    },
+    [AccountType.OTHER]: {
+        label: 'Другое',
+        description: 'Инвест, кредит…'
     }
 };
 
