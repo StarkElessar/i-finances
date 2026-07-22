@@ -99,7 +99,7 @@
         background-color var(--duration-normal) var(--ease-standard),
         box-shadow var(--duration-normal) var(--ease-standard);
 
-    &:hover {
+    &:not(.account-active):hover {
         background-color: var(--color-canvas);
     }
 

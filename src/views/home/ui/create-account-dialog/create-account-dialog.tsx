@@ -6,6 +6,7 @@ import { createSignal, For } from 'solid-js';
 import type { AccountTypeValue, CurrencyCodeValue } from '~/shared/lib';
 import { AccountColor, AccountType, cn, CurrencyCode, getAccountTypeMeta, getCurrencySymbol } from '~/shared/lib';
 import { AccountIcon, Dialog, TextField, Typography } from '~/shared/ui';
+import { Switch } from '~/shared/ui/switch';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 const DEFAULT_ACCOUNT_COLOR = AccountColor.BLUE;
@@ -233,7 +234,12 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                                         />
                                     )}
                                 </For>
-                                <label class={css.customColor}>
+                                <label
+                                    class={cn(
+                                        css.customColor,
+                                        !AccountColor.isAccountColor(accountColor()) && css.customColorActive
+                                    )}
+                                >
                                     <span>Свой</span>
                                     <input
                                         aria-label='Выбрать свой цвет счета'
@@ -246,26 +252,20 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                         </div>
 
                         <div class={css.booleanOptions}>
-                            <label class={css.checkboxRow}>
-                                <input
+                            <label class={css.switchRow}>
+                                <span>Выделить счет цветом</span>
+                                <Switch
                                     checked={isColorAccentEnabled()}
-                                    type='checkbox'
                                     onChange={handleColorAccentChange}
                                 />
-                                <span>Выделить счет цветом</span>
                             </label>
 
                             <label class={css.switchRow}>
                                 <span>Учитывать в &quot;Всего по семье&quot;</span>
-                                <span class={css.switch}>
-                                    <input
-                                        checked={isIncludedInFamilyTotal()}
-                                        class={css.switchInput}
-                                        type='checkbox'
-                                        onChange={handleFamilyTotalChange}
-                                    />
-                                    <span class={css.switchControl}/>
-                                </span>
+                                <Switch
+                                    checked={isIncludedInFamilyTotal()}
+                                    onChange={handleFamilyTotalChange}
+                                />
                             </label>
                         </div>
                     </div>

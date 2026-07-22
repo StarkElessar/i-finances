@@ -57,8 +57,6 @@
 }
 
 .type-option {
-    cursor: pointer;
-
     position: relative;
 
     display: grid;
@@ -87,14 +85,17 @@
         opacity: 0;
     }
 
-    &:hover {
-        border-color: var(--color-border-strong);
-        background-color: var(--color-canvas);
-    }
+    &:not(.type-option-active) {
+        &:hover {
+            cursor: pointer;
+            border-color: var(--color-border-strong);
+            background-color: var(--color-canvas);
+        }
 
-    &:focus-within {
-        border-color: var(--color-primary);
-        box-shadow: 0 0 0 3px var(--color-focus-ring);
+        &:focus-within {
+            border-color: var(--color-primary);
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
     }
 }
 
@@ -115,7 +116,7 @@
 .color-options {
     display: flex;
     flex-wrap: wrap;
-    gap: var(--space-3);
+    gap: var(--space-6);
     align-items: center;
 
     margin-block-start: var(--space-3);
@@ -136,9 +137,11 @@
         box-shadow var(--duration-fast) var(--ease-standard),
         transform var(--duration-fast) var(--ease-standard);
 
-    &:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 0 0 2px var(--color-border-strong);
+    &:not(.color-swatch-active) {
+        &:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 0 0 2px var(--color-border-strong);
+        }
     }
 
     &:focus-visible {
@@ -169,6 +172,17 @@
     font-weight: var(--font-weight-semibold);
 
     background-color: var(--color-surface);
+    box-shadow: 0 0 0 1px transparent;
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
+
+    &:not(.custom-color-active) {
+        &:hover {
+            border-color: var(--color-border-strong);
+        }
+    }
 
     input {
         inline-size: fn.rem(24);
@@ -180,16 +194,25 @@
     }
 }
 
+.custom-color-active {
+    border-color: transparent;
+    box-shadow:
+        0 0 0 2px var(--color-surface),
+        0 0 0 4px var(--color-primary);
+}
+
 .boolean-options {
     display: grid;
     gap: var(--space-3);
 }
 
-.checkbox-row,
 .switch-row {
+    cursor: pointer;
+
     display: flex;
     gap: var(--space-4);
     align-items: center;
+    justify-content: space-between;
 
     min-block-size: var(--control-size-md);
     padding: var(--space-5);
@@ -197,83 +220,6 @@
     border-radius: var(--radius-md);
 
     background-color: var(--color-surface);
-}
-
-.checkbox-row {
-    cursor: pointer;
-
-    input {
-        inline-size: fn.rem(18);
-        block-size: fn.rem(18);
-        accent-color: var(--color-primary);
-    }
-}
-
-.switch-row {
-    justify-content: space-between;
-}
-
-.switch {
-    position: relative;
-    flex: none;
-    inline-size: fn.rem(44);
-    block-size: fn.rem(24);
-}
-
-.switch-input {
-    cursor: pointer;
-
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-
-    inline-size: 100%;
-    block-size: 100%;
-    margin: 0;
-
-    opacity: 0;
-
-    &:focus-visible + .switch-control {
-        box-shadow: 0 0 0 3px var(--color-focus-ring);
-    }
-
-    &:checked + .switch-control {
-        background-color: var(--color-primary);
-
-        &::before {
-            transform: translateX(1.25rem);
-        }
-    }
-}
-
-.switch-control {
-    position: absolute;
-    inset: 0;
-
-    border-radius: fn.rem(999);
-
-    background-color: var(--color-border-strong);
-
-    transition:
-        background-color var(--duration-fast) var(--ease-standard),
-        box-shadow var(--duration-fast) var(--ease-standard);
-
-    &::before {
-        content: "";
-
-        position: absolute;
-        inset-block-start: fn.rem(3);
-        inset-inline-start: fn.rem(3);
-
-        inline-size: fn.rem(18);
-        block-size: fn.rem(18);
-        border-radius: var(--radius-round);
-
-        background-color: var(--color-surface);
-        box-shadow: var(--shadow-sm);
-
-        transition: transform var(--duration-fast) var(--ease-standard);
-    }
 }
 
 @media (width <= 640px) {
