@@ -111,6 +111,7 @@ export function HomePage() {
     const [accountsList, setAccountsList] = createSignal<AccountItem[]>(INITIAL_ACCOUNTS);
     const [activeAccountId, setActiveAccountId] = createSignal(INITIAL_ACCOUNTS[0].id);
     const [isCreateAccountDialogOpen, setIsCreateAccountDialogOpen] = createSignal(false);
+    const [isSidebarOpen, setIsSidebarOpen] = createSignal(false);
 
     const activeAccount = createMemo(() => {
         return accountsList().find((account) => account.id === activeAccountId()) ?? accountsList()[0];
@@ -138,7 +139,21 @@ export function HomePage() {
     });
 
     const handleOpenCreateAccountDialog = () => {
+        setIsSidebarOpen(false);
         setIsCreateAccountDialogOpen(true);
+    };
+
+    const handleOpenSidebar = () => {
+        setIsSidebarOpen(true);
+    };
+
+    const handleCloseSidebar = () => {
+        setIsSidebarOpen(false);
+    };
+
+    const handleAccountSelect = (accountId: string) => {
+        setActiveAccountId(accountId);
+        setIsSidebarOpen(false);
     };
 
     const handleCreateAccountDialogOpenChange = (open: boolean) => {
@@ -160,7 +175,17 @@ export function HomePage() {
     return (
         <>
             <div class={css.root}>
-                <aside class={css.sidebar}>
+                <button
+                    aria-label='Закрыть список счетов'
+                    class={cn(css.sidebarBackdrop, isSidebarOpen() && css.sidebarBackdropVisible)}
+                    type='button'
+                    onClick={handleCloseSidebar}
+                />
+                <aside
+                    aria-label='Счета'
+                    class={cn(css.sidebar, isSidebarOpen() && css.sidebarOpen)}
+                    id='home-accounts-sidebar'
+                >
                     <Container class={css.sidebarContainer}>
                         <div class={css.currentDate}>{formatDate(new Date())}</div>
                         <div class={css.topAction}>
@@ -190,7 +215,7 @@ export function HomePage() {
                                             )}
                                             style={getAccountItemStyle(item)}
                                             type='button'
-                                            onClick={() => setActiveAccountId(item.id)}
+                                            onClick={() => handleAccountSelect(item.id)}
                                         >
                                             <AccountIcon accountType={item.type}/>
                                             <span class={css.accountName}>{item.name}</span>
@@ -229,6 +254,17 @@ export function HomePage() {
                 </aside>
                 <main class={css.main}>
                     <Container class={css.mainContainer}>
+                        <div class={css.mainToolbar}>
+                            <Button
+                                aria-controls='home-accounts-sidebar'
+                                aria-expanded={isSidebarOpen()}
+                                type='button'
+                                variant='secondary'
+                                onClick={handleOpenSidebar}
+                            >
+                                Счета
+                            </Button>
+                        </div>
                         <Show keyed when={activeAccount()}>
                             {(account) => {
                                 const accountTypeMeta = getAccountTypeMeta(account.type);

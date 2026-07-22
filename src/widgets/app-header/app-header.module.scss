@@ -94,13 +94,14 @@
     cursor: default;
     scroll-snap-align: center;
 
-    flex: 0 0 auto;
+    flex: 1 0 auto;
 
     padding: var(--space-4) var(--space-6);
     border: fn.rem(1) solid transparent;
     border-radius: fn.rem(20);
 
     color: var(--color-text-secondary);
+    text-align: center;
     text-decoration: none;
     white-space: nowrap;
 
