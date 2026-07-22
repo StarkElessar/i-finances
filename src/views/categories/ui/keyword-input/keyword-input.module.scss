@@ -1,0 +1,132 @@
+@use "~/shared/styles/functions" as fn;
+
+.root {
+    display: grid;
+    gap: var(--space-3);
+    min-inline-size: 0;
+}
+
+.label {
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: var(--line-height-body-sm);
+}
+
+.control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+
+    min-block-size: var(--control-size-lg);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
+
+    &:hover {
+        border-color: var(--color-border-strong);
+    }
+
+    &:focus-within {
+        border-color: var(--color-primary);
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+}
+
+.chip {
+    display: inline-flex;
+    gap: var(--space-2);
+    align-items: center;
+
+    max-inline-size: 100%;
+    min-block-size: fn.rem(28);
+    padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
+    border-radius: fn.rem(999);
+
+    color: var(--color-text-secondary);
+
+    background-color: var(--color-surface-subtle);
+
+    span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+}
+
+.chip-selected {
+    color: var(--color-text-primary);
+    background-color: var(--color-primary-soft);
+    box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+
+.chip-remove {
+    cursor: pointer;
+
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(22);
+    block-size: fn.rem(22);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-round);
+
+    color: inherit;
+
+    background-color: transparent;
+
+    transition:
+        color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
+
+    &:hover {
+        color: var(--color-danger);
+        background-color: var(--color-danger-soft);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    svg {
+        display: block;
+    }
+}
+
+.input {
+    flex: 1 1 fn.rem(120);
+
+    min-inline-size: fn.rem(96);
+    padding: var(--space-2) var(--space-3);
+    border: 0;
+
+    color: var(--color-text-primary);
+
+    background-color: transparent;
+    outline: none;
+
+    &::placeholder {
+        color: var(--color-text-tertiary);
+        opacity: 1;
+    }
+}
+
+.message {
+    font-size: var(--font-size-body-sm);
+    line-height: var(--line-height-body-sm);
+    color: var(--color-text-secondary);
+}
+
+.message-error {
+    color: var(--color-danger);
+}
