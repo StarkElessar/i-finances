@@ -1,38 +1,38 @@
 import css from './home.module.scss';
 
+import { Title } from '@solidjs/meta';
 import type { JSX } from 'solid-js';
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 
 import type { CreateAccountDialogValue } from './ui/create-account-dialog';
 import { CreateAccountDialog } from './ui/create-account-dialog';
+import { OperationDetailsPanel } from './ui/operation-details-panel';
+import { OperationsTable } from './ui/operations-table';
 
-import type { AccountTypeValue, CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
+import type { Account } from '~/entities/account';
+import { INITIAL_ACCOUNTS } from '~/entities/account';
+import type { Category } from '~/entities/category';
+import { INITIAL_CATEGORIES, readCategoriesFromStorage } from '~/entities/category';
+import type { OperationWithBalance } from '~/entities/operation';
+import { getAccountBalanceMinor, INITIAL_OPERATIONS } from '~/entities/operation';
+import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
-    AccountColor,
-    AccountType,
+    amountToMinorUnits,
     cn,
     convertCurrency,
     CurrencyCode,
     formatCurrency,
     formatDate,
     getAccountTypeMeta,
+    minorUnitsToAmount,
     sumMoney
 } from '~/shared/lib';
 import { AccountIcon, Button, Container } from '~/shared/ui';
 
-type AccountItem = {
-    id: string;
-    name: string;
-    balance: number;
-    description: string;
-    currency: CurrencyCodeValue;
-    type: AccountTypeValue;
-    color: string;
-    isColorAccentEnabled: boolean;
-    isIncludedInFamilyTotal: boolean;
-};
+type DetailsPanelMode = 'create' | 'view';
 
 const FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
+const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
 
 const FAMILY_TOTAL_EXCHANGE_RATES = {
     baseCurrency: CurrencyCode.BYN,
@@ -44,54 +44,7 @@ const FAMILY_TOTAL_EXCHANGE_RATES = {
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 
-const INITIAL_ACCOUNTS: AccountItem[] = [
-    {
-        balance: 5_848.86,
-        color: AccountColor.GREEN,
-        currency: CurrencyCode.BYN,
-        description: 'Семья',
-        id: 'cash-byn',
-        isColorAccentEnabled: true,
-        isIncludedInFamilyTotal: true,
-        name: 'Наличные',
-        type: AccountType.CASH
-    },
-    {
-        balance: 5_550,
-        color: AccountColor.BLUE,
-        currency: CurrencyCode.USD,
-        description: 'Семья',
-        id: 'reserve-usd',
-        isColorAccentEnabled: false,
-        isIncludedInFamilyTotal: true,
-        name: 'НЗ USD',
-        type: AccountType.SAVINGS
-    },
-    {
-        balance: 2_825,
-        color: AccountColor.VIOLET,
-        currency: CurrencyCode.EUR,
-        description: 'Личный резерв',
-        id: 'reserve-eur',
-        isColorAccentEnabled: false,
-        isIncludedInFamilyTotal: true,
-        name: 'НЗ EUR',
-        type: AccountType.SAVINGS
-    },
-    {
-        balance: 127,
-        color: AccountColor.SLATE,
-        currency: CurrencyCode.USD,
-        description: 'Биржа',
-        id: 'bybit-usdt',
-        isColorAccentEnabled: false,
-        isIncludedInFamilyTotal: false,
-        name: 'USDT ByBit',
-        type: AccountType.OTHER
-    }
-];
-
-function getAccountItemStyle(account: AccountItem): JSX.CSSProperties {
+function getAccountItemStyle(account: Account): JSX.CSSProperties {
     return {
         '--account-color': account.color
     };
@@ -108,10 +61,21 @@ function formatExchangeRateLabel(currency: CurrencyCodeValue): string {
 }
 
 export function HomePage() {
-    const [accountsList, setAccountsList] = createSignal<AccountItem[]>(INITIAL_ACCOUNTS);
+    const [accountsList, setAccountsList] = createSignal<Account[]>(INITIAL_ACCOUNTS);
+    const [categories, setCategories] = createSignal<Category[]>(INITIAL_CATEGORIES);
     const [activeAccountId, setActiveAccountId] = createSignal(INITIAL_ACCOUNTS[0].id);
     const [isCreateAccountDialogOpen, setIsCreateAccountDialogOpen] = createSignal(false);
     const [isSidebarOpen, setIsSidebarOpen] = createSignal(false);
+    const [detailsPanelMode, setDetailsPanelMode] = createSignal<DetailsPanelMode>();
+    const [selectedOperation, setSelectedOperation] = createSignal<OperationWithBalance>();
+    const [isDesktopDetails, setIsDesktopDetails] = createSignal(false);
+
+    const accountBalanceMinorById = createMemo(() => {
+        return new Map(accountsList().map((account) => [
+            account.id,
+            getAccountBalanceMinor(account, INITIAL_OPERATIONS)
+        ]));
+    });
 
     const activeAccount = createMemo(() => {
         return accountsList().find((account) => account.id === activeAccountId()) ?? accountsList()[0];
@@ -124,7 +88,7 @@ export function HomePage() {
     const familyTotal = createMemo(() => {
         return sumMoney(
             familyAccounts().map((account) => ({
-                amount: account.balance,
+                amount: minorUnitsToAmount(accountBalanceMinorById().get(account.id) ?? 0),
                 currency: account.currency
             })),
             FAMILY_TOTAL_CURRENCY,
@@ -138,12 +102,33 @@ export function HomePage() {
             .map(formatExchangeRateLabel);
     });
 
+    onMount(() => {
+        const storedCategories = readCategoriesFromStorage(window.localStorage);
+
+        if (storedCategories) {
+            setCategories(storedCategories);
+        }
+
+        const mediaQuery = window.matchMedia(DESKTOP_DETAILS_QUERY);
+        const syncDetailsMode = () => setIsDesktopDetails(mediaQuery.matches);
+
+        syncDetailsMode();
+        mediaQuery.addEventListener('change', syncDetailsMode);
+        onCleanup(() => mediaQuery.removeEventListener('change', syncDetailsMode));
+    });
+
+    const handleCloseDetailsPanel = () => {
+        setDetailsPanelMode(undefined);
+        setSelectedOperation(undefined);
+    };
+
     const handleOpenCreateAccountDialog = () => {
         setIsSidebarOpen(false);
         setIsCreateAccountDialogOpen(true);
     };
 
     const handleOpenSidebar = () => {
+        handleCloseDetailsPanel();
         setIsSidebarOpen(true);
     };
 
@@ -154,6 +139,7 @@ export function HomePage() {
     const handleAccountSelect = (accountId: string) => {
         setActiveAccountId(accountId);
         setIsSidebarOpen(false);
+        handleCloseDetailsPanel();
     };
 
     const handleCreateAccountDialogOpenChange = (open: boolean) => {
@@ -161,10 +147,16 @@ export function HomePage() {
     };
 
     const handleCreateAccount = (accountValue: CreateAccountDialogValue) => {
-        const account: AccountItem = {
-            ...accountValue,
+        const account: Account = {
+            color: accountValue.color,
+            currency: accountValue.currency,
             description: 'Новый счет',
-            id: createAccountId()
+            id: createAccountId(),
+            initialBalanceMinor: amountToMinorUnits(accountValue.balance),
+            isColorAccentEnabled: accountValue.isColorAccentEnabled,
+            isIncludedInFamilyTotal: accountValue.isIncludedInFamilyTotal,
+            name: accountValue.name,
+            type: accountValue.type
         };
 
         setAccountsList((accounts) => [...accounts, account]);
@@ -172,9 +164,20 @@ export function HomePage() {
         setIsCreateAccountDialogOpen(false);
     };
 
+    const handleOperationSelect = (operation: OperationWithBalance) => {
+        setSelectedOperation(operation);
+        setDetailsPanelMode('view');
+    };
+
+    const handleCreateOperation = () => {
+        setSelectedOperation(undefined);
+        setDetailsPanelMode('create');
+    };
+
     return (
         <>
-            <div class={css.root}>
+            <Title>Операции — iFinances</Title>
+            <div class={cn(css.root, detailsPanelMode() && isDesktopDetails() && css.detailsOpen)}>
                 <button
                     aria-label='Закрыть список счетов'
                     class={cn(css.sidebarBackdrop, isSidebarOpen() && css.sidebarBackdropVisible)}
@@ -204,6 +207,7 @@ export function HomePage() {
                             <For each={accountsList()}>
                                 {(item) => {
                                     const accountTypeMeta = getAccountTypeMeta(item.type);
+                                    const balanceMinor = () => accountBalanceMinorById().get(item.id) ?? 0;
 
                                     return (
                                         <button
@@ -227,10 +231,13 @@ export function HomePage() {
                                                 <span
                                                     class={cn(
                                                         css.accountSum,
-                                                        item.balance < 0 && css.accountSumNegative
+                                                        balanceMinor() < 0 && css.accountSumNegative
                                                     )}
                                                 >
-                                                    {formatCurrency(item.balance, item.currency)}
+                                                    {formatCurrency(
+                                                        minorUnitsToAmount(balanceMinor()),
+                                                        item.currency
+                                                    )}
                                                 </span>
                                             </span>
                                         </button>
@@ -252,6 +259,7 @@ export function HomePage() {
                         </div>
                     </Container>
                 </aside>
+
                 <main class={css.main}>
                     <Container class={css.mainContainer}>
                         <div class={css.mainToolbar}>
@@ -268,47 +276,66 @@ export function HomePage() {
                         <Show keyed when={activeAccount()}>
                             {(account) => {
                                 const accountTypeMeta = getAccountTypeMeta(account.type);
-                                const accountInFamilyCurrency = convertCurrency(
-                                    account.balance,
-                                    account.currency,
-                                    FAMILY_TOTAL_CURRENCY,
-                                    FAMILY_TOTAL_EXCHANGE_RATES
-                                );
+                                const balanceMinor = () => accountBalanceMinorById().get(account.id) ?? 0;
 
                                 return (
-                                    <section class={css.accountPreview}>
-                                        <div class={css.previewHeading}>
-                                            <AccountIcon
-                                                accountType={account.type}
-                                                class={css.previewAccountIcon}
-                                                style={getAccountItemStyle(account)}
-                                            />
-                                            <div>
-                                                <div class={css.previewKicker}>{accountTypeMeta.label}</div>
-                                                <h1 class={css.previewTitle}>{account.name}</h1>
+                                    <section class={css.accountWorkspace}>
+                                        <header class={css.accountHeader}>
+                                            <div class={css.accountHeading}>
+                                                <AccountIcon
+                                                    accountType={account.type}
+                                                    class={css.previewAccountIcon}
+                                                    style={getAccountItemStyle(account)}
+                                                />
+                                                <div>
+                                                    <div class={css.previewKicker}>{accountTypeMeta.label}</div>
+                                                    <h1 class={css.previewTitle}>{account.name}</h1>
+                                                </div>
                                             </div>
-                                        </div>
-                                        <dl class={css.previewStats}>
-                                            <div>
-                                                <dt>Баланс счета</dt>
-                                                <dd>{formatCurrency(account.balance, account.currency)}</dd>
+                                            <div class={css.accountHeaderBalance}>
+                                                <span>Баланс</span>
+                                                <strong>{formatCurrency(
+                                                    minorUnitsToAmount(balanceMinor()),
+                                                    account.currency
+                                                )}</strong>
                                             </div>
-                                            <div>
-                                                <dt>В валюте семьи</dt>
-                                                <dd>{formatCurrency(accountInFamilyCurrency, FAMILY_TOTAL_CURRENCY)}</dd>
-                                            </div>
-                                            <div>
-                                                <dt>Всего по семье</dt>
-                                                <dd>{account.isIncludedInFamilyTotal ? 'Учитывается' : 'Не учитывается'}</dd>
-                                            </div>
-                                        </dl>
+                                        </header>
+
+                                        <OperationsTable
+                                            account={account}
+                                            categories={categories()}
+                                            operations={INITIAL_OPERATIONS}
+                                            selectedOperationId={selectedOperation()?.id}
+                                            onCreateOperation={handleCreateOperation}
+                                            onOperationSelect={handleOperationSelect}
+                                        />
                                     </section>
                                 );
                             }}
                         </Show>
                     </Container>
                 </main>
+
+                <Show when={detailsPanelMode() && isDesktopDetails() && activeAccount()}>
+                    <OperationDetailsPanel
+                        account={activeAccount()}
+                        mobile={false}
+                        mode={detailsPanelMode() as DetailsPanelMode}
+                        operation={selectedOperation()}
+                        onClose={handleCloseDetailsPanel}
+                    />
+                </Show>
             </div>
+
+            <Show when={detailsPanelMode() && !isDesktopDetails() && activeAccount()}>
+                <OperationDetailsPanel
+                    account={activeAccount()}
+                    mobile
+                    mode={detailsPanelMode() as DetailsPanelMode}
+                    operation={selectedOperation()}
+                    onClose={handleCloseDetailsPanel}
+                />
+            </Show>
 
             <CreateAccountDialog
                 open={isCreateAccountDialogOpen()}

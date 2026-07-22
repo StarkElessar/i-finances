@@ -1,11 +1,13 @@
-import type { Category, CategoryBudgetSummary, CategoryOperation } from './types';
+import type { Category, CategoryBudgetSummary } from './types';
+
+import type { Operation } from '~/entities/operation';
 
 export function getCategoryBudgetSummary(
     category: Category,
-    operations: readonly CategoryOperation[],
+    operations: readonly Operation[],
     monthDate: Date
 ): CategoryBudgetSummary {
-    const spentMinor = getCategoryMonthlyExpenseMinor(category.id, operations, monthDate);
+    const spentMinor = getCategoryMonthlyExpenseMinor(category, operations, monthDate);
     const hasBudget = Boolean(category.monthlyBudgetMinor && category.monthlyBudgetMinor > 0);
 
     if (!hasBudget) {
@@ -34,15 +36,18 @@ export function getCategoryBudgetSummary(
 }
 
 export function getCategoryMonthlyExpenseMinor(
-    categoryId: string,
-    operations: readonly CategoryOperation[],
+    category: Pick<Category, 'id' | 'name'>,
+    operations: readonly Operation[],
     monthDate: Date
 ): number {
     return operations.reduce((total, operation) => {
+        const matchesCategory = operation.categoryId === category.id
+            || normalizeCategoryName(operation.categoryName) === normalizeCategoryName(category.name);
+
         if (
-            operation.categoryId !== categoryId
+            !matchesCategory
             || operation.type !== 'expense'
-            || !isSameMonth(operation.happenedAt, monthDate)
+            || !isSameMonth(operation.happenedOn, monthDate)
         ) {
             return total;
         }
@@ -52,8 +57,12 @@ export function getCategoryMonthlyExpenseMinor(
 }
 
 function isSameMonth(isoDate: string, monthDate: Date): boolean {
-    const date = new Date(isoDate);
+    const [year, month] = isoDate.split('-').map(Number);
 
-    return date.getFullYear() === monthDate.getFullYear()
-        && date.getMonth() === monthDate.getMonth();
+    return year === monthDate.getFullYear()
+        && month - 1 === monthDate.getMonth();
+}
+
+function normalizeCategoryName(name: string | null): string {
+    return name?.trim().toLocaleLowerCase('ru-BY') ?? '';
 }

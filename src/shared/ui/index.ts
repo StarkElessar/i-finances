@@ -36,7 +36,10 @@ export type {
     GridCellTemplateContext,
     GridCellValue,
     GridColumn,
-    GridProps
+    GridFullWidthRowTemplateContext,
+    GridProps,
+    GridSortDirection,
+    GridSortState
 } from './grid';
 export { Grid } from './grid';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';

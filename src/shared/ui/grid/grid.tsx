@@ -8,6 +8,8 @@ import { GridBody } from './ui/grid-body';
 import { GridHeader } from './ui/grid-header';
 import type { GridColumn, GridProps, ResolvedGridColumn } from './types';
 
+import { cn } from '~/shared/lib';
+
 const DEFAULT_COLUMN_WIDTH = 120;
 const DEFAULT_MIN_COLUMN_WIDTH = 60;
 const DEFAULT_MAX_COLUMN_WIDTH = 800;
@@ -43,9 +45,10 @@ export function Grid<T>(props: GridProps<T>) {
     });
 
     return (
-        <div class={css.root}>
+        <div class={cn(css.root, props.class)}>
             <div class={css.frame}>
                 <table
+                    aria-label={props['aria-label']}
                     class={css.table}
                     style={{ width: `${tableWidth()}px`, 'min-width': '100%' }}
                 >
@@ -55,8 +58,24 @@ export function Grid<T>(props: GridProps<T>) {
                         </For>
                     </colgroup>
 
-                    <GridHeader columns={columns} onResizeStart={startResize}/>
-                    <GridBody columns={columns} data={props.data}/>
+                    <GridHeader
+                        columns={columns}
+                        sort={props.sort}
+                        onResizeStart={startResize}
+                        onSortChange={props.onSortChange}
+                    />
+                    <GridBody
+                        columns={columns}
+                        data={props.data}
+                        emptyContent={props.emptyContent}
+                        fullWidthRowTemplate={props.fullWidthRowTemplate}
+                        getRowAriaLabel={props.getRowAriaLabel}
+                        getRowClass={props.getRowClass}
+                        getRowKey={props.getRowKey}
+                        isFullWidthRow={props.isFullWidthRow}
+                        isRowSelected={props.isRowSelected}
+                        onRowClick={props.onRowClick}
+                    />
                 </table>
             </div>
         </div>

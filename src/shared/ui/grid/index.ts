@@ -3,5 +3,8 @@ export type {
     GridCellTemplateContext,
     GridCellValue,
     GridColumn,
-    GridProps
+    GridFullWidthRowTemplateContext,
+    GridProps,
+    GridSortDirection,
+    GridSortState
 } from './types';

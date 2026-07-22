@@ -1,5 +1,3 @@
-import type { CurrencyCodeValue } from '~/shared/lib';
-
 export type Category = {
     color: string;
     createdAt: string;
@@ -8,20 +6,6 @@ export type Category = {
     monthlyBudgetMinor: number | null;
     name: string;
     updatedAt: string;
-};
-
-export type CategoryOperationType = 'expense' | 'income';
-
-export type CategoryOperation = {
-    amountInFamilyCurrencyMinor: number;
-    amountMinor: number;
-    categoryId: string;
-    currency: CurrencyCodeValue;
-    familyCurrency: CurrencyCodeValue;
-    happenedAt: string;
-    id: string;
-    title: string;
-    type: CategoryOperationType;
 };
 
 export type CategoryBudgetSummary = {

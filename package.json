@@ -28,7 +28,9 @@
 		"@solidjs/start": "2.0.0-alpha.3",
 		"@solidjs/vite-plugin-nitro-2": "^0.3.0",
 		"better-sqlite3": "^12.11.1",
+		"csv-parse": "^7.0.1",
 		"drizzle-orm": "^0.45.2",
+		"lucide-solid": "^1.25.0",
 		"solid-js": "^1.9.5",
 		"vite": "^7.3.6",
 		"zod": "^4.4.3"

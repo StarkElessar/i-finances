@@ -2,7 +2,7 @@ import css from '../grid.module.scss';
 
 import { For } from 'solid-js';
 
-import type { ResolvedGridColumn } from '../types';
+import type { GridSortState, ResolvedGridColumn } from '../types';
 
 import { GridHeaderCell } from './grid-header-cell';
 
@@ -11,7 +11,9 @@ import { GridHeaderCell } from './grid-header-cell';
  */
 type GridHeaderProps<T> = {
     columns: ResolvedGridColumn<T>[];
+    sort?: GridSortState;
     onResizeStart: (index: number, event: MouseEvent) => void;
+    onSortChange?: (columnId: string) => void;
 };
 
 /**
@@ -26,7 +28,9 @@ export function GridHeader<T>(props: GridHeaderProps<T>) {
                         <GridHeaderCell
                             column={column}
                             index={index()}
+                            sort={props.sort}
                             onResizeStart={props.onResizeStart}
+                            onSortChange={props.onSortChange}
                         />
                     )}
                 </For>

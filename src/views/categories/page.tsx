@@ -13,10 +13,10 @@ import {
     CATEGORY_FAMILY_CURRENCY,
     getCategoryBudgetSummary,
     INITIAL_CATEGORIES,
-    INITIAL_CATEGORY_OPERATIONS,
     readCategoriesFromStorage,
     writeCategoriesToStorage
 } from '~/entities/category';
+import { INITIAL_OPERATIONS } from '~/entities/operation';
 import { cn } from '~/shared/lib';
 import { Button, Container } from '~/shared/ui';
 
@@ -338,7 +338,7 @@ export function CategoriesPage() {
                                         isDragging={dragState()?.categoryId === category.id}
                                         summary={getCategoryBudgetSummary(
                                             category,
-                                            INITIAL_CATEGORY_OPERATIONS,
+                                            INITIAL_OPERATIONS,
                                             monthDate()
                                         )}
                                         onClick={() => handleCategoryClick(category.id)}
