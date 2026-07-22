@@ -15,11 +15,12 @@
 }
 
 .logo {
-	display: flex;
-	align-items: center;
-	gap: fn.rem(10);
-	font-weight: var(--font-weight-bold);
-	font-size: fn.rem(16);
+    display: flex;
+    gap: fn.rem(10);
+    align-items: center;
+
+    font-size: fn.rem(16);
+    font-weight: var(--font-weight-bold);
 }
 
 .navigation {
@@ -30,25 +31,27 @@
 }
 
 .nav-link {
-	border: fn.rem(1) solid transparent;
-	padding: var(--space-4) var(--space-6);
-	border-radius: fn.rem(20);
-	color: var(--color-text-secondary);
-	text-decoration: none;
-	transition-duration: var(--duration-fast);
-	transition-property: color, border-color, background-color;
-	transition-timing-function: var(--ease-standard);
+    padding: var(--space-4) var(--space-6);
+    border: fn.rem(1) solid transparent;
+    border-radius: fn.rem(20);
 
-	&:not(.active-link) {
-		&:hover {
-			background-color: var(--color-surface-subtle);
-			color: var(--color-primary);
-		}
-	}
+    color: var(--color-text-secondary);
+    text-decoration: none;
+
+    transition-timing-function: var(--ease-standard);
+    transition-duration: var(--duration-fast);
+    transition-property: color, border-color, background-color;
+
+    &:not(.active-link) {
+        &:hover {
+            color: var(--color-primary);
+            background-color: var(--color-surface-subtle);
+        }
+    }
 }
 
 .active-link {
-	border-color: var(--color-border);
-	color: var(--color-text-primary);
-	pointer-events: none;
+    pointer-events: none;
+    border-color: var(--color-border);
+    color: var(--color-text-primary);
 }

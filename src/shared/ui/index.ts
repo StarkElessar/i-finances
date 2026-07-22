@@ -1,3 +1,4 @@
+export { AccountIcon } from './account-icon';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
 export { Button } from './button';
 export { Container } from './container';
@@ -14,7 +15,23 @@ export type {
     ContextMenuTriggerProps
 } from './context-menu';
 export { ContextMenu } from './context-menu';
-export { Counter } from './counter';
+export type {
+    DialogActionIntent,
+    DialogActionProps,
+    DialogBodyProps,
+    DialogCloseProps,
+    DialogContentElement,
+    DialogContentProps,
+    DialogDescriptionProps,
+    DialogFooterProps,
+    DialogHeaderProps,
+    DialogKickerProps,
+    DialogRenderProps,
+    DialogRootProps,
+    DialogState,
+    DialogTitleProps
+} from './dialog';
+export { Dialog } from './dialog';
 export type {
     GridCellTemplateContext,
     GridCellValue,
