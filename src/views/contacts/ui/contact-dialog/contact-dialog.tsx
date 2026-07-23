@@ -5,7 +5,10 @@ import { createEffect, createSignal, createUniqueId, Show } from 'solid-js';
 
 import { ContactCard } from '../contact-card';
 
-import type { Contact, ContactType } from '~/entities/contact';
+import type {
+    ContactType,
+    PersistedContact
+} from '~/entities/contact';
 import { AccentColor, CurrencyCode, type CurrencyCodeValue } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { ColorPicker } from '~/shared/ui/color-picker';
@@ -27,23 +30,28 @@ export type ContactDialogProps = {
     onOpenChange: (open: boolean) => void;
     onSubmit: (value: ContactDialogValue) => void;
     currency?: CurrencyCodeValue;
+    error?: string;
+    fieldErrors?: Record<string, string>;
     initialValue?: ContactDialogValue;
     isArchived?: boolean;
+    loading?: boolean;
     mode?: ContactDialogMode;
-    onRestore?: () => void;
+    onRestore?: () => Promise<void> | void;
+    restoreLoading?: boolean;
 };
 
 const DEFAULT_CONTACT_COLOR = AccentColor.BLUE;
 
-function createPreviewContact(value: ContactDialogValue): Contact {
+function createPreviewContact(value: ContactDialogValue): PersistedContact {
     const timestamp = '2026-01-01T00:00:00.000Z';
 
     return {
         ...value,
+        archivedAt: null,
         createdAt: timestamp,
         id: 'contact-preview',
-        isArchived: false,
-        updatedAt: timestamp
+        updatedAt: timestamp,
+        version: 1
     };
 }
 
@@ -93,8 +101,7 @@ export function ContactDialog(props: ContactDialogProps) {
     };
 
     const handleRestore = () => {
-        props.onRestore?.();
-        props.onOpenChange(false);
+        void props.onRestore?.();
     };
 
     const handleSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
@@ -112,9 +119,17 @@ export function ContactDialog(props: ContactDialogProps) {
     };
 
     return (
-        <Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
+        <Dialog.Root
+            closeOnBackdropClick={!props.loading && !props.restoreLoading}
+            closeOnEscape={!props.loading && !props.restoreLoading}
+            open={props.open}
+            onOpenChange={props.onOpenChange}
+        >
             <Dialog.Content as='form' class={css.dialog} onSubmit={handleSubmit}>
-                <Dialog.Header closeLabel='Закрыть окно контакта'>
+                <Dialog.Header
+                    closeLabel='Закрыть окно контакта'
+                    hideCloseButton={props.loading || props.restoreLoading}
+                >
                     <Dialog.Title>{dialogTitle()}</Dialog.Title>
                     <Dialog.Description>
                         Человек или компания, связанные с доходами и расходами
@@ -122,7 +137,10 @@ export function ContactDialog(props: ContactDialogProps) {
                 </Dialog.Header>
 
                 <Dialog.Body>
-                    <div class={css.form}>
+                    <fieldset
+                        class={css.form}
+                        disabled={props.loading || props.restoreLoading}
+                    >
                         <div class={css.typeField}>
                             <div class={css.typeContent}>
                                 <label class={css.typeLabel} for={companySwitchId}>Контакт компании</label>
@@ -138,6 +156,7 @@ export function ContactDialog(props: ContactDialogProps) {
                         </div>
 
                         <TextField
+                            error={props.fieldErrors?.name}
                             label='Название'
                             maxLength={120}
                             placeholder={isCompany() ? 'Например, Пицца Лисица' : 'Например, Алексей'}
@@ -169,20 +188,41 @@ export function ContactDialog(props: ContactDialogProps) {
                                 spentMinor={0}
                             />
                         </div>
-                    </div>
+                    </fieldset>
+
+                    <Show when={props.error}>
+                        <p class={css.error} role='alert'>{props.error}</p>
+                    </Show>
                 </Dialog.Body>
 
                 <Dialog.Footer class={css.footer}>
                     <Show when={isEditMode() && props.isArchived && props.onRestore}>
-                        <Button type='button' variant='secondary' onClick={handleRestore}>
+                        <Button
+                            loading={props.restoreLoading}
+                            type='button'
+                            variant='secondary'
+                            onClick={handleRestore}
+                        >
                             <ArchiveRestore size={17}/>
                             Вернуть из архива
                         </Button>
                     </Show>
                     <span class={css.footerSpacer}/>
                     <div class={css.footerActions}>
-                        <Dialog.Action closeOnClick intent='cancel'>Отмена</Dialog.Action>
-                        <Button disabled={isSubmitDisabled()} type='submit'>{submitLabel()}</Button>
+                        <Dialog.Action
+                            closeOnClick
+                            disabled={props.loading || props.restoreLoading}
+                            intent='cancel'
+                        >
+                            Отмена
+                        </Dialog.Action>
+                        <Button
+                            disabled={isSubmitDisabled() || props.restoreLoading}
+                            loading={props.loading}
+                            type='submit'
+                        >
+                            {submitLabel()}
+                        </Button>
                     </div>
                 </Dialog.Footer>
             </Dialog.Content>

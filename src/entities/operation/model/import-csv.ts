@@ -2,7 +2,6 @@ import { parse } from 'csv-parse/browser/esm/sync';
 
 import type { Operation, OperationCategoryReference } from './types';
 
-import type { Contact } from '~/entities/contact';
 import { ACCENT_COLORS, amountToMinorUnits, CurrencyCode } from '~/shared/lib';
 
 type CsvOperationRecord = {
@@ -17,8 +16,12 @@ type CsvOperationRecord = {
 
 export type ImportedOperationsData = {
     categories: OperationCategoryReference[];
-    contacts: Contact[];
     operations: Operation[];
+};
+
+type OperationContactReference = {
+    id: string;
+    name: string;
 };
 
 export type ImportOperationsCsvOptions = {
@@ -48,11 +51,10 @@ export function importOperationsCsv(
         return record;
     });
     const categoryByName = createCategoryReferences(records);
-    const contactByName = createContacts(records);
+    const contactByName = createContactReferences(records);
 
     return {
         categories: [...categoryByName.values()],
-        contacts: [...contactByName.values()],
         operations: records.map((record, sourceOrder) => createOperation(
             record,
             sourceOrder,
@@ -96,8 +98,10 @@ function createCategoryReferences(records: readonly CsvOperationRecord[]): Map<s
     return categoryByName;
 }
 
-function createContacts(records: readonly CsvOperationRecord[]): Map<string, Contact> {
-    const contactByName = new Map<string, Contact>();
+function createContactReferences(
+    records: readonly CsvOperationRecord[]
+): Map<string, OperationContactReference> {
+    const contactByName = new Map<string, OperationContactReference>();
 
     records.forEach((record) => {
         const name = normalizeCsvQuotes(normalizeText(record['Получатель/Плательщик']));
@@ -106,18 +110,9 @@ function createContacts(records: readonly CsvOperationRecord[]): Map<string, Con
             return;
         }
 
-        const timestamp = `${parseCsvDate(record['Дата'])}T12:00:00.000Z`;
-        const colorIndex = contactByName.size % ACCENT_COLORS.length;
-
         contactByName.set(name, {
-            color: ACCENT_COLORS[colorIndex],
-            createdAt: timestamp,
             id: createStableEntityId('contact', name),
-            isArchived: false,
-            legalName: null,
-            name,
-            type: 'unknown',
-            updatedAt: timestamp
+            name
         });
     });
 
@@ -129,7 +124,7 @@ function createOperation(
     sourceOrder: number,
     accountId: string,
     categoryByName: ReadonlyMap<string, OperationCategoryReference>,
-    contactByName: ReadonlyMap<string, Contact>
+    contactByName: ReadonlyMap<string, OperationContactReference>
 ): Operation {
     const signedAmountMinor = parseCsvAmountMinor(record['Сумма']);
     const categoryName = normalizeText(record['Категория']) || null;

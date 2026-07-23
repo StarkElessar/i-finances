@@ -3,7 +3,7 @@ export type {
     ImportOperationsCsvOptions
 } from './model/import-csv';
 export { importOperationsCsv } from './model/import-csv';
-export { INITIAL_CONTACTS, INITIAL_OPERATIONS } from './model/mock-data';
+export { INITIAL_OPERATIONS } from './model/mock-data';
 export type {
     CreateOperationParams,
     OperationFormValue,

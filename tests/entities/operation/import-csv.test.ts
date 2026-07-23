@@ -14,14 +14,7 @@ describe('importOperationsCsv', () => {
 
         expect(importedData.operations).toHaveLength(791);
         expect(importedData.categories).toHaveLength(30);
-        expect(importedData.contacts).toHaveLength(116);
-        expect(importedData.contacts[0]).toMatchObject({
-            isArchived: false,
-            legalName: null,
-            type: 'unknown'
-        });
         expect(importedData.operations[0].accountId).toBe('account-test');
-        expect(importedData.contacts[0].color).toMatch(/^#[\da-f]{6}$/i);
     });
 
     it('normalizes money, dates and escaped contact quotes', () => {

@@ -4,12 +4,15 @@ import { Archive, Building2, ContactRound, UserRound } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { Match, Show, Switch } from 'solid-js';
 
-import type { Contact, ContactType } from '~/entities/contact';
+import type {
+    ContactType,
+    PersistedContact
+} from '~/entities/contact';
 import type { CurrencyCodeValue } from '~/shared/lib';
 import { cn, formatMinorUnitsCurrency } from '~/shared/lib';
 
 export type ContactCardProps = {
-    contact: Contact;
+    contact: PersistedContact;
     currency: CurrencyCodeValue;
     spentMinor: number;
     class?: string;
@@ -28,7 +31,9 @@ export type ContactIconProps = {
     size?: number;
 };
 
-function getContactCardStyle(contact: Contact): JSX.CSSProperties {
+function getContactCardStyle(
+    contact: PersistedContact
+): JSX.CSSProperties {
     return { '--contact-color': contact.color };
 }
 
@@ -78,7 +83,7 @@ function ContactCardContent(props: Pick<ContactCardProps, 'contact' | 'currency'
                     <span>Потрачено в этом месяце</span>
                     <strong>{formatMinorUnitsCurrency(props.spentMinor, props.currency)}</strong>
                 </span>
-                <Show when={props.contact.isArchived}>
+                <Show when={props.contact.archivedAt !== null}>
                     <span class={css.archiveState}><Archive size={14}/>В архиве</span>
                 </Show>
             </span>
@@ -89,7 +94,7 @@ function ContactCardContent(props: Pick<ContactCardProps, 'contact' | 'currency'
 export function ContactCard(props: ContactCardProps) {
     const className = () => cn(
         css.root,
-        props.contact.isArchived && css.archived,
+        props.contact.archivedAt !== null && css.archived,
         props.draggable && css.draggable,
         props.isDragging && css.dragging,
         props.onClick && css.interactive,

@@ -1,6 +1,6 @@
 import type { Account } from '~/entities/account';
 import type { Category } from '~/entities/category';
-import type { Contact } from '~/entities/contact';
+import type { PersistedContact } from '~/entities/contact';
 import type {
     OperationFormValue,
     OperationWithBalance
@@ -12,7 +12,7 @@ export type OperationDetailsPanelMode = 'create' | 'edit';
 export type OperationDetailsPanelProps = {
     account: Account;
     categories: readonly Category[];
-    contacts: readonly Contact[];
+    contacts: readonly PersistedContact[];
     defaultExchangeRate: string;
     familyCurrency: CurrencyCodeValue;
     mobile: boolean;

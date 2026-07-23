@@ -7,4 +7,3 @@ const importedData = importOperationsCsv(rawOperationsCsv, {
 });
 
 export const INITIAL_OPERATIONS = importedData.operations;
-export const INITIAL_CONTACTS = importedData.contacts;

@@ -1,7 +1,12 @@
 @use "~/shared/styles/functions" as fn;
+@use "~/shared/styles/mixins" as mx;
 
 .dialog {
-    --dialog-inline-size: #{fn.rem(620)};
+    --dialog-inline-size: 100%;
+
+    @include mx.media-mn(640) {
+        --dialog-inline-size: #{fn.rem(620)};
+    }
 }
 
 .form {
@@ -49,31 +54,34 @@
     font-weight: var(--font-weight-semibold);
 }
 
+.error {
+    margin: var(--space-5) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--color-danger);
+}
+
 .footer {
+    display: flex;
     align-items: center;
 }
 
 .footer-spacer {
-    flex: 1 1 auto;
+    display: none;
+
+    @include mx.media-mn(640) {
+        display: block;
+        flex-grow: 1;
+    }
 }
 
 .footer-actions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    flex-grow: 1;
     gap: var(--space-4);
-}
 
-@media (width <= 640px) {
-    .footer {
+    @include mx.media-mn(640) {
         display: flex;
-    }
-
-    .footer-spacer {
-        display: none;
-    }
-
-    .footer-actions {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        flex: 1 1 100%;
+        flex-grow: 0;
     }
 }

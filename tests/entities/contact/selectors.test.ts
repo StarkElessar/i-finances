@@ -1,24 +1,60 @@
 import { describe, expect, it } from 'vitest';
 
-import type { Contact } from '~/entities/contact';
+import type { PersistedContact } from '~/entities/contact';
 import {
     filterContacts,
     getContactMonthlyExpensesById,
     getSelectableContacts
 } from '~/entities/contact';
-import { INITIAL_OPERATIONS } from '~/entities/operation';
+import type { Operation } from '~/entities/operation';
+import { CurrencyCode } from '~/shared/lib';
 
 const timestamp = '2026-07-01T12:00:00.000Z';
 
-function createContact(id: string, overrides: Partial<Contact> = {}): Contact {
+function createContact(
+    id: string,
+    overrides: Partial<PersistedContact> = {}
+): PersistedContact {
     return {
+        archivedAt: null,
         color: '#3f77a8',
         createdAt: timestamp,
         id,
-        isArchived: false,
         legalName: null,
         name: id,
         type: 'person',
+        updatedAt: timestamp,
+        version: 1,
+        ...overrides
+    };
+}
+
+function createOperation(
+    id: string,
+    overrides: Partial<Operation> = {}
+): Operation {
+    return {
+        accountId: 'account-1',
+        amountInFamilyCurrencyMinor: 1_000,
+        amountMinor: 1_000,
+        categoryId: null,
+        categoryName: null,
+        comment: '',
+        contactId: 'alex',
+        contactName: 'Алексей',
+        createdAt: timestamp,
+        currency: CurrencyCode.BYN,
+        deletedAt: null,
+        exchangeRate: {
+            fromCurrency: CurrencyCode.BYN,
+            rate: '1',
+            toCurrency: CurrencyCode.BYN
+        },
+        happenedOn: '2026-07-10',
+        id,
+        sourceOrder: 0,
+        title: id,
+        type: 'expense',
         updatedAt: timestamp,
         ...overrides
     };
@@ -32,7 +68,10 @@ describe('contact selectors', () => {
             name: 'Пицца Лисица',
             type: 'company'
         }),
-        createContact('archive', { isArchived: true, name: 'Старый контакт' })
+        createContact('archive', {
+            archivedAt: timestamp,
+            name: 'Старый контакт'
+        })
     ];
 
     it('filters by archive state, type and legal name', () => {
@@ -65,26 +104,24 @@ describe('contact selectors', () => {
     });
 
     it('aggregates current-month expenses by contact in family currency', () => {
+        const operations = [
+            createOperation('july-expense'),
+            createOperation('july-income', {
+                amountInFamilyCurrencyMinor: 5_000,
+                type: 'income'
+            }),
+            createOperation('june-expense', {
+                happenedOn: '2026-06-30'
+            }),
+            createOperation('deleted-expense', {
+                deletedAt: timestamp
+            })
+        ];
         const julyExpenses = getContactMonthlyExpensesById(
-            INITIAL_OPERATIONS,
+            operations,
             new Date(2026, 6, 22, 12)
         );
-        const operation = INITIAL_OPERATIONS.find((item) => (
-            item.type === 'expense'
-            && item.contactId !== null
-            && item.happenedOn.startsWith('2026-07')
-        ));
 
-        expect(operation).toBeDefined();
-
-        const expectedAmount = INITIAL_OPERATIONS.reduce((total, item) => (
-            item.type === 'expense'
-            && item.contactId === operation?.contactId
-            && item.happenedOn.startsWith('2026-07')
-                ? total + item.amountInFamilyCurrencyMinor
-                : total
-        ), 0);
-
-        expect(julyExpenses.get(operation?.contactId ?? '')).toBe(expectedAmount);
+        expect(julyExpenses.get('alex')).toBe(1_000);
     });
 });

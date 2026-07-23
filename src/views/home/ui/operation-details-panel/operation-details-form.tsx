@@ -20,7 +20,7 @@ import {
 import type { OperationDetailsPanelProps } from './types';
 
 import { findSuggestedCategory } from '~/entities/category';
-import type { Contact } from '~/entities/contact';
+import type { ContactType } from '~/entities/contact';
 import {
     formatLocalDateKey,
     type OperationType,
@@ -67,7 +67,7 @@ type ContactOption = {
     id: string;
     legalName: string | null;
     name: string;
-    type: Contact['type'];
+    type: ContactType;
 };
 
 /**
@@ -135,20 +135,39 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
         return options;
     });
-    const contactOptions = createMemo<ContactOption[]>(() => (
-        props.contacts
+    const contactOptions = createMemo<ContactOption[]>(() => {
+        const options = props.contacts
             .filter((contact) => (
-                !contact.isArchived || contact.id === props.operation?.contactId
+                contact.archivedAt === null
+                || contact.id === props.operation?.contactId
             ))
             .map((contact) => ({
-                archived: contact.isArchived,
+                archived: contact.archivedAt !== null,
                 color: contact.color,
                 id: contact.id,
                 legalName: contact.legalName,
                 name: contact.name,
                 type: contact.type
-            }))
-    ));
+            }));
+        const operation = props.operation;
+
+        if (
+            operation?.contactId
+            && operation.contactName
+            && !options.some((option) => option.id === operation.contactId)
+        ) {
+            options.push({
+                archived: true,
+                color: '#7d8799',
+                id: operation.contactId,
+                legalName: null,
+                name: operation.contactName,
+                type: 'unknown'
+            });
+        }
+
+        return options;
+    });
 
     const resetForm = (): void => {
         const operation = props.operation;

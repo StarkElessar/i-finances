@@ -1,4 +1,7 @@
-import type { Contact, ContactType } from './types';
+import type {
+    ContactType,
+    PersistedContact
+} from './types';
 
 import type { Operation } from '~/entities/operation';
 
@@ -16,14 +19,16 @@ const CONTACT_COLLATOR = new Intl.Collator('ru-BY', {
 });
 
 export function filterContacts(
-    contacts: readonly Contact[],
+    contacts: readonly PersistedContact[],
     filter: ContactListFilter
-): Contact[] {
+): PersistedContact[] {
     const normalizedQuery = normalizeSearchValue(filter.query);
 
     return contacts
         .filter((contact) => {
-            const matchesArchive = contact.isArchived === filter.archived;
+            const matchesArchive = (
+                (contact.archivedAt !== null) === filter.archived
+            );
             const matchesType = filter.type === 'all' || contact.type === filter.type;
 
             return matchesArchive
@@ -40,7 +45,9 @@ export function filterContacts(
         .toSorted((left, right) => CONTACT_COLLATOR.compare(left.name, right.name));
 }
 
-export function getSelectableContacts(contacts: readonly Contact[]): Contact[] {
+export function getSelectableContacts(
+    contacts: readonly PersistedContact[]
+): PersistedContact[] {
     return filterContacts(contacts, {
         archived: false,
         query: '',

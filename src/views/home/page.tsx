@@ -40,11 +40,8 @@ import {
 } from '~/entities/account/api';
 import type { CategoryCollection } from '~/entities/category';
 import { getCategories } from '~/entities/category';
-import type { Contact } from '~/entities/contact';
-import {
-    mergeContactsWithImported,
-    readContactsFromStorage
-} from '~/entities/contact';
+import type { ContactCollection } from '~/entities/contact';
+import { getContacts } from '~/entities/contact';
 import type {
     Operation,
     OperationFormValue,
@@ -53,7 +50,6 @@ import type {
 import {
     createOperation,
     getAccountBalanceMinor,
-    INITIAL_CONTACTS,
     readOperationsFromStorage,
     softDeleteOperation,
     updateOperation,
@@ -218,10 +214,10 @@ function WorkspaceLoadError(props: WorkspaceLoadErrorProps) {
 type HomeContentProps = {
     accounts: Accessor<PersistedAccount[] | undefined>;
     categoryCollection: Accessor<CategoryCollection | undefined>;
+    contactCollection: Accessor<ContactCollection | undefined>;
 };
 
 function HomeContent(props: HomeContentProps) {
-    const [contacts, setContacts] = createSignal<Contact[]>(INITIAL_CONTACTS);
     const [operations, setOperations] = createSignal<Operation[]>([]);
     const [activeAccountId, setActiveAccountId] = createSignal<string>();
     const [preferredActiveAccountId, setPreferredActiveAccountId] = createSignal<string>();
@@ -244,6 +240,7 @@ function HomeContent(props: HomeContentProps) {
 
     const accountsList = () => props.accounts() ?? [];
     const categories = () => props.categoryCollection()?.items ?? [];
+    const contacts = () => props.contactCollection()?.items ?? [];
     const isAccountsLoading = () => props.accounts() === undefined;
     const isAccountMutationPending = () => Boolean(
         createAccountSubmission.pending || updateAccountSubmission.pending
@@ -319,12 +316,6 @@ function HomeContent(props: HomeContentProps) {
     });
 
     onMount(() => {
-        const storedContacts = readContactsFromStorage(window.localStorage);
-
-        if (storedContacts) {
-            setContacts(mergeContactsWithImported(storedContacts, INITIAL_CONTACTS));
-        }
-
         const storedOperations = readOperationsFromStorage(window.localStorage);
 
         if (storedOperations) {
@@ -795,6 +786,9 @@ export function HomePage() {
     const categoryCollection = createAsync(() => getCategories({
         status: 'active'
     }));
+    const contactCollection = createAsync(() => getContacts({
+        status: 'all'
+    }));
 
     return (
         <>
@@ -805,7 +799,8 @@ export function HomePage() {
                         onRetry={() => {
                             void Promise.all([
                                 revalidate(getAccounts.key, true),
-                                revalidate(getCategories.key, true)
+                                revalidate(getCategories.key, true),
+                                revalidate(getContacts.key, true)
                             ]).then(reset, reset);
                         }}
                     />
@@ -814,6 +809,7 @@ export function HomePage() {
                 <HomeContent
                     accounts={accounts}
                     categoryCollection={categoryCollection}
+                    contactCollection={contactCollection}
                 />
             </ErrorBoundary>
         </>
