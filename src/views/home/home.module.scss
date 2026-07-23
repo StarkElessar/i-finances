@@ -2,6 +2,8 @@
 @use "~/shared/styles/mixins" as mx;
 
 .root {
+    --left-sidebar: #{fn.rem(300)};
+
     position: relative;
 
     overflow: hidden;
@@ -14,7 +16,7 @@
     background-color: var(--color-surface);
 
     @include mx.media-mn(961) {
-        grid-template-columns: fn.rem(360) minmax(0, 1fr);
+        grid-template-columns: var(--left-sidebar) minmax(0, 1fr);
         gap: fn.rem(1);
         background-color: var(--color-border);
     }
@@ -22,7 +24,7 @@
 
 .details-open {
     @include mx.media-mn(961) {
-        grid-template-columns: fn.rem(360) minmax(0, 1fr) minmax(fn.rem(300), fn.rem(360));
+        grid-template-columns: var(--left-sidebar) minmax(0, 1fr) minmax(fn.rem(300), fn.rem(360));
     }
 }
 
@@ -69,7 +71,7 @@
 
     overflow: hidden;
 
-    inline-size: min(fn.rem(360), calc(100% - var(--space-8)));
+    inline-size: min(var(--left-sidebar), calc(100% - var(--space-8)));
     min-inline-size: 0;
     min-block-size: 0;
 
