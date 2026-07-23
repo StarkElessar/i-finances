@@ -22,6 +22,13 @@
       "when": 1784835046820,
       "tag": "0002_unique_kingpin",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784838730177,
+      "tag": "0003_fine_overlord",
+      "breakpoints": true
     }
   ]
 }
