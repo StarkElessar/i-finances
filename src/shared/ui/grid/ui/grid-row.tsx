@@ -63,6 +63,7 @@ export function GridRow<T>(props: GridRowProps<T>) {
             onKeyDown={isInteractive() ? handleKeyDown : undefined}
         >
             <Show
+                when={isFullWidth()}
                 fallback={(
                     <For each={props.columns}>
                         {(column) => (
@@ -74,7 +75,6 @@ export function GridRow<T>(props: GridRowProps<T>) {
                         )}
                     </For>
                 )}
-                when={isFullWidth()}
             >
                 <td colSpan={props.columns.length}>
                     {props.fullWidthRowTemplate?.({

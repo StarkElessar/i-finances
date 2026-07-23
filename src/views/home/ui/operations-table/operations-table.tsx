@@ -326,16 +326,16 @@ export function OperationsTable(props: OperationsTableProps) {
     };
 
     const renderGroupRow = (item: OperationTableItem): JSX.Element => {
-        if (item.kind !== 'group') {
-            return null;
+        if (item.kind === 'group') {
+            return (
+                <OperationGroupRow
+                    group={item.group}
+                    resolveCategoryColor={resolveCategoryColor}
+                />
+            );
         }
 
-        return (
-            <OperationGroupRow
-                group={item.group}
-                resolveCategoryColor={resolveCategoryColor}
-            />
-        );
+        return null;
     };
 
     return (
