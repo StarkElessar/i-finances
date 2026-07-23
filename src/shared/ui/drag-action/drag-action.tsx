@@ -58,6 +58,10 @@ export type DragActionPreviewProps = {
 };
 
 const DEFAULT_THRESHOLD_PX = 8;
+const ZONE_CLASS_BY_TONE: Record<DragActionTone, string> = {
+    danger: css.zoneDanger,
+    neutral: css.zoneNeutral
+};
 
 function getPreviewTransform(clientX: number, clientY: number): string {
     return `translate3d(${clientX}px, ${clientY}px, 0) translate(-50%, -50%) rotate(-1deg)`;
@@ -298,7 +302,7 @@ function DragActionOverlay(props: DragActionOverlayProps) {
                         aria-hidden='true'
                         class={cn(
                             css.zone,
-                            css[`zone-${tone()}`],
+                            ZONE_CLASS_BY_TONE[tone()],
                             props.controller.isOverZone() && css.zoneActive,
                             props.zoneClass
                         )}
