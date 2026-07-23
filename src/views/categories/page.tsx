@@ -39,17 +39,25 @@ import {
     restoreCategory as restoreCategoryAction,
     updateCategory as updateCategoryAction
 } from '~/entities/category';
+import type { MonthlyExpenseSummary } from '~/entities/operation';
+import {
+    formatLocalDateKey,
+    getMonthlyExpenseSummary
+} from '~/entities/operation';
 import { cn, CurrencyCode } from '~/shared/lib';
 import { Button, Container } from '~/shared/ui';
 import { createDragAction, DragAction } from '~/shared/ui/drag-action';
 
 type CategoryListMode = 'active' | 'archive';
 
-const EMPTY_OPERATIONS = [] as const;
-
 type CategoriesContentProps = {
     collection: Accessor<CategoryCollection | undefined>;
+    monthlySummary: Accessor<MonthlyExpenseSummary | undefined>;
 };
+
+function getCurrentMonthKey(): string {
+    return formatLocalDateKey(new Date()).slice(0, 7);
+}
 
 function toDialogValue(category: PersistedCategory): CategoryDialogValue {
     return {
@@ -114,7 +122,6 @@ function CategoriesContent(props: CategoriesContentProps) {
     const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
     const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
     const [listMode, setListMode] = createSignal<CategoryListMode>('active');
-    const monthDate = new Date();
     const [dialogError, setDialogError] = createSignal<string>();
     const [dialogFieldErrors, setDialogFieldErrors]
         = createSignal<Record<string, string>>();
@@ -129,9 +136,16 @@ function CategoriesContent(props: CategoriesContentProps) {
     const updateSubmission = useSubmission(updateCategoryAction);
 
     const categories = () => props.collection()?.items ?? [];
-    const currency = () => props.collection()?.baseCurrency ?? CurrencyCode.BYN;
-    const isLoaded = () => props.collection() !== undefined;
-    const isLoading = () => props.collection() === undefined;
+    const currency = () => (
+        props.monthlySummary()?.baseCurrency
+        ?? props.collection()?.baseCurrency
+        ?? CurrencyCode.BYN
+    );
+    const isLoaded = () => (
+        props.collection() !== undefined
+        && props.monthlySummary() !== undefined
+    );
+    const isLoading = () => !isLoaded();
     const isDialogMutationPending = () => Boolean(
         createSubmission.pending || updateSubmission.pending
     );
@@ -160,9 +174,11 @@ function CategoriesContent(props: CategoriesContentProps) {
         return category ? toDialogValue(category) : undefined;
     });
     const categorySummaries = createMemo(() => {
+        const expenses = props.monthlySummary()?.categoryExpensesMinor ?? {};
+
         return new Map(categories().map((category) => [
             category.id,
-            getCategoryBudgetSummary(category, EMPTY_OPERATIONS, monthDate)
+            getCategoryBudgetSummary(category, expenses[category.id] ?? 0)
         ]));
     });
 
@@ -483,18 +499,27 @@ function CategoriesContent(props: CategoriesContentProps) {
 
 export function CategoriesPage() {
     const collection = createAsync(() => getCategories({ status: 'all' }));
+    const monthlySummary = createAsync(() => getMonthlyExpenseSummary({
+        month: getCurrentMonthKey()
+    }));
 
     return (
         <ErrorBoundary
             fallback={(_error, reset) => (
                 <CategoriesLoadError
                     onRetry={() => {
-                        void revalidate(getCategories.key, true).then(reset, reset);
+                        void Promise.all([
+                            revalidate(getCategories.key, true),
+                            revalidate(getMonthlyExpenseSummary.key, true)
+                        ]).then(reset, reset);
                     }}
                 />
             )}
         >
-            <CategoriesContent collection={collection}/>
+            <CategoriesContent
+                collection={collection}
+                monthlySummary={monthlySummary}
+            />
         </ErrorBoundary>
     );
 }

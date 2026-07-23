@@ -19,6 +19,7 @@ export {
     convertMinorUnitsByExchangeRate,
     formatMinorUnitsAsInput,
     formatMinorUnitsCurrency,
+    invertExchangeRate,
     minorUnitsToAmount,
     normalizeExchangeRate,
     parseOptionalMoneyInputToMinorUnits

@@ -1,5 +1,11 @@
 import { randomUUID } from 'node:crypto';
 
+import type { AccountCurrencyCorrector } from './account-currency-corrector';
+import {
+    AccountCurrencyCorrectionRequiredError,
+    AccountNotFoundError,
+    AccountVersionConflictError
+} from './account-errors';
 import type { AccountRepository } from './account-repository';
 
 import type {
@@ -11,27 +17,15 @@ import type { PersistedAccount } from '~/entities/account/model/types';
 import type { AccountRecord } from '~/server/db/schema';
 import type { HouseholdResolver } from '~/server/household/household-service';
 
-/**
- * Signals that the requested account is not part of the active household.
- */
-export class AccountNotFoundError extends Error {
-    constructor() {
-        super('Account not found.');
-        this.name = 'AccountNotFoundError';
-    }
-}
-
-/**
- * Signals that an account changed after the client loaded it.
- */
-export class AccountVersionConflictError extends Error {
-    constructor() {
-        super('Account version conflict.');
-        this.name = 'AccountVersionConflictError';
-    }
-}
+export {
+    AccountCurrencyCorrectionConflictError,
+    AccountCurrencyCorrectionRequiredError,
+    AccountNotFoundError,
+    AccountVersionConflictError
+} from './account-errors';
 
 export type AccountServiceDependencies = {
+    accountCurrencyCorrector: AccountCurrencyCorrector;
     accountRepository: AccountRepository;
     householdResolver: HouseholdResolver;
     createId?: () => string;
@@ -73,7 +67,7 @@ export function createAccountService(
     const requireCurrentAccount = async (
         userId: string,
         accountId: string
-    ): Promise<{ householdId: string; record: AccountRecord }> => {
+    ) => {
         const household = await dependencies.householdResolver.requireForUser(userId);
         const record = await dependencies.accountRepository.findById(
             household.id,
@@ -82,7 +76,7 @@ export function createAccountService(
 
         if (record) {
             return {
-                householdId: household.id,
+                household,
                 record
             };
         }
@@ -139,21 +133,50 @@ export function createAccountService(
 
         assertVersion(current.record, input.version);
 
+        const accountValues = {
+            color: input.color,
+            currency: input.currency,
+            description: input.description,
+            initialBalanceMinor: input.initialBalanceMinor,
+            isColorAccentEnabled: input.isColorAccentEnabled,
+            isIncludedInFamilyTotal: input.isIncludedInFamilyTotal,
+            name: input.name,
+            type: input.type,
+            updatedAt: now()
+        };
+        const currencyChanges = current.record.currency !== input.currency;
+
+        if (
+            currencyChanges
+            && await dependencies.accountCurrencyCorrector.hasOperations(
+                current.household.id,
+                current.record.id
+            )
+        ) {
+            if (!input.confirmCurrencyCorrection) {
+                throw new AccountCurrencyCorrectionRequiredError();
+            }
+
+            const correctedRecord = await dependencies.accountCurrencyCorrector
+                .correct({
+                    accountId: current.record.id,
+                    accountValues,
+                    expectedVersion: input.version,
+                    householdBaseCurrency: current.household.baseCurrency,
+                    householdId: current.household.id,
+                    updatedByUserId: userId
+                });
+
+            if (correctedRecord !== undefined) {
+                return toPersistedAccount(correctedRecord);
+            }
+        }
+
         const updatedRecord = await dependencies.accountRepository.update(
-            current.householdId,
+            current.household.id,
             input.id,
             input.version,
-            {
-                color: input.color,
-                currency: input.currency,
-                description: input.description,
-                initialBalanceMinor: input.initialBalanceMinor,
-                isColorAccentEnabled: input.isColorAccentEnabled,
-                isIncludedInFamilyTotal: input.isIncludedInFamilyTotal,
-                name: input.name,
-                type: input.type,
-                updatedAt: now()
-            }
+            accountValues
         );
 
         if (updatedRecord) {
@@ -182,7 +205,7 @@ export function createAccountService(
 
         const timestamp = now();
         const updatedRecord = await dependencies.accountRepository.setArchivedAt(
-            current.householdId,
+            current.household.id,
             input.id,
             input.version,
             archived ? timestamp : null,

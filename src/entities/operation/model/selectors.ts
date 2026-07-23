@@ -6,54 +6,12 @@ import type {
 } from './table-types';
 import type { Operation, OperationWithBalance } from './types';
 
-import type { Account } from '~/entities/account';
 import { amountToMinorUnits } from '~/shared/lib';
 
 const NAME_COLLATOR = new Intl.Collator('ru-BY', {
     numeric: true,
     sensitivity: 'base'
 });
-
-export function getSignedOperationAmountMinor(operation: Operation): number {
-    return operation.type === 'expense' ? -operation.amountMinor : operation.amountMinor;
-}
-
-export function getAccountOperationsWithBalances(
-    account: Account,
-    operations: readonly Operation[]
-): OperationWithBalance[] {
-    let runningBalanceMinor = account.initialBalanceMinor;
-
-    return operations
-        .filter((operation) => (
-            operation.accountId === account.id && operation.deletedAt === null
-        ))
-        .toSorted(compareCanonicalOperationOrder)
-        .map((operation) => {
-            const signedAmountMinor = getSignedOperationAmountMinor(operation);
-
-            runningBalanceMinor += signedAmountMinor;
-
-            return {
-                ...operation,
-                balanceAfterMinor: runningBalanceMinor,
-                signedAmountMinor
-            };
-        });
-}
-
-export function getAccountBalanceMinor(
-    account: Account,
-    operations: readonly Operation[]
-): number {
-    return operations.reduce((balanceMinor, operation) => {
-        if (operation.accountId !== account.id || operation.deletedAt !== null) {
-            return balanceMinor;
-        }
-
-        return balanceMinor + getSignedOperationAmountMinor(operation);
-    }, account.initialBalanceMinor);
-}
 
 export function filterOperationRows(
     rows: readonly OperationWithBalance[],
@@ -183,12 +141,6 @@ function groupRowsByKey(
     });
 
     return rowsByKey;
-}
-
-function compareCanonicalOperationOrder(left: Operation, right: Operation): number {
-    const dateResult = left.happenedOn.localeCompare(right.happenedOn);
-
-    return dateResult || left.sourceOrder - right.sourceOrder;
 }
 
 function compareNewestOperationFirst(left: Operation, right: Operation): number {

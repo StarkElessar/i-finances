@@ -47,7 +47,7 @@ describe('category suggestion', () => {
 });
 
 describe('category budget summary', () => {
-    it('keeps the API budget and uses zero expenses without loaded operations', () => {
+    it('calculates progress from the server-provided expense total', () => {
         const category = {
             ...createCategory('Продукты', []),
             monthlyBudgetMinor: 45_000
@@ -55,15 +55,14 @@ describe('category budget summary', () => {
 
         expect(getCategoryBudgetSummary(
             category,
-            [],
-            new Date('2026-07-23T12:00:00.000Z')
+            22_500
         )).toEqual({
             hasBudget: true,
             isOverBudget: false,
             monthlyBudgetMinor: 45_000,
-            progressPercent: 0,
-            spentMinor: 0,
-            usagePercent: 0
+            progressPercent: 50,
+            spentMinor: 22_500,
+            usagePercent: 50
         });
     });
 });

@@ -3,11 +3,8 @@ import { describe, expect, it } from 'vitest';
 import type { PersistedContact } from '~/entities/contact';
 import {
     filterContacts,
-    getContactMonthlyExpensesById,
     getSelectableContacts
 } from '~/entities/contact';
-import type { Operation } from '~/entities/operation';
-import { CurrencyCode } from '~/shared/lib';
 
 const timestamp = '2026-07-01T12:00:00.000Z';
 
@@ -25,37 +22,6 @@ function createContact(
         type: 'person',
         updatedAt: timestamp,
         version: 1,
-        ...overrides
-    };
-}
-
-function createOperation(
-    id: string,
-    overrides: Partial<Operation> = {}
-): Operation {
-    return {
-        accountId: 'account-1',
-        amountInFamilyCurrencyMinor: 1_000,
-        amountMinor: 1_000,
-        categoryId: null,
-        categoryName: null,
-        comment: '',
-        contactId: 'alex',
-        contactName: 'Алексей',
-        createdAt: timestamp,
-        currency: CurrencyCode.BYN,
-        deletedAt: null,
-        exchangeRate: {
-            fromCurrency: CurrencyCode.BYN,
-            rate: '1',
-            toCurrency: CurrencyCode.BYN
-        },
-        happenedOn: '2026-07-10',
-        id,
-        sourceOrder: 0,
-        title: id,
-        type: 'expense',
-        updatedAt: timestamp,
         ...overrides
     };
 }
@@ -101,27 +67,5 @@ describe('contact selectors', () => {
     it('returns only active contacts for transaction selection', () => {
         expect(getSelectableContacts(contacts).map((contact) => contact.id))
             .toEqual(['alex', 'pizza']);
-    });
-
-    it('aggregates current-month expenses by contact in family currency', () => {
-        const operations = [
-            createOperation('july-expense'),
-            createOperation('july-income', {
-                amountInFamilyCurrencyMinor: 5_000,
-                type: 'income'
-            }),
-            createOperation('june-expense', {
-                happenedOn: '2026-06-30'
-            }),
-            createOperation('deleted-expense', {
-                deletedAt: timestamp
-            })
-        ];
-        const julyExpenses = getContactMonthlyExpensesById(
-            operations,
-            new Date(2026, 6, 22, 12)
-        );
-
-        expect(julyExpenses.get('alex')).toBe(1_000);
     });
 });

@@ -120,13 +120,15 @@ export function OperationDetailsPanel(props: OperationDetailsPanelProps) {
                 account={props.account}
                 categories={props.categories}
                 contacts={props.contacts}
-                defaultExchangeRate={props.defaultExchangeRate}
-                familyCurrency={props.familyCurrency}
+                error={props.error}
+                fieldErrors={props.fieldErrors}
+                loading={props.loading}
                 mode={props.mode}
                 operation={props.operation}
                 titleId={titleId}
                 onClose={close}
                 onDelete={props.onDelete}
+                onRecalculateRate={props.onRecalculateRate}
                 onSubmit={props.onSubmit}
             />
         </aside>

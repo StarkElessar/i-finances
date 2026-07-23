@@ -3,7 +3,14 @@ import type { FormatCurrencyOptions } from './currency-formatter';
 import { formatCurrency } from './currency-formatter';
 
 const MINOR_UNITS_IN_MAJOR = 100;
-const DECIMAL_RATE_PATTERN = /^\d+(?:[.,]\d{1,6})?$/;
+const EXCHANGE_RATE_FRACTION_DIGITS = 12;
+const BIGINT_ZERO = BigInt(0);
+const BIGINT_ONE = BigInt(1);
+const BIGINT_TWO = BigInt(2);
+const BIGINT_TEN = BigInt(10);
+const DECIMAL_RATE_PATTERN = new RegExp(
+    `^\\d+(?:[.,]\\d{1,${EXCHANGE_RATE_FRACTION_DIGITS}})?$`
+);
 
 export function amountToMinorUnits(amount: number): number {
     return Math.round(amount * MINOR_UNITS_IN_MAJOR);
@@ -80,6 +87,47 @@ export function convertMinorUnitsByExchangeRate(
     amountMinor: number,
     exchangeRate: string
 ): number {
+    if (!Number.isSafeInteger(amountMinor) || amountMinor < 0) {
+        throw new Error('Amount must be a non-negative safe integer.');
+    }
+
+    const ratio = parseExchangeRateRatio(exchangeRate);
+    const convertedAmount = divideAndRound(
+        BigInt(amountMinor) * ratio.numerator,
+        ratio.denominator
+    );
+
+    if (convertedAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
+        throw new Error('Converted amount exceeds the safe integer range.');
+    }
+
+    return Number(convertedAmount);
+}
+
+/**
+ * Produces the reciprocal of a persisted decimal exchange rate.
+ */
+export function invertExchangeRate(exchangeRate: string): string {
+    const ratio = parseExchangeRateRatio(exchangeRate);
+    const scale = BIGINT_TEN ** BigInt(EXCHANGE_RATE_FRACTION_DIGITS);
+    const inverseUnits = divideAndRound(
+        ratio.denominator * scale,
+        ratio.numerator
+    );
+
+    if (inverseUnits === BIGINT_ZERO) {
+        throw new Error('Inverse exchange rate is below supported precision.');
+    }
+
+    return formatScaledDecimal(inverseUnits, EXCHANGE_RATE_FRACTION_DIGITS);
+}
+
+type ExchangeRateRatio = {
+    denominator: bigint;
+    numerator: bigint;
+};
+
+function parseExchangeRateRatio(exchangeRate: string): ExchangeRateRatio {
     const normalizedRate = normalizeExchangeRate(exchangeRate);
 
     if (normalizedRate === undefined) {
@@ -87,16 +135,29 @@ export function convertMinorUnitsByExchangeRate(
     }
 
     const [wholePart, fractionPart = ''] = normalizedRate.split('.');
-    const scale = 10 ** fractionPart.length;
-    const rateUnits = Number(`${wholePart}${fractionPart}`);
 
-    if (
-        !Number.isSafeInteger(amountMinor)
-        || !Number.isSafeInteger(rateUnits)
-        || amountMinor > Number.MAX_SAFE_INTEGER / rateUnits
-    ) {
-        throw new Error('Converted amount exceeds the safe integer range.');
-    }
+    return {
+        denominator: BIGINT_TEN ** BigInt(fractionPart.length),
+        numerator: BigInt(`${wholePart}${fractionPart}`)
+    };
+}
 
-    return Math.round((amountMinor * rateUnits) / scale);
+function divideAndRound(numerator: bigint, denominator: bigint): bigint {
+    const quotient = numerator / denominator;
+    const remainder = numerator % denominator;
+
+    return remainder * BIGINT_TWO >= denominator
+        ? quotient + BIGINT_ONE
+        : quotient;
+}
+
+function formatScaledDecimal(value: bigint, fractionDigits: number): string {
+    const scale = BIGINT_TEN ** BigInt(fractionDigits);
+    const wholePart = value / scale;
+    const fractionPart = (value % scale)
+        .toString()
+        .padStart(fractionDigits, '0')
+        .replace(/0+$/, '');
+
+    return fractionPart ? `${wholePart}.${fractionPart}` : wholePart.toString();
 }

@@ -15,12 +15,19 @@ import {
 } from './account.contract';
 
 import type { PersistedAccount } from '~/entities/account/model/types';
-import { createAccountRepository } from '~/server/account/account-repository';
 import {
+    getAccountBalances,
+    getAccountLedger,
+    getMonthlyExpenseSummary
+} from '~/entities/operation/api/operation.server';
+import {
+    AccountCurrencyCorrectionConflictError,
+    AccountCurrencyCorrectionRequiredError,
     AccountNotFoundError,
-    AccountVersionConflictError,
-    createAccountService
-} from '~/server/account/account-service';
+    AccountVersionConflictError
+} from '~/server/account/account-errors';
+import { createAccountRepository } from '~/server/account/account-repository';
+import { createAccountService } from '~/server/account/account-service';
 import {
     assertSameOriginMutation,
     InvalidMutationOriginError
@@ -29,14 +36,24 @@ import {
     AuthenticationRequiredError,
     requireUser
 } from '~/server/auth/require-user';
+import { ExchangeRateNotFoundError } from '~/server/exchange-rate/exchange-rate-errors';
+import { createExchangeRateRepository } from '~/server/exchange-rate/exchange-rate-repository';
+import { createExchangeRateService } from '~/server/exchange-rate/exchange-rate-service';
 import { createHouseholdRepository } from '~/server/household/household-repository';
 import {
     createHouseholdResolver,
     HouseholdAccessRequiredError,
     HouseholdSelectionRequiredError
 } from '~/server/household/household-service';
+import { createOperationAccountCurrencyCorrector } from '~/server/operation/account-currency-corrector';
 
+const exchangeRateResolver = createExchangeRateService({
+    exchangeRateRepository: createExchangeRateRepository()
+});
 const accountService = createAccountService({
+    accountCurrencyCorrector: createOperationAccountCurrencyCorrector({
+        exchangeRateResolver
+    }),
     accountRepository: createAccountRepository(),
     householdResolver: createHouseholdResolver(createHouseholdRepository())
 });
@@ -96,6 +113,7 @@ function createAccountFailure(error: unknown): AccountCommandResult | undefined 
 
     if (
         error instanceof AccountVersionConflictError
+        || error instanceof AccountCurrencyCorrectionConflictError
         || error instanceof HouseholdSelectionRequiredError
     ) {
         return {
@@ -109,6 +127,22 @@ function createAccountFailure(error: unknown): AccountCommandResult | undefined 
         return {
             errorCode: 'not-found',
             message: 'Счёт не найден.',
+            ok: false
+        };
+    }
+
+    if (error instanceof AccountCurrencyCorrectionRequiredError) {
+        return {
+            errorCode: 'confirmation-required',
+            message: 'Подтвердите пересчет истории в новой валюте счета.',
+            ok: false
+        };
+    }
+
+    if (error instanceof ExchangeRateNotFoundError) {
+        return {
+            errorCode: 'rate-unavailable',
+            message: 'Для одной или нескольких дат операций отсутствует курс.',
             ok: false
         };
     }
@@ -133,7 +167,12 @@ async function executeAccountCommand<TInput>(
             const session = await requireUser();
             const account = await command(session.user.id, parsedInput.data);
 
-            await revalidate(getAccounts.key);
+            await Promise.all([
+                revalidate(getAccounts.key),
+                revalidate(getAccountBalances.key),
+                revalidate(getAccountLedger.key),
+                revalidate(getMonthlyExpenseSummary.key)
+            ]);
 
             return {
                 account,

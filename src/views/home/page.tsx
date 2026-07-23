@@ -43,17 +43,16 @@ import { getCategories } from '~/entities/category';
 import type { ContactCollection } from '~/entities/contact';
 import { getContacts } from '~/entities/contact';
 import type {
-    Operation,
-    OperationFormValue,
+    AccountBalance,
+    OperationDraft,
     OperationWithBalance
 } from '~/entities/operation';
 import {
-    createOperation,
-    getAccountBalanceMinor,
-    readOperationsFromStorage,
-    softDeleteOperation,
-    updateOperation,
-    writeOperationsToStorage
+    createOperationAction,
+    deleteOperationAction,
+    getAccountBalances,
+    recalculateOperationRateAction,
+    updateOperationAction
 } from '~/entities/operation';
 import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
@@ -68,6 +67,7 @@ import {
     sumMoney
 } from '~/shared/lib';
 import { AccountIcon, Button, Container } from '~/shared/ui';
+import { Dialog } from '~/shared/ui/dialog';
 
 const FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
@@ -92,24 +92,6 @@ function formatExchangeRateLabel(currency: CurrencyCodeValue): string {
     const convertedAmount = convertCurrency(1, currency, FAMILY_TOTAL_CURRENCY, FAMILY_TOTAL_EXCHANGE_RATES);
 
     return `1 ${currency} = ${formatCurrency(convertedAmount, FAMILY_TOTAL_CURRENCY)}`;
-}
-
-function getDefaultTransactionExchangeRate(currency: CurrencyCodeValue): string {
-    if (currency === FAMILY_TOTAL_CURRENCY) {
-        return '1';
-    }
-
-    const rate = FAMILY_TOTAL_EXCHANGE_RATES.ratesToBaseCurrency[currency];
-
-    if (!rate) {
-        throw new Error(`Missing exchange rate for ${currency}`);
-    }
-
-    return String(rate);
-}
-
-function createOperationId(): string {
-    return `operation-${globalThis.crypto.randomUUID()}`;
 }
 
 function toAccountDialogValue(account: PersistedAccount): AccountDialogValue {
@@ -213,12 +195,12 @@ function WorkspaceLoadError(props: WorkspaceLoadErrorProps) {
 
 type HomeContentProps = {
     accounts: Accessor<PersistedAccount[] | undefined>;
+    balances: Accessor<AccountBalance[] | undefined>;
     categoryCollection: Accessor<CategoryCollection | undefined>;
     contactCollection: Accessor<ContactCollection | undefined>;
 };
 
 function HomeContent(props: HomeContentProps) {
-    const [operations, setOperations] = createSignal<Operation[]>([]);
     const [activeAccountId, setActiveAccountId] = createSignal<string>();
     const [preferredActiveAccountId, setPreferredActiveAccountId] = createSignal<string>();
     const [editingAccount, setEditingAccount] = createSignal<PersistedAccount>();
@@ -226,34 +208,58 @@ function HomeContent(props: HomeContentProps) {
     const [accountDialogError, setAccountDialogError] = createSignal<string>();
     const [accountDialogFieldErrors, setAccountDialogFieldErrors]
         = createSignal<Record<string, string>>();
+    const [pendingCurrencyCorrection, setPendingCurrencyCorrection]
+        = createSignal<AccountDialogValue>();
     const [isSidebarOpen, setIsSidebarOpen] = createSignal(false);
     const [detailsPanelMode, setDetailsPanelMode] = createSignal<OperationDetailsPanelMode>();
     const [isDetailsPanelOpen, setIsDetailsPanelOpen] = createSignal(false);
     const [isDetailsPanelPresent, setIsDetailsPanelPresent] = createSignal(false);
     const [selectedOperation, setSelectedOperation] = createSignal<OperationWithBalance>();
     const [isDesktopDetails, setIsDesktopDetails] = createSignal(false);
-    const [isOperationStorageReady, setIsOperationStorageReady] = createSignal(false);
+    const [operationError, setOperationError] = createSignal<string>();
+    const [operationFieldErrors, setOperationFieldErrors]
+        = createSignal<Record<string, string>>();
     const runCreateAccount = useAction(createAccountAction);
     const runUpdateAccount = useAction(updateAccountAction);
+    const runCreateOperation = useAction(createOperationAction);
+    const runDeleteOperation = useAction(deleteOperationAction);
+    const runRecalculateOperationRate = useAction(recalculateOperationRateAction);
+    const runUpdateOperation = useAction(updateOperationAction);
     const createAccountSubmission = useSubmission(createAccountAction);
     const updateAccountSubmission = useSubmission(updateAccountAction);
+    const createOperationSubmission = useSubmission(createOperationAction);
+    const deleteOperationSubmission = useSubmission(deleteOperationAction);
+    const recalculateOperationRateSubmission = useSubmission(
+        recalculateOperationRateAction
+    );
+    const updateOperationSubmission = useSubmission(updateOperationAction);
 
     const accountsList = () => props.accounts() ?? [];
     const categories = () => props.categoryCollection()?.items ?? [];
     const contacts = () => props.contactCollection()?.items ?? [];
-    const isAccountsLoading = () => props.accounts() === undefined;
+    const isAccountsLoading = () => (
+        props.accounts() === undefined || props.balances() === undefined
+    );
     const isAccountMutationPending = () => Boolean(
         createAccountSubmission.pending || updateAccountSubmission.pending
     );
+    const isOperationMutationPending = () => Boolean(
+        createOperationSubmission.pending
+        || deleteOperationSubmission.pending
+        || recalculateOperationRateSubmission.pending
+        || updateOperationSubmission.pending
+    );
 
     const accountBalanceMinorById = createMemo(() => {
-        return new Map(accountsList().map((account) => [
-            account.id,
-            getAccountBalanceMinor(account, operations())
-        ]));
+        return new Map(
+            (props.balances() ?? []).map((balance) => [
+                balance.accountId,
+                balance.balanceMinor
+            ])
+        );
     });
 
-    const activeAccount = createMemo(() => {
+    const activeAccount = createMemo<PersistedAccount | undefined>(() => {
         return accountsList().find((account) => account.id === activeAccountId()) ?? accountsList()[0];
     });
 
@@ -281,6 +287,12 @@ function HomeContent(props: HomeContentProps) {
         const account = editingAccount();
 
         return account ? toAccountDialogValue(account) : undefined;
+    });
+    const detailsPanelContext = createMemo(() => {
+        const account = activeAccount();
+        const mode = detailsPanelMode();
+
+        return account && mode ? { account, mode } : undefined;
     });
 
     createEffect(() => {
@@ -316,26 +328,12 @@ function HomeContent(props: HomeContentProps) {
     });
 
     onMount(() => {
-        const storedOperations = readOperationsFromStorage(window.localStorage);
-
-        if (storedOperations) {
-            setOperations(storedOperations);
-        }
-
-        setIsOperationStorageReady(true);
-
         const mediaQuery = window.matchMedia(DESKTOP_DETAILS_QUERY);
         const syncDetailsMode = () => setIsDesktopDetails(mediaQuery.matches);
 
         syncDetailsMode();
         mediaQuery.addEventListener('change', syncDetailsMode);
         onCleanup(() => mediaQuery.removeEventListener('change', syncDetailsMode));
-    });
-
-    createEffect(() => {
-        if (isOperationStorageReady()) {
-            writeOperationsToStorage(window.localStorage, operations());
-        }
     });
 
     const handleCloseDetailsPanel = () => {
@@ -354,6 +352,7 @@ function HomeContent(props: HomeContentProps) {
     const handleOpenCreateAccountDialog = () => {
         setIsSidebarOpen(false);
         setEditingAccount(undefined);
+        setPendingCurrencyCorrection(undefined);
         setAccountDialogError(undefined);
         setAccountDialogFieldErrors(undefined);
         setIsAccountDialogOpen(true);
@@ -362,6 +361,7 @@ function HomeContent(props: HomeContentProps) {
     const handleOpenEditAccountDialog = (account: PersistedAccount) => {
         setIsSidebarOpen(false);
         setEditingAccount(account);
+        setPendingCurrencyCorrection(undefined);
         setAccountDialogError(undefined);
         setAccountDialogFieldErrors(undefined);
         setIsAccountDialogOpen(true);
@@ -388,9 +388,16 @@ function HomeContent(props: HomeContentProps) {
         }
 
         setIsAccountDialogOpen(open);
+
+        if (!open) {
+            setPendingCurrencyCorrection(undefined);
+        }
     };
 
-    const handleAccountSubmit = async (accountValue: AccountDialogValue) => {
+    const submitAccount = async (
+        accountValue: AccountDialogValue,
+        confirmCurrencyCorrection: boolean
+    ) => {
         const currentAccount = editingAccount();
         const editableFields = {
             color: accountValue.color,
@@ -410,15 +417,22 @@ function HomeContent(props: HomeContentProps) {
             const result = currentAccount
                 ? await runUpdateAccount({
                     ...editableFields,
+                    confirmCurrencyCorrection,
                     id: currentAccount.id,
                     version: currentAccount.version
                 })
                 : await runCreateAccount(editableFields);
 
             if (result.ok) {
+                setPendingCurrencyCorrection(undefined);
                 setPreferredActiveAccountId(result.account.id);
                 setActiveAccountId(result.account.id);
                 setIsAccountDialogOpen(false);
+                return;
+            }
+
+            if (result.errorCode === 'confirmation-required') {
+                setPendingCurrencyCorrection(accountValue);
                 return;
             }
 
@@ -432,72 +446,133 @@ function HomeContent(props: HomeContentProps) {
         }
     };
 
+    const handleAccountSubmit = (
+        accountValue: AccountDialogValue
+    ): Promise<void> => {
+        return submitAccount(accountValue, false);
+    };
+
+    const handleConfirmCurrencyCorrection = (): void => {
+        const accountValue = pendingCurrencyCorrection();
+
+        if (accountValue) {
+            void submitAccount(accountValue, true);
+        }
+    };
+
     const handleOperationSelect = (operation: OperationWithBalance) => {
+        setOperationError(undefined);
+        setOperationFieldErrors(undefined);
         setSelectedOperation(operation);
         setDetailsPanelMode('edit');
         setIsDetailsPanelOpen(true);
     };
 
     const handleCreateOperation = () => {
+        setOperationError(undefined);
+        setOperationFieldErrors(undefined);
         setSelectedOperation(undefined);
         setDetailsPanelMode('create');
         setIsDetailsPanelOpen(true);
     };
 
-    const handleOperationSubmit = (value: OperationFormValue) => {
-        const currentOperations = operations();
-        const category = categories().find((item) => item.id === value.categoryId);
-        const contact = contacts().find((item) => item.id === value.contactId);
+    const handleOperationSubmit = async (value: OperationDraft) => {
         const selected = selectedOperation();
-        const timestamp = new Date().toISOString();
-        const categoryName = category?.name
-            ?? (selected?.categoryId === value.categoryId ? selected.categoryName : null);
-        const contactName = contact?.name
-            ?? (selected?.contactId === value.contactId ? selected.contactName : null);
+        const account = activeAccount();
 
-        if (detailsPanelMode() === 'edit' && selected) {
-            const updatedOperation = updateOperation(selected, {
-                allOperations: currentOperations,
-                categoryName,
-                contactName,
-                familyCurrency: FAMILY_TOTAL_CURRENCY,
-                timestamp,
-                value
-            });
-
-            setOperations((items) => items.map((operation) => (
-                operation.id === updatedOperation.id ? updatedOperation : operation
-            )));
-        }
-        else {
-            const account = activeAccount();
-            const operation = createOperation({
-                accountId: account.id,
-                allOperations: currentOperations,
-                categoryName,
-                contactName,
-                currency: account.currency,
-                familyCurrency: FAMILY_TOTAL_CURRENCY,
-                id: createOperationId(),
-                timestamp,
-                value
-            });
-
-            setOperations((items) => [...items, operation]);
+        if (!account) {
+            return;
         }
 
-        handleCloseDetailsPanel();
+        setOperationError(undefined);
+        setOperationFieldErrors(undefined);
+
+        try {
+            const result = detailsPanelMode() === 'edit' && selected
+                ? await runUpdateOperation({
+                    ...value,
+                    id: selected.id,
+                    version: selected.version
+                })
+                : await runCreateOperation({
+                    ...value,
+                    accountId: account.id
+                });
+
+            if (result.ok) {
+                handleCloseDetailsPanel();
+                return;
+            }
+
+            setOperationError(result.message);
+            setOperationFieldErrors(result.fieldErrors);
+        }
+        catch {
+            setOperationError(
+                'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
+            );
+        }
     };
 
-    const handleOperationDelete = (operationId: string) => {
-        const timestamp = new Date().toISOString();
+    const handleOperationDelete = async () => {
+        const selected = selectedOperation();
 
-        setOperations((items) => items.map((operation) => (
-            operation.id === operationId
-                ? softDeleteOperation(operation, timestamp)
-                : operation
-        )));
-        handleCloseDetailsPanel();
+        if (!selected) {
+            return;
+        }
+
+        setOperationError(undefined);
+
+        try {
+            const result = await runDeleteOperation({
+                id: selected.id,
+                version: selected.version
+            });
+
+            if (result.ok) {
+                handleCloseDetailsPanel();
+                return;
+            }
+
+            setOperationError(result.message);
+        }
+        catch {
+            setOperationError(
+                'Не удалось удалить операцию. Проверьте подключение и повторите попытку.'
+            );
+        }
+    };
+
+    const handleOperationRateRecalculation = async () => {
+        const selected = selectedOperation();
+
+        if (!selected) {
+            return;
+        }
+
+        setOperationError(undefined);
+
+        try {
+            const result = await runRecalculateOperationRate({
+                id: selected.id,
+                version: selected.version
+            });
+
+            if (result.ok) {
+                setSelectedOperation({
+                    ...selected,
+                    ...result.operation
+                });
+                return;
+            }
+
+            setOperationError(result.message);
+        }
+        catch {
+            setOperationError(
+                'Не удалось пересчитать курс операции. Повторите попытку.'
+            );
+        }
     };
 
     return (
@@ -723,7 +798,6 @@ function HomeContent(props: HomeContentProps) {
                                                 <OperationsTable
                                                     account={account}
                                                     categories={categories()}
-                                                    operations={operations()}
                                                     selectedOperationId={
                                                         selectedOperation()?.id
                                                     }
@@ -746,24 +820,28 @@ function HomeContent(props: HomeContentProps) {
                     </Container>
                 </main>
 
-                <Show when={detailsPanelMode() && activeAccount()}>
-                    <OperationDetailsPanel
-                        account={activeAccount()}
-                        categories={categories()}
-                        contacts={contacts()}
-                        defaultExchangeRate={getDefaultTransactionExchangeRate(
-                            activeAccount().currency
-                        )}
-                        familyCurrency={FAMILY_TOTAL_CURRENCY}
-                        mobile={!isDesktopDetails()}
-                        mode={detailsPanelMode() as OperationDetailsPanelMode}
-                        open={isDetailsPanelOpen()}
-                        operation={selectedOperation()}
-                        onDelete={handleOperationDelete}
-                        onOpenChange={setIsDetailsPanelOpen}
-                        onPresenceChange={handleDetailsPanelPresenceChange}
-                        onSubmit={handleOperationSubmit}
-                    />
+                <Show keyed when={detailsPanelContext()}>
+                    {(context) => (
+                        <OperationDetailsPanel
+                            account={context.account}
+                            categories={categories()}
+                            contacts={contacts()}
+                            error={operationError()}
+                            fieldErrors={operationFieldErrors()}
+                            loading={isOperationMutationPending()}
+                            mobile={!isDesktopDetails()}
+                            mode={context.mode}
+                            open={isDetailsPanelOpen()}
+                            operation={selectedOperation()}
+                            onDelete={handleOperationDelete}
+                            onOpenChange={setIsDetailsPanelOpen}
+                            onPresenceChange={handleDetailsPanelPresenceChange}
+                            onRecalculateRate={
+                                handleOperationRateRecalculation
+                            }
+                            onSubmit={handleOperationSubmit}
+                        />
+                    )}
                 </Show>
             </div>
 
@@ -777,12 +855,49 @@ function HomeContent(props: HomeContentProps) {
                 onOpenChange={handleAccountDialogOpenChange}
                 onSubmit={handleAccountSubmit}
             />
+
+            <Dialog.Root
+                open={pendingCurrencyCorrection() !== undefined}
+                onOpenChange={(open) => {
+                    if (!open && !isAccountMutationPending()) {
+                        setPendingCurrencyCorrection(undefined);
+                    }
+                }}
+            >
+                <Dialog.Content>
+                    <Dialog.Header closeLabel='Закрыть подтверждение смены валюты'>
+                        <Dialog.Title>Изменить валюту счета?</Dialog.Title>
+                        <Dialog.Description>
+                            Суммы операций останутся прежними, но будут считаться
+                            указанными в новой валюте.
+                        </Dialog.Description>
+                    </Dialog.Header>
+                    <Dialog.Body>
+                        Исторические суммы в валюте семьи и снимки курсов будут
+                        пересчитаны по датам операций. Если для любой даты нет
+                        курса, изменения не сохранятся.
+                    </Dialog.Body>
+                    <Dialog.Footer>
+                        <Dialog.Action closeOnClick intent='cancel'>
+                            Отмена
+                        </Dialog.Action>
+                        <Button
+                            loading={isAccountMutationPending()}
+                            type='button'
+                            onClick={handleConfirmCurrencyCorrection}
+                        >
+                            Пересчитать и сохранить
+                        </Button>
+                    </Dialog.Footer>
+                </Dialog.Content>
+            </Dialog.Root>
         </>
     );
 }
 
 export function HomePage() {
     const accounts = createAsync(() => getAccounts());
+    const balances = createAsync(() => getAccountBalances());
     const categoryCollection = createAsync(() => getCategories({
         status: 'active'
     }));
@@ -799,6 +914,7 @@ export function HomePage() {
                         onRetry={() => {
                             void Promise.all([
                                 revalidate(getAccounts.key, true),
+                                revalidate(getAccountBalances.key, true),
                                 revalidate(getCategories.key, true),
                                 revalidate(getContacts.key, true)
                             ]).then(reset, reset);
@@ -808,6 +924,7 @@ export function HomePage() {
             >
                 <HomeContent
                     accounts={accounts}
+                    balances={balances}
                     categoryCollection={categoryCollection}
                     contactCollection={contactCollection}
                 />

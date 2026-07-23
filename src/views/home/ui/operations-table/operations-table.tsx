@@ -1,5 +1,6 @@
 import css from './operations-table.module.scss';
 
+import { createAsync } from '@solidjs/router';
 import {
     ArrowDownRight,
     ArrowDownWideNarrow,
@@ -22,7 +23,6 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 import type { Account } from '~/entities/account';
 import type { Category } from '~/entities/category';
 import type {
-    Operation,
     OperationGroup,
     OperationPeriodMode,
     OperationSort,
@@ -33,7 +33,7 @@ import {
     canMoveToNextOperationPeriod,
     createOperationGroups,
     filterOperationRows,
-    getAccountOperationsWithBalances,
+    getAccountLedger,
     getOperationPeriodRange,
     parseLocalDateKey,
     shiftOperationPeriod
@@ -47,7 +47,6 @@ import { TextField } from '~/shared/ui/text-field';
 type OperationsTableProps = {
     account: Account;
     categories: readonly Category[];
-    operations: readonly Operation[];
     selectedOperationId?: string;
     onCreateOperation: () => void;
     onOperationSelect: (operation: OperationWithBalance) => void;
@@ -224,10 +223,12 @@ export function OperationsTable(props: OperationsTableProps) {
     const [isSearchOpen, setIsSearchOpen] = createSignal(false);
     const [searchQuery, setSearchQuery] = createSignal('');
 
-    const accountRows = createMemo(() => (
-        getAccountOperationsWithBalances(props.account, props.operations)
-    ));
     const periodRange = createMemo(() => getOperationPeriodRange(periodAnchor(), periodMode()));
+    const ledger = createAsync(() => getAccountLedger({
+        accountId: props.account.id,
+        ...periodRange()
+    }));
+    const accountRows = () => ledger()?.items ?? [];
     const visibleRows = createMemo(() => (
         filterOperationRows(accountRows(), periodRange(), searchQuery())
     ));
@@ -336,7 +337,11 @@ export function OperationsTable(props: OperationsTableProps) {
     };
 
     return (
-        <section aria-label='Операции счёта' class={css.root}>
+        <section
+            aria-busy={ledger() === undefined}
+            aria-label='Операции счёта'
+            class={css.root}
+        >
             <div class={css.toolbar}>
                 <div class={css.toolbarGroup}>
                     <Button
@@ -452,7 +457,11 @@ export function OperationsTable(props: OperationsTableProps) {
                 class={css.grid}
                 columns={columns}
                 data={tableItems()}
-                emptyContent={searchQuery() ? 'По вашему запросу ничего не найдено' : 'В этом периоде операций нет'}
+                emptyContent={ledger() === undefined
+                    ? 'Загрузка операций…'
+                    : searchQuery()
+                        ? 'По вашему запросу ничего не найдено'
+                        : 'В этом периоде операций нет'}
                 fullWidthRowTemplate={({ dataItem }) => renderGroupRow(dataItem)}
                 getRowAriaLabel={(item) => item.kind === 'operation'
                     ? `${item.operation.title}, ${formatMinorUnitsCurrency(

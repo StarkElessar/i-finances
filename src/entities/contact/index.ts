@@ -30,7 +30,6 @@ export {
 export type { ContactListFilter, ContactTypeFilter } from './model/selectors';
 export {
     filterContacts,
-    getContactMonthlyExpensesById,
     getSelectableContacts
 } from './model/selectors';
 export type {

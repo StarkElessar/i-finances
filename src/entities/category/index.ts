@@ -35,8 +35,7 @@ export {
 } from './model/normalization';
 export {
     findSuggestedCategory,
-    getCategoryBudgetSummary,
-    getCategoryMonthlyExpenseMinor
+    getCategoryBudgetSummary
 } from './model/selectors';
 export type {
     Category,

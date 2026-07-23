@@ -3,8 +3,6 @@ import type {
     PersistedContact
 } from './types';
 
-import type { Operation } from '~/entities/operation';
-
 export type ContactTypeFilter = 'all' | Exclude<ContactType, 'unknown'>;
 
 export type ContactListFilter = {
@@ -55,41 +53,10 @@ export function getSelectableContacts(
     });
 }
 
-export function getContactMonthlyExpensesById(
-    operations: readonly Operation[],
-    monthDate: Date
-): ReadonlyMap<string, number> {
-    const expensesByContactId = new Map<string, number>();
-
-    operations.forEach((operation) => {
-        if (
-            operation.type === 'expense'
-            && operation.deletedAt === null
-            && operation.contactId !== null
-            && isSameMonth(operation.happenedOn, monthDate)
-        ) {
-            const currentAmount = expensesByContactId.get(operation.contactId) ?? 0;
-
-            expensesByContactId.set(
-                operation.contactId,
-                currentAmount + operation.amountInFamilyCurrencyMinor
-            );
-        }
-    });
-
-    return expensesByContactId;
-}
-
 function normalizeSearchValue(value: string): string {
     return value
         .trim()
         .replace(/\s+/g, ' ')
         .toLocaleLowerCase('ru-BY')
         .replace(/ё/g, 'е');
-}
-
-function isSameMonth(dateKey: string, monthDate: Date): boolean {
-    const [year, month] = dateKey.split('-').map(Number);
-
-    return year === monthDate.getFullYear() && month - 1 === monthDate.getMonth();
 }

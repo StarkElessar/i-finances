@@ -34,6 +34,7 @@ export const createAccountInputSchema = z.object(editableAccountFields);
  */
 export const updateAccountInputSchema = z.object({
     ...editableAccountFields,
+    confirmCurrencyCorrection: z.boolean().default(false),
     id: accountIdSchema,
     version: accountVersionSchema
 });
@@ -53,10 +54,12 @@ export type ChangeAccountArchiveStateInput = z.infer<
 >;
 
 export type AccountCommandErrorCode =
+    | 'confirmation-required'
     | 'conflict'
     | 'forbidden'
     | 'invalid-input'
     | 'not-found'
+    | 'rate-unavailable'
     | 'unauthenticated';
 
 export type AccountCommandResult =

@@ -4,6 +4,7 @@ import {
     Building2,
     ChevronLeft,
     ChevronRight,
+    RefreshCw,
     Trash2,
     UserRound,
     X
@@ -30,7 +31,6 @@ import {
     cn,
     formatMinorUnitsAsInput,
     formatMinorUnitsCurrency,
-    normalizeExchangeRate,
     parseOptionalMoneyInputToMinorUnits
 } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
@@ -43,10 +43,12 @@ type OperationDetailsFormProps = Pick<
     | 'account'
     | 'categories'
     | 'contacts'
-    | 'defaultExchangeRate'
-    | 'familyCurrency'
+    | 'error'
+    | 'fieldErrors'
+    | 'loading'
     | 'mode'
     | 'onDelete'
+    | 'onRecalculateRate'
     | 'onSubmit'
     | 'operation'
 > & {
@@ -82,25 +84,23 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
     const [categoryWasSelectedManually, setCategoryWasSelectedManually] = createSignal(false);
     const [comment, setComment] = createSignal('');
     const [contactId, setContactId] = createSignal<string | null>(null);
-    const [exchangeRate, setExchangeRate] = createSignal(props.defaultExchangeRate);
-    const [exchangeRateError, setExchangeRateError] = createSignal<string>();
     const [happenedOn, setHappenedOn] = createSignal(formatLocalDateKey(new Date()));
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
     const [title, setTitle] = createSignal('');
     const [type, setType] = createSignal<OperationType>('expense');
 
     const isEditMode = () => props.mode === 'edit';
-    const usesExchangeRate = () => props.account.currency !== props.familyCurrency;
+    const usesExchangeRate = () => (
+        props.operation?.exchangeRate.fromCurrency
+        !== props.operation?.exchangeRate.toCurrency
+    );
     const parsedAmount = () => parseOptionalMoneyInputToMinorUnits(amount());
-    const normalizedRate = () => usesExchangeRate()
-        ? normalizeExchangeRate(exchangeRate())
-        : '1';
     const canSubmit = () => (
         Boolean(title().trim())
         && Boolean(happenedOn())
         && typeof parsedAmount() === 'number'
         && (parsedAmount() as number) > 0
-        && normalizedRate() !== undefined
+        && !props.loading
     );
     const signedPreviewAmount = () => {
         const parsedValue = parsedAmount();
@@ -178,7 +178,6 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
             setCategoryWasSelectedManually(operation.categoryId !== null);
             setComment(operation.comment);
             setContactId(operation.contactId);
-            setExchangeRate(operation.exchangeRate.rate.replace('.', ','));
             setHappenedOn(operation.happenedOn);
             setTitle(operation.title);
             setType(operation.type);
@@ -189,14 +188,12 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
             setCategoryWasSelectedManually(false);
             setComment('');
             setContactId(null);
-            setExchangeRate(props.defaultExchangeRate.replace('.', ','));
             setHappenedOn(formatLocalDateKey(new Date()));
             setTitle('');
             setType('expense');
         }
 
         setAmountError(undefined);
-        setExchangeRateError(undefined);
         setIsDeleteDialogOpen(false);
         queueMicrotask(() => amountInput?.focus());
     };
@@ -222,11 +219,6 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
         setAmountError(undefined);
     };
 
-    const handleExchangeRateInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
-        setExchangeRate(event.currentTarget.value);
-        setExchangeRateError(undefined);
-    };
-
     const handleDateShift = (offset: number): void => {
         const date = tryParseLocalDateKey(happenedOn()) ?? new Date();
 
@@ -237,7 +229,6 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
     const handleSubmit: JSX.EventHandler<HTMLFormElement, SubmitEvent> = (event) => {
         event.preventDefault();
         const amountMinor = parsedAmount();
-        const rate = normalizedRate();
 
         if (amountMinor === null) {
             setAmountError('Укажите сумму операции');
@@ -246,14 +237,9 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
             setAmountError('Введите положительную сумму с двумя знаками после запятой');
         }
 
-        if (rate === undefined) {
-            setExchangeRateError('Введите положительный курс, например 3,2500');
-        }
-
         if (
             typeof amountMinor !== 'number'
             || amountMinor <= 0
-            || rate === undefined
             || !title().trim()
             || !happenedOn()
         ) {
@@ -265,7 +251,6 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
             categoryId: categoryId(),
             comment: comment(),
             contactId: contactId(),
-            exchangeRate: rate,
             happenedOn: happenedOn(),
             title: title(),
             type: type()
@@ -273,11 +258,9 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
     };
 
     const handleConfirmDelete = (): void => {
-        const operationId = props.operation?.id;
-
-        if (operationId) {
+        if (props.operation) {
             setIsDeleteDialogOpen(false);
-            props.onDelete(operationId);
+            props.onDelete();
         }
     };
 
@@ -323,7 +306,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         <button
                             aria-pressed={type() === 'expense'}
                             class={cn(css.typeButton, type() === 'expense' && css.typeButtonActive)}
-                            disabled={type() === 'expense'}
+                            disabled={props.loading || type() === 'expense'}
                             tabIndex={type() === 'expense' ? -1 : 0}
                             type='button'
                             onClick={() => setType('expense')}
@@ -333,7 +316,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         <button
                             aria-pressed={type() === 'income'}
                             class={cn(css.typeButton, type() === 'income' && css.typeButtonActive)}
-                            disabled={type() === 'income'}
+                            disabled={props.loading || type() === 'income'}
                             tabIndex={type() === 'income' ? -1 : 0}
                             type='button'
                             onClick={() => setType('income')}
@@ -344,6 +327,8 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
                     <div class={css.dateField}>
                         <TextField
+                            disabled={props.loading}
+                            error={props.fieldErrors?.happenedOn}
                             label='Дата'
                             required
                             type='date'
@@ -353,6 +338,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         <div class={css.dateActions}>
                             <Button
                                 aria-label='Предыдущий день'
+                                disabled={props.loading}
                                 iconOnly
                                 size='sm'
                                 variant='ghost'
@@ -362,6 +348,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                             </Button>
                             <Button
                                 aria-label='Следующий день'
+                                disabled={props.loading}
                                 iconOnly
                                 size='sm'
                                 variant='ghost'
@@ -374,7 +361,8 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
                     <TextField
                         ref={amountInput}
-                        error={amountError()}
+                        disabled={props.loading}
+                        error={amountError() ?? props.fieldErrors?.amountMinor}
                         inputMode='decimal'
                         label='Сумма'
                         placeholder='0,00'
@@ -384,20 +372,43 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         onInput={handleAmountInput}
                     />
 
-                    <Show when={usesExchangeRate()}>
-                        <TextField
-                            error={exchangeRateError()}
-                            hint='Курс сохраняется вместе с операцией'
-                            inputMode='decimal'
-                            label='Курс транзакции'
-                            startContent={`1 ${props.account.currency} =`}
-                            value={exchangeRate()}
-                            endContent={props.familyCurrency}
-                            onInput={handleExchangeRateInput}
-                        />
+                    <Show when={isEditMode() && usesExchangeRate() && props.operation}>
+                        {(operation) => (
+                            <div class={css.rateField}>
+                                <div>
+                                    <span class={css.rateLabel}>Курс операции</span>
+                                    <strong>
+                                        1 {operation().exchangeRate.fromCurrency}
+                                        {' = '}
+                                        {operation().exchangeRate.rate}
+                                        {' '}
+                                        {operation().exchangeRate.toCurrency}
+                                    </strong>
+                                    <span class={css.rateHint}>
+                                        {operation().exchangeRate.effectiveOn}
+                                        {' · '}
+                                        {operation().exchangeRate.source}
+                                    </span>
+                                </div>
+                                <Button
+                                    aria-label='Пересчитать курс операции'
+                                    disabled={props.loading}
+                                    iconOnly
+                                    size='sm'
+                                    title='Пересчитать по таблице курсов'
+                                    type='button'
+                                    variant='ghost'
+                                    onClick={props.onRecalculateRate}
+                                >
+                                    <RefreshCw size={17}/>
+                                </Button>
+                            </div>
+                        )}
                     </Show>
 
                     <TextField
+                        disabled={props.loading}
+                        error={props.fieldErrors?.title}
                         label='Название'
                         maxLength={160}
                         placeholder='Например, Продукты на неделю'
@@ -408,6 +419,8 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
                     <Combobox
                         clearable
+                        disabled={props.loading}
+                        error={props.fieldErrors?.contactId}
                         getOptionDisabled={(option) => option.archived}
                         getOptionLabel={(option) => option.name}
                         getOptionSearchText={(option) => `${option.name} ${option.legalName ?? ''}`}
@@ -425,6 +438,8 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
                     <Combobox
                         clearable
+                        disabled={props.loading}
+                        error={props.fieldErrors?.categoryId}
                         getOptionDisabled={(option) => option.disabled}
                         getOptionLabel={(option) => option.name}
                         getOptionValue={(option) => option.id}
@@ -446,6 +461,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         </div>
                         <textarea
                             class={css.textarea}
+                            disabled={props.loading}
                             id={commentId}
                             maxLength={1000}
                             placeholder='Дополнительные сведения об операции'
@@ -454,6 +470,9 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                             onInput={(event) => setComment(event.currentTarget.value)}
                         />
                     </div>
+                    <Show when={props.error}>
+                        <p class={css.formError} role='alert'>{props.error}</p>
+                    </Show>
                 </div>
 
                 <footer class={css.footer}>
@@ -461,6 +480,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         <Button
                             aria-label='Удалить операцию'
                             class={css.deleteButton}
+                            disabled={props.loading}
                             iconOnly
                             title='Удалить операцию'
                             type='button'
@@ -471,10 +491,19 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                         </Button>
                     </Show>
                     <span class={css.footerSpacer}/>
-                    <Button type='button' variant='secondary' onClick={props.onClose}>
+                    <Button
+                        disabled={props.loading}
+                        type='button'
+                        variant='secondary'
+                        onClick={props.onClose}
+                    >
                         Отмена
                     </Button>
-                    <Button disabled={!canSubmit()} type='submit'>
+                    <Button
+                        disabled={!canSubmit()}
+                        loading={props.loading}
+                        type='submit'
+                    >
                         {isEditMode() ? 'Сохранить' : 'Добавить'}
                     </Button>
                 </footer>
@@ -505,7 +534,12 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
                     </Dialog.Body>
                     <Dialog.Footer>
                         <Dialog.Action closeOnClick intent='cancel'>Отмена</Dialog.Action>
-                        <Button type='button' variant='danger' onClick={handleConfirmDelete}>
+                        <Button
+                            loading={props.loading}
+                            type='button'
+                            variant='danger'
+                            onClick={handleConfirmDelete}
+                        >
                             Удалить
                         </Button>
                     </Dialog.Footer>

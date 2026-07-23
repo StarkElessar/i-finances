@@ -40,6 +40,11 @@ import {
     restoreContact as restoreContactAction,
     updateContact as updateContactAction
 } from '~/entities/contact';
+import type { MonthlyExpenseSummary } from '~/entities/operation';
+import {
+    formatLocalDateKey,
+    getMonthlyExpenseSummary
+} from '~/entities/operation';
 import { cn, CurrencyCode } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { Container } from '~/shared/ui/container';
@@ -55,7 +60,12 @@ type ContactTypeFilterOption = {
 
 type ContactsContentProps = {
     collection: Accessor<ContactCollection | undefined>;
+    monthlySummary: Accessor<MonthlyExpenseSummary | undefined>;
 };
+
+function getCurrentMonthKey(): string {
+    return formatLocalDateKey(new Date()).slice(0, 7);
+}
 
 const CONTACT_TYPE_FILTERS: ContactTypeFilterOption[] = [
     { label: 'Все', value: 'all' },
@@ -130,10 +140,18 @@ function ContactsContent(props: ContactsContentProps) {
 
     const contacts = () => props.collection()?.items ?? [];
     const currency = () => (
-        props.collection()?.baseCurrency ?? CurrencyCode.BYN
+        props.monthlySummary()?.baseCurrency
+        ?? props.collection()?.baseCurrency
+        ?? CurrencyCode.BYN
     );
-    const isLoaded = () => props.collection() !== undefined;
-    const isLoading = () => props.collection() === undefined;
+    const isLoaded = () => (
+        props.collection() !== undefined
+        && props.monthlySummary() !== undefined
+    );
+    const isLoading = () => !isLoaded();
+    const contactExpenses = () => (
+        props.monthlySummary()?.contactExpensesMinor ?? {}
+    );
     const isDialogMutationPending = () => Boolean(
         createSubmission.pending || updateSubmission.pending
     );
@@ -476,7 +494,10 @@ function ContactsContent(props: ContactsContentProps) {
                                                     archiveDragAction.activeId()
                                                     === contact.id
                                                 }
-                                                spentMinor={0}
+                                                spentMinor={
+                                                    contactExpenses()[contact.id]
+                                                    ?? 0
+                                                }
                                                 onClick={() => (
                                                     handleContactClick(contact.id)
                                                 )}
@@ -555,18 +576,27 @@ function ContactsContent(props: ContactsContentProps) {
 
 export function ContactsPage() {
     const collection = createAsync(() => getContacts({ status: 'all' }));
+    const monthlySummary = createAsync(() => getMonthlyExpenseSummary({
+        month: getCurrentMonthKey()
+    }));
 
     return (
         <ErrorBoundary
             fallback={(_error, reset) => (
                 <ContactsLoadError
                     onRetry={() => {
-                        void revalidate(getContacts.key, true).then(reset, reset);
+                        void Promise.all([
+                            revalidate(getContacts.key, true),
+                            revalidate(getMonthlyExpenseSummary.key, true)
+                        ]).then(reset, reset);
                     }}
                 />
             )}
         >
-            <ContactsContent collection={collection}/>
+            <ContactsContent
+                collection={collection}
+                monthlySummary={monthlySummary}
+            />
         </ErrorBoundary>
     );
 }
