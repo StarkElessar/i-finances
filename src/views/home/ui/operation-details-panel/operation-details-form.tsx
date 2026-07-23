@@ -24,7 +24,7 @@ import type { Contact } from '~/entities/contact';
 import {
     formatLocalDateKey,
     type OperationType,
-    parseLocalDateKey
+    tryParseLocalDateKey
 } from '~/entities/operation';
 import {
     cn,
@@ -209,7 +209,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
     };
 
     const handleDateShift = (offset: number): void => {
-        const date = parseLocalDateKey(happenedOn());
+        const date = tryParseLocalDateKey(happenedOn()) ?? new Date();
 
         date.setDate(date.getDate() + offset);
         setHappenedOn(formatLocalDateKey(date));

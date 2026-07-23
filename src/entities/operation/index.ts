@@ -17,7 +17,8 @@ export {
     formatLocalDateKey,
     getOperationPeriodRange,
     parseLocalDateKey,
-    shiftOperationPeriod
+    shiftOperationPeriod,
+    tryParseLocalDateKey
 } from './model/period';
 export {
     createOperationGroups,

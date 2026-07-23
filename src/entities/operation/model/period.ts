@@ -59,14 +59,40 @@ export function formatLocalDateKey(date: Date): string {
     return `${year}-${month}-${day}`;
 }
 
-export function parseLocalDateKey(dateKey: string): Date {
+/**
+ * Parses a date field value without throwing while the user is editing it.
+ */
+export function tryParseLocalDateKey(dateKey: string): Date | undefined {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
 
     if (!match) {
+        return undefined;
+    }
+
+    const year = Number(match[1]);
+    const month = Number(match[2]) - 1;
+    const day = Number(match[3]);
+    const date = new Date(year, month, day, 12);
+
+    if (
+        date.getFullYear() !== year
+        || date.getMonth() !== month
+        || date.getDate() !== day
+    ) {
+        return undefined;
+    }
+
+    return date;
+}
+
+export function parseLocalDateKey(dateKey: string): Date {
+    const date = tryParseLocalDateKey(dateKey);
+
+    if (!date) {
         throw new Error(`Invalid local date key: ${dateKey}`);
     }
 
-    return new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+    return date;
 }
 
 function startOfPeriod(date: Date, mode: OperationPeriodMode): Date {
