@@ -186,7 +186,7 @@ export function ContactsPage() {
     return (
         <>
             <main class={css.root}>
-                <Container class={css.page} useMaxSize>
+                <Container class={css.page}>
                     <Title>Контакты</Title>
                     <header class={css.header}>
                         <div class={css.headerContent}>
