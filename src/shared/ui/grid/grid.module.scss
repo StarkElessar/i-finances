@@ -1,6 +1,8 @@
 @use "~/shared/styles/functions" as fn;
 
 .root {
+    --grid-header-block-size: #{fn.rem(38)};
+
     overflow: hidden;
 
     min-inline-size: 0;
@@ -51,7 +53,7 @@
     th {
         position: relative;
 
-        block-size: fn.rem(38);
+        block-size: var(--grid-header-block-size);
         padding-block: var(--space-4);
 
         font-size: var(--font-size-label);

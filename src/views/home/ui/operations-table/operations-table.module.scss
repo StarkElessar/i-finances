@@ -208,6 +208,12 @@
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--group-color) 72%, transparent);
 }
 
+.group-header-row {
+    position: sticky;
+    z-index: 2;
+    inset-block-start: var(--grid-header-block-size);
+}
+
 .group-heading,
 .group-balance {
     display: flex;

@@ -463,6 +463,7 @@ export function OperationsTable(props: OperationsTableProps) {
                         item.operation.currency
                     )}`
                     : item.group.label}
+                getRowClass={(item) => item.kind === 'group' ? css.groupHeaderRow : undefined}
                 getRowKey={(item) => item.kind === 'group' ? item.group.id : item.operation.id}
                 isFullWidthRow={(item) => item.kind === 'group'}
                 isRowSelected={(item) => (
