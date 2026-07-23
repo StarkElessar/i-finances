@@ -7,7 +7,7 @@ export { ACCOUNT_TYPE_META_BY_TYPE, ACCOUNT_TYPES, AccountType, getAccountTypeMe
 export type { ClassValue } from './cn';
 export { cn } from './cn';
 export type { CurrencyCodeValue } from './currency-code';
-export { CurrencyCode } from './currency-code';
+export { CURRENCY_CODES, CurrencyCode } from './currency-code';
 export type { CurrencyExchangeRates, MoneyAmount } from './currency-converter';
 export { convertCurrency, sumMoney } from './currency-converter';
 export type { CurrencyDisplay, FormatCurrencyOptions } from './currency-formatter';

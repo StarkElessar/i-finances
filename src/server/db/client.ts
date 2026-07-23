@@ -56,3 +56,8 @@ if (process.env.NODE_ENV !== 'production') {
  * Typed Drizzle client shared by server-only repositories.
  */
 export const db = drizzle(sqlite, { schema });
+
+/**
+ * Shared Drizzle database shape accepted by repositories and test databases.
+ */
+export type AppDatabase = typeof db;

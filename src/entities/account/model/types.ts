@@ -11,3 +11,13 @@ export type Account = {
     name: string;
     type: AccountTypeValue;
 };
+
+/**
+ * Canonical account DTO returned by the server persistence layer.
+ */
+export type PersistedAccount = Account & {
+    archivedAt: string | null;
+    createdAt: string;
+    updatedAt: string;
+    version: number;
+};

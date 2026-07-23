@@ -4,6 +4,11 @@
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: var(--space-5);
+
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
 .form-field-full,
@@ -132,6 +137,12 @@
     border-radius: var(--radius-md);
 
     background-color: var(--color-surface);
+}
+
+.error {
+    margin: var(--space-5) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--color-danger);
 }
 
 @media (width <= 640px) {

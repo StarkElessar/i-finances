@@ -1,30 +1,46 @@
-import css from './create-account-dialog.module.scss';
+import css from './account-dialog.module.scss';
 
-import { createSignal, For } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 
 import type { AccountTypeValue, CurrencyCodeValue } from '~/shared/lib';
-import { AccountColor, AccountType, cn, CurrencyCode, getAccountTypeMeta, getCurrencySymbol } from '~/shared/lib';
-import { AccountIcon, Dialog, TextField, Typography } from '~/shared/ui';
+import {
+    AccountColor,
+    AccountType,
+    cn,
+    CurrencyCode,
+    getAccountTypeMeta,
+    getCurrencySymbol
+} from '~/shared/lib';
+import { AccountIcon } from '~/shared/ui/account-icon';
 import { ColorPicker } from '~/shared/ui/color-picker';
+import { Dialog } from '~/shared/ui/dialog';
 import { Switch } from '~/shared/ui/switch';
+import { TextField } from '~/shared/ui/text-field';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 const DEFAULT_ACCOUNT_COLOR = AccountColor.BLUE;
 
-export type CreateAccountDialogValue = {
-    name: string;
+export type AccountDialogMode = 'create' | 'edit';
+
+export type AccountDialogValue = {
     balance: number;
-    currency: CurrencyCodeValue;
-    type: AccountTypeValue;
     color: string;
+    currency: CurrencyCodeValue;
     isColorAccentEnabled: boolean;
     isIncludedInFamilyTotal: boolean;
+    name: string;
+    type: AccountTypeValue;
 };
 
-export type CreateAccountDialogProps = {
+export type AccountDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onCreateAccount: (account: CreateAccountDialogValue) => void;
+    onSubmit: (account: AccountDialogValue) => Promise<void> | void;
+    error?: string;
+    fieldErrors?: Record<string, string>;
+    initialValue?: AccountDialogValue;
+    loading?: boolean;
+    mode?: AccountDialogMode;
 };
 
 function getCurrencyOptionLabel(currency: CurrencyCodeValue): string {
@@ -34,20 +50,35 @@ function getCurrencyOptionLabel(currency: CurrencyCodeValue): string {
 function parseBalanceInput(value: string): number {
     const normalizedValue = value.trim().replace(',', '.');
 
-    if (!normalizedValue) {
+    if (normalizedValue === '') {
         return 0;
     }
 
     const amount = Number(normalizedValue);
 
-    if (!Number.isFinite(amount)) {
-        return 0;
-    }
-
-    return amount;
+    return Number.isFinite(amount) ? amount : 0;
 }
 
-export function CreateAccountDialog(props: CreateAccountDialogProps) {
+function createDefaultDialogValue(): AccountDialogValue {
+    return {
+        balance: 0,
+        color: DEFAULT_ACCOUNT_COLOR,
+        currency: CurrencyCode.BYN,
+        isColorAccentEnabled: false,
+        isIncludedInFamilyTotal: true,
+        name: '',
+        type: AccountType.CARD
+    };
+}
+
+function formatBalanceInput(value: number): string {
+    return value === 0 ? '' : String(value);
+}
+
+/**
+ * Renders the shared create/edit form for a persisted account.
+ */
+export function AccountDialog(props: AccountDialogProps) {
     const [accountName, setAccountName] = createSignal('');
     const [accountBalance, setAccountBalance] = createSignal('');
     const [accountCurrency, setAccountCurrency] = createSignal<CurrencyCodeValue>(CurrencyCode.BYN);
@@ -56,29 +87,27 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
     const [isColorAccentEnabled, setIsColorAccentEnabled] = createSignal(false);
     const [isIncludedInFamilyTotal, setIsIncludedInFamilyTotal] = createSignal(true);
 
-    const resetForm = () => {
-        setAccountName('');
-        setAccountBalance('');
-        setAccountCurrency(CurrencyCode.BYN);
-        setAccountColor(DEFAULT_ACCOUNT_COLOR);
-        setAccountType(AccountType.CARD);
-        setIsColorAccentEnabled(false);
-        setIsIncludedInFamilyTotal(true);
-    };
+    const mode = () => props.mode ?? 'create';
+    const isEditMode = () => mode() === 'edit';
+    const title = () => isEditMode() ? 'Редактирование счета' : 'Создание счета';
+    const description = () => isEditMode()
+        ? 'Измените параметры счета и сохраните результат'
+        : 'Добавьте карту, наличные или накопления семьи';
+    const submitLabel = () => isEditMode() ? 'Сохранить' : 'Создать';
 
-    const closeDialog = () => {
-        props.onOpenChange(false);
-        resetForm();
-    };
+    createEffect(() => {
+        if (props.open) {
+            const value = props.initialValue ?? createDefaultDialogValue();
 
-    const handleOpenChange = (open: boolean) => {
-        if (!open) {
-            closeDialog();
-            return;
+            setAccountName(value.name);
+            setAccountBalance(formatBalanceInput(value.balance));
+            setAccountCurrency(value.currency);
+            setAccountColor(value.color);
+            setAccountType(value.type);
+            setIsColorAccentEnabled(value.isColorAccentEnabled);
+            setIsIncludedInFamilyTotal(value.isIncludedInFamilyTotal);
         }
-
-        props.onOpenChange(true);
-    };
+    });
 
     const handleNameInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
         setAccountName(event.currentTarget.value);
@@ -104,43 +133,42 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
         setIsIncludedInFamilyTotal(event.currentTarget.checked);
     };
 
-    const handleCreateAccountSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
+    const handleSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
         event.preventDefault();
 
         const name = accountName().trim();
 
-        if (!name) {
-            return;
+        if (name) {
+            void props.onSubmit({
+                balance: parseBalanceInput(accountBalance()),
+                color: accountColor(),
+                currency: accountCurrency(),
+                isColorAccentEnabled: isColorAccentEnabled(),
+                isIncludedInFamilyTotal: isIncludedInFamilyTotal(),
+                name,
+                type: accountType()
+            });
         }
-
-        props.onCreateAccount({
-            balance: parseBalanceInput(accountBalance()),
-            color: accountColor(),
-            currency: accountCurrency(),
-            isColorAccentEnabled: isColorAccentEnabled(),
-            isIncludedInFamilyTotal: isIncludedInFamilyTotal(),
-            name,
-            type: accountType()
-        });
-        closeDialog();
     };
 
     return (
         <Dialog.Root
+            closeOnBackdropClick={!props.loading}
+            closeOnEscape={!props.loading}
             open={props.open}
-            onOpenChange={handleOpenChange}
+            onOpenChange={props.onOpenChange}
         >
-            <Dialog.Content
-                as='form'
-                onSubmit={handleCreateAccountSubmit}
-            >
-                <Dialog.Header closeLabel='Закрыть окно создания счета'>
-                    <Dialog.Title>Создание счета</Dialog.Title>
-                    <Typography tone='secondary'>Добавьте карту, наличные или накопления семьи</Typography>
+            <Dialog.Content as='form' onSubmit={handleSubmit}>
+                <Dialog.Header
+                    closeLabel='Закрыть окно счета'
+                    hideCloseButton={props.loading}
+                >
+                    <Dialog.Title>{title()}</Dialog.Title>
+                    <Dialog.Description>{description()}</Dialog.Description>
                 </Dialog.Header>
 
                 <Dialog.Body>
-                    <div class={css.formGrid}>
+                    <fieldset class={css.formGrid} disabled={props.loading}>
                         <div class={css.formFieldFull}>
                             <div class={css.formLabel}>Тип счета</div>
                             <div class={css.typeOptions}>
@@ -152,7 +180,8 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                                             <label
                                                 class={cn(
                                                     css.typeOption,
-                                                    accountType() === currentAccountType && css.typeOptionActive
+                                                    accountType() === currentAccountType
+                                                    && css.typeOptionActive
                                                 )}
                                             >
                                                 <input
@@ -162,9 +191,14 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                                                     value={currentAccountType}
                                                     onChange={() => setAccountType(currentAccountType)}
                                                 />
-                                                <AccountIcon accountType={currentAccountType} class={css.typeIcon}/>
+                                                <AccountIcon
+                                                    accountType={currentAccountType}
+                                                    class={css.typeIcon}
+                                                />
                                                 <span>{accountTypeMeta.label}</span>
-                                                <span class={css.typeDescription}>{accountTypeMeta.description}</span>
+                                                <span class={css.typeDescription}>
+                                                    {accountTypeMeta.description}
+                                                </span>
                                             </label>
                                         );
                                     }}
@@ -174,7 +208,9 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
 
                         <TextField
                             class={css.formFieldFull}
+                            error={props.fieldErrors?.name}
                             label='Название счета'
+                            maxLength={120}
                             placeholder='Например, Основная карта'
                             required
                             value={accountName()}
@@ -182,6 +218,7 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                         />
 
                         <TextField
+                            error={props.fieldErrors?.initialBalanceMinor}
                             inputMode='decimal'
                             label='Начальный баланс'
                             placeholder='0,00'
@@ -201,7 +238,9 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                             >
                                 <For each={ACCOUNT_CURRENCY_OPTIONS}>
                                     {(currency) => (
-                                        <option value={currency}>{getCurrencyOptionLabel(currency)}</option>
+                                        <option value={currency}>
+                                            {getCurrencyOptionLabel(currency)}
+                                        </option>
                                     )}
                                 </For>
                             </select>
@@ -231,18 +270,27 @@ export function CreateAccountDialog(props: CreateAccountDialogProps) {
                                 />
                             </label>
                         </div>
-                    </div>
+                    </fieldset>
+
+                    <Show when={props.error}>
+                        <p class={css.error} role='alert'>{props.error}</p>
+                    </Show>
                 </Dialog.Body>
 
                 <Dialog.Footer>
                     <Dialog.Action
                         closeOnClick
+                        disabled={props.loading}
                         intent='cancel'
                     >
                         Отмена
                     </Dialog.Action>
-                    <Dialog.Action disabled={!accountName().trim()} type='submit'>
-                        Создать
+                    <Dialog.Action
+                        disabled={!accountName().trim()}
+                        loading={props.loading}
+                        type='submit'
+                    >
+                        {submitLabel()}
                     </Dialog.Action>
                 </Dialog.Footer>
             </Dialog.Content>
