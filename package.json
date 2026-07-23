@@ -11,6 +11,7 @@
 		"g:view": "plop view",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx scripts/migrate-db.ts",
+		"db:rate": "tsx scripts/upsert-exchange-rate.ts",
 		"db:seed": "tsx scripts/seed-auth-user.ts",
 		"test": "vitest run",
 		"test:watch": "vitest",
