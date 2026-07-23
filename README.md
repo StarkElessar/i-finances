@@ -67,4 +67,26 @@ Solid apps are built with _presets_, which optimise your project for deployment 
 
 By default, `npm run build` will generate a Node app that you can run with `npm start`. To use a different preset, add it to the `devDependencies` in `package.json` and specify in your `app.config.js`.
 
+## Managing exchange rates
+
+Apply committed database migrations before writing rates:
+
+```bash
+pnpm db:migrate
+```
+
+Create or update one canonical daily rate:
+
+```bash
+pnpm db:rate -- \
+  --from USD \
+  --to BYN \
+  --rate 3.25 \
+  --date 2026-07-24 \
+  --source manual
+```
+
+The direction is explicit: `amountTo = amountFrom * rate`. Repeating the
+command for the same currency pair and date updates the existing record.
+
 ## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
