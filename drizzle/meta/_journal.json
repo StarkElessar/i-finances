@@ -15,6 +15,13 @@
       "when": 1784830030772,
       "tag": "0001_household_accounts",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1784835046820,
+      "tag": "0002_unique_kingpin",
+      "breakpoints": true
     }
   ]
 }
