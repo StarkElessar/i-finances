@@ -10,5 +10,4 @@ export {
     createAccountInputSchema,
     updateAccountInputSchema
 } from './api/account.contract';
-export { CASH_ACCOUNT_ID, INITIAL_ACCOUNTS } from './model/mock-data';
 export type { Account, PersistedAccount } from './model/types';

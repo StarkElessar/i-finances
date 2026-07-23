@@ -2,7 +2,6 @@ import { parse } from 'csv-parse/browser/esm/sync';
 
 import type { Operation, OperationCategoryReference } from './types';
 
-import { CASH_ACCOUNT_ID } from '~/entities/account';
 import type { Contact } from '~/entities/contact';
 import { ACCENT_COLORS, amountToMinorUnits, CurrencyCode } from '~/shared/lib';
 
@@ -22,9 +21,16 @@ export type ImportedOperationsData = {
     operations: Operation[];
 };
 
+export type ImportOperationsCsvOptions = {
+    accountId: string;
+};
+
 const CSV_HEADER = 'Дата;Сумма;Название;Получатель/Плательщик;IBAN контакта;Категория;Комментарий';
 
-export function importOperationsCsv(rawCsv: string): ImportedOperationsData {
+export function importOperationsCsv(
+    rawCsv: string,
+    options: ImportOperationsCsvOptions
+): ImportedOperationsData {
     const csvBody = getCsvBody(rawCsv);
     const parsedRecords: unknown[] = parse(csvBody, {
         bom: true,
@@ -50,6 +56,7 @@ export function importOperationsCsv(rawCsv: string): ImportedOperationsData {
         operations: records.map((record, sourceOrder) => createOperation(
             record,
             sourceOrder,
+            options.accountId,
             categoryByName,
             contactByName
         ))
@@ -120,6 +127,7 @@ function createContacts(records: readonly CsvOperationRecord[]): Map<string, Con
 function createOperation(
     record: CsvOperationRecord,
     sourceOrder: number,
+    accountId: string,
     categoryByName: ReadonlyMap<string, OperationCategoryReference>,
     contactByName: ReadonlyMap<string, Contact>
 ): Operation {
@@ -130,7 +138,7 @@ function createOperation(
     const timestamp = `${happenedOn}T12:00:00.000Z`;
 
     return {
-        accountId: CASH_ACCOUNT_ID,
+        accountId,
         amountInFamilyCurrencyMinor: Math.abs(signedAmountMinor),
         amountMinor: Math.abs(signedAmountMinor),
         categoryId: categoryName ? categoryByName.get(categoryName)?.id ?? null : null,

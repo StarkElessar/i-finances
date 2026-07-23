@@ -1,3 +1,5 @@
+import type { CurrencyCodeValue } from '~/shared/lib';
+
 export type Category = {
     color: string;
     createdAt: string;
@@ -6,6 +8,19 @@ export type Category = {
     monthlyBudgetMinor: number | null;
     name: string;
     updatedAt: string;
+};
+
+/**
+ * Canonical category DTO returned by the server persistence layer.
+ */
+export type PersistedCategory = Category & {
+    archivedAt: string | null;
+    version: number;
+};
+
+export type CategoryCollection = {
+    baseCurrency: CurrencyCodeValue;
+    items: PersistedCategory[];
 };
 
 export type CategoryBudgetSummary = {

@@ -1,45 +1,61 @@
 import css from './categories.module.scss';
 
 import { Title } from '@solidjs/meta';
-import { Trash2 } from 'lucide-solid';
-import { createEffect, createMemo, createSignal, For, onMount, Show } from 'solid-js';
+import {
+    createAsync,
+    revalidate,
+    useAction,
+    useSubmission
+} from '@solidjs/router';
+import {
+    Archive,
+    Layers,
+    Plus,
+    RefreshCw
+} from 'lucide-solid';
+import type { Accessor } from 'solid-js';
+import {
+    createMemo,
+    createSignal,
+    ErrorBoundary,
+    For,
+    onMount,
+    Show
+} from 'solid-js';
 
 import { CategoryCard } from './ui/category-card';
 import type { CategoryDialogMode, CategoryDialogValue } from './ui/category-dialog';
 import { CategoryDialog } from './ui/category-dialog';
 
-import type { Category, CategoryBudgetSummary } from '~/entities/category';
+import type {
+    CategoryBudgetSummary,
+    CategoryCollection,
+    PersistedCategory
+} from '~/entities/category';
 import {
-    CATEGORY_FAMILY_CURRENCY,
+    archiveCategory as archiveCategoryAction,
+    createCategory as createCategoryAction,
+    getCategories,
     getCategoryBudgetSummary,
-    INITIAL_CATEGORIES,
-    readCategoriesFromStorage,
-    writeCategoriesToStorage
+    restoreCategory as restoreCategoryAction,
+    updateCategory as updateCategoryAction
 } from '~/entities/category';
 import type { Operation } from '~/entities/operation';
 import {
     INITIAL_OPERATIONS,
     readOperationsFromStorage
 } from '~/entities/operation';
+import { cn, CurrencyCode } from '~/shared/lib';
 import { Button, Container } from '~/shared/ui';
 import { createDragAction, DragAction } from '~/shared/ui/drag-action';
 
-function createCategoryId(): string {
-    return globalThis.crypto.randomUUID();
-}
+type CategoryListMode = 'active' | 'archive';
 
-function createCategoryFromDialogValue(value: CategoryDialogValue): Category {
-    const now = new Date().toISOString();
+type CategoriesContentProps = {
+    collection: Accessor<CategoryCollection | undefined>;
+};
 
-    return {
-        ...value,
-        createdAt: now,
-        id: createCategoryId(),
-        updatedAt: now
-    };
-}
-
-function toDialogValue(category: Category): CategoryDialogValue {
+function toDialogValue(category: PersistedCategory): CategoryDialogValue {
     return {
         color: category.color,
         keywords: category.keywords,
@@ -61,34 +77,93 @@ function getCategorySummary(
     return summary;
 }
 
-export function CategoriesPage() {
-    const [categories, setCategories] = createSignal<Category[]>(INITIAL_CATEGORIES);
-    const [isStorageReady, setIsStorageReady] = createSignal(false);
-    const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
+function CategoryGridSkeleton() {
+    return (
+        <div aria-label='Загрузка категорий' class={css.grid} role='status'>
+            <For each={Array.from({ length: 6 })}>
+                {() => <div class={css.skeletonCard}/>}
+            </For>
+        </div>
+    );
+}
+
+type CategoriesLoadErrorProps = {
+    onRetry: () => void;
+};
+
+function CategoriesLoadError(props: CategoriesLoadErrorProps) {
+    return (
+        <main class={css.root}>
+            <Container class={css.page}>
+                <div class={css.loadError}>
+                    <div>
+                        <h1>Не удалось загрузить категории</h1>
+                        <p>Проверьте подключение и повторите попытку.</p>
+                    </div>
+                    <Button
+                        startIcon={<RefreshCw size={18}/>}
+                        type='button'
+                        variant='secondary'
+                        onClick={props.onRetry}
+                    >
+                        Повторить
+                    </Button>
+                </div>
+            </Container>
+        </main>
+    );
+}
+
+function CategoriesContent(props: CategoriesContentProps) {
     const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
+    const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
+    const [listMode, setListMode] = createSignal<CategoryListMode>('active');
     const [monthDate] = createSignal(new Date());
     const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
+    const [dialogError, setDialogError] = createSignal<string>();
+    const [dialogFieldErrors, setDialogFieldErrors]
+        = createSignal<Record<string, string>>();
+    const [pageError, setPageError] = createSignal<string>();
+    const runArchiveCategory = useAction(archiveCategoryAction);
+    const runCreateCategory = useAction(createCategoryAction);
+    const runRestoreCategory = useAction(restoreCategoryAction);
+    const runUpdateCategory = useAction(updateCategoryAction);
+    const archiveSubmission = useSubmission(archiveCategoryAction);
+    const createSubmission = useSubmission(createCategoryAction);
+    const restoreSubmission = useSubmission(restoreCategoryAction);
+    const updateSubmission = useSubmission(updateCategoryAction);
 
+    const categories = () => props.collection()?.items ?? [];
+    const currency = () => props.collection()?.baseCurrency ?? CurrencyCode.BYN;
+    const isLoaded = () => props.collection() !== undefined;
+    const isLoading = () => props.collection() === undefined;
+    const isDialogMutationPending = () => Boolean(
+        createSubmission.pending || updateSubmission.pending
+    );
+    const activeCategories = createMemo(() => (
+        categories().filter((category) => category.archivedAt === null)
+    ));
+    const archivedCategories = createMemo(() => (
+        categories().filter((category) => category.archivedAt !== null)
+    ));
+    const visibleCategories = createMemo(() => (
+        listMode() === 'active' ? activeCategories() : archivedCategories()
+    ));
     const editableCategory = createMemo(() => {
         const categoryId = editingCategoryId();
 
-        if (!categoryId) {
-            return undefined;
-        }
-
-        return categories().find((category) => category.id === categoryId);
+        return categoryId === undefined
+            ? undefined
+            : categories().find((category) => category.id === categoryId);
     });
-
-    const categoryDialogMode = createMemo<CategoryDialogMode>(() => {
-        return editableCategory() ? 'edit' : 'create';
-    });
-
+    const categoryDialogMode = createMemo<CategoryDialogMode>(() => (
+        editableCategory() ? 'edit' : 'create'
+    ));
     const categoryDialogInitialValue = createMemo(() => {
         const category = editableCategory();
 
         return category ? toDialogValue(category) : undefined;
     });
-
     const categorySummaries = createMemo(() => {
         const currentMonth = monthDate();
 
@@ -99,56 +174,64 @@ export function CategoriesPage() {
     });
 
     onMount(() => {
-        const storedCategories = readCategoriesFromStorage(window.localStorage);
-
-        if (storedCategories) {
-            setCategories(storedCategories);
-        }
-
         const storedOperations = readOperationsFromStorage(window.localStorage);
 
-        if (storedOperations) {
+        if (storedOperations !== undefined) {
             setOperations(storedOperations);
         }
-
-        setIsStorageReady(true);
     });
 
-    createEffect(() => {
-        if (!isStorageReady()) {
-            return;
-        }
-
-        writeCategoriesToStorage(window.localStorage, categories());
-    });
+    const resetDialogErrors = () => {
+        setDialogError(undefined);
+        setDialogFieldErrors(undefined);
+    };
 
     const handleOpenCreateDialog = () => {
         setEditingCategoryId(undefined);
+        resetDialogErrors();
         setIsCategoryDialogOpen(true);
     };
 
     const handleOpenEditDialog = (categoryId: string) => {
         setEditingCategoryId(categoryId);
+        resetDialogErrors();
         setIsCategoryDialogOpen(true);
     };
 
-    const handleDeleteCategory = (categoryId: string) => {
-        setCategories((currentCategories) => {
-            return currentCategories.filter((category) => category.id !== categoryId);
-        });
+    const handleArchiveCategory = async (categoryId: string) => {
+        const category = categories().find((item) => item.id === categoryId);
 
-        if (editingCategoryId() === categoryId) {
-            setEditingCategoryId(undefined);
-            setIsCategoryDialogOpen(false);
+        if (category === undefined || category.archivedAt !== null) {
+            return;
+        }
+
+        setPageError(undefined);
+
+        try {
+            const result = await runArchiveCategory({
+                id: category.id,
+                version: category.version
+            });
+
+            if (!result.ok) {
+                setPageError(result.message);
+            }
+        }
+        catch {
+            setPageError(
+                'Не удалось отправить категорию в архив. Повторите попытку.'
+            );
         }
     };
 
-    const deleteDragAction = createDragAction({
-        onDrop: handleDeleteCategory
+    const archiveDragAction = createDragAction({
+        onDrop: (categoryId) => {
+            void handleArchiveCategory(categoryId);
+        }
     });
 
     const handleCategoryClick = (categoryId: string) => {
-        if (deleteDragAction.consumeClick(categoryId)) {
+        if (archiveDragAction.consumeClick(categoryId)) {
             return;
         }
 
@@ -156,37 +239,79 @@ export function CategoriesPage() {
     };
 
     const handleCategoryDialogOpenChange = (open: boolean) => {
-        setIsCategoryDialogOpen(open);
-    };
-
-    const handleCategorySubmit = (value: CategoryDialogValue) => {
-        const editingId = editingCategoryId();
-
-        if (!editingId) {
-            setCategories((currentCategories) => [
-                ...currentCategories,
-                createCategoryFromDialogValue(value)
-            ]);
-            setIsCategoryDialogOpen(false);
+        if (isDialogMutationPending() || restoreSubmission.pending) {
             return;
         }
 
-        setCategories((currentCategories) => {
-            const now = new Date().toISOString();
+        setIsCategoryDialogOpen(open);
 
-            return currentCategories.map((category) => {
-                if (category.id !== editingId) {
-                    return category;
-                }
+        if (!open) {
+            setEditingCategoryId(undefined);
+            resetDialogErrors();
+        }
+    };
 
-                return {
-                    ...category,
+    const handleCategorySubmit = async (value: CategoryDialogValue) => {
+        const category = editableCategory();
+
+        resetDialogErrors();
+
+        try {
+            const result = category
+                ? await runUpdateCategory({
                     ...value,
-                    updatedAt: now
-                };
+                    id: category.id,
+                    version: category.version
+                })
+                : await runCreateCategory(value);
+
+            if (result.ok) {
+                setListMode('active');
+                setIsCategoryDialogOpen(false);
+                setEditingCategoryId(undefined);
+                return;
+            }
+
+            setDialogError(result.message);
+            setDialogFieldErrors(result.fieldErrors);
+        }
+        catch {
+            setDialogError(
+                'Не удалось сохранить категорию. Проверьте подключение и повторите попытку.'
+            );
+        }
+    };
+
+    const handleRestoreCategory = async () => {
+        const category = editableCategory();
+
+        if (category === undefined || category.archivedAt === null) {
+            return;
+        }
+
+        resetDialogErrors();
+
+        try {
+            const result = await runRestoreCategory({
+                id: category.id,
+                version: category.version
             });
-        });
-        setIsCategoryDialogOpen(false);
+
+            if (result.ok) {
+                setListMode('active');
+                setIsCategoryDialogOpen(false);
+                setEditingCategoryId(undefined);
+                return;
+            }
+
+            setDialogError(result.message);
+            setDialogFieldErrors(result.fieldErrors);
+        }
+        catch {
+            setDialogError(
+                'Не удалось восстановить категорию. Повторите попытку.'
+            );
+        }
     };
 
     return (
@@ -202,55 +327,143 @@ export function CategoriesPage() {
                         <Button
                             aria-label='Добавить категорию'
                             class={css.addButton}
+                            disabled={isLoading()}
                             iconOnly
                             size='lg'
                             type='button'
                             onClick={handleOpenCreateDialog}
                         >
-                            <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2.5'>
-                                <path d='M12 5v14M5 12h14'/>
-                            </svg>
+                            <Plus size={22} strokeWidth={2.5}/>
                         </Button>
                     </header>
 
-                    <Show
-                        fallback={(
-                            <div class={css.emptyState}>
-                                <div>Категорий пока нет</div>
-                                <Button type='button' onClick={handleOpenCreateDialog}>Добавить категорию</Button>
-                            </div>
-                        )}
-                        when={categories().length > 0}
-                    >
-                        <div class={css.grid}>
-                            <For each={categories()}>
-                                {(category) => (
-                                    <CategoryCard
-                                        category={category}
-                                        currency={CATEGORY_FAMILY_CURRENCY}
-                                        isDragging={deleteDragAction.activeId() === category.id}
-                                        summary={getCategorySummary(categorySummaries(), category.id)}
-                                        onClick={() => handleCategoryClick(category.id)}
-                                        onPointerCancel={deleteDragAction.onPointerCancel}
-                                        onPointerDown={(event) => deleteDragAction.onPointerDown(category.id, event)}
-                                        onPointerMove={deleteDragAction.onPointerMove}
-                                        onPointerUp={deleteDragAction.onPointerUp}
-                                    />
+                    <Show when={isLoaded()}>
+                        <div
+                            aria-label='Состояние категорий'
+                            class={css.segmented}
+                            role='group'
+                        >
+                            <button
+                                aria-pressed={listMode() === 'active'}
+                                class={cn(
+                                    css.segment,
+                                    listMode() === 'active' && css.segmentActive
                                 )}
-                            </For>
+                                tabIndex={listMode() === 'active' ? -1 : 0}
+                                type='button'
+                                onClick={() => setListMode('active')}
+                            >
+                                <Layers size={16}/>
+                                Активные
+                                <span class={css.count}>{activeCategories().length}</span>
+                            </button>
+                            <button
+                                aria-pressed={listMode() === 'archive'}
+                                class={cn(
+                                    css.segment,
+                                    listMode() === 'archive' && css.segmentActive
+                                )}
+                                tabIndex={listMode() === 'archive' ? -1 : 0}
+                                type='button'
+                                onClick={() => setListMode('archive')}
+                            >
+                                <Archive size={16}/>
+                                Архив
+                                <span class={css.count}>{archivedCategories().length}</span>
+                            </button>
                         </div>
+                    </Show>
+
+                    <Show when={pageError()}>
+                        <p class={css.pageError} role='alert'>{pageError()}</p>
+                    </Show>
+
+                    <Show fallback={<CategoryGridSkeleton/>} when={isLoaded()}>
+                        <Show
+                            fallback={(
+                                <div class={css.emptyState}>
+                                    <strong>
+                                        {listMode() === 'archive'
+                                            ? 'Архив категорий пуст'
+                                            : 'Категорий пока нет'}
+                                    </strong>
+                                    <span>
+                                        {listMode() === 'archive'
+                                            ? 'Сюда попадут категории, отправленные в архив'
+                                            : 'Добавьте первую категорию вручную'}
+                                    </span>
+                                    <Show when={listMode() === 'active'}>
+                                        <Button
+                                            type='button'
+                                            onClick={handleOpenCreateDialog}
+                                        >
+                                            Добавить категорию
+                                        </Button>
+                                    </Show>
+                                </div>
+                            )}
+                            when={visibleCategories().length > 0}
+                        >
+                            <div class={css.grid}>
+                                <For each={visibleCategories()}>
+                                    {(category) => {
+                                        const isDraggable = () => (
+                                            category.archivedAt === null
+                                            && !archiveSubmission.pending
+                                        );
+
+                                        return (
+                                            <CategoryCard
+                                                category={category}
+                                                currency={currency()}
+                                                isDragging={
+                                                    archiveDragAction.activeId()
+                                                    === category.id
+                                                }
+                                                summary={getCategorySummary(
+                                                    categorySummaries(),
+                                                    category.id
+                                                )}
+                                                onClick={() => (
+                                                    handleCategoryClick(category.id)
+                                                )}
+                                                onPointerCancel={isDraggable()
+                                                    ? archiveDragAction.onPointerCancel
+                                                    : undefined}
+                                                onPointerDown={isDraggable()
+                                                    ? (event) => (
+                                                        archiveDragAction.onPointerDown(
+                                                            category.id,
+                                                            event
+                                                        )
+                                                    )
+                                                    : undefined}
+                                                onPointerMove={isDraggable()
+                                                    ? archiveDragAction.onPointerMove
+                                                    : undefined}
+                                                onPointerUp={isDraggable()
+                                                    ? archiveDragAction.onPointerUp
+                                                    : undefined}
+                                            />
+                                        );
+                                    }}
+                                </For>
+                            </div>
+                        </Show>
                     </Show>
                 </Container>
             </main>
 
             <DragAction.Overlay
-                controller={deleteDragAction}
-                icon={<Trash2 size={30} strokeWidth={2.2}/>}
-                label='Удалить категорию'
-                tone='danger'
+                controller={archiveDragAction}
+                icon={<Archive size={30} strokeWidth={2.2}/>}
+                label='Отправить категорию в архив'
+                tone='neutral'
             >
                 {(categoryId) => {
-                    const category = categories().find((item) => item.id === categoryId);
+                    const category = categories().find(
+                        (item) => item.id === categoryId
+                    );
 
                     return category ? (
                         <DragAction.Preview
@@ -264,13 +477,39 @@ export function CategoriesPage() {
             </DragAction.Overlay>
 
             <CategoryDialog
-                currency={CATEGORY_FAMILY_CURRENCY}
+                currency={currency()}
+                error={dialogError()}
+                fieldErrors={dialogFieldErrors()}
                 initialValue={categoryDialogInitialValue()}
+                isArchived={Boolean(editableCategory()?.archivedAt)}
+                loading={isDialogMutationPending()}
                 mode={categoryDialogMode()}
                 open={isCategoryDialogOpen()}
+                restoreLoading={restoreSubmission.pending}
                 onOpenChange={handleCategoryDialogOpenChange}
+                onRestore={editableCategory()?.archivedAt
+                    ? handleRestoreCategory
+                    : undefined}
                 onSubmit={handleCategorySubmit}
             />
         </>
+    );
+}
+
+export function CategoriesPage() {
+    const collection = createAsync(() => getCategories({ status: 'all' }));
+
+    return (
+        <ErrorBoundary
+            fallback={(_error, reset) => (
+                <CategoriesLoadError
+                    onRetry={() => {
+                        void revalidate(getCategories.key, true).then(reset, reset);
+                    }}
+                />
+            )}
+        >
+            <CategoriesContent collection={collection}/>
+        </ErrorBoundary>
     );
 }

@@ -38,8 +38,8 @@ import {
     getAccounts,
     updateAccount as updateAccountAction
 } from '~/entities/account/api';
-import type { Category } from '~/entities/category';
-import { INITIAL_CATEGORIES, readCategoriesFromStorage } from '~/entities/category';
+import type { CategoryCollection } from '~/entities/category';
+import { getCategories } from '~/entities/category';
 import type { Contact } from '~/entities/contact';
 import {
     mergeContactsWithImported,
@@ -54,7 +54,6 @@ import {
     createOperation,
     getAccountBalanceMinor,
     INITIAL_CONTACTS,
-    INITIAL_OPERATIONS,
     readOperationsFromStorage,
     softDeleteOperation,
     updateOperation,
@@ -188,17 +187,17 @@ function AccountsEmptyState(props: AccountsEmptyStateProps) {
     );
 }
 
-type AccountsLoadErrorProps = {
+type WorkspaceLoadErrorProps = {
     onRetry: () => void;
 };
 
-function AccountsLoadError(props: AccountsLoadErrorProps) {
+function WorkspaceLoadError(props: WorkspaceLoadErrorProps) {
     return (
         <main class={css.loadErrorRoot}>
             <Container class={css.loadError}>
                 <CircleAlert aria-hidden='true' size={38} strokeWidth={1.8}/>
                 <div>
-                    <h1>Не удалось загрузить счета</h1>
+                    <h1>Не удалось загрузить данные</h1>
                     <p>
                         Проверьте подключение и принадлежность пользователя к семейному пространству.
                     </p>
@@ -218,12 +217,12 @@ function AccountsLoadError(props: AccountsLoadErrorProps) {
 
 type HomeContentProps = {
     accounts: Accessor<PersistedAccount[] | undefined>;
+    categoryCollection: Accessor<CategoryCollection | undefined>;
 };
 
 function HomeContent(props: HomeContentProps) {
-    const [categories, setCategories] = createSignal<Category[]>(INITIAL_CATEGORIES);
     const [contacts, setContacts] = createSignal<Contact[]>(INITIAL_CONTACTS);
-    const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
+    const [operations, setOperations] = createSignal<Operation[]>([]);
     const [activeAccountId, setActiveAccountId] = createSignal<string>();
     const [preferredActiveAccountId, setPreferredActiveAccountId] = createSignal<string>();
     const [editingAccount, setEditingAccount] = createSignal<PersistedAccount>();
@@ -244,6 +243,7 @@ function HomeContent(props: HomeContentProps) {
     const updateAccountSubmission = useSubmission(updateAccountAction);
 
     const accountsList = () => props.accounts() ?? [];
+    const categories = () => props.categoryCollection()?.items ?? [];
     const isAccountsLoading = () => props.accounts() === undefined;
     const isAccountMutationPending = () => Boolean(
         createAccountSubmission.pending || updateAccountSubmission.pending
@@ -319,12 +319,6 @@ function HomeContent(props: HomeContentProps) {
     });
 
     onMount(() => {
-        const storedCategories = readCategoriesFromStorage(window.localStorage);
-
-        if (storedCategories) {
-            setCategories(storedCategories);
-        }
-
         const storedContacts = readContactsFromStorage(window.localStorage);
 
         if (storedContacts) {
@@ -798,20 +792,29 @@ function HomeContent(props: HomeContentProps) {
 
 export function HomePage() {
     const accounts = createAsync(() => getAccounts());
+    const categoryCollection = createAsync(() => getCategories({
+        status: 'active'
+    }));
 
     return (
         <>
             <Title>Операции — iFinances</Title>
             <ErrorBoundary
                 fallback={(_error, reset) => (
-                    <AccountsLoadError
+                    <WorkspaceLoadError
                         onRetry={() => {
-                            void revalidate(getAccounts.key, true).then(reset, reset);
+                            void Promise.all([
+                                revalidate(getAccounts.key, true),
+                                revalidate(getCategories.key, true)
+                            ]).then(reset, reset);
                         }}
                     />
                 )}
             >
-                <HomeContent accounts={accounts}/>
+                <HomeContent
+                    accounts={accounts}
+                    categoryCollection={categoryCollection}
+                />
             </ErrorBoundary>
         </>
     );

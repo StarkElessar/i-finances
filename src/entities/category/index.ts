@@ -1,7 +1,26 @@
+export type {
+    CategoryCommandErrorCode,
+    CategoryCommandResult,
+    CategoryListInput,
+    CategoryListStatus,
+    ChangeCategoryArchiveStateInput,
+    CreateCategoryInput,
+    UpdateCategoryInput
+} from './api/category.contract';
 export {
-    CATEGORY_FAMILY_CURRENCY,
-    INITIAL_CATEGORIES
-} from './model/mock-data';
+    CATEGORY_LIST_STATUSES,
+    categoryListInputSchema,
+    changeCategoryArchiveStateInputSchema,
+    createCategoryInputSchema,
+    updateCategoryInputSchema
+} from './api/category.contract';
+export {
+    archiveCategory,
+    createCategory,
+    getCategories,
+    restoreCategory,
+    updateCategory
+} from './api/category.server';
 export {
     amountToMinorUnits,
     formatMinorUnitsAsInput,
@@ -10,9 +29,19 @@ export {
     parseOptionalMoneyInputToMinorUnits
 } from './model/money';
 export {
+    CATEGORY_KEYWORD_MAX_LENGTH,
+    normalizeCategoryIdentity,
+    normalizeCategoryKeyword,
+    normalizeCategoryName
+} from './model/normalization';
+export {
     findSuggestedCategory,
     getCategoryBudgetSummary,
     getCategoryMonthlyExpenseMinor
 } from './model/selectors';
-export { CATEGORY_STORAGE_KEY, readCategoriesFromStorage, writeCategoriesToStorage } from './model/storage';
-export type { Category, CategoryBudgetSummary } from './model/types';
+export type {
+    Category,
+    CategoryBudgetSummary,
+    CategoryCollection,
+    PersistedCategory
+} from './model/types';

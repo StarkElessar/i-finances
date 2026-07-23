@@ -12,6 +12,11 @@
 .form {
     display: grid;
     gap: var(--space-5);
+
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
 .preview-block {
@@ -111,4 +116,39 @@
 
     font-size: var(--font-size-body-sm);
     color: var(--color-text-tertiary);
+}
+
+.error {
+    margin: var(--space-5) 0 0;
+    font-size: var(--font-size-body-sm);
+    color: var(--color-danger);
+}
+
+.footer {
+    align-items: center;
+}
+
+.footer-spacer {
+    flex: 1 1 auto;
+}
+
+.footer-actions {
+    display: flex;
+    gap: var(--space-4);
+}
+
+@media (width <= 640px) {
+    .footer {
+        display: flex;
+    }
+
+    .footer-spacer {
+        display: none;
+    }
+
+    .footer-actions {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        flex: 1 1 100%;
+    }
 }

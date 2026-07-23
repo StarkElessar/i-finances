@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { INITIAL_ACCOUNTS } from '~/entities/account';
+import type { Account } from '~/entities/account';
 import {
     canMoveToNextOperationPeriod,
     createOperationGroups,
@@ -10,8 +10,19 @@ import {
     getOperationPeriodRange,
     INITIAL_OPERATIONS
 } from '~/entities/operation';
+import { AccountColor, AccountType, CurrencyCode } from '~/shared/lib';
 
-const cashAccount = INITIAL_ACCOUNTS[0];
+const cashAccount: Account = {
+    color: AccountColor.GREEN,
+    currency: CurrencyCode.BYN,
+    description: 'Test fixture',
+    id: INITIAL_OPERATIONS[0].accountId,
+    initialBalanceMinor: -773,
+    isColorAccentEnabled: true,
+    isIncludedInFamilyTotal: true,
+    name: 'Наличные',
+    type: AccountType.CASH
+};
 const cashRows = getAccountOperationsWithBalances(cashAccount, INITIAL_OPERATIONS);
 const julyRange = getOperationPeriodRange(new Date(2026, 6, 22, 12), 'month');
 

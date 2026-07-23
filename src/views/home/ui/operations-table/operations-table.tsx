@@ -35,7 +35,6 @@ import {
     filterOperationRows,
     getAccountOperationsWithBalances,
     getOperationPeriodRange,
-    INITIAL_OPERATION_CATEGORIES,
     parseLocalDateKey,
     shiftOperationPeriod
 } from '~/entities/operation';
@@ -238,7 +237,6 @@ export function OperationsTable(props: OperationsTableProps) {
     const categoryColorById = createMemo(() => {
         const colorById = new Map<string, string>();
 
-        INITIAL_OPERATION_CATEGORIES.forEach((category) => colorById.set(category.id, category.color));
         props.categories.forEach((category) => colorById.set(category.id, category.color));
 
         return colorById;
@@ -246,7 +244,6 @@ export function OperationsTable(props: OperationsTableProps) {
     const categoryColorByName = createMemo(() => {
         const colorByName = new Map<string, string>();
 
-        INITIAL_OPERATION_CATEGORIES.forEach((category) => colorByName.set(category.name, category.color));
         props.categories.forEach((category) => colorByName.set(category.name, category.color));
 
         return colorByName;

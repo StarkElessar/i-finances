@@ -1,5 +1,6 @@
 import css from './category-dialog.module.scss';
 
+import { ArchiveRestore } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { createEffect, createSignal, Show } from 'solid-js';
 
@@ -26,10 +27,16 @@ export type CategoryDialogValue = {
 export type CategoryDialogProps = {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onSubmit: (value: CategoryDialogValue) => void;
+    onSubmit: (value: CategoryDialogValue) => Promise<void> | void;
     currency?: CurrencyCodeValue;
+    error?: string;
+    fieldErrors?: Record<string, string>;
     initialValue?: CategoryDialogValue;
+    isArchived?: boolean;
+    loading?: boolean;
     mode?: CategoryDialogMode;
+    onRestore?: () => Promise<void> | void;
+    restoreLoading?: boolean;
 };
 
 const DEFAULT_CATEGORY_COLOR = AccentColor.BLUE;
@@ -69,17 +76,15 @@ export function CategoryDialog(props: CategoryDialogProps) {
     const submitLabel = () => isEditMode() ? 'Сохранить' : 'Добавить категорию';
 
     createEffect(() => {
-        if (!props.open) {
-            return;
+        if (props.open) {
+            const initialValue = props.initialValue;
+
+            setCategoryName(initialValue?.name ?? '');
+            setCategoryBudget(resolveBudgetInputValue(initialValue?.monthlyBudgetMinor));
+            setCategoryColor(initialValue?.color ?? DEFAULT_CATEGORY_COLOR);
+            setKeywords([...(initialValue?.keywords ?? [])]);
+            setBudgetError(undefined);
         }
-
-        const initialValue = props.initialValue;
-
-        setCategoryName(initialValue?.name ?? '');
-        setCategoryBudget(resolveBudgetInputValue(initialValue?.monthlyBudgetMinor));
-        setCategoryColor(initialValue?.color ?? DEFAULT_CATEGORY_COLOR);
-        setKeywords([...(initialValue?.keywords ?? [])]);
-        setBudgetError(undefined);
     });
 
     const handleOpenChange = (open: boolean) => {
@@ -112,14 +117,20 @@ export function CategoryDialog(props: CategoryDialogProps) {
 
         props.onSubmit({
             color: categoryColor(),
-            keywords: isEditMode() ? keywords() : [],
+            keywords: keywords(),
             monthlyBudgetMinor: resolvePositiveBudget(budget),
             name
         });
     };
 
+    const handleRestore = () => {
+        void props.onRestore?.();
+    };
+
     return (
         <Dialog.Root
+            closeOnBackdropClick={!props.loading && !props.restoreLoading}
+            closeOnEscape={!props.loading && !props.restoreLoading}
             open={props.open}
             onOpenChange={handleOpenChange}
         >
@@ -128,15 +139,23 @@ export function CategoryDialog(props: CategoryDialogProps) {
                 class={css.dialog}
                 onSubmit={handleSubmit}
             >
-                <Dialog.Header closeLabel='Закрыть окно категории'>
+                <Dialog.Header
+                    closeLabel='Закрыть окно категории'
+                    hideCloseButton={props.loading || props.restoreLoading}
+                >
                     <Dialog.Title>{dialogTitle()}</Dialog.Title>
                     <Dialog.Description>Группа трат с месячным бюджетом и ключевыми словами</Dialog.Description>
                 </Dialog.Header>
 
                 <Dialog.Body>
-                    <div class={css.form}>
+                    <fieldset
+                        class={css.form}
+                        disabled={props.loading || props.restoreLoading}
+                    >
                         <TextField
+                            error={props.fieldErrors?.name}
                             label='Название'
+                            maxLength={120}
                             placeholder='Например, Подписки'
                             required
                             value={categoryName()}
@@ -144,7 +163,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
                         />
 
                         <TextField
-                            error={budgetError()}
+                            error={budgetError() ?? props.fieldErrors?.monthlyBudgetMinor}
                             hint='Оставьте пустым, если лимит пока не нужен'
                             inputMode='decimal'
                             label='Бюджет на месяц'
@@ -159,14 +178,13 @@ export function CategoryDialog(props: CategoryDialogProps) {
                             onChange={setCategoryColor}
                         />
 
-                        <Show when={isEditMode()}>
-                            <KeywordInput
-                                hint='Запятая или Enter создают чипс'
-                                label='Ключевые слова'
-                                value={keywords()}
-                                onChange={setKeywords}
-                            />
-                        </Show>
+                        <KeywordInput
+                            error={props.fieldErrors?.keywords}
+                            hint='Запятая или Enter создают чипс'
+                            label='Ключевые слова'
+                            value={keywords()}
+                            onChange={setKeywords}
+                        />
 
                         <div class={css.previewBlock}>
                             <div class={css.previewLabel}>Превью</div>
@@ -193,16 +211,42 @@ export function CategoryDialog(props: CategoryDialogProps) {
                                 </Show>
                             </div>
                         </div>
-                    </div>
+                    </fieldset>
+
+                    <Show when={props.error}>
+                        <p class={css.error} role='alert'>{props.error}</p>
+                    </Show>
                 </Dialog.Body>
 
-                <Dialog.Footer>
-                    <Dialog.Action closeOnClick intent='cancel'>
-                        Отмена
-                    </Dialog.Action>
-                    <Button disabled={!categoryName().trim()} type='submit'>
-                        {submitLabel()}
-                    </Button>
+                <Dialog.Footer class={css.footer}>
+                    <Show when={isEditMode() && props.isArchived && props.onRestore}>
+                        <Button
+                            loading={props.restoreLoading}
+                            type='button'
+                            variant='secondary'
+                            onClick={handleRestore}
+                        >
+                            <ArchiveRestore size={17}/>
+                            Вернуть из архива
+                        </Button>
+                    </Show>
+                    <span class={css.footerSpacer}/>
+                    <div class={css.footerActions}>
+                        <Dialog.Action
+                            closeOnClick
+                            disabled={props.loading || props.restoreLoading}
+                            intent='cancel'
+                        >
+                            Отмена
+                        </Dialog.Action>
+                        <Button
+                            disabled={!categoryName().trim() || props.restoreLoading}
+                            loading={props.loading}
+                            type='submit'
+                        >
+                            {submitLabel()}
+                        </Button>
+                    </div>
                 </Dialog.Footer>
             </Dialog.Content>
         </Dialog.Root>
