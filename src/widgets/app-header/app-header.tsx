@@ -21,8 +21,7 @@ const NAV_LINKS: NavigationLink[] = [
     { href: '/', label: 'Главная' },
     { href: '/categories', label: 'Категории' },
     { href: '/contacts', label: 'Контакты' },
-    { href: '/stats', label: 'Статистика' },
-    { href: '/table-resize', label: 'Таблица и ресайз колонок' }
+    { href: '/stats', label: 'Статистика' }
 ];
 
 function renderNavigationLink(link: NavigationLink) {
