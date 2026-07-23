@@ -2,10 +2,19 @@ import css from './home.module.scss';
 
 import { Title } from '@solidjs/meta';
 import type { JSX } from 'solid-js';
-import { createMemo, createSignal, For, onCleanup, onMount, Show } from 'solid-js';
+import {
+    createEffect,
+    createMemo,
+    createSignal,
+    For,
+    onCleanup,
+    onMount,
+    Show
+} from 'solid-js';
 
 import type { CreateAccountDialogValue } from './ui/create-account-dialog';
 import { CreateAccountDialog } from './ui/create-account-dialog';
+import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
 import { OperationDetailsPanel } from './ui/operation-details-panel';
 import { OperationsTable } from './ui/operations-table';
 
@@ -13,8 +22,26 @@ import type { Account } from '~/entities/account';
 import { INITIAL_ACCOUNTS } from '~/entities/account';
 import type { Category } from '~/entities/category';
 import { INITIAL_CATEGORIES, readCategoriesFromStorage } from '~/entities/category';
-import type { OperationWithBalance } from '~/entities/operation';
-import { getAccountBalanceMinor, INITIAL_OPERATIONS } from '~/entities/operation';
+import type { Contact } from '~/entities/contact';
+import {
+    mergeContactsWithImported,
+    readContactsFromStorage
+} from '~/entities/contact';
+import type {
+    Operation,
+    OperationFormValue,
+    OperationWithBalance
+} from '~/entities/operation';
+import {
+    createOperation,
+    getAccountBalanceMinor,
+    INITIAL_CONTACTS,
+    INITIAL_OPERATIONS,
+    readOperationsFromStorage,
+    softDeleteOperation,
+    updateOperation,
+    writeOperationsToStorage
+} from '~/entities/operation';
 import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
     amountToMinorUnits,
@@ -28,8 +55,6 @@ import {
     sumMoney
 } from '~/shared/lib';
 import { AccountIcon, Button, Container } from '~/shared/ui';
-
-type DetailsPanelMode = 'create' | 'view';
 
 const FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
@@ -60,20 +85,43 @@ function formatExchangeRateLabel(currency: CurrencyCodeValue): string {
     return `1 ${currency} = ${formatCurrency(convertedAmount, FAMILY_TOTAL_CURRENCY)}`;
 }
 
+function getDefaultTransactionExchangeRate(currency: CurrencyCodeValue): string {
+    if (currency === FAMILY_TOTAL_CURRENCY) {
+        return '1';
+    }
+
+    const rate = FAMILY_TOTAL_EXCHANGE_RATES.ratesToBaseCurrency[currency];
+
+    if (!rate) {
+        throw new Error(`Missing exchange rate for ${currency}`);
+    }
+
+    return String(rate);
+}
+
+function createOperationId(): string {
+    return `operation-${globalThis.crypto.randomUUID()}`;
+}
+
 export function HomePage() {
     const [accountsList, setAccountsList] = createSignal<Account[]>(INITIAL_ACCOUNTS);
     const [categories, setCategories] = createSignal<Category[]>(INITIAL_CATEGORIES);
+    const [contacts, setContacts] = createSignal<Contact[]>(INITIAL_CONTACTS);
+    const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
     const [activeAccountId, setActiveAccountId] = createSignal(INITIAL_ACCOUNTS[0].id);
     const [isCreateAccountDialogOpen, setIsCreateAccountDialogOpen] = createSignal(false);
     const [isSidebarOpen, setIsSidebarOpen] = createSignal(false);
-    const [detailsPanelMode, setDetailsPanelMode] = createSignal<DetailsPanelMode>();
+    const [detailsPanelMode, setDetailsPanelMode] = createSignal<OperationDetailsPanelMode>();
+    const [isDetailsPanelOpen, setIsDetailsPanelOpen] = createSignal(false);
+    const [isDetailsPanelPresent, setIsDetailsPanelPresent] = createSignal(false);
     const [selectedOperation, setSelectedOperation] = createSignal<OperationWithBalance>();
     const [isDesktopDetails, setIsDesktopDetails] = createSignal(false);
+    const [isOperationStorageReady, setIsOperationStorageReady] = createSignal(false);
 
     const accountBalanceMinorById = createMemo(() => {
         return new Map(accountsList().map((account) => [
             account.id,
-            getAccountBalanceMinor(account, INITIAL_OPERATIONS)
+            getAccountBalanceMinor(account, operations())
         ]));
     });
 
@@ -109,6 +157,20 @@ export function HomePage() {
             setCategories(storedCategories);
         }
 
+        const storedContacts = readContactsFromStorage(window.localStorage);
+
+        if (storedContacts) {
+            setContacts(mergeContactsWithImported(storedContacts, INITIAL_CONTACTS));
+        }
+
+        const storedOperations = readOperationsFromStorage(window.localStorage);
+
+        if (storedOperations) {
+            setOperations(storedOperations);
+        }
+
+        setIsOperationStorageReady(true);
+
         const mediaQuery = window.matchMedia(DESKTOP_DETAILS_QUERY);
         const syncDetailsMode = () => setIsDesktopDetails(mediaQuery.matches);
 
@@ -117,9 +179,23 @@ export function HomePage() {
         onCleanup(() => mediaQuery.removeEventListener('change', syncDetailsMode));
     });
 
+    createEffect(() => {
+        if (isOperationStorageReady()) {
+            writeOperationsToStorage(window.localStorage, operations());
+        }
+    });
+
     const handleCloseDetailsPanel = () => {
-        setDetailsPanelMode(undefined);
-        setSelectedOperation(undefined);
+        setIsDetailsPanelOpen(false);
+    };
+
+    const handleDetailsPanelPresenceChange = (present: boolean) => {
+        setIsDetailsPanelPresent(present);
+
+        if (!present) {
+            setDetailsPanelMode(undefined);
+            setSelectedOperation(undefined);
+        }
     };
 
     const handleOpenCreateAccountDialog = () => {
@@ -166,18 +242,81 @@ export function HomePage() {
 
     const handleOperationSelect = (operation: OperationWithBalance) => {
         setSelectedOperation(operation);
-        setDetailsPanelMode('view');
+        setDetailsPanelMode('edit');
+        setIsDetailsPanelOpen(true);
     };
 
     const handleCreateOperation = () => {
         setSelectedOperation(undefined);
         setDetailsPanelMode('create');
+        setIsDetailsPanelOpen(true);
+    };
+
+    const handleOperationSubmit = (value: OperationFormValue) => {
+        const currentOperations = operations();
+        const category = categories().find((item) => item.id === value.categoryId);
+        const contact = contacts().find((item) => item.id === value.contactId);
+        const selected = selectedOperation();
+        const timestamp = new Date().toISOString();
+        const categoryName = category?.name
+            ?? (selected?.categoryId === value.categoryId ? selected.categoryName : null);
+        const contactName = contact?.name
+            ?? (selected?.contactId === value.contactId ? selected.contactName : null);
+
+        if (detailsPanelMode() === 'edit' && selected) {
+            const updatedOperation = updateOperation(selected, {
+                allOperations: currentOperations,
+                categoryName,
+                contactName,
+                familyCurrency: FAMILY_TOTAL_CURRENCY,
+                timestamp,
+                value
+            });
+
+            setOperations((items) => items.map((operation) => (
+                operation.id === updatedOperation.id ? updatedOperation : operation
+            )));
+        }
+        else {
+            const account = activeAccount();
+            const operation = createOperation({
+                accountId: account.id,
+                allOperations: currentOperations,
+                categoryName,
+                contactName,
+                currency: account.currency,
+                familyCurrency: FAMILY_TOTAL_CURRENCY,
+                id: createOperationId(),
+                timestamp,
+                value
+            });
+
+            setOperations((items) => [...items, operation]);
+        }
+
+        handleCloseDetailsPanel();
+    };
+
+    const handleOperationDelete = (operationId: string) => {
+        const timestamp = new Date().toISOString();
+
+        setOperations((items) => items.map((operation) => (
+            operation.id === operationId
+                ? softDeleteOperation(operation, timestamp)
+                : operation
+        )));
+        handleCloseDetailsPanel();
     };
 
     return (
         <>
             <Title>Операции — iFinances</Title>
-            <div class={cn(css.root, detailsPanelMode() && isDesktopDetails() && css.detailsOpen)}>
+            <div
+                class={cn(
+                    css.root,
+                    isDetailsPanelPresent() && isDesktopDetails() && css.detailsOpen
+                )}
+            >
                 <button
                     aria-label='Закрыть список счетов'
                     class={cn(css.sidebarBackdrop, isSidebarOpen() && css.sidebarBackdropVisible)}
@@ -304,7 +443,7 @@ export function HomePage() {
                                         <OperationsTable
                                             account={account}
                                             categories={categories()}
-                                            operations={INITIAL_OPERATIONS}
+                                            operations={operations()}
                                             selectedOperationId={selectedOperation()?.id}
                                             onCreateOperation={handleCreateOperation}
                                             onOperationSelect={handleOperationSelect}
@@ -316,26 +455,26 @@ export function HomePage() {
                     </Container>
                 </main>
 
-                <Show when={detailsPanelMode() && isDesktopDetails() && activeAccount()}>
+                <Show when={detailsPanelMode() && activeAccount()}>
                     <OperationDetailsPanel
                         account={activeAccount()}
-                        mobile={false}
-                        mode={detailsPanelMode() as DetailsPanelMode}
+                        categories={categories()}
+                        contacts={contacts()}
+                        defaultExchangeRate={getDefaultTransactionExchangeRate(
+                            activeAccount().currency
+                        )}
+                        familyCurrency={FAMILY_TOTAL_CURRENCY}
+                        mobile={!isDesktopDetails()}
+                        mode={detailsPanelMode() as OperationDetailsPanelMode}
+                        open={isDetailsPanelOpen()}
                         operation={selectedOperation()}
-                        onClose={handleCloseDetailsPanel}
+                        onDelete={handleOperationDelete}
+                        onOpenChange={setIsDetailsPanelOpen}
+                        onPresenceChange={handleDetailsPanelPresenceChange}
+                        onSubmit={handleOperationSubmit}
                     />
                 </Show>
             </div>
-
-            <Show when={detailsPanelMode() && !isDesktopDetails() && activeAccount()}>
-                <OperationDetailsPanel
-                    account={activeAccount()}
-                    mobile
-                    mode={detailsPanelMode() as DetailsPanelMode}
-                    operation={selectedOperation()}
-                    onClose={handleCloseDetailsPanel}
-                />
-            </Show>
 
             <CreateAccountDialog
                 open={isCreateAccountDialogOpen()}

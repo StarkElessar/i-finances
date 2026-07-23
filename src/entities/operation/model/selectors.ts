@@ -25,7 +25,9 @@ export function getAccountOperationsWithBalances(
     let runningBalanceMinor = account.initialBalanceMinor;
 
     return operations
-        .filter((operation) => operation.accountId === account.id)
+        .filter((operation) => (
+            operation.accountId === account.id && operation.deletedAt === null
+        ))
         .toSorted(compareCanonicalOperationOrder)
         .map((operation) => {
             const signedAmountMinor = getSignedOperationAmountMinor(operation);
@@ -45,7 +47,7 @@ export function getAccountBalanceMinor(
     operations: readonly Operation[]
 ): number {
     return operations.reduce((balanceMinor, operation) => {
-        if (operation.accountId !== account.id) {
+        if (operation.accountId !== account.id || operation.deletedAt !== null) {
             return balanceMinor;
         }
 

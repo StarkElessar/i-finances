@@ -2,6 +2,15 @@ import type { CurrencyCodeValue } from '~/shared/lib';
 
 export type OperationType = 'expense' | 'income';
 
+/**
+ * Immutable exchange-rate snapshot used to preserve historical conversions.
+ */
+export type OperationExchangeRate = {
+    fromCurrency: CurrencyCodeValue;
+    rate: string;
+    toCurrency: CurrencyCodeValue;
+};
+
 export type Operation = {
     accountId: string;
     amountInFamilyCurrencyMinor: number;
@@ -13,6 +22,8 @@ export type Operation = {
     contactName: string | null;
     createdAt: string;
     currency: CurrencyCodeValue;
+    deletedAt: string | null;
+    exchangeRate: OperationExchangeRate;
     happenedOn: string;
     id: string;
     sourceOrder: number;

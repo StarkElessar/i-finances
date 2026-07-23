@@ -16,7 +16,12 @@ import {
     readContactsFromStorage,
     writeContactsToStorage
 } from '~/entities/contact';
-import { INITIAL_CONTACTS, INITIAL_OPERATIONS } from '~/entities/operation';
+import type { Operation } from '~/entities/operation';
+import {
+    INITIAL_CONTACTS,
+    INITIAL_OPERATIONS,
+    readOperationsFromStorage
+} from '~/entities/operation';
 import { cn, CurrencyCode } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { Container } from '~/shared/ui/container';
@@ -65,7 +70,10 @@ export function ContactsPage() {
     const [listMode, setListMode] = createSignal<ContactListMode>('active');
     const [query, setQuery] = createSignal('');
     const [typeFilter, setTypeFilter] = createSignal<ContactTypeFilter>('all');
-    const expensesByContactId = getContactMonthlyExpensesById(INITIAL_OPERATIONS, new Date());
+    const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
+    const expensesByContactId = createMemo(() => (
+        getContactMonthlyExpensesById(operations(), new Date())
+    ));
 
     const editingContact = createMemo(() => {
         const contactId = editingContactId();
@@ -99,6 +107,12 @@ export function ContactsPage() {
 
         if (storedContacts !== undefined) {
             setContacts(mergeContactsWithImported(storedContacts, INITIAL_CONTACTS));
+        }
+
+        const storedOperations = readOperationsFromStorage(window.localStorage);
+
+        if (storedOperations) {
+            setOperations(storedOperations);
         }
 
         setIsStorageReady(true);
@@ -287,7 +301,7 @@ export function ContactsPage() {
                                             currency={CurrencyCode.BYN}
                                             draggable={isDraggable()}
                                             isDragging={archiveDragAction.activeId() === contact.id}
-                                            spentMinor={expensesByContactId.get(contact.id) ?? 0}
+                                            spentMinor={expensesByContactId().get(contact.id) ?? 0}
                                             onClick={() => handleContactClick(contact.id)}
                                             onPointerCancel={isDraggable()
                                                 ? archiveDragAction.onPointerCancel

@@ -16,7 +16,11 @@ import {
     readCategoriesFromStorage,
     writeCategoriesToStorage
 } from '~/entities/category';
-import { INITIAL_OPERATIONS } from '~/entities/operation';
+import type { Operation } from '~/entities/operation';
+import {
+    INITIAL_OPERATIONS,
+    readOperationsFromStorage
+} from '~/entities/operation';
 import { Button, Container } from '~/shared/ui';
 import { createDragAction, DragAction } from '~/shared/ui/drag-action';
 
@@ -63,6 +67,7 @@ export function CategoriesPage() {
     const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
     const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
     const [monthDate] = createSignal(new Date());
+    const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
 
     const editableCategory = createMemo(() => {
         const categoryId = editingCategoryId();
@@ -89,7 +94,7 @@ export function CategoriesPage() {
 
         return new Map(categories().map((category) => [
             category.id,
-            getCategoryBudgetSummary(category, INITIAL_OPERATIONS, currentMonth)
+            getCategoryBudgetSummary(category, operations(), currentMonth)
         ]));
     });
 
@@ -98,6 +103,12 @@ export function CategoriesPage() {
 
         if (storedCategories) {
             setCategories(storedCategories);
+        }
+
+        const storedOperations = readOperationsFromStorage(window.localStorage);
+
+        if (storedOperations) {
+            setOperations(storedOperations);
         }
 
         setIsStorageReady(true);

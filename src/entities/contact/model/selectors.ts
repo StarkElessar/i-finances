@@ -57,6 +57,7 @@ export function getContactMonthlyExpensesById(
     operations.forEach((operation) => {
         if (
             operation.type === 'expense'
+            && operation.deletedAt === null
             && operation.contactId !== null
             && isSameMonth(operation.happenedOn, monthDate)
         ) {

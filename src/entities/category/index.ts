@@ -9,6 +9,10 @@ export {
     minorUnitsToAmount,
     parseOptionalMoneyInputToMinorUnits
 } from './model/money';
-export { getCategoryBudgetSummary, getCategoryMonthlyExpenseMinor } from './model/selectors';
+export {
+    findSuggestedCategory,
+    getCategoryBudgetSummary,
+    getCategoryMonthlyExpenseMinor
+} from './model/selectors';
 export { CATEGORY_STORAGE_KEY, readCategoriesFromStorage, writeCategoriesToStorage } from './model/storage';
 export type { Category, CategoryBudgetSummary } from './model/types';

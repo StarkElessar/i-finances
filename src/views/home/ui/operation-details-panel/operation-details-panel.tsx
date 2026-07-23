@@ -1,117 +1,173 @@
 import css from './operation-details-panel.module.scss';
 
-import { CalendarDays, Plus, Tag, WalletCards, X } from 'lucide-solid';
-import { Show } from 'solid-js';
+import { createEffect, createSignal, createUniqueId, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 
-import type { Account } from '~/entities/account';
-import type { OperationWithBalance } from '~/entities/operation';
-import { cn, formatDate, formatMinorUnitsCurrency } from '~/shared/lib';
-import { Button } from '~/shared/ui/button';
+import { OperationDetailsForm } from './operation-details-form';
+import type { OperationDetailsPanelProps } from './types';
 
-type OperationDetailsPanelProps = {
-    account: Account;
-    mobile: boolean;
-    mode: 'create' | 'view';
-    operation?: OperationWithBalance;
-    onClose: () => void;
-};
+import { cn } from '~/shared/lib';
 
+const CLOSE_ANIMATION_MS = 180;
+
+/**
+ * Renders the controlled transaction editor as an in-flow desktop panel or a
+ * portal-backed mobile drawer.
+ */
 export function OperationDetailsPanel(props: OperationDetailsPanelProps) {
+    let closeAnimationTimer: number | undefined;
+    let panelElement: HTMLElement | undefined;
+    let previousFocusElement: HTMLElement | undefined;
+    let wasOpen = false;
+    const titleId = createUniqueId();
+    const [isPresent, setIsPresent] = createSignal(props.open);
+    const [panelState, setPanelState] = createSignal<'open' | 'closing'>(
+        props.open ? 'open' : 'closing'
+    );
+
+    const clearCloseTimer = (): void => {
+        if (closeAnimationTimer !== undefined) {
+            window.clearTimeout(closeAnimationTimer);
+            closeAnimationTimer = undefined;
+        }
+    };
+
+    const close = (): void => {
+        props.onOpenChange(false);
+    };
+
+    createEffect(() => {
+        if (props.open) {
+            clearCloseTimer();
+            setIsPresent(true);
+            setPanelState('open');
+            props.onPresenceChange(true);
+
+            if (!wasOpen) {
+                previousFocusElement = document.activeElement instanceof HTMLElement
+                    ? document.activeElement
+                    : undefined;
+            }
+        }
+        else if (isPresent()) {
+            setPanelState('closing');
+            clearCloseTimer();
+            closeAnimationTimer = window.setTimeout(() => {
+                setIsPresent(false);
+                props.onPresenceChange(false);
+                previousFocusElement?.focus();
+                closeAnimationTimer = undefined;
+            }, CLOSE_ANIMATION_MS);
+        }
+
+        wasOpen = props.open;
+        onCleanup(clearCloseTimer);
+    });
+
+    createEffect(() => {
+        if (isPresent() && props.mobile) {
+            const previousOverflow = document.body.style.overflow;
+
+            document.body.style.overflow = 'hidden';
+            onCleanup(() => {
+                document.body.style.overflow = previousOverflow;
+            });
+        }
+    });
+
+    createEffect(() => {
+        if (isPresent()) {
+            const handleKeyDown = (event: KeyboardEvent): void => {
+                if (event.defaultPrevented) {
+                    return;
+                }
+
+                const eventBelongsToPanel = event.target instanceof Node
+                    && Boolean(panelElement?.contains(event.target));
+
+                if (event.key === 'Escape' && eventBelongsToPanel) {
+                    event.preventDefault();
+                    close();
+                    return;
+                }
+
+                if (
+                    event.key === 'Tab'
+                    && props.mobile
+                    && panelElement
+                    && eventBelongsToPanel
+                ) {
+                    trapFocus(panelElement, event);
+                }
+            };
+
+            document.addEventListener('keydown', handleKeyDown);
+            onCleanup(() => document.removeEventListener('keydown', handleKeyDown));
+        }
+    });
+
     const panel = () => (
         <aside
-            aria-label={props.mode === 'create' ? 'Новая операция' : 'Детали операции'}
+            ref={panelElement}
+            aria-labelledby={titleId}
+            aria-modal={props.mobile ? 'true' : undefined}
             class={cn(css.panel, props.mobile ? css.panelMobile : css.panelDesktop)}
+            data-state={panelState()}
+            role={props.mobile ? 'dialog' : undefined}
+            tabIndex={-1}
         >
-            <header class={css.header}>
-                <div>
-                    <div class={css.kicker}>{props.mode === 'create' ? 'Создание' : 'Операция'}</div>
-                    <h2 class={css.title}>
-                        {props.mode === 'create' ? 'Новая операция' : props.operation?.title}
-                    </h2>
-                </div>
-                <Button
-                    aria-label='Закрыть панель'
-                    iconOnly
-                    size='sm'
-                    variant='ghost'
-                    onClick={props.onClose}
-                >
-                    <X size={18}/>
-                </Button>
-            </header>
-
-            <Show
-                fallback={(
-                    <div class={css.createPlaceholder}>
-                        <span class={css.placeholderIcon}><Plus size={22}/></span>
-                        <strong>Новая операция</strong>
-                        <span>{props.account.name}</span>
-                    </div>
-                )}
-                when={props.mode === 'view' && props.operation}
-            >
-                {(operation) => (
-                    <div class={css.content}>
-                        <div
-                            class={cn(
-                                css.amount,
-                                operation().type === 'income' ? css.amountPositive : css.amountNegative
-                            )}
-                        >
-                            {formatMinorUnitsCurrency(
-                                operation().signedAmountMinor,
-                                operation().currency
-                            )}
-                        </div>
-                        <dl class={css.details}>
-                            <div>
-                                <dt><CalendarDays size={15}/>Дата</dt>
-                                <dd>{formatDate(`${operation().happenedOn}T12:00:00`)}</dd>
-                            </div>
-                            <div>
-                                <dt><WalletCards size={15}/>Счёт</dt>
-                                <dd>{props.account.name}</dd>
-                            </div>
-                            <div>
-                                <dt><Tag size={15}/>Категория</dt>
-                                <dd>{operation().categoryName ?? 'Без категории'}</dd>
-                            </div>
-                            <div>
-                                <dt>Контакт</dt>
-                                <dd>{operation().contactName ?? 'Не указан'}</dd>
-                            </div>
-                            <div>
-                                <dt>Баланс после операции</dt>
-                                <dd>{formatMinorUnitsCurrency(
-                                    operation().balanceAfterMinor,
-                                    operation().currency
-                                )}</dd>
-                            </div>
-                            <Show when={operation().comment}>
-                                <div>
-                                    <dt>Комментарий</dt>
-                                    <dd>{operation().comment}</dd>
-                                </div>
-                            </Show>
-                        </dl>
-                    </div>
-                )}
-            </Show>
+            <OperationDetailsForm
+                account={props.account}
+                categories={props.categories}
+                contacts={props.contacts}
+                defaultExchangeRate={props.defaultExchangeRate}
+                familyCurrency={props.familyCurrency}
+                mode={props.mode}
+                operation={props.operation}
+                titleId={titleId}
+                onClose={close}
+                onDelete={props.onDelete}
+                onSubmit={props.onSubmit}
+            />
         </aside>
     );
 
     return (
-        <Show fallback={panel()} when={props.mobile}>
-            <Portal>
-                <button
-                    aria-label='Закрыть панель операции'
-                    class={css.backdrop}
-                    type='button'
-                    onClick={props.onClose}
-                />
-                {panel()}
-            </Portal>
+        <Show when={isPresent()}>
+            <Show fallback={panel()} when={props.mobile}>
+                <Portal>
+                    <button
+                        aria-label='Закрыть панель операции'
+                        class={css.backdrop}
+                        data-state={panelState()}
+                        type='button'
+                        onClick={close}
+                    />
+                    {panel()}
+                </Portal>
+            </Show>
         </Show>
     );
+}
+
+function trapFocus(container: HTMLElement, event: KeyboardEvent): void {
+    const focusableElements = Array.from(container.querySelectorAll<HTMLElement>(
+        'button:not(:disabled), input:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])'
+    ));
+
+    if (focusableElements.length === 0) {
+        return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+    }
+    else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+    }
 }

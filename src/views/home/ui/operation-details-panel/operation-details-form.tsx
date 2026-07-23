@@ -1,0 +1,535 @@
+import css from './operation-details-panel.module.scss';
+
+import {
+    Building2,
+    ChevronLeft,
+    ChevronRight,
+    Trash2,
+    UserRound,
+    X
+} from 'lucide-solid';
+import type { JSX } from 'solid-js';
+import {
+    createEffect,
+    createMemo,
+    createSignal,
+    createUniqueId,
+    Show
+} from 'solid-js';
+
+import type { OperationDetailsPanelProps } from './types';
+
+import { findSuggestedCategory } from '~/entities/category';
+import type { Contact } from '~/entities/contact';
+import {
+    formatLocalDateKey,
+    type OperationType,
+    parseLocalDateKey
+} from '~/entities/operation';
+import {
+    cn,
+    formatMinorUnitsAsInput,
+    formatMinorUnitsCurrency,
+    normalizeExchangeRate,
+    parseOptionalMoneyInputToMinorUnits
+} from '~/shared/lib';
+import { Button } from '~/shared/ui/button';
+import { Combobox } from '~/shared/ui/combobox';
+import { Dialog } from '~/shared/ui/dialog';
+import { TextField } from '~/shared/ui/text-field';
+
+type OperationDetailsFormProps = Pick<
+    OperationDetailsPanelProps,
+    | 'account'
+    | 'categories'
+    | 'contacts'
+    | 'defaultExchangeRate'
+    | 'familyCurrency'
+    | 'mode'
+    | 'onDelete'
+    | 'onSubmit'
+    | 'operation'
+> & {
+    onClose: () => void;
+    titleId: string;
+};
+
+type CategoryOption = {
+    color: string;
+    disabled: boolean;
+    id: string;
+    name: string;
+};
+
+type ContactOption = {
+    archived: boolean;
+    color: string;
+    id: string;
+    legalName: string | null;
+    name: string;
+    type: Contact['type'];
+};
+
+/**
+ * Owns transaction draft state, validation and domain-specific form controls.
+ */
+export function OperationDetailsForm(props: OperationDetailsFormProps) {
+    let amountInput: HTMLInputElement | undefined;
+    const commentId = createUniqueId();
+    const [amount, setAmount] = createSignal('');
+    const [amountError, setAmountError] = createSignal<string>();
+    const [categoryId, setCategoryId] = createSignal<string | null>(null);
+    const [categoryWasSelectedManually, setCategoryWasSelectedManually] = createSignal(false);
+    const [comment, setComment] = createSignal('');
+    const [contactId, setContactId] = createSignal<string | null>(null);
+    const [exchangeRate, setExchangeRate] = createSignal(props.defaultExchangeRate);
+    const [exchangeRateError, setExchangeRateError] = createSignal<string>();
+    const [happenedOn, setHappenedOn] = createSignal(formatLocalDateKey(new Date()));
+    const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
+    const [title, setTitle] = createSignal('');
+    const [type, setType] = createSignal<OperationType>('expense');
+
+    const isEditMode = () => props.mode === 'edit';
+    const usesExchangeRate = () => props.account.currency !== props.familyCurrency;
+    const parsedAmount = () => parseOptionalMoneyInputToMinorUnits(amount());
+    const normalizedRate = () => usesExchangeRate()
+        ? normalizeExchangeRate(exchangeRate())
+        : '1';
+    const canSubmit = () => (
+        Boolean(title().trim())
+        && Boolean(happenedOn())
+        && typeof parsedAmount() === 'number'
+        && (parsedAmount() as number) > 0
+        && normalizedRate() !== undefined
+    );
+    const signedPreviewAmount = () => {
+        const parsedValue = parsedAmount();
+
+        if (typeof parsedValue !== 'number') {
+            return 0;
+        }
+
+        return type() === 'expense' ? -parsedValue : parsedValue;
+    };
+    const categoryOptions = createMemo<CategoryOption[]>(() => {
+        const options = props.categories.map((category) => ({
+            color: category.color,
+            disabled: false,
+            id: category.id,
+            name: category.name
+        }));
+        const operation = props.operation;
+
+        if (
+            operation?.categoryId
+            && operation.categoryName
+            && !options.some((option) => option.id === operation.categoryId)
+        ) {
+            options.push({
+                color: '#7d8799',
+                disabled: true,
+                id: operation.categoryId,
+                name: operation.categoryName
+            });
+        }
+
+        return options;
+    });
+    const contactOptions = createMemo<ContactOption[]>(() => (
+        props.contacts
+            .filter((contact) => (
+                !contact.isArchived || contact.id === props.operation?.contactId
+            ))
+            .map((contact) => ({
+                archived: contact.isArchived,
+                color: contact.color,
+                id: contact.id,
+                legalName: contact.legalName,
+                name: contact.name,
+                type: contact.type
+            }))
+    ));
+
+    const resetForm = (): void => {
+        const operation = props.operation;
+
+        if (isEditMode() && operation) {
+            setAmount(formatMinorUnitsAsInput(operation.amountMinor));
+            setCategoryId(operation.categoryId);
+            setCategoryWasSelectedManually(operation.categoryId !== null);
+            setComment(operation.comment);
+            setContactId(operation.contactId);
+            setExchangeRate(operation.exchangeRate.rate.replace('.', ','));
+            setHappenedOn(operation.happenedOn);
+            setTitle(operation.title);
+            setType(operation.type);
+        }
+        else {
+            setAmount('');
+            setCategoryId(null);
+            setCategoryWasSelectedManually(false);
+            setComment('');
+            setContactId(null);
+            setExchangeRate(props.defaultExchangeRate.replace('.', ','));
+            setHappenedOn(formatLocalDateKey(new Date()));
+            setTitle('');
+            setType('expense');
+        }
+
+        setAmountError(undefined);
+        setExchangeRateError(undefined);
+        setIsDeleteDialogOpen(false);
+        queueMicrotask(() => amountInput?.focus());
+    };
+
+    const handleTitleInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+        const nextTitle = event.currentTarget.value;
+
+        setTitle(nextTitle);
+
+        if (!categoryWasSelectedManually() || categoryId() === null) {
+            setCategoryWasSelectedManually(false);
+            setCategoryId(findSuggestedCategory(props.categories, nextTitle)?.id ?? null);
+        }
+    };
+
+    const handleCategoryChange = (value: string | null): void => {
+        setCategoryId(value);
+        setCategoryWasSelectedManually(true);
+    };
+
+    const handleAmountInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+        setAmount(event.currentTarget.value);
+        setAmountError(undefined);
+    };
+
+    const handleExchangeRateInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
+        setExchangeRate(event.currentTarget.value);
+        setExchangeRateError(undefined);
+    };
+
+    const handleDateShift = (offset: number): void => {
+        const date = parseLocalDateKey(happenedOn());
+
+        date.setDate(date.getDate() + offset);
+        setHappenedOn(formatLocalDateKey(date));
+    };
+
+    const handleSubmit: JSX.EventHandler<HTMLFormElement, SubmitEvent> = (event) => {
+        event.preventDefault();
+        const amountMinor = parsedAmount();
+        const rate = normalizedRate();
+
+        if (amountMinor === null) {
+            setAmountError('Укажите сумму операции');
+        }
+        else if (amountMinor === undefined || amountMinor <= 0) {
+            setAmountError('Введите положительную сумму с двумя знаками после запятой');
+        }
+
+        if (rate === undefined) {
+            setExchangeRateError('Введите положительный курс, например 3,2500');
+        }
+
+        if (
+            typeof amountMinor !== 'number'
+            || amountMinor <= 0
+            || rate === undefined
+            || !title().trim()
+            || !happenedOn()
+        ) {
+            return;
+        }
+
+        props.onSubmit({
+            amountMinor,
+            categoryId: categoryId(),
+            comment: comment(),
+            contactId: contactId(),
+            exchangeRate: rate,
+            happenedOn: happenedOn(),
+            title: title(),
+            type: type()
+        });
+    };
+
+    const handleConfirmDelete = (): void => {
+        const operationId = props.operation?.id;
+
+        if (operationId) {
+            setIsDeleteDialogOpen(false);
+            props.onDelete(operationId);
+        }
+    };
+
+    createEffect(() => {
+        resetForm();
+    });
+
+    return (
+        <>
+            <form class={css.form} onSubmit={handleSubmit}>
+                <header class={css.header}>
+                    <div class={css.headerContent}>
+                        <div class={css.kicker}>{props.account.name}</div>
+                        <h2 class={css.title} id={props.titleId}>
+                            {isEditMode() ? 'Редактирование операции' : 'Новая операция'}
+                        </h2>
+                        <div
+                            class={cn(
+                                css.amountPreview,
+                                type() === 'income' ? css.amountIncome : css.amountExpense
+                            )}
+                        >
+                            {formatMinorUnitsCurrency(
+                                signedPreviewAmount(),
+                                props.account.currency,
+                                { signDisplay: signedPreviewAmount() === 0 ? 'never' : 'auto' }
+                            )}
+                        </div>
+                    </div>
+                    <Button
+                        aria-label='Закрыть панель'
+                        iconOnly
+                        size='sm'
+                        variant='ghost'
+                        onClick={props.onClose}
+                    >
+                        <X size={18}/>
+                    </Button>
+                </header>
+
+                <div class={css.body}>
+                    <div aria-label='Тип операции' class={css.typeSwitch} role='group'>
+                        <button
+                            aria-pressed={type() === 'expense'}
+                            class={cn(css.typeButton, type() === 'expense' && css.typeButtonActive)}
+                            disabled={type() === 'expense'}
+                            tabIndex={type() === 'expense' ? -1 : 0}
+                            type='button'
+                            onClick={() => setType('expense')}
+                        >
+                            Расход
+                        </button>
+                        <button
+                            aria-pressed={type() === 'income'}
+                            class={cn(css.typeButton, type() === 'income' && css.typeButtonActive)}
+                            disabled={type() === 'income'}
+                            tabIndex={type() === 'income' ? -1 : 0}
+                            type='button'
+                            onClick={() => setType('income')}
+                        >
+                            Приход
+                        </button>
+                    </div>
+
+                    <div class={css.dateField}>
+                        <TextField
+                            label='Дата'
+                            required
+                            type='date'
+                            value={happenedOn()}
+                            onInput={(event) => setHappenedOn(event.currentTarget.value)}
+                        />
+                        <div class={css.dateActions}>
+                            <Button
+                                aria-label='Предыдущий день'
+                                iconOnly
+                                size='sm'
+                                variant='ghost'
+                                onClick={() => handleDateShift(-1)}
+                            >
+                                <ChevronLeft size={18}/>
+                            </Button>
+                            <Button
+                                aria-label='Следующий день'
+                                iconOnly
+                                size='sm'
+                                variant='ghost'
+                                onClick={() => handleDateShift(1)}
+                            >
+                                <ChevronRight size={18}/>
+                            </Button>
+                        </div>
+                    </div>
+
+                    <TextField
+                        ref={amountInput}
+                        error={amountError()}
+                        inputMode='decimal'
+                        label='Сумма'
+                        placeholder='0,00'
+                        required
+                        value={amount()}
+                        endContent={props.account.currency}
+                        onInput={handleAmountInput}
+                    />
+
+                    <Show when={usesExchangeRate()}>
+                        <TextField
+                            error={exchangeRateError()}
+                            hint='Курс сохраняется вместе с операцией'
+                            inputMode='decimal'
+                            label='Курс транзакции'
+                            startContent={`1 ${props.account.currency} =`}
+                            value={exchangeRate()}
+                            endContent={props.familyCurrency}
+                            onInput={handleExchangeRateInput}
+                        />
+                    </Show>
+
+                    <TextField
+                        label='Название'
+                        maxLength={160}
+                        placeholder='Например, Продукты на неделю'
+                        required
+                        value={title()}
+                        onInput={handleTitleInput}
+                    />
+
+                    <Combobox
+                        clearable
+                        getOptionDisabled={(option) => option.archived}
+                        getOptionLabel={(option) => option.name}
+                        getOptionSearchText={(option) => `${option.name} ${option.legalName ?? ''}`}
+                        getOptionValue={(option) => option.id}
+                        label='Контакт'
+                        optional
+                        options={contactOptions()}
+                        placeholder='Не выбран'
+                        searchPlaceholder='Название или юридическое имя'
+                        value={contactId()}
+                        renderOption={(option) => <ContactOptionContent option={option}/>}
+                        renderValue={(option) => <ContactOptionContent compact option={option}/>}
+                        onChange={(value) => setContactId(value)}
+                    />
+
+                    <Combobox
+                        clearable
+                        getOptionDisabled={(option) => option.disabled}
+                        getOptionLabel={(option) => option.name}
+                        getOptionValue={(option) => option.id}
+                        label='Категория'
+                        optional
+                        options={categoryOptions()}
+                        placeholder='Не выбрана'
+                        searchPlaceholder='Название категории'
+                        value={categoryId()}
+                        renderOption={(option) => <CategoryOptionContent option={option}/>}
+                        renderValue={(option) => <CategoryOptionContent compact option={option}/>}
+                        onChange={handleCategoryChange}
+                    />
+
+                    <div class={css.commentField}>
+                        <div class={css.labelRow}>
+                            <label class={css.label} for={commentId}>Комментарий</label>
+                            <span class={css.optional}>необязательно</span>
+                        </div>
+                        <textarea
+                            class={css.textarea}
+                            id={commentId}
+                            maxLength={1000}
+                            placeholder='Дополнительные сведения об операции'
+                            rows={4}
+                            value={comment()}
+                            onInput={(event) => setComment(event.currentTarget.value)}
+                        />
+                    </div>
+                </div>
+
+                <footer class={css.footer}>
+                    <Show when={isEditMode() && props.operation}>
+                        <Button
+                            aria-label='Удалить операцию'
+                            class={css.deleteButton}
+                            iconOnly
+                            title='Удалить операцию'
+                            type='button'
+                            variant='ghost'
+                            onClick={() => setIsDeleteDialogOpen(true)}
+                        >
+                            <Trash2 size={18}/>
+                        </Button>
+                    </Show>
+                    <span class={css.footerSpacer}/>
+                    <Button type='button' variant='secondary' onClick={props.onClose}>
+                        Отмена
+                    </Button>
+                    <Button disabled={!canSubmit()} type='submit'>
+                        {isEditMode() ? 'Сохранить' : 'Добавить'}
+                    </Button>
+                </footer>
+            </form>
+
+            <Dialog.Root
+                class={css.deleteDialog}
+                open={isDeleteDialogOpen()}
+                onOpenChange={setIsDeleteDialogOpen}
+            >
+                <Dialog.Content class={css.deleteDialogContent}>
+                    <Dialog.Header closeLabel='Закрыть подтверждение удаления'>
+                        <Dialog.Title>Удалить операцию?</Dialog.Title>
+                        <Dialog.Description>
+                            Операция будет исключена из баланса и статистики, но сохранится в истории.
+                        </Dialog.Description>
+                    </Dialog.Header>
+                    <Dialog.Body>
+                        <div class={css.deleteSummary}>
+                            <strong>{props.operation?.title}</strong>
+                            <span>{props.operation && formatMinorUnitsCurrency(
+                                props.operation.type === 'expense'
+                                    ? -props.operation.amountMinor
+                                    : props.operation.amountMinor,
+                                props.operation.currency
+                            )}</span>
+                        </div>
+                    </Dialog.Body>
+                    <Dialog.Footer>
+                        <Dialog.Action closeOnClick intent='cancel'>Отмена</Dialog.Action>
+                        <Button type='button' variant='danger' onClick={handleConfirmDelete}>
+                            Удалить
+                        </Button>
+                    </Dialog.Footer>
+                </Dialog.Content>
+            </Dialog.Root>
+        </>
+    );
+}
+
+function CategoryOptionContent(props: { compact?: boolean; option: CategoryOption }) {
+    const style = (): JSX.CSSProperties => ({ '--option-color': props.option.color });
+
+    return (
+        <span class={css.optionLayout} style={style()}>
+            <span aria-hidden='true' class={css.categoryIcon}><span/></span>
+            <span class={css.optionText}>
+                <strong>{props.option.name}</strong>
+                <Show when={!props.compact && props.option.disabled}>
+                    <span>Недоступна</span>
+                </Show>
+            </span>
+        </span>
+    );
+}
+
+function ContactOptionContent(props: { compact?: boolean; option: ContactOption }) {
+    const style = (): JSX.CSSProperties => ({ '--option-color': props.option.color });
+
+    return (
+        <span class={css.optionLayout} style={style()}>
+            <span aria-hidden='true' class={css.contactIcon}>
+                <Show fallback={<UserRound size={16}/>} when={props.option.type === 'company'}>
+                    <Building2 size={16}/>
+                </Show>
+            </span>
+            <span class={css.optionText}>
+                <strong>{props.option.name}</strong>
+                <Show when={!props.compact && (props.option.legalName || props.option.archived)}>
+                    <span>
+                        {props.option.archived ? 'В архиве' : props.option.legalName}
+                    </span>
+                </Show>
+            </span>
+        </span>
+    );
+}

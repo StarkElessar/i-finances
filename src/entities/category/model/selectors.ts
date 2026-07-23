@@ -46,6 +46,7 @@ export function getCategoryMonthlyExpenseMinor(
 
         if (
             !matchesCategory
+            || operation.deletedAt !== null
             || operation.type !== 'expense'
             || !isSameMonth(operation.happenedOn, monthDate)
         ) {
@@ -54,6 +55,29 @@ export function getCategoryMonthlyExpenseMinor(
 
         return total + operation.amountInFamilyCurrencyMinor;
     }, 0);
+}
+
+/**
+ * Returns the first category whose normalized keyword occurs in the title.
+ */
+export function findSuggestedCategory(
+    categories: readonly Category[],
+    title: string
+): Category | undefined {
+    const normalizedTitle = normalizeSearchValue(title);
+
+    if (!normalizedTitle) {
+        return undefined;
+    }
+
+    return categories.find((category) => (
+        category.keywords.some((keyword) => {
+            const normalizedKeyword = normalizeSearchValue(keyword);
+
+            return normalizedKeyword.length > 0
+                && normalizedTitle.includes(normalizedKeyword);
+        })
+    ));
 }
 
 function isSameMonth(isoDate: string, monthDate: Date): boolean {
@@ -65,4 +89,12 @@ function isSameMonth(isoDate: string, monthDate: Date): boolean {
 
 function normalizeCategoryName(name: string | null): string {
     return name?.trim().toLocaleLowerCase('ru-BY') ?? '';
+}
+
+function normalizeSearchValue(value: string): string {
+    return value
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLocaleLowerCase('ru-BY')
+        .replace(/ё/g, 'е');
 }

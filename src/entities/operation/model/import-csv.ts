@@ -140,6 +140,12 @@ function createOperation(
         contactName,
         createdAt: timestamp,
         currency: CurrencyCode.BYN,
+        deletedAt: null,
+        exchangeRate: {
+            fromCurrency: CurrencyCode.BYN,
+            rate: '1',
+            toCurrency: CurrencyCode.BYN
+        },
         happenedOn,
         id: `operation-imported-${sourceOrder + 1}`,
         sourceOrder,
