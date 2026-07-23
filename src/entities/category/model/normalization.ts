@@ -1,5 +1,3 @@
-export const CATEGORY_KEYWORD_MAX_LENGTH = 32;
-
 /**
  * Produces the canonical category name stored and returned by the server.
  */

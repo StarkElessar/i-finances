@@ -13,12 +13,14 @@ import {
     createCategoryInputSchema,
     updateCategoryInputSchema
 } from '~/entities/category';
-import { createCategoryRepository } from '~/server/category/category-repository';
 import {
     CategoryNameConflictError,
     CategoryNotFoundError,
+    CategoryVersionConflictError
+} from '~/server/category/category-errors';
+import { createCategoryRepository } from '~/server/category/category-repository';
+import {
     type CategoryService,
-    CategoryVersionConflictError,
     createCategoryService
 } from '~/server/category/category-service';
 import type { AppDatabase } from '~/server/db/client';
@@ -180,6 +182,16 @@ describe('category service persistence', () => {
             ...validCreateInput,
             keywords: ['ёлка', 'елка']
         }).success).toBe(false);
+    });
+
+    it('accepts keywords without an artificial length limit', () => {
+        const longKeyword = 'магазин с очень подробным названием без ограничения длины';
+        const parsedInput = createCategoryInputSchema.parse({
+            ...validCreateInput,
+            keywords: [longKeyword]
+        });
+
+        expect(parsedInput.keywords).toEqual([longKeyword]);
     });
 
     it('does not expose a category owned by another household', async () => {

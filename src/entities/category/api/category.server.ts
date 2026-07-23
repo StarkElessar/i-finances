@@ -28,13 +28,13 @@ import {
     AuthenticationRequiredError,
     requireUser
 } from '~/server/auth/require-user';
-import { createCategoryRepository } from '~/server/category/category-repository';
 import {
     CategoryNameConflictError,
     CategoryNotFoundError,
-    CategoryVersionConflictError,
-    createCategoryService
-} from '~/server/category/category-service';
+    CategoryVersionConflictError
+} from '~/server/category/category-errors';
+import { createCategoryRepository } from '~/server/category/category-repository';
+import { createCategoryService } from '~/server/category/category-service';
 import { createHouseholdRepository } from '~/server/household/household-repository';
 import {
     createHouseholdResolver,

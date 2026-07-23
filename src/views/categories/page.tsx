@@ -19,7 +19,6 @@ import {
     createSignal,
     ErrorBoundary,
     For,
-    onMount,
     Show
 } from 'solid-js';
 
@@ -40,16 +39,13 @@ import {
     restoreCategory as restoreCategoryAction,
     updateCategory as updateCategoryAction
 } from '~/entities/category';
-import type { Operation } from '~/entities/operation';
-import {
-    INITIAL_OPERATIONS,
-    readOperationsFromStorage
-} from '~/entities/operation';
 import { cn, CurrencyCode } from '~/shared/lib';
 import { Button, Container } from '~/shared/ui';
 import { createDragAction, DragAction } from '~/shared/ui/drag-action';
 
 type CategoryListMode = 'active' | 'archive';
+
+const EMPTY_OPERATIONS = [] as const;
 
 type CategoriesContentProps = {
     collection: Accessor<CategoryCollection | undefined>;
@@ -118,8 +114,7 @@ function CategoriesContent(props: CategoriesContentProps) {
     const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
     const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
     const [listMode, setListMode] = createSignal<CategoryListMode>('active');
-    const [monthDate] = createSignal(new Date());
-    const [operations, setOperations] = createSignal<Operation[]>(INITIAL_OPERATIONS);
+    const monthDate = new Date();
     const [dialogError, setDialogError] = createSignal<string>();
     const [dialogFieldErrors, setDialogFieldErrors]
         = createSignal<Record<string, string>>();
@@ -165,20 +160,10 @@ function CategoriesContent(props: CategoriesContentProps) {
         return category ? toDialogValue(category) : undefined;
     });
     const categorySummaries = createMemo(() => {
-        const currentMonth = monthDate();
-
         return new Map(categories().map((category) => [
             category.id,
-            getCategoryBudgetSummary(category, operations(), currentMonth)
+            getCategoryBudgetSummary(category, EMPTY_OPERATIONS, monthDate)
         ]));
-    });
-
-    onMount(() => {
-        const storedOperations = readOperationsFromStorage(window.localStorage);
-
-        if (storedOperations !== undefined) {
-            setOperations(storedOperations);
-        }
     });
 
     const resetDialogErrors = () => {

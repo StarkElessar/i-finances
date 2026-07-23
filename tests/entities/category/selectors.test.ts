@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import type { Category } from '~/entities/category';
-import { findSuggestedCategory } from '~/entities/category';
+import {
+    findSuggestedCategory,
+    getCategoryBudgetSummary
+} from '~/entities/category';
 
 const timestamp = '2026-07-23T12:00:00.000Z';
 
@@ -40,5 +43,27 @@ describe('category suggestion', () => {
             [category],
             '  ЛЕГКИЙ   УЖИН с друзьями '
         )).toBe(category);
+    });
+});
+
+describe('category budget summary', () => {
+    it('keeps the API budget and uses zero expenses without loaded operations', () => {
+        const category = {
+            ...createCategory('Продукты', []),
+            monthlyBudgetMinor: 45_000
+        };
+
+        expect(getCategoryBudgetSummary(
+            category,
+            [],
+            new Date('2026-07-23T12:00:00.000Z')
+        )).toEqual({
+            hasBudget: true,
+            isOverBudget: false,
+            monthlyBudgetMinor: 45_000,
+            progressPercent: 0,
+            spentMinor: 0,
+            usagePercent: 0
+        });
     });
 });

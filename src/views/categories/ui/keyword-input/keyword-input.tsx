@@ -4,7 +4,6 @@ import type { JSX } from 'solid-js';
 import { createEffect, createSignal, For, Show } from 'solid-js';
 
 import {
-    CATEGORY_KEYWORD_MAX_LENGTH,
     normalizeCategoryIdentity,
     normalizeCategoryKeyword
 } from '~/entities/category';
@@ -22,17 +21,12 @@ export type KeywordInputProps = {
 function normalizeKeyword(value: string): string | undefined {
     const keyword = normalizeCategoryKeyword(value);
 
-    if (!keyword || keyword.length > CATEGORY_KEYWORD_MAX_LENGTH) {
-        return undefined;
-    }
-
-    return keyword;
+    return keyword || undefined;
 }
 
 export function KeywordInput(props: KeywordInputProps) {
     const [inputValue, setInputValue] = createSignal('');
     const [selectedKeywordIndex, setSelectedKeywordIndex] = createSignal<number | null>(null);
-    const [error, setError] = createSignal<string>();
 
     createEffect(() => {
         const selectedIndex = selectedKeywordIndex();
@@ -44,13 +38,11 @@ export function KeywordInput(props: KeywordInputProps) {
 
     const commitKeywords = (rawKeywords: readonly string[]) => {
         const nextKeywords = [...props.value];
-        let hasRejectedKeyword = false;
 
         for (const rawKeyword of rawKeywords) {
             const keyword = normalizeKeyword(rawKeyword);
 
             if (!keyword) {
-                hasRejectedKeyword ||= Boolean(rawKeyword.trim());
                 continue;
             }
 
@@ -64,9 +56,6 @@ export function KeywordInput(props: KeywordInputProps) {
             }
         }
 
-        setError(hasRejectedKeyword
-            ? `Ключевое слово не длиннее ${CATEGORY_KEYWORD_MAX_LENGTH} символов`
-            : undefined);
         props.onChange(nextKeywords);
     };
 
@@ -95,7 +84,6 @@ export function KeywordInput(props: KeywordInputProps) {
 
         if (parts.length === 1) {
             setInputValue(value);
-            setError(undefined);
             return;
         }
 
@@ -160,7 +148,6 @@ export function KeywordInput(props: KeywordInputProps) {
                 </For>
                 <input
                     class={css.input}
-                    maxlength={CATEGORY_KEYWORD_MAX_LENGTH}
                     placeholder={props.value.length > 0 ? '' : 'Например, аптека'}
                     type='text'
                     value={inputValue()}
@@ -168,9 +155,9 @@ export function KeywordInput(props: KeywordInputProps) {
                     onKeyDown={handleKeyDown}
                 />
             </div>
-            <Show when={error() || props.error || props.hint}>
-                <div class={cn(css.message, (error() || props.error) && css.messageError)}>
-                    {error() ?? props.error ?? props.hint}
+            <Show when={props.error || props.hint}>
+                <div class={cn(css.message, props.error && css.messageError)}>
+                    {props.error ?? props.hint}
                 </div>
             </Show>
         </div>

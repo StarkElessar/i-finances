@@ -60,8 +60,9 @@
     overflow-x: auto;
     display: inline-flex;
     gap: var(--space-1);
-    justify-self: start;
+    justify-self: stretch;
 
+    inline-size: 100%;
     max-inline-size: 100%;
     padding: fn.rem(3);
     border: 1px solid var(--color-border);
@@ -72,12 +73,18 @@
     &::-webkit-scrollbar {
         display: none;
     }
+
+    @include mx.media-mn(640) {
+        justify-self: start;
+        inline-size: auto;
+    }
 }
 
 .segment {
     cursor: default;
 
     display: inline-flex;
+    flex: 1 0 auto;
     gap: var(--space-2);
     align-items: center;
     justify-content: center;
@@ -111,6 +118,10 @@
             outline: none;
             box-shadow: 0 0 0 3px var(--color-focus-ring);
         }
+    }
+
+    @include mx.media-mn(640) {
+        flex: none;
     }
 }
 
@@ -153,6 +164,10 @@
     background-color: var(--color-surface-strong);
 
     animation: skeleton-pulse 1.25s ease-in-out infinite alternate;
+
+    @media (prefers-reduced-motion: reduce) {
+        animation: none;
+    }
 }
 
 .empty-state {
@@ -186,7 +201,7 @@
 }
 
 .load-error {
-    display: flex;
+    display: grid;
     gap: var(--space-6);
     align-items: start;
     justify-content: space-between;
@@ -206,6 +221,10 @@
         margin: 0;
         color: var(--color-text-secondary);
     }
+
+    @include mx.media-mn(640) {
+        display: flex;
+    }
 }
 
 .drag-preview-mark {
@@ -222,26 +241,5 @@
 
     to {
         opacity: 1;
-    }
-}
-
-@media (width <= 640px) {
-    .segmented {
-        justify-self: stretch;
-        inline-size: 100%;
-    }
-
-    .segment {
-        flex: 1 0 auto;
-    }
-
-    .load-error {
-        display: grid;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .skeleton-card {
-        animation: none;
     }
 }

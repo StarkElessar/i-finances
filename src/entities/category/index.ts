@@ -29,7 +29,6 @@ export {
     parseOptionalMoneyInputToMinorUnits
 } from './model/money';
 export {
-    CATEGORY_KEYWORD_MAX_LENGTH,
     normalizeCategoryIdentity,
     normalizeCategoryKeyword,
     normalizeCategoryName

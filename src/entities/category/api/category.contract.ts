@@ -1,7 +1,6 @@
 import { z } from 'zod';
 
 import {
-    CATEGORY_KEYWORD_MAX_LENGTH,
     normalizeCategoryIdentity,
     normalizeCategoryKeyword,
     normalizeCategoryName
@@ -21,12 +20,7 @@ const categoryNameSchema = z.string()
     .pipe(z.string().min(1, 'Укажите название категории.').max(120));
 const categoryKeywordSchema = z.string()
     .transform(normalizeCategoryKeyword)
-    .pipe(z.string()
-        .min(1, 'Ключевое слово не может быть пустым.')
-        .max(
-            CATEGORY_KEYWORD_MAX_LENGTH,
-            `Ключевое слово не длиннее ${CATEGORY_KEYWORD_MAX_LENGTH} символов.`
-        ));
+    .pipe(z.string().min(1, 'Ключевое слово не может быть пустым.'));
 const categoryKeywordsSchema = z.array(categoryKeywordSchema)
     .superRefine((keywords, context) => {
         const identities = new Set<string>();
