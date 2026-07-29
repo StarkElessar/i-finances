@@ -3,18 +3,16 @@
 
 .root {
     position: relative;
-    z-index: 10;
+    z-index: calc(var(--menu-navigation-z-index) + 1);
 
     padding-block: var(--space-3);
     border-block-end: 1px solid var(--color-border);
 
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
-    backdrop-filter: blur(12px);
 
     @include mx.media-mn(960) {
         padding-block: var(--space-4);
         background-color: var(--color-surface);
-        backdrop-filter: none;
     }
 }
 

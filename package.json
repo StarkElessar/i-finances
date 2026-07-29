@@ -17,6 +17,7 @@
 		"db:import:ifinance-operations": "tsx scripts/import-ifinance-operations.ts",
 		"db:rate": "tsx scripts/upsert-exchange-rate.ts",
 		"db:seed": "tsx scripts/seed-auth-user.ts",
+		"receipt:worker-key": "tsx scripts/generate-receipt-worker-api-key.ts",
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",

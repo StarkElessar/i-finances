@@ -1,4 +1,6 @@
 dist
+static/receipts/*
+!static/receipts/.gitkeep
 .wrangler
 .output
 .vercel
