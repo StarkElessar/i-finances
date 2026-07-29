@@ -1,0 +1,25 @@
+{
+	"$schema": "https://opencode.ai/config.json",
+	"provider": {
+		"lmstudio": {
+			"npm": "@ai-sdk/openai-compatible",
+			"name": "LM Studio (local)",
+			"options": {
+				"baseURL": "http://127.0.0.1:1234/v1"
+			},
+			"models": {
+				"qwen/qwen3.5-9b": {
+					"name": "QWEN-3.5 9b"
+				},
+				"qwen/qwen3-4b-thinking-2507": {
+					"name": "QWEN-3 4b"
+				}
+			}
+		}
+	},
+	"agent": {
+		"code-review": {
+			"description": "Reviews code for quality"
+		}
+	}
+}
