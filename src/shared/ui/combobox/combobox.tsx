@@ -1,5 +1,14 @@
 import css from './combobox.module.scss';
 
+import {
+    autoUpdate,
+    computePosition,
+    flip,
+    hide,
+    offset,
+    shift,
+    size
+} from '@floating-ui/dom';
 import { Check, ChevronDown, Search, X } from 'lucide-solid';
 import type { Accessor, JSX } from 'solid-js';
 import {
@@ -11,8 +20,11 @@ import {
     onCleanup,
     Show
 } from 'solid-js';
+import { Portal } from 'solid-js/web';
 
 import { cn } from '~/shared/lib';
+
+const POPOVER_OFFSET = 4;
 
 export type ComboboxOptionRenderState = {
     active: Accessor<boolean>;
@@ -54,6 +66,8 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
     const labelId = createUniqueId();
     const listboxId = createUniqueId();
     const messageId = createUniqueId();
+    const [controlElement, setControlElement] = createSignal<HTMLDivElement>();
+    const [popoverElement, setPopoverElement] = createSignal<HTMLDivElement>();
     const [activeIndex, setActiveIndex] = createSignal(0);
     const [isOpen, setIsOpen] = createSignal(false);
     const [query, setQuery] = createSignal('');
@@ -83,6 +97,52 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
         setActiveIndex(0);
     };
 
+    const updatePopoverPosition = async (): Promise<void> => {
+        const reference = controlElement();
+        const popover = popoverElement();
+
+        if (!isOpen() || !reference || !popover) {
+            return;
+        }
+
+        const position = await computePosition(reference, popover, {
+            middleware: [
+                offset(POPOVER_OFFSET),
+                flip({
+                    altBoundary: true,
+                    crossAxis: false,
+                    fallbackPlacements: ['top-start'],
+                    fallbackStrategy: 'bestFit'
+                }),
+                shift({ altBoundary: true }),
+                size({
+                    altBoundary: true,
+                    apply({ elements, rects }) {
+                        elements.floating.style.inlineSize = `${rects.reference.width}px`;
+                    }
+                }),
+                hide({ strategy: 'referenceHidden' })
+            ],
+            placement: 'bottom-start',
+            strategy: 'fixed'
+        });
+
+        if (!isOpen() || popover !== popoverElement()) {
+            return;
+        }
+
+        if (position.middlewareData.hide?.referenceHidden) {
+            close();
+            return;
+        }
+
+        Object.assign(popover.style, {
+            left: `${position.x}px`,
+            top: `${position.y}px`,
+            visibility: 'visible'
+        });
+    };
+
     const open = (): void => {
         if (props.disabled || isOpen()) {
             return;
@@ -91,7 +151,6 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
         setIsOpen(true);
         setQuery('');
         setActiveIndex(findInitialActiveIndex(filteredOptions(), props));
-        queueMicrotask(() => searchInput?.focus());
     };
 
     const selectOption = (option: TOption): void => {
@@ -195,11 +254,33 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 
     createEffect(() => {
         if (isOpen()) {
+            requestAnimationFrame(() => searchInput?.focus());
+        }
+    });
+
+    createEffect(() => {
+        const reference = controlElement();
+        const popover = popoverElement();
+
+        if (!isOpen() || !reference || !popover) {
+            return;
+        }
+
+        const cleanup = autoUpdate(reference, popover, () => {
+            void updatePopoverPosition();
+        });
+
+        onCleanup(cleanup);
+    });
+
+    createEffect(() => {
+        if (isOpen()) {
             const handlePointerDown = (event: PointerEvent): void => {
                 if (
                     rootElement
                     && event.target instanceof Node
                     && !rootElement.contains(event.target)
+                    && !popoverElement()?.contains(event.target)
                 ) {
                     close();
                 }
@@ -222,6 +303,7 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
             </Show>
 
             <div
+                ref={setControlElement}
                 class={cn(
                     css.control,
                     isOpen() && css.controlOpen,
@@ -266,9 +348,11 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
                         <X aria-hidden='true' size={15}/>
                     </button>
                 </Show>
+            </div>
 
-                <Show when={isOpen()}>
-                    <div class={css.popover}>
+            <Show when={isOpen()}>
+                <Portal>
+                    <div ref={setPopoverElement} class={css.popover}>
                         <div class={css.searchControl}>
                             <Search aria-hidden='true' size={16}/>
                             <input
@@ -337,8 +421,8 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
                             </Show>
                         </div>
                     </div>
-                </Show>
-            </div>
+                </Portal>
+            </Show>
 
             <Show when={hasMessage()}>
                 <div
