@@ -2,6 +2,7 @@ export * from './accounts';
 export * from './categories';
 export * from './category-keywords';
 export * from './contacts';
+export * from './exchange-rate-refreshes';
 export * from './exchange-rates';
 export * from './household-members';
 export * from './households';

@@ -16,8 +16,10 @@ import { ExchangeRateNotFoundError } from '~/server/exchange-rate/exchange-rate-
 import { createExchangeRateRepository } from '~/server/exchange-rate/exchange-rate-repository';
 import {
     createExchangeRateService,
+    type DailyExchangeRateProvider,
     type ExchangeRateService
 } from '~/server/exchange-rate/exchange-rate-service';
+import { NATIONAL_BANK_EXCHANGE_RATE_SOURCE } from '~/server/exchange-rate/national-bank-client';
 import { CurrencyCode } from '~/shared/lib';
 
 const FIRST_TIMESTAMP = new Date('2026-07-24T10:00:00.000Z');
@@ -29,9 +31,12 @@ let database: AppDatabase;
 let exchangeRateSequence: number;
 let exchangeRateService: ExchangeRateService;
 
-function createTestExchangeRateService(): ExchangeRateService {
+function createTestExchangeRateService(
+    dailyRateProvider?: DailyExchangeRateProvider
+): ExchangeRateService {
     return createExchangeRateService({
         createId: () => `exchange-rate-${exchangeRateSequence++}`,
+        dailyRateProvider,
         exchangeRateRepository: createExchangeRateRepository(database),
         now: () => new Date(currentTimestamp)
     });
@@ -167,5 +172,118 @@ describe('exchange-rate service persistence', () => {
             onDate: '2026-07-24',
             toCurrency: CurrencyCode.BYN
         })).rejects.toBeInstanceOf(ExchangeRateNotFoundError);
+    });
+
+    it('refreshes provider rates once for a requested day', async () => {
+        let providerCalls = 0;
+        const dailyRateProvider: DailyExchangeRateProvider = {
+            getDailyRates: async (input) => {
+                providerCalls += 1;
+                expect(input.currencies).toEqual([
+                    CurrencyCode.USD,
+                    CurrencyCode.EUR
+                ]);
+
+                return [
+                    {
+                        effectiveOn: '2026-07-24',
+                        fromCurrency: CurrencyCode.USD,
+                        rate: '2.8853',
+                        source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
+                        toCurrency: CurrencyCode.BYN
+                    },
+                    {
+                        effectiveOn: '2026-07-24',
+                        fromCurrency: CurrencyCode.EUR,
+                        rate: '3.2928',
+                        source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
+                        toCurrency: CurrencyCode.BYN
+                    }
+                ];
+            },
+            source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE
+        };
+
+        exchangeRateService = createTestExchangeRateService(dailyRateProvider);
+
+        const first = await exchangeRateService.getCurrent({
+            baseCurrency: CurrencyCode.BYN,
+            currencies: [
+                CurrencyCode.BYN,
+                CurrencyCode.USD,
+                CurrencyCode.USD,
+                CurrencyCode.EUR
+            ],
+            requestedOn: '2026-07-24'
+        });
+        const second = await exchangeRateService.getCurrent({
+            baseCurrency: CurrencyCode.BYN,
+            currencies: [CurrencyCode.USD, CurrencyCode.EUR],
+            requestedOn: '2026-07-24'
+        });
+
+        expect(providerCalls).toBe(1);
+        expect(first).toMatchObject({
+            baseCurrency: CurrencyCode.BYN,
+            refreshError: null,
+            requestedOn: '2026-07-24',
+            unavailableCurrencies: []
+        });
+        expect(first.quotes).toEqual([
+            {
+                effectiveOn: '2026-07-24',
+                fromCurrency: CurrencyCode.USD,
+                rate: '2.8853',
+                source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
+                toCurrency: CurrencyCode.BYN
+            },
+            {
+                effectiveOn: '2026-07-24',
+                fromCurrency: CurrencyCode.EUR,
+                rate: '3.2928',
+                source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
+                toCurrency: CurrencyCode.BYN
+            }
+        ]);
+        expect(second.quotes).toEqual(first.quotes);
+    });
+
+    it('uses stale stored rates when the daily provider is unavailable', async () => {
+        await exchangeRateService.upsert({
+            effectiveOn: '2026-07-20',
+            fromCurrency: CurrencyCode.USD,
+            rate: '3.25',
+            source: 'manual',
+            toCurrency: CurrencyCode.BYN
+        });
+
+        exchangeRateService = createTestExchangeRateService({
+            getDailyRates: async () => {
+                throw new Error('NBRB unavailable');
+            },
+            source: NATIONAL_BANK_EXCHANGE_RATE_SOURCE
+        });
+
+        const current = await exchangeRateService.getCurrent({
+            baseCurrency: CurrencyCode.BYN,
+            currencies: [CurrencyCode.USD, CurrencyCode.EUR],
+            requestedOn: '2026-07-24'
+        });
+
+        expect(current).toEqual({
+            baseCurrency: CurrencyCode.BYN,
+            quotes: [
+                {
+                    effectiveOn: '2026-07-20',
+                    fromCurrency: CurrencyCode.USD,
+                    rate: '3.25',
+                    source: 'manual',
+                    toCurrency: CurrencyCode.BYN
+                }
+            ],
+            refreshError: 'NBRB unavailable',
+            requestedOn: '2026-07-24',
+            unavailableCurrencies: [CurrencyCode.EUR]
+        });
     });
 });

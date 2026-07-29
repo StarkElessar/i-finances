@@ -43,6 +43,11 @@ import { getCategories } from '~/entities/category';
 import type { ContactCollection } from '~/entities/contact';
 import { getContacts } from '~/entities/contact';
 import type {
+    CurrentExchangeRates,
+    ExchangeRateQuote
+} from '~/entities/exchange-rate';
+import { getCurrentExchangeRates } from '~/entities/exchange-rate/api';
+import type {
     AccountBalance,
     OperationDraft,
     OperationWithBalance
@@ -58,7 +63,6 @@ import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
     amountToMinorUnits,
     cn,
-    convertCurrency,
     CurrencyCode,
     formatCurrency,
     formatDate,
@@ -69,16 +73,8 @@ import {
 import { AccountIcon, Button, Container } from '~/shared/ui';
 import { Dialog } from '~/shared/ui/dialog';
 
-const FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
+const FALLBACK_FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
-
-const FAMILY_TOTAL_EXCHANGE_RATES = {
-    baseCurrency: CurrencyCode.BYN,
-    ratesToBaseCurrency: {
-        [CurrencyCode.USD]: 3.25,
-        [CurrencyCode.EUR]: 3.75
-    }
-} satisfies CurrencyExchangeRates;
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 
@@ -88,10 +84,34 @@ function getAccountItemStyle(account: Account): JSX.CSSProperties {
     };
 }
 
-function formatExchangeRateLabel(currency: CurrencyCodeValue): string {
-    const convertedAmount = convertCurrency(1, currency, FAMILY_TOTAL_CURRENCY, FAMILY_TOTAL_EXCHANGE_RATES);
+function formatExchangeRateLabel(quote: ExchangeRateQuote): string {
+    return `1 ${quote.fromCurrency} = ${formatCurrency(
+        Number(quote.rate),
+        quote.toCurrency
+    )}`;
+}
 
-    return `1 ${currency} = ${formatCurrency(convertedAmount, FAMILY_TOTAL_CURRENCY)}`;
+function toCurrencyExchangeRates(
+    currentExchangeRates: CurrentExchangeRates
+): CurrencyExchangeRates {
+    const ratesToBaseCurrency: Partial<Record<CurrencyCodeValue, number>> = {};
+
+    currentExchangeRates.quotes.forEach((quote) => {
+        const rate = Number(quote.rate);
+
+        if (
+            quote.toCurrency === currentExchangeRates.baseCurrency
+            && Number.isFinite(rate)
+            && rate > 0
+        ) {
+            ratesToBaseCurrency[quote.fromCurrency] = rate;
+        }
+    });
+
+    return {
+        baseCurrency: currentExchangeRates.baseCurrency,
+        ratesToBaseCurrency
+    };
 }
 
 function toAccountDialogValue(account: PersistedAccount): AccountDialogValue {
@@ -198,6 +218,7 @@ type HomeContentProps = {
     balances: Accessor<AccountBalance[] | undefined>;
     categoryCollection: Accessor<CategoryCollection | undefined>;
     contactCollection: Accessor<ContactCollection | undefined>;
+    currentExchangeRates: Accessor<CurrentExchangeRates | undefined>;
 };
 
 function HomeContent(props: HomeContentProps) {
@@ -240,6 +261,9 @@ function HomeContent(props: HomeContentProps) {
     const isAccountsLoading = () => (
         props.accounts() === undefined || props.balances() === undefined
     );
+    const isFamilyTotalLoading = () => (
+        isAccountsLoading() || props.currentExchangeRates() === undefined
+    );
     const isAccountMutationPending = () => Boolean(
         createAccountSubmission.pending || updateAccountSubmission.pending
     );
@@ -267,21 +291,66 @@ function HomeContent(props: HomeContentProps) {
         return accountsList().filter((account) => account.isIncludedInFamilyTotal);
     });
 
-    const familyTotal = createMemo(() => {
-        return sumMoney(
-            familyAccounts().map((account) => ({
-                amount: minorUnitsToAmount(accountBalanceMinorById().get(account.id) ?? 0),
-                currency: account.currency
-            })),
-            FAMILY_TOTAL_CURRENCY,
-            FAMILY_TOTAL_EXCHANGE_RATES
-        );
+    const familyTotalCurrency = createMemo(() => {
+        return props.currentExchangeRates()?.baseCurrency
+            ?? FALLBACK_FAMILY_TOTAL_CURRENCY;
+    });
+
+    const familyExchangeRates = createMemo(() => {
+        const currentExchangeRates = props.currentExchangeRates();
+
+        return currentExchangeRates
+            ? toCurrencyExchangeRates(currentExchangeRates)
+            : undefined;
+    });
+
+    const familyTotal = createMemo<number | undefined>(() => {
+        const exchangeRates = familyExchangeRates();
+
+        if (exchangeRates === undefined) {
+            return undefined;
+        }
+
+        try {
+            return sumMoney(
+                familyAccounts().map((account) => ({
+                    amount: minorUnitsToAmount(
+                        accountBalanceMinorById().get(account.id) ?? 0
+                    ),
+                    currency: account.currency
+                })),
+                exchangeRates.baseCurrency,
+                exchangeRates
+            );
+        }
+        catch {
+            return undefined;
+        }
     });
 
     const exchangeRateLabels = createMemo(() => {
+        const currentExchangeRates = props.currentExchangeRates();
+
+        if (currentExchangeRates === undefined) {
+            return [];
+        }
+
+        const quotesByCurrency = new Map(
+            currentExchangeRates.quotes.map((quote) => [
+                quote.fromCurrency,
+                quote
+            ])
+        );
+
         return ACCOUNT_CURRENCY_OPTIONS
-            .filter((currency) => currency !== FAMILY_TOTAL_CURRENCY)
-            .map(formatExchangeRateLabel);
+            .filter((currency) => currency !== currentExchangeRates.baseCurrency)
+            .map((currency) => {
+                const quote = quotesByCurrency.get(currency);
+
+                return quote
+                    ? formatExchangeRateLabel(quote)
+                    : `1 ${currency} = курс недоступен`;
+            });
     });
     const accountDialogInitialValue = createMemo(() => {
         const account = editingAccount();
@@ -706,11 +775,18 @@ function HomeContent(props: HomeContentProps) {
                             <div class={css.footerTitle}>Всего по семье</div>
                             <div class={css.footerSum}>
                                 <Show
-                                    fallback={formatCurrency(
-                                        familyTotal(),
-                                        FAMILY_TOTAL_CURRENCY
+                                    fallback={(
+                                        <Show
+                                            fallback='Курс недоступен'
+                                            when={familyTotal() !== undefined}
+                                        >
+                                            {formatCurrency(
+                                                familyTotal() ?? 0,
+                                                familyTotalCurrency()
+                                            )}
+                                        </Show>
                                     )}
-                                    when={isAccountsLoading()}
+                                    when={isFamilyTotalLoading()}
                                 >
                                     <span class={css.footerSkeleton}/>
                                 </Show>
@@ -724,7 +800,7 @@ function HomeContent(props: HomeContentProps) {
                                 </Show>
                             </div>
                             <div class={css.exchangeRates}>
-                                <Show when={props.accounts()}>
+                                <Show when={props.currentExchangeRates()}>
                                     <For each={exchangeRateLabels()}>
                                         {(label) => <span>{label}</span>}
                                     </For>
@@ -904,6 +980,7 @@ export function HomePage() {
     const contactCollection = createAsync(() => getContacts({
         status: 'all'
     }));
+    const currentExchangeRates = createAsync(() => getCurrentExchangeRates());
 
     return (
         <>
@@ -916,7 +993,8 @@ export function HomePage() {
                                 revalidate(getAccounts.key, true),
                                 revalidate(getAccountBalances.key, true),
                                 revalidate(getCategories.key, true),
-                                revalidate(getContacts.key, true)
+                                revalidate(getContacts.key, true),
+                                revalidate(getCurrentExchangeRates.key, true)
                             ]).then(reset, reset);
                         }}
                     />
@@ -927,6 +1005,7 @@ export function HomePage() {
                     balances={balances}
                     categoryCollection={categoryCollection}
                     contactCollection={contactCollection}
+                    currentExchangeRates={currentExchangeRates}
                 />
             </ErrorBoundary>
         </>

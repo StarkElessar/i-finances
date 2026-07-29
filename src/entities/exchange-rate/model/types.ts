@@ -21,3 +21,14 @@ export type PersistedExchangeRate = ExchangeRateQuote & {
     id: string;
     updatedAt: string;
 };
+
+/**
+ * Latest daily exchange-rate snapshot used by current balance views.
+ */
+export type CurrentExchangeRates = {
+    baseCurrency: CurrencyCodeValue;
+    quotes: ExchangeRateQuote[];
+    refreshError: string | null;
+    requestedOn: string;
+    unavailableCurrencies: CurrencyCodeValue[];
+};

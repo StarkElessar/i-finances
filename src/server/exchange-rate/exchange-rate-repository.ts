@@ -8,9 +8,14 @@ import {
 import { type AppDatabase, db } from '~/server/db/client';
 import type {
     ExchangeRateRecord,
-    NewExchangeRateRecord
+    ExchangeRateRefreshRecord,
+    NewExchangeRateRecord,
+    NewExchangeRateRefreshRecord
 } from '~/server/db/schema';
-import { exchangeRates } from '~/server/db/schema';
+import {
+    exchangeRateRefreshes,
+    exchangeRates
+} from '~/server/db/schema';
 import type { CurrencyCodeValue } from '~/shared/lib';
 
 export type FindExchangeRateInput = {
@@ -19,10 +24,22 @@ export type FindExchangeRateInput = {
     toCurrency: CurrencyCodeValue;
 };
 
+export type FindExchangeRateRefreshInput = {
+    baseCurrency: CurrencyCodeValue;
+    requestedOn: string;
+    source: string;
+};
+
 export type ExchangeRateRepository = {
     findLatest: (
         input: FindExchangeRateInput
     ) => Promise<ExchangeRateRecord | undefined>;
+    findRefresh: (
+        input: FindExchangeRateRefreshInput
+    ) => Promise<ExchangeRateRefreshRecord | undefined>;
+    recordRefresh: (
+        record: NewExchangeRateRefreshRecord
+    ) => Promise<ExchangeRateRefreshRecord>;
     upsert: (
         record: NewExchangeRateRecord
     ) => Promise<ExchangeRateRecord>;
@@ -49,6 +66,39 @@ export function createExchangeRateRepository(
             .get();
     };
 
+    const findRefresh = async (
+        input: FindExchangeRateRefreshInput
+    ): Promise<ExchangeRateRefreshRecord | undefined> => {
+        return database.select()
+            .from(exchangeRateRefreshes)
+            .where(and(
+                eq(exchangeRateRefreshes.baseCurrency, input.baseCurrency),
+                eq(exchangeRateRefreshes.requestedOn, input.requestedOn),
+                eq(exchangeRateRefreshes.source, input.source)
+            ))
+            .limit(1)
+            .get();
+    };
+
+    const recordRefresh = async (
+        record: NewExchangeRateRefreshRecord
+    ): Promise<ExchangeRateRefreshRecord> => {
+        return database.insert(exchangeRateRefreshes)
+            .values(record)
+            .onConflictDoUpdate({
+                target: [
+                    exchangeRateRefreshes.source,
+                    exchangeRateRefreshes.baseCurrency,
+                    exchangeRateRefreshes.requestedOn
+                ],
+                set: {
+                    updatedAt: record.updatedAt
+                }
+            })
+            .returning()
+            .get();
+    };
+
     const upsert = async (
         record: NewExchangeRateRecord
     ): Promise<ExchangeRateRecord> => {
@@ -72,6 +122,8 @@ export function createExchangeRateRepository(
 
     return {
         findLatest,
+        findRefresh,
+        recordRefresh,
         upsert
     };
 }

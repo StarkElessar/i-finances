@@ -2,6 +2,7 @@ import { z } from 'zod';
 
 import {
     CURRENCY_CODES,
+    type CurrencyCodeValue,
     normalizeExchangeRate
 } from '~/shared/lib';
 
@@ -55,8 +56,36 @@ export const upsertExchangeRateInputSchema = z.object({
     }
 );
 
+const currentRateCurrencyListSchema = z.array(z.enum(CURRENCY_CODES))
+    .min(1)
+    .transform(dedupeCurrencies);
+
+/**
+ * Validates lookup of current exchange rates for balance calculations.
+ */
+export const getCurrentExchangeRatesInputSchema = z.object({
+    baseCurrency: z.enum(CURRENCY_CODES),
+    currencies: currentRateCurrencyListSchema,
+    requestedOn: effectiveOnSchema
+});
+
+/**
+ * Validates one daily provider refresh request.
+ */
+export const refreshDailyExchangeRatesInputSchema = z.object({
+    baseCurrency: z.enum(CURRENCY_CODES),
+    currencies: currentRateCurrencyListSchema,
+    requestedOn: effectiveOnSchema
+});
+
 export type ResolveExchangeRateInput = z.infer<
     typeof resolveExchangeRateInputSchema
+>;
+export type GetCurrentExchangeRatesInput = z.infer<
+    typeof getCurrentExchangeRatesInputSchema
+>;
+export type RefreshDailyExchangeRatesInput = z.infer<
+    typeof refreshDailyExchangeRatesInputSchema
 >;
 export type UpsertExchangeRateInput = z.infer<
     typeof upsertExchangeRateInputSchema
@@ -77,4 +106,10 @@ function isValidLocalDateKey(value: string): boolean {
     return date.getUTCFullYear() === year
         && date.getUTCMonth() === month - 1
         && date.getUTCDate() === day;
+}
+
+function dedupeCurrencies(
+    currencies: CurrencyCodeValue[]
+): CurrencyCodeValue[] {
+    return [...new Set(currencies)];
 }
