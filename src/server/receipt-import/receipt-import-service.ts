@@ -233,6 +233,7 @@ export function createReceiptImportService(
         );
         const categories: ReceiptCategorySnapshot[] = categoryRecords.map(
             (record) => ({
+                description: record.category.description,
                 id: record.category.id,
                 keywords: record.keywords.map((keyword) => keyword.value),
                 name: record.category.name

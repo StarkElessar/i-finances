@@ -40,6 +40,7 @@ const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 
 const validCreateInput = createCategoryInputSchema.parse({
     color: AccentColor.BLUE,
+    description: 'Аптеки, врачи и лекарства для всей семьи.',
     keywords: ['аптека', 'лекарства'],
     monthlyBudgetMinor: 150_000,
     name: 'Здоровье'
@@ -109,6 +110,7 @@ describe('category service persistence', () => {
 
         expect(created).toMatchObject({
             archivedAt: null,
+            description: 'Аптеки, врачи и лекарства для всей семьи.',
             id: 'category-1',
             keywords: ['аптека', 'лекарства'],
             monthlyBudgetMinor: 150_000,
@@ -126,6 +128,7 @@ describe('category service persistence', () => {
         const updateInput = updateCategoryInputSchema.parse({
             ...validCreateInput,
             color: AccentColor.GREEN,
+            description: 'Клиники, врачи и медицинские обследования.',
             id: created.id,
             keywords: ['клиника', 'врач'],
             name: 'Медицина',
@@ -135,6 +138,7 @@ describe('category service persistence', () => {
 
         expect(updated).toMatchObject({
             color: AccentColor.GREEN,
+            description: 'Клиники, врачи и медицинские обследования.',
             keywords: ['клиника', 'врач'],
             name: 'Медицина',
             version: 2
@@ -192,6 +196,19 @@ describe('category service persistence', () => {
         });
 
         expect(parsedInput.keywords).toEqual([longKeyword]);
+    });
+
+    it('trims descriptions and rejects text longer than 2000 characters', () => {
+        const parsedInput = createCategoryInputSchema.parse({
+            ...validCreateInput,
+            description: '  Семейные покупки для здоровья.  '
+        });
+
+        expect(parsedInput.description).toBe('Семейные покупки для здоровья.');
+        expect(createCategoryInputSchema.safeParse({
+            ...validCreateInput,
+            description: 'а'.repeat(2_001)
+        }).success).toBe(false);
     });
 
     it('does not expose a category owned by another household', async () => {

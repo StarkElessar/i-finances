@@ -15,6 +15,7 @@ function createCategory(
     return {
         color: '#3f77a8',
         createdAt: timestamp,
+        description: '',
         id,
         keywords,
         monthlyBudgetMinor: null,

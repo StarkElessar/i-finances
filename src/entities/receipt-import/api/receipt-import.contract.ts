@@ -18,6 +18,7 @@ const localDateKeySchema = z.string().regex(
 );
 
 export const receiptCategorySnapshotSchema = z.object({
+    description: z.string().trim().max(2_000).default(''),
     id: entityIdSchema,
     keywords: z.array(z.string().trim().min(1).max(160)).max(500),
     name: z.string().trim().min(1).max(120)

@@ -237,6 +237,7 @@ beforeEach(async () => {
         color: AccentColor.GREEN,
         createdAt: INITIAL_DATE,
         createdByUserId: USER_ID,
+        description: 'Продукты для повседневного питания семьи.',
         householdId: HOUSEHOLD_ID,
         id: CATEGORY_ID,
         monthlyBudgetMinor: null,
@@ -302,6 +303,7 @@ describe('receipt import service', () => {
         expect(imports).toHaveLength(1);
         expect(imports[0]).toMatchObject({
             categories: [{
+                description: 'Продукты для повседневного питания семьи.',
                 id: CATEGORY_ID,
                 keywords: ['молоко'],
                 name: 'Продукты'

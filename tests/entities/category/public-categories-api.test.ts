@@ -66,6 +66,7 @@ beforeEach(async () => {
             color: '#3f77a8',
             createdAt: FIXED_DATE,
             createdByUserId: USER_ID,
+            description: 'Продукты для домашних завтраков и ужинов.',
             householdId: HOUSEHOLD_ID,
             id: 'category-food',
             monthlyBudgetMinor: 500_000,
@@ -137,6 +138,7 @@ describe('public categories API', () => {
         await expect(response.json()).resolves.toEqual([
             {
                 color: '#3f77a8',
+                description: 'Продукты для домашних завтраков и ужинов.',
                 id: 'category-food',
                 keywords: ['магазин', 'еда'],
                 name: 'Продукты'

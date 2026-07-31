@@ -22,6 +22,7 @@ export type ReceiptProcessingJobStatus =
 	typeof RECEIPT_PROCESSING_JOB_STATUSES[number];
 
 export type ReceiptCategorySnapshot = {
+    description: string;
     id: string;
     keywords: string[];
     name: string;

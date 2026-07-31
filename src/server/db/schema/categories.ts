@@ -21,6 +21,7 @@ export const categories = sqliteTable(
             .references(() => households.id, { onDelete: 'cascade' }),
         name: text('name').notNull(),
         normalizedName: text('normalized_name').notNull(),
+        description: text('description').notNull().default(''),
         color: text('color').notNull(),
         monthlyBudgetMinor: integer('monthly_budget_minor'),
         archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),

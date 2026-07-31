@@ -36,6 +36,7 @@ export function toPersistedCategory(
         archivedAt: record.category.archivedAt?.toISOString() ?? null,
         color: record.category.color,
         createdAt: record.category.createdAt.toISOString(),
+        description: record.category.description,
         id: record.category.id,
         keywords: record.keywords.map((keyword) => keyword.value),
         monthlyBudgetMinor: record.category.monthlyBudgetMinor,

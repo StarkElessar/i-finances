@@ -62,6 +62,7 @@ function getCurrentMonthKey(): string {
 function toDialogValue(category: PersistedCategory): CategoryDialogValue {
     return {
         color: category.color,
+        description: category.description,
         keywords: category.keywords,
         monthlyBudgetMinor: category.monthlyBudgetMinor,
         name: category.name

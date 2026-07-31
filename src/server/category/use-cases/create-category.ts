@@ -31,6 +31,7 @@ export function createCreateCategoryUseCase(
                 color: input.color,
                 createdAt: timestamp,
                 createdByUserId: userId,
+                description: input.description,
                 householdId: household.id,
                 id: categoryId,
                 monthlyBudgetMinor: input.monthlyBudgetMinor,

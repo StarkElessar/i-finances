@@ -2,7 +2,12 @@ import css from './category-dialog.module.scss';
 
 import { ArchiveRestore } from 'lucide-solid';
 import type { JSX } from 'solid-js';
-import { createEffect, createSignal, Show } from 'solid-js';
+import {
+    createEffect,
+    createSignal,
+    createUniqueId,
+    Show
+} from 'solid-js';
 
 import { KeywordInput } from '../keyword-input';
 
@@ -19,6 +24,7 @@ export type CategoryDialogMode = 'create' | 'edit';
 
 export type CategoryDialogValue = {
     color: string;
+    description: string;
     keywords: string[];
     monthlyBudgetMinor: number | null;
     name: string;
@@ -60,7 +66,9 @@ function resolvePositiveBudget(value: number | null | undefined): number | null 
 }
 
 export function CategoryDialog(props: CategoryDialogProps) {
+    const descriptionId = createUniqueId();
     const [categoryName, setCategoryName] = createSignal('');
+    const [categoryDescription, setCategoryDescription] = createSignal('');
     const [categoryBudget, setCategoryBudget] = createSignal('');
     const [categoryColor, setCategoryColor] = createSignal<string>(DEFAULT_CATEGORY_COLOR);
     const [keywords, setKeywords] = createSignal<string[]>([]);
@@ -80,6 +88,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
             const initialValue = props.initialValue;
 
             setCategoryName(initialValue?.name ?? '');
+            setCategoryDescription(initialValue?.description ?? '');
             setCategoryBudget(resolveBudgetInputValue(initialValue?.monthlyBudgetMinor));
             setCategoryColor(initialValue?.color ?? DEFAULT_CATEGORY_COLOR);
             setKeywords([...(initialValue?.keywords ?? [])]);
@@ -100,6 +109,10 @@ export function CategoryDialog(props: CategoryDialogProps) {
         setBudgetError(undefined);
     };
 
+    const handleDescriptionInput = (event: InputEvent & { currentTarget: HTMLTextAreaElement }) => {
+        setCategoryDescription(event.currentTarget.value);
+    };
+
     const handleSubmit = (event: SubmitEvent & { currentTarget: HTMLFormElement }) => {
         event.preventDefault();
 
@@ -117,6 +130,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
 
         props.onSubmit({
             color: categoryColor(),
+            description: categoryDescription().trim(),
             keywords: keywords(),
             monthlyBudgetMinor: resolvePositiveBudget(budget),
             name
@@ -144,7 +158,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
                     hideCloseButton={props.loading || props.restoreLoading}
                 >
                     <Dialog.Title>{dialogTitle()}</Dialog.Title>
-                    <Dialog.Description>Группа трат с месячным бюджетом и ключевыми словами</Dialog.Description>
+                    <Dialog.Description>Группа трат с подсказками для автоматической категоризации</Dialog.Description>
                 </Dialog.Header>
 
                 <Dialog.Body>
@@ -161,6 +175,31 @@ export function CategoryDialog(props: CategoryDialogProps) {
                             value={categoryName()}
                             onInput={handleNameInput}
                         />
+
+                        <div class={css.descriptionField}>
+                            <label class={css.descriptionLabel} for={descriptionId}>
+                                Описание
+                                <span>необязательно</span>
+                            </label>
+                            <textarea
+                                aria-describedby={`${descriptionId}-message`}
+                                aria-invalid={Boolean(props.fieldErrors?.description) || undefined}
+                                class={css.descriptionInput}
+                                id={descriptionId}
+                                maxLength={2_000}
+                                placeholder='Например, повседневные продукты и товары для домашних завтраков'
+                                rows={4}
+                                value={categoryDescription()}
+                                onInput={handleDescriptionInput}
+                            />
+                            <span
+                                class={props.fieldErrors?.description ? css.descriptionError : css.descriptionHint}
+                                id={`${descriptionId}-message`}
+                            >
+                                {props.fieldErrors?.description
+                                    ?? 'Опишите семейные привычки: это поможет сервису чеков точнее выбирать категорию'}
+                            </span>
+                        </div>
 
                         <TextField
                             error={budgetError() ?? props.fieldErrors?.monthlyBudgetMinor}

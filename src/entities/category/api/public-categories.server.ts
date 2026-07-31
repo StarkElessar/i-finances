@@ -8,6 +8,7 @@ import { DEFAULT_HOUSEHOLD_ID } from '~/server/household/default-household';
 
 export type PublicCategory = {
     color: string;
+    description: string;
     id: string;
     keywords: string[];
     name: string;
@@ -46,6 +47,7 @@ function toPublicCategory(record: CategoryAggregateRecord): PublicCategory {
 
     return {
         color: category.color,
+        description: category.description,
         id: category.id,
         keywords: category.keywords,
         name: category.name

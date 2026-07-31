@@ -18,6 +18,9 @@ const categoryVersionSchema = z.number().int().positive();
 const categoryNameSchema = z.string()
     .transform(normalizeCategoryName)
     .pipe(z.string().min(1, 'Укажите название категории.').max(120));
+const categoryDescriptionSchema = z.string()
+    .trim()
+    .max(2_000, 'Описание не должно превышать 2000 символов.');
 const categoryKeywordSchema = z.string()
     .transform(normalizeCategoryKeyword)
     .pipe(z.string().min(1, 'Ключевое слово не может быть пустым.'));
@@ -48,6 +51,7 @@ const optionalBudgetSchema = z.number()
 
 const editableCategoryFields = {
     color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
+    description: categoryDescriptionSchema,
     keywords: categoryKeywordsSchema,
     monthlyBudgetMinor: optionalBudgetSchema,
     name: categoryNameSchema

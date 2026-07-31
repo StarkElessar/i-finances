@@ -3,6 +3,7 @@ import type { CurrencyCodeValue } from '~/shared/lib';
 export type Category = {
     color: string;
     createdAt: string;
+    description: string;
     id: string;
     keywords: string[];
     monthlyBudgetMinor: number | null;
