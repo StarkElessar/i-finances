@@ -440,7 +440,7 @@ OpenAI SDK удалили. Были введены:
 
 После появления `GET /api/public/categories` добавили:
 
-- загрузку массива `{ color, id, keywords, name }`;
+- загрузку массива `{ color, description, id, keywords, name }`;
 - отдельную модель и prompt категоризации;
 - группировку полного массива receipt items по категориям;
 - локальную fallback-категорию `{ id: null, name: "Без категории" }`;
@@ -629,6 +629,7 @@ total = roundToCents(quantity * unitPrice + (discount ?? 0))
 ```ts
 type FinanceCategory = {
     color?: string;
+    description: string;
     id: string;
     keywords: string[];
     name: string;
@@ -645,7 +646,7 @@ GET /api/public/categories
 
 - возвращает активные категории default household;
 - не требует пользовательскую сессию;
-- отвечает массивом `{ color, id, keywords, name }`;
+- отвечает массивом `{ color, description, id, keywords, name }`;
 - выставляет `access-control-allow-origin: *`;
 - использует `cache-control: no-store`.
 
@@ -666,6 +667,7 @@ GET /api/public/categories
     {
       "index": 0,
       "name": "Гигиена",
+      "description": "Средства личной гигиены для всей семьи",
       "keywords": ["зубная паста"]
     }
   ],

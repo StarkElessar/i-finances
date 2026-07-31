@@ -70,6 +70,7 @@ Authorization: Bearer <api-key>
     {
       "id": "category-id",
       "name": "Продукты",
+      "description": "Продукты для повседневного питания семьи",
       "keywords": ["молоко", "хлеб"]
     }
   ],
