@@ -15,12 +15,12 @@ export { BELARUSIAN_RUBLE_SYMBOL, CURRENCY_SYMBOLS, formatCurrency, getCurrencyS
 export type { FormatDateInput, FormatDateOptions } from './date-formatter';
 export { formatDate } from './date-formatter';
 export {
-    amountToMinorUnits,
-    convertMinorUnitsByExchangeRate,
-    formatMinorUnitsAsInput,
-    formatMinorUnitsCurrency,
-    invertExchangeRate,
-    minorUnitsToAmount,
-    normalizeExchangeRate,
-    parseOptionalMoneyInputToMinorUnits
+	amountToMinorUnits,
+	convertMinorUnitsByExchangeRate,
+	formatMinorUnitsAsInput,
+	formatMinorUnitsCurrency,
+	invertExchangeRate,
+	minorUnitsToAmount,
+	normalizeExchangeRate,
+	parseOptionalMoneyInputToMinorUnits
 } from './money';

@@ -9,40 +9,40 @@ import { createRecalculateOperationRateUseCase } from './use-cases/recalculate-o
 import { createUpdateOperationUseCase } from './use-cases/update-operation';
 import { createOperationRules } from './operation-rules';
 import type {
-    OperationService,
-    OperationServiceDependencies
+	OperationService,
+	OperationServiceDependencies
 } from './operation-service.types';
 
 export type {
-    OperationService,
-    OperationServiceDependencies
+	OperationService,
+	OperationServiceDependencies
 } from './operation-service.types';
 
 /**
  * Composes operation use cases from injected domain and persistence adapters.
  */
 export function createOperationService(
-    dependencies: OperationServiceDependencies
+	dependencies: OperationServiceDependencies
 ): OperationService {
-    const context = {
-        accountRepository: dependencies.accountRepository,
-        createId: dependencies.createId ?? randomUUID,
-        exchangeRateResolver: dependencies.exchangeRateResolver,
-        householdResolver: dependencies.householdResolver,
-        now: dependencies.now ?? (() => new Date()),
-        operationRepository: dependencies.operationRepository,
-        rules: createOperationRules(dependencies)
-    };
+	const context = {
+		accountRepository: dependencies.accountRepository,
+		createId: dependencies.createId ?? randomUUID,
+		exchangeRateResolver: dependencies.exchangeRateResolver,
+		householdResolver: dependencies.householdResolver,
+		now: dependencies.now ?? (() => new Date()),
+		operationRepository: dependencies.operationRepository,
+		rules: createOperationRules(dependencies)
+	};
 
-    return {
-        create: createCreateOperationUseCase(context),
-        getAccountBalances: createGetAccountBalancesUseCase(context),
-        getAccountLedger: createGetAccountLedgerUseCase(context),
-        getMonthlyExpenseSummary:
-            createGetMonthlyExpenseSummaryUseCase(context),
-        recalculateRate: createRecalculateOperationRateUseCase(context),
-        restore: createChangeOperationDeletionStateUseCase(context, false),
-        softDelete: createChangeOperationDeletionStateUseCase(context, true),
-        update: createUpdateOperationUseCase(context)
-    };
+	return {
+		create: createCreateOperationUseCase(context),
+		getAccountBalances: createGetAccountBalancesUseCase(context),
+		getAccountLedger: createGetAccountLedgerUseCase(context),
+		getMonthlyExpenseSummary:
+			createGetMonthlyExpenseSummaryUseCase(context),
+		recalculateRate: createRecalculateOperationRateUseCase(context),
+		restore: createChangeOperationDeletionStateUseCase(context, false),
+		softDelete: createChangeOperationDeletionStateUseCase(context, true),
+		update: createUpdateOperationUseCase(context)
+	};
 }

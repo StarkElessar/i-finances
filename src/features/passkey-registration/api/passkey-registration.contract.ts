@@ -4,8 +4,8 @@ import { z } from 'zod';
  * Validates the serializable passkey registration result returned to the browser.
  */
 export const passkeyRegistrationResultSchema = z.object({
-    ok: z.boolean(),
-    message: z.string().optional()
+	ok: z.boolean(),
+	message: z.string().optional()
 });
 
 /**

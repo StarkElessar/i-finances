@@ -9,30 +9,30 @@ const BIGINT_ONE = BigInt(1);
 const BIGINT_TWO = BigInt(2);
 const BIGINT_TEN = BigInt(10);
 const DECIMAL_RATE_PATTERN = new RegExp(
-    `^\\d+(?:[.,]\\d{1,${EXCHANGE_RATE_FRACTION_DIGITS}})?$`
+	`^\\d+(?:[.,]\\d{1,${EXCHANGE_RATE_FRACTION_DIGITS}})?$`
 );
 
 export function amountToMinorUnits(amount: number): number {
-    return Math.round(amount * MINOR_UNITS_IN_MAJOR);
+	return Math.round(amount * MINOR_UNITS_IN_MAJOR);
 }
 
 export function minorUnitsToAmount(amountMinor: number): number {
-    return amountMinor / MINOR_UNITS_IN_MAJOR;
+	return amountMinor / MINOR_UNITS_IN_MAJOR;
 }
 
 export function formatMinorUnitsCurrency(
-    amountMinor: number,
-    currency: CurrencyCodeValue,
-    options?: FormatCurrencyOptions
+	amountMinor: number,
+	currency: CurrencyCodeValue,
+	options?: FormatCurrencyOptions
 ): string {
-    return formatCurrency(minorUnitsToAmount(amountMinor), currency, options);
+	return formatCurrency(minorUnitsToAmount(amountMinor), currency, options);
 }
 
 /**
  * Formats integer minor units for an editable money input.
  */
 export function formatMinorUnitsAsInput(amountMinor: number): string {
-    return minorUnitsToAmount(amountMinor).toFixed(2).replace('.', ',');
+	return minorUnitsToAmount(amountMinor).toFixed(2).replace('.', ',');
 }
 
 /**
@@ -41,19 +41,19 @@ export function formatMinorUnitsAsInput(amountMinor: number): string {
  * `null` represents an empty field, while `undefined` represents invalid input.
  */
 export function parseOptionalMoneyInputToMinorUnits(value: string): number | null | undefined {
-    const normalizedValue = value.trim().replace(/\s/g, '').replace(',', '.');
+	const normalizedValue = value.trim().replace(/\s/g, '').replace(',', '.');
 
-    if (!normalizedValue) {
-        return null;
-    }
+	if (!normalizedValue) {
+		return null;
+	}
 
-    if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedValue)) {
-        return undefined;
-    }
+	if (!/^\d+(?:\.\d{1,2})?$/.test(normalizedValue)) {
+		return undefined;
+	}
 
-    const amount = Number(normalizedValue);
+	const amount = Number(normalizedValue);
 
-    return Number.isFinite(amount) ? amountToMinorUnits(amount) : undefined;
+	return Number.isFinite(amount) ? amountToMinorUnits(amount) : undefined;
 }
 
 /**
@@ -63,101 +63,101 @@ export function parseOptionalMoneyInputToMinorUnits(value: string): number | nul
  * binary floating-point artifacts.
  */
 export function normalizeExchangeRate(value: string): string | undefined {
-    const normalizedValue = value.trim().replace(/\s/g, '').replace(',', '.');
+	const normalizedValue = value.trim().replace(/\s/g, '').replace(',', '.');
 
-    if (!DECIMAL_RATE_PATTERN.test(normalizedValue)) {
-        return undefined;
-    }
+	if (!DECIMAL_RATE_PATTERN.test(normalizedValue)) {
+		return undefined;
+	}
 
-    const [wholePart, fractionPart = ''] = normalizedValue.split('.');
-    const normalizedFraction = fractionPart.replace(/0+$/, '');
-    const normalizedRate = normalizedFraction
-        ? `${wholePart}.${normalizedFraction}`
-        : wholePart;
+	const [wholePart, fractionPart = ''] = normalizedValue.split('.');
+	const normalizedFraction = fractionPart.replace(/0+$/, '');
+	const normalizedRate = normalizedFraction
+		? `${wholePart}.${normalizedFraction}`
+		: wholePart;
 
-    return Number(wholePart) > 0 || /[1-9]/.test(fractionPart)
-        ? normalizedRate
-        : undefined;
+	return Number(wholePart) > 0 || /[1-9]/.test(fractionPart)
+		? normalizedRate
+		: undefined;
 }
 
 /**
  * Converts minor units with a persisted decimal rate using integer arithmetic.
  */
 export function convertMinorUnitsByExchangeRate(
-    amountMinor: number,
-    exchangeRate: string
+	amountMinor: number,
+	exchangeRate: string
 ): number {
-    if (!Number.isSafeInteger(amountMinor) || amountMinor < 0) {
-        throw new Error('Amount must be a non-negative safe integer.');
-    }
+	if (!Number.isSafeInteger(amountMinor) || amountMinor < 0) {
+		throw new Error('Amount must be a non-negative safe integer.');
+	}
 
-    const ratio = parseExchangeRateRatio(exchangeRate);
-    const convertedAmount = divideAndRound(
-        BigInt(amountMinor) * ratio.numerator,
-        ratio.denominator
-    );
+	const ratio = parseExchangeRateRatio(exchangeRate);
+	const convertedAmount = divideAndRound(
+		BigInt(amountMinor) * ratio.numerator,
+		ratio.denominator
+	);
 
-    if (convertedAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
-        throw new Error('Converted amount exceeds the safe integer range.');
-    }
+	if (convertedAmount > BigInt(Number.MAX_SAFE_INTEGER)) {
+		throw new Error('Converted amount exceeds the safe integer range.');
+	}
 
-    return Number(convertedAmount);
+	return Number(convertedAmount);
 }
 
 /**
  * Produces the reciprocal of a persisted decimal exchange rate.
  */
 export function invertExchangeRate(exchangeRate: string): string {
-    const ratio = parseExchangeRateRatio(exchangeRate);
-    const scale = BIGINT_TEN ** BigInt(EXCHANGE_RATE_FRACTION_DIGITS);
-    const inverseUnits = divideAndRound(
-        ratio.denominator * scale,
-        ratio.numerator
-    );
+	const ratio = parseExchangeRateRatio(exchangeRate);
+	const scale = BIGINT_TEN ** BigInt(EXCHANGE_RATE_FRACTION_DIGITS);
+	const inverseUnits = divideAndRound(
+		ratio.denominator * scale,
+		ratio.numerator
+	);
 
-    if (inverseUnits === BIGINT_ZERO) {
-        throw new Error('Inverse exchange rate is below supported precision.');
-    }
+	if (inverseUnits === BIGINT_ZERO) {
+		throw new Error('Inverse exchange rate is below supported precision.');
+	}
 
-    return formatScaledDecimal(inverseUnits, EXCHANGE_RATE_FRACTION_DIGITS);
+	return formatScaledDecimal(inverseUnits, EXCHANGE_RATE_FRACTION_DIGITS);
 }
 
 type ExchangeRateRatio = {
-    denominator: bigint;
-    numerator: bigint;
+	denominator: bigint;
+	numerator: bigint;
 };
 
 function parseExchangeRateRatio(exchangeRate: string): ExchangeRateRatio {
-    const normalizedRate = normalizeExchangeRate(exchangeRate);
+	const normalizedRate = normalizeExchangeRate(exchangeRate);
 
-    if (normalizedRate === undefined) {
-        throw new Error(`Invalid positive exchange rate: ${exchangeRate}`);
-    }
+	if (normalizedRate === undefined) {
+		throw new Error(`Invalid positive exchange rate: ${exchangeRate}`);
+	}
 
-    const [wholePart, fractionPart = ''] = normalizedRate.split('.');
+	const [wholePart, fractionPart = ''] = normalizedRate.split('.');
 
-    return {
-        denominator: BIGINT_TEN ** BigInt(fractionPart.length),
-        numerator: BigInt(`${wholePart}${fractionPart}`)
-    };
+	return {
+		denominator: BIGINT_TEN ** BigInt(fractionPart.length),
+		numerator: BigInt(`${wholePart}${fractionPart}`)
+	};
 }
 
 function divideAndRound(numerator: bigint, denominator: bigint): bigint {
-    const quotient = numerator / denominator;
-    const remainder = numerator % denominator;
+	const quotient = numerator / denominator;
+	const remainder = numerator % denominator;
 
-    return remainder * BIGINT_TWO >= denominator
-        ? quotient + BIGINT_ONE
-        : quotient;
+	return remainder * BIGINT_TWO >= denominator
+		? quotient + BIGINT_ONE
+		: quotient;
 }
 
 function formatScaledDecimal(value: bigint, fractionDigits: number): string {
-    const scale = BIGINT_TEN ** BigInt(fractionDigits);
-    const wholePart = value / scale;
-    const fractionPart = (value % scale)
-        .toString()
-        .padStart(fractionDigits, '0')
-        .replace(/0+$/, '');
+	const scale = BIGINT_TEN ** BigInt(fractionDigits);
+	const wholePart = value / scale;
+	const fractionPart = (value % scale)
+		.toString()
+		.padStart(fractionDigits, '0')
+		.replace(/0+$/, '');
 
-    return fractionPart ? `${wholePart}.${fractionPart}` : wholePart.toString();
+	return fractionPart ? `${wholePart}.${fractionPart}` : wholePart.toString();
 }

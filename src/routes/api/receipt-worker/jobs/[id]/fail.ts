@@ -9,30 +9,30 @@ import { assertReceiptWorkerApiKey } from '~/server/receipt-import/receipt-worke
  * Stores a safe worker error for a leased receipt job.
  */
 export async function POST(event: APIEvent): Promise<Response> {
-    try {
-        assertReceiptWorkerApiKey(event.request);
+	try {
+		assertReceiptWorkerApiKey(event.request);
 
-        const input = failReceiptJobInputSchema.parse(
-            await event.request.json()
-        );
-        const receiptImport = await receiptImportService.failJob(
-            event.params.id,
-            input
-        );
+		const input = failReceiptJobInputSchema.parse(
+			await event.request.json()
+		);
+		const receiptImport = await receiptImportService.failJob(
+			event.params.id,
+			input
+		);
 
-        return Response.json({
-            ok: true,
-            receiptImportId: receiptImport.id,
-            status: receiptImport.status
-        });
-    }
-    catch (error: unknown) {
-        const failure = createReceiptHttpFailure(error);
+		return Response.json({
+			ok: true,
+			receiptImportId: receiptImport.id,
+			status: receiptImport.status
+		});
+	}
+	catch (error: unknown) {
+		const failure = createReceiptHttpFailure(error);
 
-        if (failure !== undefined) {
-            return failure;
-        }
+		if (failure !== undefined) {
+			return failure;
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }

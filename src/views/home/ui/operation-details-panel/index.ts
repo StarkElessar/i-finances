@@ -1,5 +1,5 @@
 export { OperationDetailsPanel } from './operation-details-panel';
 export type {
-    OperationDetailsPanelMode,
-    OperationDetailsPanelProps
+	OperationDetailsPanelMode,
+	OperationDetailsPanelProps
 } from './types';

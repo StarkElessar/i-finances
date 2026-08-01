@@ -1,39 +1,39 @@
 import {
-    DEFAULT_HOUSEHOLD_BASE_CURRENCY,
-    DEFAULT_HOUSEHOLD_ID,
-    DEFAULT_HOUSEHOLD_NAME
+	DEFAULT_HOUSEHOLD_BASE_CURRENCY,
+	DEFAULT_HOUSEHOLD_ID,
+	DEFAULT_HOUSEHOLD_NAME
 } from './default-household';
 import type {
-    HouseholdAccessRecord,
-    HouseholdRepository
+	HouseholdAccessRecord,
+	HouseholdRepository
 } from './household-repository';
 
 /**
  * Signals that an authenticated user does not belong to a household.
  */
 export class HouseholdAccessRequiredError extends Error {
-    constructor() {
-        super('Household membership required.');
-        this.name = 'HouseholdAccessRequiredError';
-    }
+	constructor() {
+		super('Household membership required.');
+		this.name = 'HouseholdAccessRequiredError';
+	}
 }
 
 /**
  * Signals that the first version cannot choose between several households.
  */
 export class HouseholdSelectionRequiredError extends Error {
-    constructor() {
-        super('Household selection required.');
-        this.name = 'HouseholdSelectionRequiredError';
-    }
+	constructor() {
+		super('Household selection required.');
+		this.name = 'HouseholdSelectionRequiredError';
+	}
 }
 
 export type HouseholdResolver = {
-    requireForUser: (userId: string) => Promise<HouseholdAccessRecord>;
+	requireForUser: (userId: string) => Promise<HouseholdAccessRecord>;
 };
 
 export type HouseholdResolverOptions = {
-    now?: () => Date;
+	now?: () => Date;
 };
 
 /**
@@ -44,51 +44,51 @@ export type HouseholdResolverOptions = {
  * users to the default workspace on first access.
  */
 export function createHouseholdResolver(
-    repository: HouseholdRepository,
-    options: HouseholdResolverOptions = {}
+	repository: HouseholdRepository,
+	options: HouseholdResolverOptions = {}
 ): HouseholdResolver {
-    const now = options.now ?? (() => new Date());
+	const now = options.now ?? (() => new Date());
 
-    const selectSingleHousehold = (
-        households: HouseholdAccessRecord[]
-    ): HouseholdAccessRecord | undefined => {
-        const household = households[0];
+	const selectSingleHousehold = (
+		households: HouseholdAccessRecord[]
+	): HouseholdAccessRecord | undefined => {
+		const household = households[0];
 
-        if (households.length === 1) {
-            return household;
-        }
+		if (households.length === 1) {
+			return household;
+		}
 
-        if (households.length > 1) {
-            throw new HouseholdSelectionRequiredError();
-        }
+		if (households.length > 1) {
+			throw new HouseholdSelectionRequiredError();
+		}
 
-        return undefined;
-    };
+		return undefined;
+	};
 
-    const requireForUser = async (userId: string): Promise<HouseholdAccessRecord> => {
-        const availableHouseholds = await repository.findForUser(userId);
-        const household = selectSingleHousehold(availableHouseholds);
+	const requireForUser = async (userId: string): Promise<HouseholdAccessRecord> => {
+		const availableHouseholds = await repository.findForUser(userId);
+		const household = selectSingleHousehold(availableHouseholds);
 
-        if (household) {
-            return household;
-        }
+		if (household) {
+			return household;
+		}
 
-        const provisionedHouseholds = await repository.ensureMembership({
-            baseCurrency: DEFAULT_HOUSEHOLD_BASE_CURRENCY,
-            householdId: DEFAULT_HOUSEHOLD_ID,
-            householdName: DEFAULT_HOUSEHOLD_NAME,
-            joinedAt: now(),
-            role: 'owner',
-            userId
-        });
-        const provisionedHousehold = selectSingleHousehold(provisionedHouseholds);
+		const provisionedHouseholds = await repository.ensureMembership({
+			baseCurrency: DEFAULT_HOUSEHOLD_BASE_CURRENCY,
+			householdId: DEFAULT_HOUSEHOLD_ID,
+			householdName: DEFAULT_HOUSEHOLD_NAME,
+			joinedAt: now(),
+			role: 'owner',
+			userId
+		});
+		const provisionedHousehold = selectSingleHousehold(provisionedHouseholds);
 
-        if (provisionedHousehold) {
-            return provisionedHousehold;
-        }
+		if (provisionedHousehold) {
+			return provisionedHousehold;
+		}
 
-        throw new HouseholdAccessRequiredError();
-    };
+		throw new HouseholdAccessRequiredError();
+	};
 
-    return { requireForUser };
+	return { requireForUser };
 }

@@ -10,35 +10,35 @@ import * as schema from './schema';
  * Global development cache preventing duplicate SQLite handles during HMR.
  */
 type DatabaseGlobal = typeof globalThis & {
-    iFinancesSqlite?: Database.Database;
+	iFinancesSqlite?: Database.Database;
 };
 
 /**
  * Resolves the configured SQLite URL to a local filesystem path.
  */
 function resolveDatabasePath(): string {
-    const configuredPath = process.env.DATABASE_URL ?? './data/i-finances.sqlite';
-    const path = configuredPath.startsWith('file:') ? configuredPath.slice('file:'.length) : configuredPath;
+	const configuredPath = process.env.DATABASE_URL ?? './data/i-finances.sqlite';
+	const path = configuredPath.startsWith('file:') ? configuredPath.slice('file:'.length) : configuredPath;
 
-    return path === ':memory:' ? path : resolve(path);
+	return path === ':memory:' ? path : resolve(path);
 }
 
 /**
  * Opens and configures the shared SQLite connection.
  */
 function createDatabaseConnection(): Database.Database {
-    const databasePath = resolveDatabasePath();
+	const databasePath = resolveDatabasePath();
 
-    if (databasePath !== ':memory:') {
-        mkdirSync(dirname(databasePath), { recursive: true });
-    }
+	if (databasePath !== ':memory:') {
+		mkdirSync(dirname(databasePath), { recursive: true });
+	}
 
-    const connection = new Database(databasePath);
-    connection.pragma('journal_mode = WAL');
-    connection.pragma('foreign_keys = ON');
-    connection.pragma('busy_timeout = 5000');
+	const connection = new Database(databasePath);
+	connection.pragma('journal_mode = WAL');
+	connection.pragma('foreign_keys = ON');
+	connection.pragma('busy_timeout = 5000');
 
-    return connection;
+	return connection;
 }
 
 const databaseGlobal = globalThis as DatabaseGlobal;
@@ -49,7 +49,7 @@ const databaseGlobal = globalThis as DatabaseGlobal;
 export const sqlite = databaseGlobal.iFinancesSqlite ?? createDatabaseConnection();
 
 if (process.env.NODE_ENV !== 'production') {
-    databaseGlobal.iFinancesSqlite = sqlite;
+	databaseGlobal.iFinancesSqlite = sqlite;
 }
 
 /**

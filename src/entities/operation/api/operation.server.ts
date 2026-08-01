@@ -1,28 +1,28 @@
 import { action, query, revalidate } from '@solidjs/router';
 
 import type {
-    ChangeOperationDeletionStateInput,
-    CreateOperationInput,
-    GetAccountLedgerInput,
-    GetMonthlyExpenseSummaryInput,
-    OperationCommandResult,
-    RecalculateOperationRateInput,
-    UpdateOperationInput
+	ChangeOperationDeletionStateInput,
+	CreateOperationInput,
+	GetAccountLedgerInput,
+	GetMonthlyExpenseSummaryInput,
+	OperationCommandResult,
+	RecalculateOperationRateInput,
+	UpdateOperationInput
 } from './operation.contract';
 import {
-    changeOperationDeletionStateInputSchema,
-    createOperationInputSchema,
-    getAccountLedgerInputSchema,
-    getMonthlyExpenseSummaryInputSchema,
-    recalculateOperationRateInputSchema,
-    updateOperationInputSchema
+	changeOperationDeletionStateInputSchema,
+	createOperationInputSchema,
+	getAccountLedgerInputSchema,
+	getMonthlyExpenseSummaryInputSchema,
+	recalculateOperationRateInputSchema,
+	updateOperationInputSchema
 } from './operation.contract';
 import { createOperationCommandExecutor } from './operation-command';
 
 import type {
-    AccountBalance,
-    AccountLedger,
-    MonthlyExpenseSummary
+	AccountBalance,
+	AccountLedger,
+	MonthlyExpenseSummary
 } from '~/entities/operation/model/types';
 import { createAccountRepository } from '~/server/account/account-repository';
 import { requireUser } from '~/server/auth/require-user';
@@ -32,152 +32,152 @@ import { createExchangeRateRepository } from '~/server/exchange-rate/exchange-ra
 import { createExchangeRateService } from '~/server/exchange-rate/exchange-rate-service';
 import { createHouseholdRepository } from '~/server/household/household-repository';
 import {
-    createHouseholdResolver
+	createHouseholdResolver
 } from '~/server/household/household-service';
 import { createOperationRepository } from '~/server/operation/operation-repository';
 import { createOperationService } from '~/server/operation/operation-service';
 
 const householdResolver = createHouseholdResolver(createHouseholdRepository());
 const operationService = createOperationService({
-    accountRepository: createAccountRepository(),
-    categoryRepository: createCategoryRepository(),
-    contactRepository: createContactRepository(),
-    exchangeRateResolver: createExchangeRateService({
-        exchangeRateRepository: createExchangeRateRepository()
-    }),
-    householdResolver,
-    operationRepository: createOperationRepository()
+	accountRepository: createAccountRepository(),
+	categoryRepository: createCategoryRepository(),
+	contactRepository: createContactRepository(),
+	exchangeRateResolver: createExchangeRateService({
+		exchangeRateRepository: createExchangeRateRepository()
+	}),
+	householdResolver,
+	operationRepository: createOperationRepository()
 });
 
 async function readAccountLedger(
-    input: GetAccountLedgerInput
+	input: GetAccountLedgerInput
 ): Promise<AccountLedger> {
-    'use server';
+	'use server';
 
-    const parsedInput = getAccountLedgerInputSchema.parse(input);
-    const session = await requireUser();
+	const parsedInput = getAccountLedgerInputSchema.parse(input);
+	const session = await requireUser();
 
-    return operationService.getAccountLedger(session.user.id, parsedInput);
+	return operationService.getAccountLedger(session.user.id, parsedInput);
 }
 
 async function readAccountBalances(): Promise<AccountBalance[]> {
-    'use server';
+	'use server';
 
-    const session = await requireUser();
+	const session = await requireUser();
 
-    return operationService.getAccountBalances(session.user.id);
+	return operationService.getAccountBalances(session.user.id);
 }
 
 async function readMonthlyExpenseSummary(
-    input: GetMonthlyExpenseSummaryInput
+	input: GetMonthlyExpenseSummaryInput
 ): Promise<MonthlyExpenseSummary> {
-    'use server';
+	'use server';
 
-    const parsedInput = getMonthlyExpenseSummaryInputSchema.parse(input);
-    const session = await requireUser();
+	const parsedInput = getMonthlyExpenseSummaryInputSchema.parse(input);
+	const session = await requireUser();
 
-    return operationService.getMonthlyExpenseSummary(
-        session.user.id,
-        parsedInput
-    );
+	return operationService.getMonthlyExpenseSummary(
+		session.user.id,
+		parsedInput
+	);
 }
 
 export const getAccountLedger = query(readAccountLedger, 'account-ledger');
 export const getAccountBalances = query(readAccountBalances, 'account-balances');
 export const getMonthlyExpenseSummary = query(
-    readMonthlyExpenseSummary,
-    'monthly-expense-summary'
+	readMonthlyExpenseSummary,
+	'monthly-expense-summary'
 );
 
 async function revalidateOperationQueries(): Promise<void> {
-    await Promise.all([
-        revalidate(getAccountLedger.key),
-        revalidate(getAccountBalances.key),
-        revalidate(getMonthlyExpenseSummary.key)
-    ]);
+	await Promise.all([
+		revalidate(getAccountLedger.key),
+		revalidate(getAccountBalances.key),
+		revalidate(getMonthlyExpenseSummary.key)
+	]);
 }
 
 const executeOperationCommand = createOperationCommandExecutor({
-    revalidateQueries: revalidateOperationQueries
+	revalidateQueries: revalidateOperationQueries
 });
 
 async function createOperationCommand(
-    input: CreateOperationInput
+	input: CreateOperationInput
 ): Promise<OperationCommandResult> {
-    'use server';
+	'use server';
 
-    return executeOperationCommand(
-        createOperationInputSchema,
-        input,
-        operationService.create
-    );
+	return executeOperationCommand(
+		createOperationInputSchema,
+		input,
+		operationService.create
+	);
 }
 
 async function updateOperationCommand(
-    input: UpdateOperationInput
+	input: UpdateOperationInput
 ): Promise<OperationCommandResult> {
-    'use server';
+	'use server';
 
-    return executeOperationCommand(
-        updateOperationInputSchema,
-        input,
-        operationService.update
-    );
+	return executeOperationCommand(
+		updateOperationInputSchema,
+		input,
+		operationService.update
+	);
 }
 
 async function deleteOperationCommand(
-    input: ChangeOperationDeletionStateInput
+	input: ChangeOperationDeletionStateInput
 ): Promise<OperationCommandResult> {
-    'use server';
+	'use server';
 
-    return executeOperationCommand(
-        changeOperationDeletionStateInputSchema,
-        input,
-        operationService.softDelete
-    );
+	return executeOperationCommand(
+		changeOperationDeletionStateInputSchema,
+		input,
+		operationService.softDelete
+	);
 }
 
 async function restoreOperationCommand(
-    input: ChangeOperationDeletionStateInput
+	input: ChangeOperationDeletionStateInput
 ): Promise<OperationCommandResult> {
-    'use server';
+	'use server';
 
-    return executeOperationCommand(
-        changeOperationDeletionStateInputSchema,
-        input,
-        operationService.restore
-    );
+	return executeOperationCommand(
+		changeOperationDeletionStateInputSchema,
+		input,
+		operationService.restore
+	);
 }
 
 async function recalculateOperationRateCommand(
-    input: RecalculateOperationRateInput
+	input: RecalculateOperationRateInput
 ): Promise<OperationCommandResult> {
-    'use server';
+	'use server';
 
-    return executeOperationCommand(
-        recalculateOperationRateInputSchema,
-        input,
-        operationService.recalculateRate
-    );
+	return executeOperationCommand(
+		recalculateOperationRateInputSchema,
+		input,
+		operationService.recalculateRate
+	);
 }
 
 export const createOperationAction = action(
-    createOperationCommand,
-    'create-operation'
+	createOperationCommand,
+	'create-operation'
 );
 export const updateOperationAction = action(
-    updateOperationCommand,
-    'update-operation'
+	updateOperationCommand,
+	'update-operation'
 );
 export const deleteOperationAction = action(
-    deleteOperationCommand,
-    'delete-operation'
+	deleteOperationCommand,
+	'delete-operation'
 );
 export const restoreOperationAction = action(
-    restoreOperationCommand,
-    'restore-operation'
+	restoreOperationCommand,
+	'restore-operation'
 );
 export const recalculateOperationRateAction = action(
-    recalculateOperationRateCommand,
-    'recalculate-operation-rate'
+	recalculateOperationRateCommand,
+	'recalculate-operation-rate'
 );

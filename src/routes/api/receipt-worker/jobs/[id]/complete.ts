@@ -9,30 +9,30 @@ import { assertReceiptWorkerApiKey } from '~/server/receipt-import/receipt-worke
  * Accepts the fully structured and categorized result of a leased job.
  */
 export async function POST(event: APIEvent): Promise<Response> {
-    try {
-        assertReceiptWorkerApiKey(event.request);
+	try {
+		assertReceiptWorkerApiKey(event.request);
 
-        const input = completeReceiptJobInputSchema.parse(
-            await event.request.json()
-        );
-        const receiptImport = await receiptImportService.completeJob(
-            event.params.id,
-            input
-        );
+		const input = completeReceiptJobInputSchema.parse(
+			await event.request.json()
+		);
+		const receiptImport = await receiptImportService.completeJob(
+			event.params.id,
+			input
+		);
 
-        return Response.json({
-            ok: true,
-            receiptImportId: receiptImport.id,
-            status: receiptImport.status
-        });
-    }
-    catch (error: unknown) {
-        const failure = createReceiptHttpFailure(error);
+		return Response.json({
+			ok: true,
+			receiptImportId: receiptImport.id,
+			status: receiptImport.status
+		});
+	}
+	catch (error: unknown) {
+		const failure = createReceiptHttpFailure(error);
 
-        if (failure !== undefined) {
-            return failure;
-        }
+		if (failure !== undefined) {
+			return failure;
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }

@@ -9,12 +9,12 @@ import { RootLayout } from '~/app/root-layout';
 const isSingleFlightEnabled = import.meta.env.PROD;
 
 export default function App() {
-    return (
-        <Router
-            root={RootLayout}
-            singleFlight={isSingleFlightEnabled}
-        >
-            <FileRoutes/>
-        </Router>
-    );
+	return (
+		<Router
+			root={RootLayout}
+			singleFlight={isSingleFlightEnabled}
+		>
+			<FileRoutes/>
+		</Router>
+	);
 }

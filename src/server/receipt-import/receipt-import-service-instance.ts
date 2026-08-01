@@ -12,28 +12,28 @@ import { createReceiptImportRepository } from '~/server/receipt-import/receipt-i
 import { createReceiptImportService } from '~/server/receipt-import/receipt-import-service';
 
 const householdResolver = createHouseholdResolver(
-    createHouseholdRepository()
+	createHouseholdRepository()
 );
 const accountRepository = createAccountRepository();
 const exchangeRateResolver = createExchangeRateService({
-    exchangeRateRepository: createExchangeRateRepository()
+	exchangeRateRepository: createExchangeRateRepository()
 });
 
 /**
  * Shared receipt import service used by UI actions and HTTP worker endpoints.
  */
 export const receiptImportService = createReceiptImportService({
-    accountRepository,
-    categoryRepository: createCategoryRepository(),
-    householdResolver,
-    imageStorage: createReceiptImageStorage(),
-    operationService: createOperationService({
-        accountRepository,
-        categoryRepository: createCategoryRepository(),
-        contactRepository: createContactRepository(),
-        exchangeRateResolver,
-        householdResolver,
-        operationRepository: createOperationRepository()
-    }),
-    receiptImportRepository: createReceiptImportRepository()
+	accountRepository,
+	categoryRepository: createCategoryRepository(),
+	householdResolver,
+	imageStorage: createReceiptImageStorage(),
+	operationService: createOperationService({
+		accountRepository,
+		categoryRepository: createCategoryRepository(),
+		contactRepository: createContactRepository(),
+		exchangeRateResolver,
+		householdResolver,
+		operationRepository: createOperationRepository()
+	}),
+	receiptImportRepository: createReceiptImportRepository()
 });

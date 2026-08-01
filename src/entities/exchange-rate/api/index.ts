@@ -1,3 +1,3 @@
 export {
-    getCurrentExchangeRates
+	getCurrentExchangeRates
 } from './exchange-rate.server';

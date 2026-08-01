@@ -46,9 +46,8 @@
 		"node": ">=22"
 	},
 	"devDependencies": {
-		"@eslint/js": "^9.0.8",
+		"@stark/eslint-config": "github:StarkElessar/stark-eslint-config#cfe9784",
 		"@stark/stylelint-config": "git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#5adc270",
-		"@stylistic/eslint-plugin": "^5.10.0",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^26.1.1",
 		"drizzle-kit": "^0.31.10",

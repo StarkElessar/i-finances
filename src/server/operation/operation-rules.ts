@@ -1,9 +1,9 @@
 import {
-    OperationAccountUnavailableError,
-    OperationDeletedError,
-    OperationNotFoundError,
-    OperationReferenceUnavailableError,
-    OperationVersionConflictError
+	OperationAccountUnavailableError,
+	OperationDeletedError,
+	OperationNotFoundError,
+	OperationReferenceUnavailableError,
+	OperationVersionConflictError
 } from './operation-errors';
 import type { OperationRepository } from './operation-repository';
 
@@ -13,185 +13,185 @@ import type { ContactRepository } from '~/server/contact/contact-repository';
 import type { AccountRecord, OperationRecord } from '~/server/db/schema';
 
 export type OperationReferenceSelection = {
-    category: {
-        id: string;
-        name: string;
-    } | null;
-    contact: {
-        id: string;
-        name: string;
-    } | null;
+	category: {
+		id: string;
+		name: string;
+	} | null;
+	contact: {
+		id: string;
+		name: string;
+	} | null;
 };
 
 export type OperationRules = {
-    assertEditable: (record: OperationRecord) => void;
-    assertVersion: (record: OperationRecord, expectedVersion: number) => void;
-    requireAccount: (
-        householdId: string,
-        accountId: string,
-        activeOnly: boolean
-    ) => Promise<AccountRecord>;
-    requireCurrent: (
-        householdId: string,
-        operationId: string
-    ) => Promise<OperationRecord>;
-    resolveReferences: (
-        householdId: string,
-        categoryId: string | null,
-        contactId: string | null,
-        current?: OperationRecord
-    ) => Promise<OperationReferenceSelection>;
+	assertEditable: (record: OperationRecord) => void;
+	assertVersion: (record: OperationRecord, expectedVersion: number) => void;
+	requireAccount: (
+		householdId: string,
+		accountId: string,
+		activeOnly: boolean
+	) => Promise<AccountRecord>;
+	requireCurrent: (
+		householdId: string,
+		operationId: string
+	) => Promise<OperationRecord>;
+	resolveReferences: (
+		householdId: string,
+		categoryId: string | null,
+		contactId: string | null,
+		current?: OperationRecord
+	) => Promise<OperationReferenceSelection>;
 };
 
 export type OperationRulesDependencies = {
-    accountRepository: AccountRepository;
-    categoryRepository: CategoryRepository;
-    contactRepository: ContactRepository;
-    operationRepository: OperationRepository;
+	accountRepository: AccountRepository;
+	categoryRepository: CategoryRepository;
+	contactRepository: ContactRepository;
+	operationRepository: OperationRepository;
 };
 
 /**
  * Creates reusable household, archive and optimistic-lock operation rules.
  */
 export function createOperationRules(
-    dependencies: OperationRulesDependencies
+	dependencies: OperationRulesDependencies
 ): OperationRules {
-    const requireAccount = async (
-        householdId: string,
-        accountId: string,
-        activeOnly: boolean
-    ): Promise<AccountRecord> => {
-        const account = await dependencies.accountRepository.findById(
-            householdId,
-            accountId
-        );
+	const requireAccount = async (
+		householdId: string,
+		accountId: string,
+		activeOnly: boolean
+	): Promise<AccountRecord> => {
+		const account = await dependencies.accountRepository.findById(
+			householdId,
+			accountId
+		);
 
-        if (
-            account !== undefined
-            && (!activeOnly || account.archivedAt === null)
-        ) {
-            return account;
-        }
+		if (
+			account !== undefined
+			&& (!activeOnly || account.archivedAt === null)
+		) {
+			return account;
+		}
 
-        throw new OperationAccountUnavailableError();
-    };
+		throw new OperationAccountUnavailableError();
+	};
 
-    const requireCurrent = async (
-        householdId: string,
-        operationId: string
-    ): Promise<OperationRecord> => {
-        const operation = await dependencies.operationRepository.findById(
-            householdId,
-            operationId
-        );
+	const requireCurrent = async (
+		householdId: string,
+		operationId: string
+	): Promise<OperationRecord> => {
+		const operation = await dependencies.operationRepository.findById(
+			householdId,
+			operationId
+		);
 
-        if (operation !== undefined) {
-            return operation;
-        }
+		if (operation !== undefined) {
+			return operation;
+		}
 
-        throw new OperationNotFoundError();
-    };
+		throw new OperationNotFoundError();
+	};
 
-    const assertVersion = (
-        record: OperationRecord,
-        expectedVersion: number
-    ): void => {
-        if (record.version !== expectedVersion) {
-            throw new OperationVersionConflictError();
-        }
-    };
+	const assertVersion = (
+		record: OperationRecord,
+		expectedVersion: number
+	): void => {
+		if (record.version !== expectedVersion) {
+			throw new OperationVersionConflictError();
+		}
+	};
 
-    const assertEditable = (record: OperationRecord): void => {
-        if (record.deletedAt !== null) {
-            throw new OperationDeletedError();
-        }
-    };
+	const assertEditable = (record: OperationRecord): void => {
+		if (record.deletedAt !== null) {
+			throw new OperationDeletedError();
+		}
+	};
 
-    const resolveReferences = async (
-        householdId: string,
-        categoryId: string | null,
-        contactId: string | null,
-        current?: OperationRecord
-    ): Promise<OperationReferenceSelection> => {
-        const [category, contact] = await Promise.all([
-            resolveCategory(
-                dependencies.categoryRepository,
-                householdId,
-                categoryId,
-                current?.categoryId
-            ),
-            resolveContact(
-                dependencies.contactRepository,
-                householdId,
-                contactId,
-                current?.contactId
-            )
-        ]);
+	const resolveReferences = async (
+		householdId: string,
+		categoryId: string | null,
+		contactId: string | null,
+		current?: OperationRecord
+	): Promise<OperationReferenceSelection> => {
+		const [category, contact] = await Promise.all([
+			resolveCategory(
+				dependencies.categoryRepository,
+				householdId,
+				categoryId,
+				current?.categoryId
+			),
+			resolveContact(
+				dependencies.contactRepository,
+				householdId,
+				contactId,
+				current?.contactId
+			)
+		]);
 
-        return {
-            category,
-            contact
-        };
-    };
+		return {
+			category,
+			contact
+		};
+	};
 
-    return {
-        assertEditable,
-        assertVersion,
-        requireAccount,
-        requireCurrent,
-        resolveReferences
-    };
+	return {
+		assertEditable,
+		assertVersion,
+		requireAccount,
+		requireCurrent,
+		resolveReferences
+	};
 }
 
 async function resolveCategory(
-    repository: CategoryRepository,
-    householdId: string,
-    categoryId: string | null,
-    currentCategoryId?: string | null
+	repository: CategoryRepository,
+	householdId: string,
+	categoryId: string | null,
+	currentCategoryId?: string | null
 ): Promise<OperationReferenceSelection['category']> {
-    if (categoryId === null) {
-        return null;
-    }
+	if (categoryId === null) {
+		return null;
+	}
 
-    const aggregate = await repository.findById(householdId, categoryId);
-    const category = aggregate?.category;
-    const keepsCurrentReference = categoryId === currentCategoryId;
+	const aggregate = await repository.findById(householdId, categoryId);
+	const category = aggregate?.category;
+	const keepsCurrentReference = categoryId === currentCategoryId;
 
-    if (
-        category !== undefined
-        && (category.archivedAt === null || keepsCurrentReference)
-    ) {
-        return {
-            id: category.id,
-            name: category.name
-        };
-    }
+	if (
+		category !== undefined
+		&& (category.archivedAt === null || keepsCurrentReference)
+	) {
+		return {
+			id: category.id,
+			name: category.name
+		};
+	}
 
-    throw new OperationReferenceUnavailableError('categoryId');
+	throw new OperationReferenceUnavailableError('categoryId');
 }
 
 async function resolveContact(
-    repository: ContactRepository,
-    householdId: string,
-    contactId: string | null,
-    currentContactId?: string | null
+	repository: ContactRepository,
+	householdId: string,
+	contactId: string | null,
+	currentContactId?: string | null
 ): Promise<OperationReferenceSelection['contact']> {
-    if (contactId === null) {
-        return null;
-    }
+	if (contactId === null) {
+		return null;
+	}
 
-    const contact = await repository.findById(householdId, contactId);
-    const keepsCurrentReference = contactId === currentContactId;
+	const contact = await repository.findById(householdId, contactId);
+	const keepsCurrentReference = contactId === currentContactId;
 
-    if (
-        contact !== undefined
-        && (contact.archivedAt === null || keepsCurrentReference)
-    ) {
-        return {
-            id: contact.id,
-            name: contact.name
-        };
-    }
+	if (
+		contact !== undefined
+		&& (contact.archivedAt === null || keepsCurrentReference)
+	) {
+		return {
+			id: contact.id,
+			name: contact.name
+		};
+	}
 
-    throw new OperationReferenceUnavailableError('contactId');
+	throw new OperationReferenceUnavailableError('contactId');
 }

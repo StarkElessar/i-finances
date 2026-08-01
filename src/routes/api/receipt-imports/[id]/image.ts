@@ -2,8 +2,8 @@ import type { APIEvent } from '@solidjs/start/server';
 
 import { getSessionFromRequest } from '~/server/auth/require-user';
 import {
-    createReceiptHttpFailure,
-    createReceiptImageResponse
+	createReceiptHttpFailure,
+	createReceiptImageResponse
 } from '~/server/receipt-import/receipt-import-http';
 import { receiptImportService } from '~/server/receipt-import/receipt-import-service-instance';
 
@@ -11,30 +11,30 @@ import { receiptImportService } from '~/server/receipt-import/receipt-import-ser
  * Streams a private receipt image to an authenticated household member.
  */
 export async function GET(event: APIEvent): Promise<Response> {
-    try {
-        const session = await getSessionFromRequest(event.request);
+	try {
+		const session = await getSessionFromRequest(event.request);
 
-        if (session === null) {
-            return Response.json({
-                message: 'Требуется войти в приложение.',
-                ok: false
-            }, { status: 401 });
-        }
+		if (session === null) {
+			return Response.json({
+				message: 'Требуется войти в приложение.',
+				ok: false
+			}, { status: 401 });
+		}
 
-        const image = await receiptImportService.readImageForUser(
-            session.user.id,
-            event.params.id
-        );
+		const image = await receiptImportService.readImageForUser(
+			session.user.id,
+			event.params.id
+		);
 
-        return createReceiptImageResponse(image);
-    }
-    catch (error: unknown) {
-        const failure = createReceiptHttpFailure(error);
+		return createReceiptImageResponse(image);
+	}
+	catch (error: unknown) {
+		const failure = createReceiptHttpFailure(error);
 
-        if (failure !== undefined) {
-            return failure;
-        }
+		if (failure !== undefined) {
+			return failure;
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }

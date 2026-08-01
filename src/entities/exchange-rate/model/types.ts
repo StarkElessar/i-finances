@@ -6,29 +6,29 @@ import type { CurrencyCodeValue } from '~/shared/lib';
  * The conversion contract is: `to amount = from amount * rate`.
  */
 export type ExchangeRateQuote = {
-    effectiveOn: string;
-    fromCurrency: CurrencyCodeValue;
-    rate: string;
-    source: string;
-    toCurrency: CurrencyCodeValue;
+	effectiveOn: string;
+	fromCurrency: CurrencyCodeValue;
+	rate: string;
+	source: string;
+	toCurrency: CurrencyCodeValue;
 };
 
 /**
  * Canonical exchange-rate record stored in the database.
  */
 export type PersistedExchangeRate = ExchangeRateQuote & {
-    createdAt: string;
-    id: string;
-    updatedAt: string;
+	createdAt: string;
+	id: string;
+	updatedAt: string;
 };
 
 /**
  * Latest daily exchange-rate snapshot used by current balance views.
  */
 export type CurrentExchangeRates = {
-    baseCurrency: CurrencyCodeValue;
-    quotes: ExchangeRateQuote[];
-    refreshError: string | null;
-    requestedOn: string;
-    unavailableCurrencies: CurrencyCodeValue[];
+	baseCurrency: CurrencyCodeValue;
+	quotes: ExchangeRateQuote[];
+	refreshError: string | null;
+	requestedOn: string;
+	unavailableCurrencies: CurrencyCodeValue[];
 };

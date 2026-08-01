@@ -1,5 +1,5 @@
 export type {
-    ComboboxOptionRenderState,
-    ComboboxProps
+	ComboboxOptionRenderState,
+	ComboboxProps
 } from './combobox';
 export { Combobox } from './combobox';

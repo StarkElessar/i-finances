@@ -11,19 +11,19 @@ const CurrentViewerContext = createContext<CurrentViewerAccessor>(() => undefine
  * Provides the current authenticated user snapshot to app shell widgets.
  */
 export function CurrentViewerProvider(props: {
-    children: JSX.Element;
-    viewer: CurrentViewerAccessor;
+	children: JSX.Element;
+	viewer: CurrentViewerAccessor;
 }) {
-    return (
-        <CurrentViewerContext.Provider value={props.viewer}>
-            {props.children}
-        </CurrentViewerContext.Provider>
-    );
+	return (
+		<CurrentViewerContext.Provider value={props.viewer}>
+			{props.children}
+		</CurrentViewerContext.Provider>
+	);
 }
 
 /**
  * Returns the current authenticated user snapshot accessor.
  */
 export function useCurrentViewer(): CurrentViewerAccessor {
-    return useContext(CurrentViewerContext);
+	return useContext(CurrentViewerContext);
 }

@@ -1,6 +1,6 @@
 export type {
-    ContactDialogMode,
-    ContactDialogProps,
-    ContactDialogValue
+	ContactDialogMode,
+	ContactDialogProps,
+	ContactDialogValue
 } from './contact-dialog';
 export { ContactDialog } from './contact-dialog';

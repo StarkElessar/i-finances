@@ -9,23 +9,23 @@ import { assertReceiptWorkerApiKey } from '~/server/receipt-import/receipt-worke
  * Leases the oldest queued receipt job to an authenticated worker.
  */
 export async function POST(event: APIEvent): Promise<Response> {
-    try {
-        assertReceiptWorkerApiKey(event.request);
+	try {
+		assertReceiptWorkerApiKey(event.request);
 
-        const input = workerIdentitySchema.parse(await event.request.json());
-        const job = await receiptImportService.leaseNextJob(input.workerId);
+		const input = workerIdentitySchema.parse(await event.request.json());
+		const job = await receiptImportService.leaseNextJob(input.workerId);
 
-        return job === undefined
-            ? new Response(null, { status: 204 })
-            : Response.json(job);
-    }
-    catch (error: unknown) {
-        const failure = createReceiptHttpFailure(error);
+		return job === undefined
+			? new Response(null, { status: 204 })
+			: Response.json(job);
+	}
+	catch (error: unknown) {
+		const failure = createReceiptHttpFailure(error);
 
-        if (failure !== undefined) {
-            return failure;
-        }
+		if (failure !== undefined) {
+			return failure;
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }

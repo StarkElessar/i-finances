@@ -6,11 +6,11 @@ import type { ExchangeRateResolver } from '~/server/exchange-rate/exchange-rate-
 import type { HouseholdResolver } from '~/server/household/household-service';
 
 export type OperationUseCaseContext = {
-    accountRepository: AccountRepository;
-    createId: () => string;
-    exchangeRateResolver: ExchangeRateResolver;
-    householdResolver: HouseholdResolver;
-    now: () => Date;
-    operationRepository: OperationRepository;
-    rules: OperationRules;
+	accountRepository: AccountRepository;
+	createId: () => string;
+	exchangeRateResolver: ExchangeRateResolver;
+	householdResolver: HouseholdResolver;
+	now: () => Date;
+	operationRepository: OperationRepository;
+	rules: OperationRules;
 };

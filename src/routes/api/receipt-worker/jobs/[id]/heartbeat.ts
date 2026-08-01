@@ -9,29 +9,29 @@ import { assertReceiptWorkerApiKey } from '~/server/receipt-import/receipt-worke
  * Extends an active receipt job lease while local models are still running.
  */
 export async function POST(event: APIEvent): Promise<Response> {
-    try {
-        assertReceiptWorkerApiKey(event.request);
+	try {
+		assertReceiptWorkerApiKey(event.request);
 
-        const input = heartbeatReceiptJobInputSchema.parse(
-            await event.request.json()
-        );
-        const leaseExpiresAt = await receiptImportService.heartbeatJob(
-            event.params.id,
-            input.leaseToken
-        );
+		const input = heartbeatReceiptJobInputSchema.parse(
+			await event.request.json()
+		);
+		const leaseExpiresAt = await receiptImportService.heartbeatJob(
+			event.params.id,
+			input.leaseToken
+		);
 
-        return Response.json({
-            leaseExpiresAt,
-            ok: true
-        });
-    }
-    catch (error: unknown) {
-        const failure = createReceiptHttpFailure(error);
+		return Response.json({
+			leaseExpiresAt,
+			ok: true
+		});
+	}
+	catch (error: unknown) {
+		const failure = createReceiptHttpFailure(error);
 
-        if (failure !== undefined) {
-            return failure;
-        }
+		if (failure !== undefined) {
+			return failure;
+		}
 
-        throw error;
-    }
+		throw error;
+	}
 }
