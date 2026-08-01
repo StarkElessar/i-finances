@@ -1,4 +1,4 @@
-import stark from '@stark/eslint-config';
+import stark, { typeChecked } from '@stark/eslint-config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 import simpleImportSort from 'eslint-plugin-simple-import-sort';
@@ -32,22 +32,6 @@ export default defineConfig([
             }
         },
         rules: {
-            // Transitional: strict rules downgraded to warn (fix gradually, then upgrade to error)
-            '@typescript-eslint/no-non-null-assertion': 'warn',
-            '@typescript-eslint/unified-signatures': 'warn',
-            '@typescript-eslint/no-invalid-void-type': 'off',
-            '@typescript-eslint/no-extraneous-class': 'off',
-            '@typescript-eslint/no-dynamic-delete': 'warn',
-            '@typescript-eslint/no-useless-constructor': 'warn',
-
-            // Transitional: type-aware strict rules (fix gradually, then upgrade to error)
-            '@typescript-eslint/no-redundant-type-constituents': 'error',
-            '@typescript-eslint/no-unnecessary-type-arguments': 'error',
-            '@typescript-eslint/no-unnecessary-condition': 'error',
-            '@typescript-eslint/no-for-in-array': 'error',
-            '@typescript-eslint/no-base-to-string': 'error',
-            '@typescript-eslint/use-unknown-in-catch-callback-variable': 'error',
-            '@typescript-eslint/no-deprecated': 'warn',
             // TODO: включать по мере подготовки кода
             '@typescript-eslint/no-unsafe-argument': 'off',
             '@typescript-eslint/no-unsafe-assignment': 'off',
@@ -68,6 +52,8 @@ export default defineConfig([
             '@typescript-eslint/no-unnecessary-type-parameters': 'off'
         }
     },
+
+    ...typeChecked,
 
     // ── Сортировка импортов ───────────────────────
     {
