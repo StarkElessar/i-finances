@@ -55,8 +55,8 @@ importers:
         version: 4.4.3
     devDependencies:
       '@stark/eslint-config':
-        specifier: github:StarkElessar/stark-eslint-config#3fb9119
-        version: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/3fb9119(eslint@9.39.5(jiti@2.6.1))(typescript@6.0.3)
+        specifier: github:StarkElessar/stark-eslint-config#05647dd
+        version: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/05647dd(eslint@9.39.5(jiti@2.6.1))(typescript@6.0.3)
       '@stark/stylelint-config':
         specifier: git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#5adc270
         version: https://codeload.github.com/StarkElessar/stark-stylelint-config/tar.gz/5adc270(stylelint@17.14.0(typescript@6.0.3))
@@ -1760,8 +1760,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@stark/eslint-config@https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/3fb9119':
-    resolution: {tarball: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/3fb9119}
+  '@stark/eslint-config@https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/05647dd':
+    resolution: {tarball: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/05647dd}
     version: 0.1.0
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -6404,7 +6404,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@stark/eslint-config@https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/3fb9119(eslint@9.39.5(jiti@2.6.1))(typescript@6.0.3)':
+  '@stark/eslint-config@https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/05647dd(eslint@9.39.5(jiti@2.6.1))(typescript@6.0.3)':
     dependencies:
       '@eslint/js': 9.39.3
       '@stylistic/eslint-plugin': 5.10.0(eslint@9.39.5(jiti@2.6.1))
