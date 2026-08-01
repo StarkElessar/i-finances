@@ -46,7 +46,7 @@
 		"node": ">=22"
 	},
 	"devDependencies": {
-		"@stark/eslint-config": "github:StarkElessar/stark-eslint-config#9237dcb",
+		"@stark/eslint-config": "github:StarkElessar/stark-eslint-config#43cfa57",
 		"@stark/stylelint-config": "git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#5adc270",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^26.1.1",

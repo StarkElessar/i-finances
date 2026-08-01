@@ -112,27 +112,4 @@ export default defineConfig([
         }
     },
 
-    // ── Declaration файлы ────────────────────────
-    {
-        files: ['**/*.d.ts'],
-        rules: {
-            '@typescript-eslint/no-unused-vars': 'off',
-            '@typescript-eslint/no-empty-interface': 'off',
-            '@typescript-eslint/no-empty-object-type': 'off'
-        }
-    },
-
-    // ── Общие правила ────────────────────────────
-    {
-        files: ['**/*.{js,ts,tsx}'],
-        rules: {
-            'no-var': 'error',
-            'prefer-const': 'error',
-            'no-console': ['warn', { allow: ['warn', 'error'] }],
-            'no-inline-comments': ['error', { ignorePattern: 'eslint-disable' }],
-            // Предпочитать позитивные условия (fix gradually → error)
-            'no-negated-condition': 'error',
-            'no-extra-boolean-cast': 'error'
-        }
-    }
 ]);
