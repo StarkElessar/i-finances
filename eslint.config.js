@@ -1,7 +1,6 @@
 import stark, { typeChecked } from '@stark/eslint-config';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
-import simpleImportSort from 'eslint-plugin-simple-import-sort';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
@@ -54,48 +53,4 @@ export default defineConfig([
     },
 
     ...typeChecked,
-
-    // ── Сортировка импортов ───────────────────────
-    {
-        files: ['**/*.{ts,tsx}'],
-        plugins: { 'simple-import-sort': simpleImportSort },
-        rules: {
-            'simple-import-sort/imports': [
-                'error', {
-                    groups: [
-                        // 1. Стили (CSS/SCSS) — в самом верху (включая ?url и другие query-параметры)
-                        ['^.+\\.s?css(\\?.*)?$'],
-
-                        // 2. Side-effect imports
-                        ['^\\u0000'],
-
-                        // 3. Node.js built-ins (node:fs, node:path, ...)
-                        ['^node:'],
-
-                        // 4. React и все внешние пакеты node_modules — без разделения
-                        ['^react', '^react-dom', '^@?\\w'],
-
-                        // 5. Aliases
-                        ['^@common/'],
-
-                        // 6. @scripts по слоям FSD: shared → entities → features → widgets → views/pages
-                        ['^@scripts/shared/'],
-                        ['^@scripts/entities/'],
-                        ['^@scripts/features/'],
-                        ['^@scripts/widgets/'],
-                        ['^@scripts/(views|pages)/'],
-                        ['^@scripts/'],
-
-                        // 7. Относительные импорты — ../
-                        ['^\\.\\.(?!/?$)', '^\\.\\./?$'],
-
-                        // 8. Относительные импорты — ./
-                        ['^\\./(?=.*/)(?!/?$)', '^\\.(?!/?$)', '^\\./?$']
-                    ]
-                }
-            ],
-            'simple-import-sort/exports': 'error'
-        }
-    },
-
 ]);
