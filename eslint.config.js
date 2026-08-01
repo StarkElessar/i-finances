@@ -32,31 +32,6 @@ export default defineConfig([
             }
         },
         rules: {
-            'react/react-in-jsx-scope': 'off',
-            '@typescript-eslint/no-unused-vars': [
-                'error',
-                {
-                    argsIgnorePattern: '^_',
-                    varsIgnorePattern: '^_',
-                    caughtErrorsIgnorePattern: '^_'
-                }
-            ],
-            '@typescript-eslint/no-unused-expressions': [
-                'error',
-                {
-                    allowTernary: true,
-                    allowShortCircuit: true
-                }
-            ],
-            '@typescript-eslint/no-explicit-any': 'error',
-            '@typescript-eslint/consistent-type-imports': [
-                'error',
-                {
-                    prefer: 'type-imports',
-                    fixStyle: 'separate-type-imports'
-                }
-            ],
-
             // Transitional: strict rules downgraded to warn (fix gradually, then upgrade to error)
             '@typescript-eslint/no-non-null-assertion': 'warn',
             '@typescript-eslint/unified-signatures': 'warn',
