@@ -46,8 +46,8 @@
 		"node": ">=22"
 	},
 	"devDependencies": {
-		"@stark/eslint-config": "github:StarkElessar/stark-eslint-config#686be09",
-		"@stark/stylelint-config": "git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#5adc270",
+		"@stark/eslint-config": "git+ssh://git@github.com/StarkElessar/stark-eslint-config.git#v0.1.0",
+		"@stark/stylelint-config": "git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#v0.1.0",
 		"@types/better-sqlite3": "^7.6.13",
 		"@types/node": "^26.1.1",
 		"drizzle-kit": "^0.31.10",
@@ -63,5 +63,6 @@
 		"typescript-eslint": "^8.63.0",
 		"typescript7": "npm:typescript@7.0.2",
 		"vitest": "^4.1.10"
-	}
+	},
+	"packageManager": "pnpm@11.12.0+sha512.820a6fbd0d9f04c226638002aead1e45340a9139dd5dc077c1d83ef44aa2481c8eb6637b4c9aa696a3c7e35ba818e49cf27213e5f2b91138d09b7a3e26e898ba"
 }
