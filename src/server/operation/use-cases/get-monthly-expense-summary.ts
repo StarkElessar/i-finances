@@ -1,11 +1,11 @@
-import type { ReferenceExpenseTotal } from '../operation-repository';
-import type { OperationUseCaseContext } from '../operation-use-case.types';
-
 import {
 	type GetMonthlyExpenseSummaryInput,
 	getMonthlyExpenseSummaryInputSchema
 } from '~/entities/operation/api/operation.contract';
 import type { MonthlyExpenseSummary } from '~/entities/operation/model/types';
+
+import type { ReferenceExpenseTotal } from '../operation-repository';
+import type { OperationUseCaseContext } from '../operation-use-case.types';
 
 export function createGetMonthlyExpenseSummaryUseCase(
 	context: OperationUseCaseContext

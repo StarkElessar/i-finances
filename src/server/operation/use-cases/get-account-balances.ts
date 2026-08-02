@@ -1,6 +1,6 @@
-import type { OperationUseCaseContext } from '../operation-use-case.types';
-
 import type { AccountBalance } from '~/entities/operation/model/types';
+
+import type { OperationUseCaseContext } from '../operation-use-case.types';
 
 export function createGetAccountBalancesUseCase(
 	context: OperationUseCaseContext

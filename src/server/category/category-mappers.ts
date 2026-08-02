@@ -1,11 +1,12 @@
-import type { CategoryAggregateRecord } from './category-repository';
-
 import {
 	normalizeCategoryIdentity,
 	normalizeCategoryKeyword
 } from '~/entities/category/model/normalization';
 import type { PersistedCategory } from '~/entities/category/model/types';
+
 import type { NewCategoryKeywordRecord } from '~/server/db/schema';
+
+import type { CategoryAggregateRecord } from './category-repository';
 
 /**
  * Converts canonical keyword values to ordered persistence records.

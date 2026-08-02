@@ -1,5 +1,7 @@
 import css from './combobox.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import {
 	autoUpdate,
 	computePosition,
@@ -21,8 +23,6 @@ import {
 	Show
 } from 'solid-js';
 import { Portal } from 'solid-js/web';
-
-import { cn } from '~/shared/lib';
 
 const POPOVER_OFFSET = 4;
 

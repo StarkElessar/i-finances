@@ -1,5 +1,9 @@
 import css from './dialog.module.scss';
 
+import { cn } from '~/shared/lib';
+import type { ButtonVariant } from '~/shared/ui/button';
+import { Button } from '~/shared/ui/button';
+
 import type { JSX } from 'solid-js';
 import {
 	createContext,
@@ -18,10 +22,6 @@ import type {
 	DialogDescriptionProps, DialogFooterProps, DialogHeaderProps, DialogKickerProps, DialogRenderProps, DialogRootProps, DialogState,
 	DialogTitleProps
 } from './types';
-
-import { cn } from '~/shared/lib';
-import type { ButtonVariant } from '~/shared/ui/button';
-import { Button } from '~/shared/ui/button';
 
 const CLOSE_ANIMATION_MS = 180;
 

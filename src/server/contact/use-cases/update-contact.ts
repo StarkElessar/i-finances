@@ -1,13 +1,13 @@
-import { ContactVersionConflictError } from '../contact-errors';
-import { toPersistedContact } from '../contact-mappers';
-import type { ContactService } from '../contact-service.types';
-import type { ContactUseCaseContext } from '../contact-use-case.types';
-
 import {
 	normalizeContactIdentity,
 	normalizeContactLegalName,
 	normalizeContactName
 } from '~/entities/contact/model/normalization';
+
+import { ContactVersionConflictError } from '../contact-errors';
+import { toPersistedContact } from '../contact-mappers';
+import type { ContactService } from '../contact-service.types';
+import type { ContactUseCaseContext } from '../contact-use-case.types';
 
 /**
  * Creates the command that updates a contact using optimistic locking.

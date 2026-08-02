@@ -1,6 +1,6 @@
-import { deleteCookie, getCookie, setCookie } from '@solidjs/start/http';
-
 import { getAuthConfig } from '~/server/auth/auth-config';
+
+import { deleteCookie, getCookie, setCookie } from '@solidjs/start/http';
 
 /**
  * Safely decodes one cookie value without rejecting the whole request.

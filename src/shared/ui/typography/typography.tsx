@@ -1,9 +1,9 @@
 import css from './typography.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
-
-import { cn } from '~/shared/lib';
 
 /**
  * Available semantic presets in the application type scale.

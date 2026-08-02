@@ -1,9 +1,7 @@
 import css from './sign-in.module.scss';
 
-import { useSearchParams } from '@solidjs/router';
-import { createSignal, Show } from 'solid-js';
-
 import { Container } from '~/shared/ui';
+
 import type { PasswordSignInErrorCode } from '~/views/sign-in/api/password-sign-in.contract';
 import {
 	passwordSignInErrorCodes,
@@ -12,6 +10,9 @@ import {
 import { BrandPanel } from '~/views/sign-in/ui/brand-panel';
 import { PasskeySignInPanel } from '~/views/sign-in/ui/passkey-sign-in-panel';
 import { PasswordSignInPanel } from '~/views/sign-in/ui/password-sign-in-panel';
+
+import { useSearchParams } from '@solidjs/router';
+import { createSignal, Show } from 'solid-js';
 
 /**
  * Available sign-in methods rendered inside the authentication shell.

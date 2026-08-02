@@ -1,11 +1,12 @@
 import css from './category-card.module.scss';
 
-import type { JSX } from 'solid-js';
-import { Show } from 'solid-js';
+import { cn, type CurrencyCodeValue } from '~/shared/lib';
 
 import type { Category, CategoryBudgetSummary } from '~/entities/category';
 import { formatMinorUnitsCurrency } from '~/entities/category';
-import { cn, type CurrencyCodeValue } from '~/shared/lib';
+
+import type { JSX } from 'solid-js';
+import { Show } from 'solid-js';
 
 export type CategoryCardProps = {
 	category: Category;

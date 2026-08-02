@@ -1,9 +1,9 @@
 import css from './button.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { children, Show, splitProps } from 'solid-js';
-
-import { cn } from '~/shared/lib';
 
 /**
  * Visual hierarchy variants supported by the button.

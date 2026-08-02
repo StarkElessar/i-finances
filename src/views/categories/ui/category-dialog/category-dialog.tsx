@@ -1,5 +1,15 @@
 import css from './category-dialog.module.scss';
 
+import { AccentColor, CurrencyCode, type CurrencyCodeValue } from '~/shared/lib';
+import { Button, Dialog, TextField } from '~/shared/ui';
+import { ColorPicker } from '~/shared/ui/color-picker';
+
+import {
+	formatMinorUnitsAsInput,
+	formatMinorUnitsCurrency,
+	parseOptionalMoneyInputToMinorUnits
+} from '~/entities/category';
+
 import { ArchiveRestore } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import {
@@ -10,15 +20,6 @@ import {
 } from 'solid-js';
 
 import { KeywordInput } from '../keyword-input';
-
-import {
-	formatMinorUnitsAsInput,
-	formatMinorUnitsCurrency,
-	parseOptionalMoneyInputToMinorUnits
-} from '~/entities/category';
-import { AccentColor, CurrencyCode, type CurrencyCodeValue } from '~/shared/lib';
-import { Button, Dialog, TextField } from '~/shared/ui';
-import { ColorPicker } from '~/shared/ui/color-picker';
 
 export type CategoryDialogMode = 'create' | 'edit';
 

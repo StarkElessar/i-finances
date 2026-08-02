@@ -1,11 +1,12 @@
+import { CurrentViewerProvider, getCurrentViewer } from '~/entities/viewer';
+
+import { AppHeader } from '~/widgets/app-header';
+
 import {
 	createAsync,
 	type RouteDefinition,
 	type RouteSectionProps
 } from '@solidjs/router';
-
-import { CurrentViewerProvider, getCurrentViewer } from '~/entities/viewer';
-import { AppHeader } from '~/widgets/app-header';
 
 export const route = {
 	preload: () => getCurrentViewer()

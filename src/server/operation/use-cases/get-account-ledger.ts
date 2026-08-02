@@ -1,6 +1,3 @@
-import { toOperation } from '../operation-mappers';
-import type { OperationUseCaseContext } from '../operation-use-case.types';
-
 import {
 	type GetAccountLedgerInput,
 	getAccountLedgerInputSchema
@@ -9,6 +6,9 @@ import type {
 	AccountLedger,
 	OperationWithBalance
 } from '~/entities/operation/model/types';
+
+import { toOperation } from '../operation-mappers';
+import type { OperationUseCaseContext } from '../operation-use-case.types';
 
 export function createGetAccountLedgerUseCase(
 	context: OperationUseCaseContext

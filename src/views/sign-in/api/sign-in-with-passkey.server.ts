@@ -1,11 +1,3 @@
-import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
-
-import { assertSameOriginMutation, InvalidMutationOriginError } from '~/server/auth/csrf/origin-guard';
-import type { PasskeySignInServerResult } from '~/server/auth/passkey/passkey-service';
-import {
-	beginPasskeyAuthentication,
-	finishPasskeyAuthentication
-} from '~/server/auth/passkey/passkey-service';
 import type {
 	PasskeySignInErrorCode,
 	PasskeySignInResult
@@ -14,6 +6,15 @@ import {
 	passkeySignInErrorMessageByCode,
 	passkeySignInVerificationInputSchema
 } from '~/views/sign-in/api/passkey-sign-in.contract';
+
+import { assertSameOriginMutation, InvalidMutationOriginError } from '~/server/auth/csrf/origin-guard';
+import type { PasskeySignInServerResult } from '~/server/auth/passkey/passkey-service';
+import {
+	beginPasskeyAuthentication,
+	finishPasskeyAuthentication
+} from '~/server/auth/passkey/passkey-service';
+
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 
 type PasskeySignInMetadata = {
 	ipAddress?: string;

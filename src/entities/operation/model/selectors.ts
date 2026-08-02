@@ -1,3 +1,5 @@
+import { amountToMinorUnits } from '~/shared/lib';
+
 import type {
 	OperationDateRange,
 	OperationGroup,
@@ -5,8 +7,6 @@ import type {
 	OperationSortDirection
 } from './table-types';
 import type { Operation, OperationWithBalance } from './types';
-
-import { amountToMinorUnits } from '~/shared/lib';
 
 const NAME_COLLATOR = new Intl.Collator('ru-BY', {
 	numeric: true,

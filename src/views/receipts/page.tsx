@@ -1,5 +1,27 @@
 import css from './receipts.module.scss';
 
+import { cn } from '~/shared/lib';
+import type { GridColumn } from '~/shared/ui';
+import {
+	Button,
+	Container,
+	Dialog,
+	Grid
+} from '~/shared/ui';
+
+import type { PersistedAccount } from '~/entities/account';
+import { getAccounts } from '~/entities/account/api';
+import type {
+	ReceiptImport,
+	ReceiptImportStatus,
+	ReceiptWorkerResult
+} from '~/entities/receipt-import';
+import {
+	approveReceipt as approveReceiptAction,
+	getReceiptImports,
+	requestReceiptRevision as requestReceiptRevisionAction
+} from '~/entities/receipt-import';
+
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
@@ -25,27 +47,6 @@ import {
 	For,
 	Show
 } from 'solid-js';
-
-import type { PersistedAccount } from '~/entities/account';
-import { getAccounts } from '~/entities/account/api';
-import type {
-	ReceiptImport,
-	ReceiptImportStatus,
-	ReceiptWorkerResult
-} from '~/entities/receipt-import';
-import {
-	approveReceipt as approveReceiptAction,
-	getReceiptImports,
-	requestReceiptRevision as requestReceiptRevisionAction
-} from '~/entities/receipt-import';
-import { cn } from '~/shared/lib';
-import type { GridColumn } from '~/shared/ui';
-import {
-	Button,
-	Container,
-	Dialog,
-	Grid
-} from '~/shared/ui';
 
 type StatusPresentation = {
 	label: string;

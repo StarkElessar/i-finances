@@ -1,3 +1,12 @@
+import type { ContactListStatus } from '~/entities/contact/api/contact.contract';
+
+import { type AppDatabase, db } from '~/server/db/client';
+import type {
+	ContactRecord,
+	NewContactRecord
+} from '~/server/db/schema';
+import { contacts } from '~/server/db/schema';
+
 import {
 	and,
 	asc,
@@ -6,14 +15,6 @@ import {
 	isNull,
 	sql
 } from 'drizzle-orm';
-
-import type { ContactListStatus } from '~/entities/contact/api/contact.contract';
-import { type AppDatabase, db } from '~/server/db/client';
-import type {
-	ContactRecord,
-	NewContactRecord
-} from '~/server/db/schema';
-import { contacts } from '~/server/db/schema';
 
 export type ContactUpdateValues = {
 	color: string;

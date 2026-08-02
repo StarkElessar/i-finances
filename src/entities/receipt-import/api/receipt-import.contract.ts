@@ -1,10 +1,10 @@
-import { z } from 'zod';
-
 import type { ReceiptImport } from '~/entities/receipt-import/model/types';
 import {
 	RECEIPT_IMPORT_STATUSES,
 	RECEIPT_PROCESSING_JOB_STATUSES
 } from '~/entities/receipt-import/model/types';
+
+import { z } from 'zod';
 
 const entityIdSchema = z.string().trim().min(1).max(128);
 const safeMinorAmountSchema = z.number()

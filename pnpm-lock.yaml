@@ -1523,7 +1523,7 @@ packages:
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
   '@stark/eslint-config@https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/6359892f6947048978faa2954c3349eb59d42d6f':
-    resolution: {gitHosted: true, integrity: sha512-TrFKQK9Zy4vacGWj33YNxA3CC1cAvAFCYIwfpgMH38pAyhKtIb4ZeuaiJOIH37gtWySSFiIpOTIzSJ83LnykvQ==, tarball: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/6359892f6947048978faa2954c3349eb59d42d6f}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/StarkElessar/stark-eslint-config/tar.gz/6359892f6947048978faa2954c3349eb59d42d6f}
     version: 0.1.0
     engines: {node: ^18.18.0 || ^20.9.0 || >=21.1.0}
     peerDependencies:
@@ -1531,7 +1531,7 @@ packages:
       typescript: '>=4.8.4 <6.1.0'
 
   '@stark/stylelint-config@https://codeload.github.com/StarkElessar/stark-stylelint-config/tar.gz/5adc270a4cc283c07ed02e563e6caa5166165907':
-    resolution: {gitHosted: true, integrity: sha512-L5niSORDirwI8ZoRqhB4+dx01ZPg+UMuPwY2ps5S7NUoJUU9o+UdZ+EjMcZ2/HkklPhWHhOotxY23h/dQKBeHg==, tarball: https://codeload.github.com/StarkElessar/stark-stylelint-config/tar.gz/5adc270a4cc283c07ed02e563e6caa5166165907}
+    resolution: {gitHosted: true, tarball: https://codeload.github.com/StarkElessar/stark-stylelint-config/tar.gz/5adc270a4cc283c07ed02e563e6caa5166165907}
     version: 0.1.0
     engines: {node: '>=20.19.0'}
     peerDependencies:

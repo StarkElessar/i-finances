@@ -1,3 +1,7 @@
+import { normalizeCategoryIdentity } from '~/entities/category/model/normalization';
+
+import type { HouseholdResolver } from '~/server/household/household-service';
+
 import {
 	CategoryNameConflictError,
 	CategoryNotFoundError,
@@ -7,9 +11,6 @@ import type {
 	CategoryAggregateRecord,
 	CategoryRepository
 } from './category-repository';
-
-import { normalizeCategoryIdentity } from '~/entities/category/model/normalization';
-import type { HouseholdResolver } from '~/server/household/household-service';
 
 export type CurrentCategory = {
 	householdId: string;

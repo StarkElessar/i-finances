@@ -1,5 +1,30 @@
 import css from './contacts.module.scss';
 
+import { cn, CurrencyCode } from '~/shared/lib';
+import { Button } from '~/shared/ui/button';
+import { Container } from '~/shared/ui/container';
+import { createDragAction, DragAction } from '~/shared/ui/drag-action';
+import { TextField } from '~/shared/ui/text-field';
+
+import type {
+	ContactCollection,
+	ContactTypeFilter,
+	PersistedContact
+} from '~/entities/contact';
+import {
+	archiveContact as archiveContactAction,
+	createContact as createContactAction,
+	filterContacts,
+	getContacts,
+	restoreContact as restoreContactAction,
+	updateContact as updateContactAction
+} from '~/entities/contact';
+import type { MonthlyExpenseSummary } from '~/entities/operation';
+import {
+	formatLocalDateKey,
+	getMonthlyExpenseSummary
+} from '~/entities/operation';
+
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
@@ -26,30 +51,6 @@ import {
 import { ContactCard, ContactIcon } from './ui/contact-card';
 import type { ContactDialogMode, ContactDialogValue } from './ui/contact-dialog';
 import { ContactDialog } from './ui/contact-dialog';
-
-import type {
-	ContactCollection,
-	ContactTypeFilter,
-	PersistedContact
-} from '~/entities/contact';
-import {
-	archiveContact as archiveContactAction,
-	createContact as createContactAction,
-	filterContacts,
-	getContacts,
-	restoreContact as restoreContactAction,
-	updateContact as updateContactAction
-} from '~/entities/contact';
-import type { MonthlyExpenseSummary } from '~/entities/operation';
-import {
-	formatLocalDateKey,
-	getMonthlyExpenseSummary
-} from '~/entities/operation';
-import { cn, CurrencyCode } from '~/shared/lib';
-import { Button } from '~/shared/ui/button';
-import { Container } from '~/shared/ui/container';
-import { createDragAction, DragAction } from '~/shared/ui/drag-action';
-import { TextField } from '~/shared/ui/text-field';
 
 type ContactListMode = 'active' | 'archive';
 

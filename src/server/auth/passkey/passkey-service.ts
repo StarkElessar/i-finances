@@ -1,18 +1,12 @@
 import { randomUUID } from 'node:crypto';
 
 import type {
-	AuthenticationResponseJSON,
-	PublicKeyCredentialCreationOptionsJSON,
-	PublicKeyCredentialRequestOptionsJSON,
-	RegistrationResponseJSON,
-	WebAuthnCredential
-} from '@simplewebauthn/server';
+	PasskeySignInErrorCode,
+	PasskeySignInResult
+} from '~/views/sign-in/api/passkey-sign-in.contract';
 import {
-	generateAuthenticationOptions,
-	generateRegistrationOptions,
-	verifyAuthenticationResponse,
-	verifyRegistrationResponse
-} from '@simplewebauthn/server';
+	passkeySignInErrorMessageByCode
+} from '~/views/sign-in/api/passkey-sign-in.contract';
 
 import { getAuthConfig } from '~/server/auth/auth-config';
 import {
@@ -31,13 +25,20 @@ import { writeSessionCookie } from '~/server/auth/session/auth-cookie';
 import type { AuthenticatedSession } from '~/server/auth/session/session-service';
 import { createSession } from '~/server/auth/session/session-service';
 import { validateReturnPath } from '~/server/auth/validate-return-path';
+
 import type {
-	PasskeySignInErrorCode,
-	PasskeySignInResult
-} from '~/views/sign-in/api/passkey-sign-in.contract';
+	AuthenticationResponseJSON,
+	PublicKeyCredentialCreationOptionsJSON,
+	PublicKeyCredentialRequestOptionsJSON,
+	RegistrationResponseJSON,
+	WebAuthnCredential
+} from '@simplewebauthn/server';
 import {
-	passkeySignInErrorMessageByCode
-} from '~/views/sign-in/api/passkey-sign-in.contract';
+	generateAuthenticationOptions,
+	generateRegistrationOptions,
+	verifyAuthenticationResponse,
+	verifyRegistrationResponse
+} from '@simplewebauthn/server';
 
 const WEBAUTHN_CHALLENGE_TTL_MILLISECONDS = 5 * 60 * 1000;
 

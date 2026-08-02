@@ -1,3 +1,5 @@
+import type { ContactType } from '~/entities/contact/model/types';
+
 import {
 	index,
 	integer,
@@ -8,8 +10,6 @@ import {
 
 import { households } from './households';
 import { users } from './users';
-
-import type { ContactType } from '~/entities/contact/model/types';
 
 /**
  * Stores one person or company available to every member of a household.

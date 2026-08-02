@@ -1,3 +1,8 @@
+import {
+	normalizeCategoryIdentity,
+	normalizeCategoryName
+} from '~/entities/category/model/normalization';
+
 import { CategoryNameConflictError } from '../category-errors';
 import {
 	createCategoryKeywordRecords,
@@ -5,11 +10,6 @@ import {
 } from '../category-mappers';
 import type { CategoryService } from '../category-service.types';
 import type { CategoryUseCaseContext } from '../category-use-case.types';
-
-import {
-	normalizeCategoryIdentity,
-	normalizeCategoryName
-} from '~/entities/category/model/normalization';
 
 /**
  * Creates the command that persists a category in the active household.

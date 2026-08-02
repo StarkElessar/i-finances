@@ -1,12 +1,13 @@
 import css from './app-header.module.scss';
 
+import { AppLogo } from '~/shared/ui/app-logo';
+import { Container } from '~/shared/ui/container';
+
+import { ProfileMenu } from '~/widgets/app-header/ui/profile-menu';
+
 import { A } from '@solidjs/router';
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
-
-import { AppLogo } from '~/shared/ui/app-logo';
-import { Container } from '~/shared/ui/container';
-import { ProfileMenu } from '~/widgets/app-header/ui/profile-menu';
 
 type NavigationMode = 'desktop' | 'mobile';
 

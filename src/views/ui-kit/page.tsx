@@ -1,11 +1,11 @@
 import css from './ui-kit.module.scss';
 
-import { Title } from '@solidjs/meta';
-
 import { cn } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { TextField } from '~/shared/ui/text-field';
 import { Typography } from '~/shared/ui/typography';
+
+import { Title } from '@solidjs/meta';
 
 /**
  * Renders the living reference page for the iFinances design system.

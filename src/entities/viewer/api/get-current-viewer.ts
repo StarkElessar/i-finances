@@ -1,6 +1,6 @@
-import { query } from '@solidjs/router';
-
 import type { CurrentViewer } from '~/entities/viewer/model/types';
+
+import { query } from '@solidjs/router';
 
 /**
  * Reads the current authenticated user snapshot on the server.

@@ -1,9 +1,9 @@
 import css from './color-picker.module.scss';
 
+import { AccentColor, cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { For, Show } from 'solid-js';
-
-import { AccentColor, cn } from '~/shared/lib';
 
 export type ColorPickerOption = string | {
 	label?: string;

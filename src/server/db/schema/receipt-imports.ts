@@ -1,3 +1,5 @@
+import type { ReceiptImportStatus } from '~/entities/receipt-import/model/types';
+
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -11,8 +13,6 @@ import {
 import { accounts } from './accounts';
 import { households } from './households';
 import { users } from './users';
-
-import type { ReceiptImportStatus } from '~/entities/receipt-import/model/types';
 
 /**
  * Stores the user-facing receipt draft from upload through approval.

@@ -1,8 +1,8 @@
 import css from './account-icon.module.scss';
 
-import type { JSX } from 'solid-js';
-
 import { AccountType, type AccountTypeValue, cn } from '~/shared/lib';
+
+import type { JSX } from 'solid-js';
 
 const iconClassByAccountType: Record<AccountTypeValue, () => JSX.Element> = {
 	[AccountType.CARD]: () => (

@@ -1,4 +1,5 @@
 import type { PersistedContact } from '~/entities/contact/model/types';
+
 import type { ContactRecord } from '~/server/db/schema';
 
 /**

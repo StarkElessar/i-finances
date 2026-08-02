@@ -1,3 +1,7 @@
+import type { CurrencyCodeValue } from '~/shared/lib';
+
+import type { OperationType } from '~/entities/operation/model/types';
+
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -13,9 +17,6 @@ import { categories } from './categories';
 import { contacts } from './contacts';
 import { households } from './households';
 import { users } from './users';
-
-import type { OperationType } from '~/entities/operation/model/types';
-import type { CurrencyCodeValue } from '~/shared/lib';
 
 /**
  * Stores one immutable-by-default financial ledger entry.

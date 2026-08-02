@@ -1,8 +1,8 @@
-import { createMiddleware } from '@solidjs/start/middleware';
-import type { FetchEvent } from '@solidjs/start/server';
-
 import { getSessionFromRequest } from '~/server/auth/require-user';
 import { validateReturnPath } from '~/server/auth/validate-return-path';
+
+import { createMiddleware } from '@solidjs/start/middleware';
+import type { FetchEvent } from '@solidjs/start/server';
 
 const SIGN_IN_PATH = '/sign-in';
 const UI_KIT_PATH = '/ui-kit';

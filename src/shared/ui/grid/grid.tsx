@@ -1,5 +1,7 @@
 import css from './grid.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import { createMemo, For } from 'solid-js';
 import { createStore } from 'solid-js/store';
 
@@ -7,8 +9,6 @@ import { useColumnResize } from './lib/use-column-resize';
 import { GridBody } from './ui/grid-body';
 import { GridHeader } from './ui/grid-header';
 import type { GridColumn, GridProps, ResolvedGridColumn } from './types';
-
-import { cn } from '~/shared/lib';
 
 const DEFAULT_COLUMN_WIDTH = 120;
 const DEFAULT_MIN_COLUMN_WIDTH = 60;

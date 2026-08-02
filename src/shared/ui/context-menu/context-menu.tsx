@@ -1,5 +1,7 @@
 import css from './context-menu.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { Accessor, JSX } from 'solid-js';
 import {
 	createContext,
@@ -12,8 +14,6 @@ import {
 	splitProps,
 	useContext
 } from 'solid-js';
-
-import { cn } from '~/shared/lib';
 
 const DEFAULT_MOBILE_BREAKPOINT = 640;
 const SHEET_CLOSE_OFFSET = 80;

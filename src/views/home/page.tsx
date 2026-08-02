@@ -1,5 +1,47 @@
 import css from './home.module.scss';
 
+import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
+import {
+	amountToMinorUnits,
+	cn,
+	CurrencyCode,
+	formatCurrency,
+	formatDate,
+	getAccountTypeMeta,
+	minorUnitsToAmount,
+	sumMoney
+} from '~/shared/lib';
+import { AccountIcon, Button, Container } from '~/shared/ui';
+import { Dialog } from '~/shared/ui/dialog';
+
+import type { Account, PersistedAccount } from '~/entities/account';
+import {
+	createAccount as createAccountAction,
+	getAccounts,
+	updateAccount as updateAccountAction
+} from '~/entities/account/api';
+import type { CategoryCollection } from '~/entities/category';
+import { getCategories } from '~/entities/category';
+import type { ContactCollection } from '~/entities/contact';
+import { getContacts } from '~/entities/contact';
+import type {
+	CurrentExchangeRates,
+	ExchangeRateQuote
+} from '~/entities/exchange-rate';
+import { getCurrentExchangeRates } from '~/entities/exchange-rate/api';
+import type {
+	AccountBalance,
+	OperationDraft,
+	OperationWithBalance
+} from '~/entities/operation';
+import {
+	createOperationAction,
+	deleteOperationAction,
+	getAccountBalances,
+	recalculateOperationRateAction,
+	updateOperationAction
+} from '~/entities/operation';
+
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
@@ -31,47 +73,6 @@ import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
 import { OperationDetailsPanel } from './ui/operation-details-panel';
 import { OperationsTable } from './ui/operations-table';
-
-import type { Account, PersistedAccount } from '~/entities/account';
-import {
-	createAccount as createAccountAction,
-	getAccounts,
-	updateAccount as updateAccountAction
-} from '~/entities/account/api';
-import type { CategoryCollection } from '~/entities/category';
-import { getCategories } from '~/entities/category';
-import type { ContactCollection } from '~/entities/contact';
-import { getContacts } from '~/entities/contact';
-import type {
-	CurrentExchangeRates,
-	ExchangeRateQuote
-} from '~/entities/exchange-rate';
-import { getCurrentExchangeRates } from '~/entities/exchange-rate/api';
-import type {
-	AccountBalance,
-	OperationDraft,
-	OperationWithBalance
-} from '~/entities/operation';
-import {
-	createOperationAction,
-	deleteOperationAction,
-	getAccountBalances,
-	recalculateOperationRateAction,
-	updateOperationAction
-} from '~/entities/operation';
-import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
-import {
-	amountToMinorUnits,
-	cn,
-	CurrencyCode,
-	formatCurrency,
-	formatDate,
-	getAccountTypeMeta,
-	minorUnitsToAmount,
-	sumMoney
-} from '~/shared/lib';
-import { AccountIcon, Button, Container } from '~/shared/ui';
-import { Dialog } from '~/shared/ui/dialog';
 
 const FALLBACK_FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';

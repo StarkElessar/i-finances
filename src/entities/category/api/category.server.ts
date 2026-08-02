@@ -1,25 +1,8 @@
-import { action, query, revalidate } from '@solidjs/router';
-import { getWebRequest } from '@solidjs/start/http';
-import type { z } from 'zod';
-
-import type {
-	CategoryCommandResult,
-	CategoryListInput,
-	ChangeCategoryArchiveStateInput,
-	CreateCategoryInput,
-	UpdateCategoryInput
-} from './category.contract';
-import {
-	categoryListInputSchema,
-	changeCategoryArchiveStateInputSchema,
-	createCategoryInputSchema,
-	updateCategoryInputSchema
-} from './category.contract';
-
 import type {
 	CategoryCollection,
 	PersistedCategory
 } from '~/entities/category/model/types';
+
 import {
 	assertSameOriginMutation,
 	InvalidMutationOriginError
@@ -41,6 +24,24 @@ import {
 	HouseholdAccessRequiredError,
 	HouseholdSelectionRequiredError
 } from '~/server/household/household-service';
+
+import { action, query, revalidate } from '@solidjs/router';
+import { getWebRequest } from '@solidjs/start/http';
+import type { z } from 'zod';
+
+import type {
+	CategoryCommandResult,
+	CategoryListInput,
+	ChangeCategoryArchiveStateInput,
+	CreateCategoryInput,
+	UpdateCategoryInput
+} from './category.contract';
+import {
+	categoryListInputSchema,
+	changeCategoryArchiveStateInputSchema,
+	createCategoryInputSchema,
+	updateCategoryInputSchema
+} from './category.contract';
 
 const categoryService = createCategoryService({
 	categoryRepository: createCategoryRepository(),

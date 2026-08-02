@@ -1,13 +1,14 @@
+import { normalizeContactIdentity } from '~/entities/contact/model/normalization';
+
+import type { ContactRecord } from '~/server/db/schema';
+import type { HouseholdResolver } from '~/server/household/household-service';
+
 import {
 	ContactNameConflictError,
 	ContactNotFoundError,
 	ContactVersionConflictError
 } from './contact-errors';
 import type { ContactRepository } from './contact-repository';
-
-import { normalizeContactIdentity } from '~/entities/contact/model/normalization';
-import type { ContactRecord } from '~/server/db/schema';
-import type { HouseholdResolver } from '~/server/household/household-service';
 
 export type CurrentContact = {
 	householdId: string;

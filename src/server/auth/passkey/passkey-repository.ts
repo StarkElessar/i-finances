@@ -1,5 +1,3 @@
-import { and, eq, gt, isNull } from 'drizzle-orm';
-
 import { db } from '~/server/db/client';
 import type {
 	NewWebauthnChallengeRecord,
@@ -9,6 +7,8 @@ import type {
 	WebauthnCredentialRecord
 } from '~/server/db/schema';
 import { users, webauthnChallenges, webauthnCredentials } from '~/server/db/schema';
+
+import { and, eq, gt, isNull } from 'drizzle-orm';
 
 /**
  * Persisted credential joined with the owning user status.

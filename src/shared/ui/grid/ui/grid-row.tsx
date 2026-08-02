@@ -1,13 +1,13 @@
 import css from '../grid.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { For, Show } from 'solid-js';
 
 import type { GridFullWidthRowTemplateContext, ResolvedGridColumn } from '../types';
 
 import { GridCell } from './grid-cell';
-
-import { cn } from '~/shared/lib';
 
 /**
  * Properties of a rendered grid row.

@@ -1,3 +1,5 @@
+import type { CurrencyCodeValue } from '~/shared/lib';
+
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -6,8 +8,6 @@ import {
 	text,
 	uniqueIndex
 } from 'drizzle-orm/sqlite-core';
-
-import type { CurrencyCodeValue } from '~/shared/lib';
 
 /**
  * Stores one canonical daily rate for a directed currency pair.

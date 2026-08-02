@@ -1,20 +1,21 @@
 import css from './contact-dialog.module.scss';
 
-import { ArchiveRestore } from 'lucide-solid';
-import { createEffect, createSignal, createUniqueId, Show } from 'solid-js';
-
-import { ContactCard } from '../contact-card';
-
-import type {
-	ContactType,
-	PersistedContact
-} from '~/entities/contact';
 import { AccentColor, CurrencyCode, type CurrencyCodeValue } from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { ColorPicker } from '~/shared/ui/color-picker';
 import { Dialog } from '~/shared/ui/dialog';
 import { Switch } from '~/shared/ui/switch';
 import { TextField } from '~/shared/ui/text-field';
+
+import type {
+	ContactType,
+	PersistedContact
+} from '~/entities/contact';
+
+import { ArchiveRestore } from 'lucide-solid';
+import { createEffect, createSignal, createUniqueId, Show } from 'solid-js';
+
+import { ContactCard } from '../contact-card';
 
 export type ContactDialogMode = 'create' | 'edit';
 

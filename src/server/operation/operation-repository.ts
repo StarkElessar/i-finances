@@ -1,3 +1,14 @@
+import { type AppDatabase, db } from '~/server/db/client';
+import type {
+	NewOperationRecord,
+	OperationRecord
+} from '~/server/db/schema';
+import {
+	categories,
+	contacts,
+	operations
+} from '~/server/db/schema';
+
 import {
 	and,
 	asc,
@@ -10,17 +21,6 @@ import {
 	lte,
 	sql
 } from 'drizzle-orm';
-
-import { type AppDatabase, db } from '~/server/db/client';
-import type {
-	NewOperationRecord,
-	OperationRecord
-} from '~/server/db/schema';
-import {
-	categories,
-	contacts,
-	operations
-} from '~/server/db/schema';
 
 export type OperationLedgerRow = {
 	categoryName: string | null;

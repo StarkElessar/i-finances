@@ -1,12 +1,12 @@
-import { OperationVersionConflictError } from '../operation-errors';
-import { toOperation } from '../operation-mappers';
-import type { OperationUseCaseContext } from '../operation-use-case.types';
-
 import {
 	type ChangeOperationDeletionStateInput,
 	changeOperationDeletionStateInputSchema
 } from '~/entities/operation/api/operation.contract';
 import type { Operation } from '~/entities/operation/model/types';
+
+import { OperationVersionConflictError } from '../operation-errors';
+import { toOperation } from '../operation-mappers';
+import type { OperationUseCaseContext } from '../operation-use-case.types';
 
 export function createChangeOperationDeletionStateUseCase(
 	context: OperationUseCaseContext,

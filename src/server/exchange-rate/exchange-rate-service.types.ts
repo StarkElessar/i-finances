@@ -1,5 +1,3 @@
-import type { ExchangeRateRepository } from './exchange-rate-repository';
-
 import type {
 	CurrentExchangeRates,
 	ExchangeRateQuote,
@@ -9,6 +7,8 @@ import type {
 	ResolveExchangeRateInput,
 	UpsertExchangeRateInput
 } from '~/entities/exchange-rate';
+
+import type { ExchangeRateRepository } from './exchange-rate-repository';
 
 /**
  * Narrow dependency consumed by transaction services.

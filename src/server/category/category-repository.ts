@@ -1,13 +1,5 @@
-import {
-	and,
-	asc,
-	eq,
-	isNotNull,
-	isNull,
-	sql
-} from 'drizzle-orm';
-
 import type { CategoryListStatus } from '~/entities/category/api/category.contract';
+
 import { type AppDatabase, db } from '~/server/db/client';
 import type {
 	CategoryKeywordRecord,
@@ -19,6 +11,15 @@ import {
 	categories,
 	categoryKeywords
 } from '~/server/db/schema';
+
+import {
+	and,
+	asc,
+	eq,
+	isNotNull,
+	isNull,
+	sql
+} from 'drizzle-orm';
 
 export type CategoryAggregateRecord = {
 	category: CategoryRecord;

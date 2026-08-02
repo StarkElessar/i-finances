@@ -1,15 +1,16 @@
 import css from './password-sign-in-panel.module.scss';
 
-import { createSignal, Show } from 'solid-js';
-import { z } from 'zod';
-
 import { Button, TextField, Typography } from '~/shared/ui';
+
 import {
 	passwordSignInErrorMessageByCode,
 	passwordSignInInputSchema,
 	passwordSignInResultSchema
 } from '~/views/sign-in/api/password-sign-in.contract';
 import { IdentityBadge } from '~/views/sign-in/ui/identity-badge';
+
+import { createSignal, Show } from 'solid-js';
+import { z } from 'zod';
 
 /**
  * Navigation callbacks used by the password fallback panel.

@@ -1,6 +1,6 @@
-import type { Accessor, JSX } from 'solid-js';
-
 import type { ButtonProps } from '~/shared/ui/button';
+
+import type { Accessor, JSX } from 'solid-js';
 
 export type DialogContentElement = 'section' | 'form' | 'div';
 export type DialogActionIntent = 'cancel' | 'confirm' | 'danger' | 'default';

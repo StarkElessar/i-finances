@@ -1,11 +1,12 @@
-import type { RouteDefinition } from '@solidjs/router';
-
 import { getCategories } from '~/entities/category';
 import {
 	formatLocalDateKey,
 	getMonthlyExpenseSummary
 } from '~/entities/operation';
+
 import { CategoriesPage } from '~/views/categories/page';
+
+import type { RouteDefinition } from '@solidjs/router';
 
 export const route = {
 	preload: () => Promise.all([

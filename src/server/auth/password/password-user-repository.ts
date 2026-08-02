@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
-
 import { db } from '~/server/db/client';
 import { users } from '~/server/db/schema';
+
+import { eq } from 'drizzle-orm';
 
 /**
  * User fields required to authenticate password credentials.

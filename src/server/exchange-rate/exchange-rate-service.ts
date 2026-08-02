@@ -1,14 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
-import { ExchangeRateNotFoundError } from './exchange-rate-errors';
-import {
-	toExchangeRateQuote,
-	toPersistedExchangeRate
-} from './exchange-rate-mappers';
-import type {
-	ExchangeRateService,
-	ExchangeRateServiceDependencies
-} from './exchange-rate-service.types';
+import { type CurrencyCodeValue, invertExchangeRate } from '~/shared/lib';
 
 import type {
 	CurrentExchangeRates,
@@ -25,7 +17,16 @@ import {
 	resolveExchangeRateInputSchema,
 	upsertExchangeRateInputSchema
 } from '~/entities/exchange-rate';
-import { type CurrencyCodeValue, invertExchangeRate } from '~/shared/lib';
+
+import { ExchangeRateNotFoundError } from './exchange-rate-errors';
+import {
+	toExchangeRateQuote,
+	toPersistedExchangeRate
+} from './exchange-rate-mappers';
+import type {
+	ExchangeRateService,
+	ExchangeRateServiceDependencies
+} from './exchange-rate-service.types';
 
 export type {
 	DailyExchangeRateProvider,

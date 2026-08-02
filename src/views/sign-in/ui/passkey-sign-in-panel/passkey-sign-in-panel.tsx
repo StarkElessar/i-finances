@@ -1,17 +1,18 @@
 import css from './passkey-sign-in-panel.module.scss';
 
-import {
-	browserSupportsWebAuthn,
-	startAuthentication
-} from '@simplewebauthn/browser';
-import { createSignal, Show } from 'solid-js';
-
 import { Button, Typography } from '~/shared/ui';
+
 import {
 	passkeySignInErrorMessageByCode,
 	passkeySignInResultSchema
 } from '~/views/sign-in/api/passkey-sign-in.contract';
 import { IdentityBadge } from '~/views/sign-in/ui/identity-badge';
+
+import {
+	browserSupportsWebAuthn,
+	startAuthentication
+} from '@simplewebauthn/browser';
+import { createSignal, Show } from 'solid-js';
 
 /**
  * Navigation callbacks used by the passkey-first panel.

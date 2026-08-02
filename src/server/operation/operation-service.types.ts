@@ -1,5 +1,3 @@
-import type { OperationRepository } from './operation-repository';
-
 import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
@@ -14,11 +12,14 @@ import type {
 	MonthlyExpenseSummary,
 	Operation
 } from '~/entities/operation/model/types';
+
 import type { AccountRepository } from '~/server/account/account-repository';
 import type { CategoryRepository } from '~/server/category/category-repository';
 import type { ContactRepository } from '~/server/contact/contact-repository';
 import type { ExchangeRateResolver } from '~/server/exchange-rate/exchange-rate-service';
 import type { HouseholdResolver } from '~/server/household/household-service';
+
+import type { OperationRepository } from './operation-repository';
 
 export type OperationService = {
 	create: (

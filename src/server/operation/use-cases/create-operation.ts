@@ -1,12 +1,12 @@
-import { toOperation } from '../operation-mappers';
-import { createOperationRateSnapshot } from '../operation-rate';
-import type { OperationUseCaseContext } from '../operation-use-case.types';
-
 import {
 	type CreateOperationInput,
 	createOperationInputSchema
 } from '~/entities/operation/api/operation.contract';
 import type { Operation } from '~/entities/operation/model/types';
+
+import { toOperation } from '../operation-mappers';
+import { createOperationRateSnapshot } from '../operation-rate';
+import type { OperationUseCaseContext } from '../operation-use-case.types';
 
 export function createCreateOperationUseCase(
 	context: OperationUseCaseContext

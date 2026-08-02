@@ -1,12 +1,12 @@
-import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
-
-import { households } from './households';
-import { users } from './users';
-
 import type {
 	AccountTypeValue,
 	CurrencyCodeValue
 } from '~/shared/lib';
+
+import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
+
+import { households } from './households';
+import { users } from './users';
 
 /**
  * Stores one financial account owned by a household.

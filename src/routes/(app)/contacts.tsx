@@ -1,11 +1,12 @@
-import type { RouteDefinition } from '@solidjs/router';
-
 import { getContacts } from '~/entities/contact';
 import {
 	formatLocalDateKey,
 	getMonthlyExpenseSummary
 } from '~/entities/operation';
+
 import { ContactsPage } from '~/views/contacts/page';
+
+import type { RouteDefinition } from '@solidjs/router';
 
 export const route = {
 	preload: () => Promise.all([

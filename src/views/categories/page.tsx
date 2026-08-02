@@ -1,5 +1,28 @@
 import css from './categories.module.scss';
 
+import { cn, CurrencyCode } from '~/shared/lib';
+import { Button, Container } from '~/shared/ui';
+import { createDragAction, DragAction } from '~/shared/ui/drag-action';
+
+import type {
+	CategoryBudgetSummary,
+	CategoryCollection,
+	PersistedCategory
+} from '~/entities/category';
+import {
+	archiveCategory as archiveCategoryAction,
+	createCategory as createCategoryAction,
+	getCategories,
+	getCategoryBudgetSummary,
+	restoreCategory as restoreCategoryAction,
+	updateCategory as updateCategoryAction
+} from '~/entities/category';
+import type { MonthlyExpenseSummary } from '~/entities/operation';
+import {
+	formatLocalDateKey,
+	getMonthlyExpenseSummary
+} from '~/entities/operation';
+
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
@@ -25,28 +48,6 @@ import {
 import { CategoryCard } from './ui/category-card';
 import type { CategoryDialogMode, CategoryDialogValue } from './ui/category-dialog';
 import { CategoryDialog } from './ui/category-dialog';
-
-import type {
-	CategoryBudgetSummary,
-	CategoryCollection,
-	PersistedCategory
-} from '~/entities/category';
-import {
-	archiveCategory as archiveCategoryAction,
-	createCategory as createCategoryAction,
-	getCategories,
-	getCategoryBudgetSummary,
-	restoreCategory as restoreCategoryAction,
-	updateCategory as updateCategoryAction
-} from '~/entities/category';
-import type { MonthlyExpenseSummary } from '~/entities/operation';
-import {
-	formatLocalDateKey,
-	getMonthlyExpenseSummary
-} from '~/entities/operation';
-import { cn, CurrencyCode } from '~/shared/lib';
-import { Button, Container } from '~/shared/ui';
-import { createDragAction, DragAction } from '~/shared/ui/drag-action';
 
 type CategoryListMode = 'active' | 'archive';
 

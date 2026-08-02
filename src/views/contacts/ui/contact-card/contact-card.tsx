@@ -1,15 +1,16 @@
 import css from './contact-card.module.scss';
 
-import { Archive, Building2, ContactRound, UserRound } from 'lucide-solid';
-import type { JSX } from 'solid-js';
-import { Match, Show, Switch } from 'solid-js';
+import type { CurrencyCodeValue } from '~/shared/lib';
+import { cn, formatMinorUnitsCurrency } from '~/shared/lib';
 
 import type {
 	ContactType,
 	PersistedContact
 } from '~/entities/contact';
-import type { CurrencyCodeValue } from '~/shared/lib';
-import { cn, formatMinorUnitsCurrency } from '~/shared/lib';
+
+import { Archive, Building2, ContactRound, UserRound } from 'lucide-solid';
+import type { JSX } from 'solid-js';
+import { Match, Show, Switch } from 'solid-js';
 
 export type ContactCardProps = {
 	contact: PersistedContact;

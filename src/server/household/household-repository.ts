@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import type { CurrencyCodeValue } from '~/shared/lib';
 
 import { type AppDatabase, db } from '~/server/db/client';
 import {
@@ -6,7 +6,8 @@ import {
 	householdMembers,
 	households
 } from '~/server/db/schema';
-import type { CurrencyCodeValue } from '~/shared/lib';
+
+import { eq } from 'drizzle-orm';
 
 export type HouseholdAccessRecord = {
 	baseCurrency: CurrencyCodeValue;

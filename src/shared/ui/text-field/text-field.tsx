@@ -1,9 +1,9 @@
 import css from './text-field.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { children, createUniqueId, Show, splitProps } from 'solid-js';
-
-import { cn } from '~/shared/lib';
 
 /**
  * Input heights aligned with the button size scale.

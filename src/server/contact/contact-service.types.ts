@@ -1,5 +1,3 @@
-import type { ContactRepository } from './contact-repository';
-
 import type {
 	ChangeContactArchiveStateInput,
 	ContactListStatus,
@@ -10,7 +8,10 @@ import type {
 	ContactCollection,
 	PersistedContact
 } from '~/entities/contact/model/types';
+
 import type { HouseholdResolver } from '~/server/household/household-service';
+
+import type { ContactRepository } from './contact-repository';
 
 export type ContactServiceDependencies = {
 	contactRepository: ContactRepository;

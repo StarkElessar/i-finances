@@ -1,6 +1,25 @@
 import css from './operation-details-panel.module.scss';
 
 import {
+	cn,
+	formatMinorUnitsAsInput,
+	formatMinorUnitsCurrency,
+	parseOptionalMoneyInputToMinorUnits
+} from '~/shared/lib';
+import { Button } from '~/shared/ui/button';
+import { Combobox } from '~/shared/ui/combobox';
+import { Dialog } from '~/shared/ui/dialog';
+import { TextField } from '~/shared/ui/text-field';
+
+import { findSuggestedCategory } from '~/entities/category';
+import type { ContactType } from '~/entities/contact';
+import {
+	formatLocalDateKey,
+	type OperationType,
+	tryParseLocalDateKey
+} from '~/entities/operation';
+
+import {
 	Building2,
 	ChevronLeft,
 	ChevronRight,
@@ -19,24 +38,6 @@ import {
 } from 'solid-js';
 
 import type { OperationDetailsPanelProps } from './types';
-
-import { findSuggestedCategory } from '~/entities/category';
-import type { ContactType } from '~/entities/contact';
-import {
-	formatLocalDateKey,
-	type OperationType,
-	tryParseLocalDateKey
-} from '~/entities/operation';
-import {
-	cn,
-	formatMinorUnitsAsInput,
-	formatMinorUnitsCurrency,
-	parseOptionalMoneyInputToMinorUnits
-} from '~/shared/lib';
-import { Button } from '~/shared/ui/button';
-import { Combobox } from '~/shared/ui/combobox';
-import { Dialog } from '~/shared/ui/dialog';
-import { TextField } from '~/shared/ui/text-field';
 
 type OperationDetailsFormProps = Pick<
 	OperationDetailsPanelProps,

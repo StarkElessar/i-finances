@@ -1,10 +1,10 @@
 import css from './drag-action.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { Accessor, JSX } from 'solid-js';
 import { createSignal, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
-
-import { cn } from '~/shared/lib';
 
 export type DragActionTone = 'danger' | 'neutral';
 

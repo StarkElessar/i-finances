@@ -1,4 +1,12 @@
-import { z } from 'zod';
+import type {
+	PasswordSignInErrorCode,
+	PasswordSignInInput,
+	PasswordSignInResult
+} from '~/views/sign-in/api/password-sign-in.contract';
+import {
+	passwordSignInErrorMessageByCode,
+	passwordSignInInputSchema
+} from '~/views/sign-in/api/password-sign-in.contract';
 
 import { assertSameOriginMutation, InvalidMutationOriginError } from '~/server/auth/csrf/origin-guard';
 import { normalizeUsername } from '~/server/auth/password/normalize-username';
@@ -12,15 +20,8 @@ import {
 import { writeSessionCookie } from '~/server/auth/session/auth-cookie';
 import { createSession } from '~/server/auth/session/session-service';
 import { validateReturnPath } from '~/server/auth/validate-return-path';
-import type {
-	PasswordSignInErrorCode,
-	PasswordSignInInput,
-	PasswordSignInResult
-} from '~/views/sign-in/api/password-sign-in.contract';
-import {
-	passwordSignInErrorMessageByCode,
-	passwordSignInInputSchema
-} from '~/views/sign-in/api/password-sign-in.contract';
+
+import { z } from 'zod';
 
 const SEE_OTHER_STATUS_CODE = 303;
 

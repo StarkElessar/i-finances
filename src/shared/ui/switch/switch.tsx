@@ -1,9 +1,9 @@
 import css from './switch.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import type { JSX } from 'solid-js';
 import { splitProps } from 'solid-js';
-
-import { cn } from '~/shared/lib';
 
 export type SwitchProps = Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'children' | 'class' | 'type'> & {
 	class?: string;

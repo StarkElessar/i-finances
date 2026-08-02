@@ -1,7 +1,8 @@
-import type { AccountUpdateValues } from './account-repository';
+import type { CurrencyCodeValue } from '~/shared/lib';
 
 import type { AccountRecord } from '~/server/db/schema';
-import type { CurrencyCodeValue } from '~/shared/lib';
+
+import type { AccountUpdateValues } from './account-repository';
 
 export type CorrectAccountCurrencyInput = {
 	accountId: string;

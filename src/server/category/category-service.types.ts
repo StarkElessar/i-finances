@@ -1,5 +1,3 @@
-import type { CategoryRepository } from './category-repository';
-
 import type {
 	CategoryListStatus,
 	ChangeCategoryArchiveStateInput,
@@ -10,7 +8,10 @@ import type {
 	CategoryCollection,
 	PersistedCategory
 } from '~/entities/category/model/types';
+
 import type { HouseholdResolver } from '~/server/household/household-service';
+
+import type { CategoryRepository } from './category-repository';
 
 export type CategoryServiceDependencies = {
 	categoryRepository: CategoryRepository;

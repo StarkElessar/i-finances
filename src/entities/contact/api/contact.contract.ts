@@ -1,10 +1,10 @@
-import { z } from 'zod';
-
 import {
 	normalizeContactLegalName,
 	normalizeContactName
 } from '~/entities/contact/model/normalization';
 import type { PersistedContact } from '~/entities/contact/model/types';
+
+import { z } from 'zod';
 
 export const CONTACT_LIST_STATUSES = [
 	'active',

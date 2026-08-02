@@ -1,24 +1,10 @@
 import css from './operations-table.module.scss';
 
-import { createAsync } from '@solidjs/router';
-import {
-	ArrowDownRight,
-	ArrowDownWideNarrow,
-	ArrowUpNarrowWide,
-	ArrowUpRight,
-	Building2,
-	CalendarDays,
-	ChevronLeft,
-	ChevronRight,
-	CircleDollarSign,
-	Minus,
-	Plus,
-	Search,
-	WalletCards,
-	X
-} from 'lucide-solid';
-import type { JSX } from 'solid-js';
-import { createMemo, createSignal, For, Show } from 'solid-js';
+import { cn, formatDate, formatMinorUnitsCurrency } from '~/shared/lib';
+import { Button } from '~/shared/ui/button';
+import type { GridColumn } from '~/shared/ui/grid';
+import { Grid } from '~/shared/ui/grid';
+import { TextField } from '~/shared/ui/text-field';
 
 import type { Account } from '~/entities/account';
 import type { Category } from '~/entities/category';
@@ -38,11 +24,26 @@ import {
 	parseLocalDateKey,
 	shiftOperationPeriod
 } from '~/entities/operation';
-import { cn, formatDate, formatMinorUnitsCurrency } from '~/shared/lib';
-import { Button } from '~/shared/ui/button';
-import type { GridColumn } from '~/shared/ui/grid';
-import { Grid } from '~/shared/ui/grid';
-import { TextField } from '~/shared/ui/text-field';
+
+import { createAsync } from '@solidjs/router';
+import {
+	ArrowDownRight,
+	ArrowDownWideNarrow,
+	ArrowUpNarrowWide,
+	ArrowUpRight,
+	Building2,
+	CalendarDays,
+	ChevronLeft,
+	ChevronRight,
+	CircleDollarSign,
+	Minus,
+	Plus,
+	Search,
+	WalletCards,
+	X
+} from 'lucide-solid';
+import type { JSX } from 'solid-js';
+import { createMemo, createSignal, For, Show } from 'solid-js';
 
 type OperationsTableProps = {
 	account: Account;

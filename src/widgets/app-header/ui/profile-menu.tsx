@@ -1,9 +1,11 @@
 import css from './profile-menu.module.scss';
 
+import { ContextMenu } from '~/shared/ui';
+
 import type { CurrentViewer } from '~/entities/viewer';
 import { useCurrentViewer } from '~/entities/viewer';
+
 import { PasskeyRegistrationMenuItem } from '~/features/passkey-registration';
-import { ContextMenu } from '~/shared/ui';
 
 /**
  * Returns the best available user-facing viewer name.

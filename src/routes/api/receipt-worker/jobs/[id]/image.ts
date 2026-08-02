@@ -1,11 +1,11 @@
-import type { APIEvent } from '@solidjs/start/server';
-
 import {
 	createReceiptHttpFailure,
 	createReceiptImageResponse
 } from '~/server/receipt-import/receipt-import-http';
 import { receiptImportService } from '~/server/receipt-import/receipt-import-service-instance';
 import { assertReceiptWorkerApiKey } from '~/server/receipt-import/receipt-worker-auth';
+
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * Streams the leased receipt image bytes to the owning worker.

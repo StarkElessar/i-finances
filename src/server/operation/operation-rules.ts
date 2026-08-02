@@ -1,3 +1,8 @@
+import type { AccountRepository } from '~/server/account/account-repository';
+import type { CategoryRepository } from '~/server/category/category-repository';
+import type { ContactRepository } from '~/server/contact/contact-repository';
+import type { AccountRecord, OperationRecord } from '~/server/db/schema';
+
 import {
 	OperationAccountUnavailableError,
 	OperationDeletedError,
@@ -6,11 +11,6 @@ import {
 	OperationVersionConflictError
 } from './operation-errors';
 import type { OperationRepository } from './operation-repository';
-
-import type { AccountRepository } from '~/server/account/account-repository';
-import type { CategoryRepository } from '~/server/category/category-repository';
-import type { ContactRepository } from '~/server/contact/contact-repository';
-import type { AccountRecord, OperationRecord } from '~/server/db/schema';
 
 export type OperationReferenceSelection = {
 	category: {

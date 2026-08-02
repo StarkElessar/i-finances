@@ -1,3 +1,9 @@
+import {
+	type UpdateOperationInput,
+	updateOperationInputSchema
+} from '~/entities/operation/api/operation.contract';
+import type { Operation } from '~/entities/operation/model/types';
+
 import { OperationVersionConflictError } from '../operation-errors';
 import { toOperation } from '../operation-mappers';
 import {
@@ -5,12 +11,6 @@ import {
 	getStoredOperationQuote
 } from '../operation-rate';
 import type { OperationUseCaseContext } from '../operation-use-case.types';
-
-import {
-	type UpdateOperationInput,
-	updateOperationInputSchema
-} from '~/entities/operation/api/operation.contract';
-import type { Operation } from '~/entities/operation/model/types';
 
 export function createUpdateOperationUseCase(
 	context: OperationUseCaseContext

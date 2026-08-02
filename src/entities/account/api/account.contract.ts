@@ -1,10 +1,11 @@
-import { z } from 'zod';
-
-import type { PersistedAccount } from '~/entities/account/model/types';
 import {
 	ACCOUNT_TYPES,
 	CURRENCY_CODES
 } from '~/shared/lib';
+
+import type { PersistedAccount } from '~/entities/account/model/types';
+
+import { z } from 'zod';
 
 const accountIdSchema = z.string().trim().min(1).max(128);
 const accountVersionSchema = z.number().int().positive();

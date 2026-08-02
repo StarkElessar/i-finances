@@ -1,11 +1,13 @@
-import { OperationConversionAmountError } from './operation-errors';
-
-import type { ExchangeRateQuote } from '~/entities/exchange-rate';
-import type { OperationRecord } from '~/server/db/schema';
 import {
 	convertMinorUnitsByExchangeRate,
 	type CurrencyCodeValue
 } from '~/shared/lib';
+
+import type { ExchangeRateQuote } from '~/entities/exchange-rate';
+
+import type { OperationRecord } from '~/server/db/schema';
+
+import { OperationConversionAmountError } from './operation-errors';
 
 export type OperationRateSnapshot = {
 	amountInHouseholdBaseCurrencyMinor: number;

@@ -1,9 +1,9 @@
-import type { APIEvent } from '@solidjs/start/server';
-
 import { assertSameOriginMutation } from '~/server/auth/csrf/origin-guard';
 import { getSessionFromRequest } from '~/server/auth/require-user';
 import { createReceiptHttpFailure } from '~/server/receipt-import/receipt-import-http';
 import { receiptImportService } from '~/server/receipt-import/receipt-import-service-instance';
+
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * Accepts one authenticated receipt photo and creates a queued import.

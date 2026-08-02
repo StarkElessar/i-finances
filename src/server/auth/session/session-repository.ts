@@ -1,8 +1,8 @@
-import { eq, lt } from 'drizzle-orm';
-
 import { db } from '~/server/db/client';
 import type { NewSessionRecord } from '~/server/db/schema';
 import { sessions, users } from '~/server/db/schema';
+
+import { eq, lt } from 'drizzle-orm';
 
 /**
  * Session row joined with the safe user fields needed by request guards.

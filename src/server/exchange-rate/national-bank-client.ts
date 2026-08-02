@@ -1,14 +1,15 @@
-import { z } from 'zod';
-
-import {
-	type UpsertExchangeRateInput,
-	upsertExchangeRateInputSchema
-} from '~/entities/exchange-rate';
 import {
 	CurrencyCode,
 	type CurrencyCodeValue,
 	normalizeExchangeRate
 } from '~/shared/lib';
+
+import {
+	type UpsertExchangeRateInput,
+	upsertExchangeRateInputSchema
+} from '~/entities/exchange-rate';
+
+import { z } from 'zod';
 
 export const NATIONAL_BANK_EXCHANGE_RATE_SOURCE = 'nbrb';
 

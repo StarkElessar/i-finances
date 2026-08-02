@@ -1,11 +1,11 @@
-import type { APIEvent } from '@solidjs/start/server';
-
 import { getSessionFromRequest } from '~/server/auth/require-user';
 import {
 	createReceiptHttpFailure,
 	createReceiptImageResponse
 } from '~/server/receipt-import/receipt-import-http';
 import { receiptImportService } from '~/server/receipt-import/receipt-import-service-instance';
+
+import type { APIEvent } from '@solidjs/start/server';
 
 /**
  * Streams a private receipt image to an authenticated household member.

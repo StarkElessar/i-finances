@@ -1,14 +1,15 @@
 import css from './passkey-registration-menu-item.module.scss';
 
+import { cn } from '~/shared/lib';
+import { ContextMenu } from '~/shared/ui';
+
+import { passkeyRegistrationResultSchema } from '~/features/passkey-registration/api/passkey-registration.contract';
+
 import {
 	browserSupportsWebAuthn,
 	startRegistration
 } from '@simplewebauthn/browser';
 import { createSignal, Show } from 'solid-js';
-
-import { passkeyRegistrationResultSchema } from '~/features/passkey-registration/api/passkey-registration.contract';
-import { cn } from '~/shared/lib';
-import { ContextMenu } from '~/shared/ui';
 
 type RegistrationStatus = 'idle' | 'success' | 'error';
 

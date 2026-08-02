@@ -1,5 +1,3 @@
-import type { RegistrationResponseJSON } from '@simplewebauthn/server';
-
 import { assertSameOriginMutation, InvalidMutationOriginError } from '~/server/auth/csrf/origin-guard';
 import { passkeyRegistrationVerificationInputSchema } from '~/server/auth/passkey/passkey-registration.contract';
 import {
@@ -7,6 +5,8 @@ import {
 	finishPasskeyRegistration
 } from '~/server/auth/passkey/passkey-service';
 import { AuthenticationRequiredError, requireUser } from '~/server/auth/require-user';
+
+import type { RegistrationResponseJSON } from '@simplewebauthn/server';
 
 type PasskeyRegistrationMetadata = {
 	ipAddress?: string;

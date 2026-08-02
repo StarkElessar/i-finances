@@ -1,25 +1,8 @@
-import { action, query, revalidate } from '@solidjs/router';
-import { getWebRequest } from '@solidjs/start/http';
-import type { z } from 'zod';
-
-import type {
-	ChangeContactArchiveStateInput,
-	ContactCommandResult,
-	ContactListInput,
-	CreateContactInput,
-	UpdateContactInput
-} from './contact.contract';
-import {
-	changeContactArchiveStateInputSchema,
-	contactListInputSchema,
-	createContactInputSchema,
-	updateContactInputSchema
-} from './contact.contract';
-
 import type {
 	ContactCollection,
 	PersistedContact
 } from '~/entities/contact/model/types';
+
 import {
 	assertSameOriginMutation,
 	InvalidMutationOriginError
@@ -41,6 +24,24 @@ import {
 	HouseholdAccessRequiredError,
 	HouseholdSelectionRequiredError
 } from '~/server/household/household-service';
+
+import { action, query, revalidate } from '@solidjs/router';
+import { getWebRequest } from '@solidjs/start/http';
+import type { z } from 'zod';
+
+import type {
+	ChangeContactArchiveStateInput,
+	ContactCommandResult,
+	ContactListInput,
+	CreateContactInput,
+	UpdateContactInput
+} from './contact.contract';
+import {
+	changeContactArchiveStateInputSchema,
+	contactListInputSchema,
+	createContactInputSchema,
+	updateContactInputSchema
+} from './contact.contract';
 
 const contactService = createContactService({
 	contactRepository: createContactRepository(),

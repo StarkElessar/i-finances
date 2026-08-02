@@ -1,11 +1,11 @@
-import { z } from 'zod';
-
 import {
 	normalizeCategoryIdentity,
 	normalizeCategoryKeyword,
 	normalizeCategoryName
 } from '~/entities/category/model/normalization';
 import type { PersistedCategory } from '~/entities/category/model/types';
+
+import { z } from 'zod';
 
 export const CATEGORY_LIST_STATUSES = [
 	'active',

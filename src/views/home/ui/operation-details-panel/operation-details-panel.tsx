@@ -1,12 +1,12 @@
 import css from './operation-details-panel.module.scss';
 
+import { cn } from '~/shared/lib';
+
 import { createEffect, createSignal, createUniqueId, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 
 import { OperationDetailsForm } from './operation-details-form';
 import type { OperationDetailsPanelProps } from './types';
-
-import { cn } from '~/shared/lib';
 
 const CLOSE_ANIMATION_MS = 180;
 

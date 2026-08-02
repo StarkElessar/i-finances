@@ -1,7 +1,3 @@
-import { z } from 'zod';
-
-import type { ReceiptImportAggregateRecord } from './receipt-import-repository';
-
 import {
 	receiptCategorySnapshotSchema,
 	receiptWorkerResultSchema
@@ -10,6 +6,10 @@ import type {
 	ReceiptImport,
 	ReceiptProcessingJob
 } from '~/entities/receipt-import/model/types';
+
+import { z } from 'zod';
+
+import type { ReceiptImportAggregateRecord } from './receipt-import-repository';
 
 const categoriesSnapshotSchema = z.array(receiptCategorySnapshotSchema);
 

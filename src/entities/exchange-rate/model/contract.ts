@@ -1,10 +1,10 @@
-import { z } from 'zod';
-
 import {
 	CURRENCY_CODES,
 	type CurrencyCodeValue,
 	normalizeExchangeRate
 } from '~/shared/lib';
+
+import { z } from 'zod';
 
 const LOCAL_DATE_KEY_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 

@@ -1,10 +1,7 @@
-import {
-	and,
-	asc,
-	eq,
-	isNull,
-	sql
-} from 'drizzle-orm';
+import type {
+	AccountTypeValue,
+	CurrencyCodeValue
+} from '~/shared/lib';
 
 import { type AppDatabase, db } from '~/server/db/client';
 import type {
@@ -12,10 +9,14 @@ import type {
 	NewAccountRecord
 } from '~/server/db/schema';
 import { accounts } from '~/server/db/schema';
-import type {
-	AccountTypeValue,
-	CurrencyCodeValue
-} from '~/shared/lib';
+
+import {
+	and,
+	asc,
+	eq,
+	isNull,
+	sql
+} from 'drizzle-orm';
 
 export type AccountUpdateValues = {
 	color: string;

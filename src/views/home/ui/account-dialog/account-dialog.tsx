@@ -1,7 +1,5 @@
 import css from './account-dialog.module.scss';
 
-import { createEffect, createSignal, For, Show } from 'solid-js';
-
 import type { AccountTypeValue, CurrencyCodeValue } from '~/shared/lib';
 import {
 	AccountColor,
@@ -16,6 +14,8 @@ import { ColorPicker } from '~/shared/ui/color-picker';
 import { Dialog } from '~/shared/ui/dialog';
 import { Switch } from '~/shared/ui/switch';
 import { TextField } from '~/shared/ui/text-field';
+
+import { createEffect, createSignal, For, Show } from 'solid-js';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 const DEFAULT_ACCOUNT_COLOR = AccountColor.BLUE;

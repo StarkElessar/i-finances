@@ -2,6 +2,7 @@ import type {
 	ExchangeRateQuote,
 	PersistedExchangeRate
 } from '~/entities/exchange-rate';
+
 import type { ExchangeRateRecord } from '~/server/db/schema';
 
 export function toExchangeRateQuote(

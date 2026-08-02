@@ -1,13 +1,14 @@
 import css from './keyword-input.module.scss';
 
-import type { JSX } from 'solid-js';
-import { createEffect, createSignal, For, Show } from 'solid-js';
+import { cn } from '~/shared/lib';
 
 import {
 	normalizeCategoryIdentity,
 	normalizeCategoryKeyword
 } from '~/entities/category';
-import { cn } from '~/shared/lib';
+
+import type { JSX } from 'solid-js';
+import { createEffect, createSignal, For, Show } from 'solid-js';
 
 export type KeywordInputProps = {
 	value: readonly string[];
