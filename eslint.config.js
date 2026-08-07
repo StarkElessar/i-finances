@@ -3,22 +3,19 @@ import globals from 'globals';
 import { defineConfig } from 'eslint/config';
 
 export default defineConfig([
-	// Общие framework-neutral правила из @stark/eslint-config.
 	...stark,
-
-	// ── Глобальные настройки ──────────────────────
 	{
-		files: ['**/*.{js,ts,tsx}'],
+		files: ['apps/**/*.{js,ts,tsx}', 'packages/**/*.{js,ts,tsx}'],
 		languageOptions: {
-			globals: globals.browser
+			globals: {
+				...globals.browser,
+				...globals.node
+			}
 		}
 	},
-
 	...typeChecked,
-
-	// ── TypeScript правила ───────────────────────
 	{
-		files: ['**/*.{ts,tsx}'],
+		files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
 		languageOptions: {
 			parserOptions: {
 				projectService: true,
@@ -26,7 +23,21 @@ export default defineConfig([
 			}
 		},
 		rules: {
-			// TODO: включать по мере подготовки кода
+			'no-restricted-imports': [
+				'error',
+				{
+					patterns: [
+						{
+							group: ['@i-finances/api', '@i-finances/api/*'],
+							message: 'The web app must communicate with the API over HTTP.'
+						},
+						{
+							group: ['@i-finances/web', '@i-finances/web/*'],
+							message: 'The API must not depend on the web app.'
+							}
+					]
+				}
+			],
 			'@typescript-eslint/no-unsafe-argument': 'off',
 			'@typescript-eslint/no-unsafe-assignment': 'off',
 			'@typescript-eslint/no-unsafe-call': 'off',

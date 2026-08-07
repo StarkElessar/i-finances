@@ -1,0 +1,15 @@
+:root {
+    font-family: system-ui, sans-serif;
+    color: #1f2937;
+    background: #f8fafc;
+}
+
+body {
+    margin: 0;
+}
+
+.app-shell {
+    box-sizing: border-box;
+    min-block-size: 100vh;
+    padding: 2rem;
+}

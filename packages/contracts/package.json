@@ -1,0 +1,19 @@
+{
+	"name": "@i-finances/contracts",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"exports": {
+		".": "./src/index.ts"
+	},
+	"scripts": {
+		"build": "pnpm run typecheck",
+		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
+	},
+	"dependencies": {
+		"zod": "^4.4.3"
+	},
+	"devDependencies": {
+		"typescript7": "npm:typescript@7.0.2"
+	}
+}

@@ -1,6 +1,6 @@
 dist
-static/receipts/*
-!static/receipts/.gitkeep
+apps/api/storage/receipts/*
+!apps/api/storage/receipts/.gitkeep
 .wrangler
 .output
 .vercel
@@ -16,9 +16,14 @@ app.config.timestamp_*.js
 .env*.local
 /data/*.sqlite
 /data/*.sqlite-*
+/apps/api/data/*.sqlite
+/apps/api/data/*.sqlite-*
+/apps/api/data/*.sqlite
+/apps/api/data/*.sqlite-*
 
 # dependencies
-/node_modules
+**/node_modules/
+*.tsbuildinfo
 
 # IDEs and editors
 /.idea

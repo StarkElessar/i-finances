@@ -1,46 +1,15 @@
 {
-	"name": "i-finances",
+	"name": "i-finances-workspace",
+	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "vite dev",
-		"build": "pnpm run typecheck && vite build",
-		"start": "vite start",
-		"preview": "vite preview",
-		"generate": "plop",
-		"g:component": "plop component",
-		"g:view": "plop view",
-		"db:generate": "drizzle-kit generate",
-		"db:migrate": "tsx scripts/migrate-db.ts",
-		"db:classify:ifinance-contacts": "tsx scripts/classify-ifinance-contacts.ts",
-		"db:import:ifinance-categories": "tsx scripts/import-ifinance-categories.ts",
-		"db:import:ifinance-contacts": "tsx scripts/import-ifinance-contacts.ts",
-		"db:import:ifinance-operations": "tsx scripts/import-ifinance-operations.ts",
-		"db:rate": "tsx scripts/upsert-exchange-rate.ts",
-		"db:seed": "tsx scripts/seed-auth-user.ts",
-		"receipt:worker-key": "tsx scripts/generate-receipt-worker-api-key.ts",
-		"test": "vitest run",
-		"test:watch": "vitest",
-		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",
-		"lint:fix": "pnpm run lint:js:fix && pnpm run lint:css:fix",
-		"lint:js:fix": "eslint \"src/**/*.{js,ts,jsx,tsx}\" --fix",
-		"lint:css:fix": "stylelint \"**/*.scss\" --allow-empty-input --fix"
-	},
-	"dependencies": {
-		"@floating-ui/dom": "^1.8.0",
-		"@node-rs/argon2": "^2.0.2",
-		"@simplewebauthn/browser": "^13.3.0",
-		"@simplewebauthn/server": "^13.3.2",
-		"@solidjs/meta": "^0.29.4",
-		"@solidjs/router": "^0.15.0",
-		"@solidjs/start": "2.0.0-alpha.3",
-		"@solidjs/vite-plugin-nitro-2": "^0.3.0",
-		"better-sqlite3": "^12.11.1",
-		"csv-parse": "^7.0.1",
-		"drizzle-orm": "^0.45.2",
-		"lucide-solid": "^1.25.0",
-		"solid-js": "^1.9.5",
-		"vite": "^7.3.6",
-		"zod": "^4.4.3"
+		"dev": "pnpm --parallel --filter @i-finances/api --filter @i-finances/web dev",
+		"build": "pnpm --filter @i-finances/contracts build && pnpm --filter @i-finances/api build && pnpm --filter @i-finances/web build",
+		"test": "pnpm --filter @i-finances/api test",
+		"typecheck": "pnpm --filter @i-finances/contracts typecheck && pnpm --filter @i-finances/api typecheck && pnpm --filter @i-finances/web typecheck",
+		"lint": "eslint \"apps/**/*.{js,ts,tsx}\" \"packages/**/*.{js,ts,tsx}\" --max-warnings 0 && stylelint \"apps/**/*.scss\" --allow-empty-input",
+		"lint:fix": "eslint \"apps/**/*.{js,ts,tsx}\" \"packages/**/*.{js,ts,tsx}\" --fix && stylelint \"apps/**/*.scss\" --allow-empty-input --fix",
+		"db:migrate": "pnpm --filter @i-finances/api db:migrate"
 	},
 	"engines": {
 		"node": ">=22"
@@ -48,21 +17,12 @@
 	"devDependencies": {
 		"@stark/eslint-config": "git+ssh://git@github.com/StarkElessar/stark-eslint-config.git#v0.1.0",
 		"@stark/stylelint-config": "git+ssh://git@github.com/StarkElessar/stark-stylelint-config.git#v0.1.0",
-		"@types/better-sqlite3": "^7.6.13",
-		"@types/node": "^26.1.1",
-		"drizzle-kit": "^0.31.10",
 		"eslint": "^9.0.0",
 		"globals": "^17.7.0",
-		"lint-staged": "^17.0.8",
-		"plop": "^4.0.5",
 		"postcss-sort-media-queries": "^6.6.2",
 		"sass-embedded": "^1.100.0",
 		"stylelint": "^17.14.0",
-		"tsx": "^4.23.1",
-		"typescript": "~6.0.3",
-		"typescript-eslint": "^8.63.0",
-		"typescript7": "npm:typescript@7.0.2",
-		"vitest": "^4.1.10"
+		"typescript-eslint": "^8.63.0"
 	},
 	"packageManager": "pnpm@11.12.0+sha512.820a6fbd0d9f04c226638002aead1e45340a9139dd5dc077c1d83ef44aa2481c8eb6637b4c9aa696a3c7e35ba818e49cf27213e5f2b91138d09b7a3e26e898ba"
 }
