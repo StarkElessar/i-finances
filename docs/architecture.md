@@ -46,6 +46,21 @@ The category mutation endpoints require an existing session. Session validation
 is read-only in this slice; login, logout, CSRF policy expansion, and WebAuthn
 flows remain part of the later auth migration.
 
+## Web client boundary
+
+```text
+Solid component
+  ▼
+CategoryClient ──► ApiClient ──► Fetch API / Vite proxy
+       │
+       └──────────────► packages/contracts
+```
+
+`ApiClient` owns JSON serialization, same-origin credentials, response parsing,
+and transport errors. `CategoryClient` owns category paths and input/response
+schemas. Solid components receive the feature client as a dependency and do
+not import Hono, Drizzle, Node auth code, or API implementation modules.
+
 ## Migration reference
 
 The former SolidStart application is kept in the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances`. It is consulted only for observed behavior, tests, and invariants while a vertical slice is migrated.

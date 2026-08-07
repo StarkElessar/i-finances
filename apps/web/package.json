@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "vite --port 5173",
 		"build": "vite build",
+		"test": "vitest run --environment node",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},
 	"dependencies": {
@@ -16,6 +17,7 @@
 		"@types/node": "^26.1.1",
 		"typescript7": "npm:typescript@7.0.2",
 		"vite": "^7.3.6",
-		"vite-plugin-solid": "^2.11.0"
+		"vite-plugin-solid": "^2.11.0",
+		"vitest": "^4.1.10"
 	}
 }

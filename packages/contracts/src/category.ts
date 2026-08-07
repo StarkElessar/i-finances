@@ -114,44 +114,71 @@ export type ChangeCategoryArchiveStateInput = z.infer<
 	typeof changeCategoryArchiveStateInputSchema
 >;
 
-export type PersistedCategory = {
-	archivedAt: string | null;
-	color: string;
-	createdAt: string;
-	description: string;
-	id: string;
-	keywords: string[];
-	monthlyBudgetMinor: number | null;
-	name: string;
-	updatedAt: string;
-	version: number;
-};
+const categoryDateSchema = z.string().min(1);
+
+export const persistedCategorySchema = z.object({
+	archivedAt: categoryDateSchema.nullable(),
+	color: z.string(),
+	createdAt: categoryDateSchema,
+	description: z.string(),
+	id: z.string().min(1),
+	keywords: z.array(z.string()),
+	monthlyBudgetMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable(),
+	name: z.string().min(1),
+	updatedAt: categoryDateSchema,
+	version: z.number().int().positive()
+});
+
+export type PersistedCategory = z.infer<typeof persistedCategorySchema>;
 
 export type CategoryCollection = {
 	baseCurrency: CurrencyCode;
 	items: PersistedCategory[];
 };
 
+export const categoryCollectionSchema = z.object({
+	baseCurrency: currencyCodeSchema,
+	items: z.array(persistedCategorySchema)
+});
+
+export type CategoryCollectionResponse = z.infer<typeof categoryCollectionSchema>;
+
 export type PublicCategory = Pick<
 	PersistedCategory,
 	'color' | 'description' | 'id' | 'keywords' | 'name'
 >;
 
-export type CategoryCommandErrorCode =
-	| 'conflict'
-	| 'forbidden'
-	| 'invalid-input'
-	| 'not-found'
-	| 'unauthenticated';
+export const publicCategorySchema: z.ZodType<PublicCategory> = persistedCategorySchema.pick({
+	color: true,
+	description: true,
+	id: true,
+	keywords: true,
+	name: true
+});
 
-export type CategoryCommandResult =
-	| {
-		category: PersistedCategory;
-		ok: true;
-	}
-	| {
-		errorCode: CategoryCommandErrorCode;
-		fieldErrors?: Record<string, string>;
-		message: string;
-		ok: false;
-	};
+export const publicCategoriesResponseSchema = z.array(publicCategorySchema);
+
+export const categoryCommandErrorCodeSchema = z.enum([
+	'conflict',
+	'forbidden',
+	'invalid-input',
+	'not-found',
+	'unauthenticated'
+]);
+
+export type CategoryCommandErrorCode = z.infer<typeof categoryCommandErrorCodeSchema>;
+
+export const categoryCommandResultSchema = z.discriminatedUnion('ok', [
+	z.object({
+		category: persistedCategorySchema,
+		ok: z.literal(true)
+	}),
+	z.object({
+		errorCode: categoryCommandErrorCodeSchema,
+		fieldErrors: z.record(z.string(), z.string()).optional(),
+		message: z.string(),
+		ok: z.literal(false)
+	})
+]);
+
+export type CategoryCommandResult = z.infer<typeof categoryCommandResultSchema>;

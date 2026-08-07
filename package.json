@@ -5,7 +5,7 @@
 	"scripts": {
 		"dev": "pnpm --parallel --filter @i-finances/api --filter @i-finances/web dev",
 		"build": "pnpm --filter @i-finances/contracts build && pnpm --filter @i-finances/api build && pnpm --filter @i-finances/web build",
-		"test": "pnpm --filter @i-finances/api test",
+		"test": "pnpm --filter @i-finances/api test && pnpm --filter @i-finances/web test",
 		"typecheck": "pnpm --filter @i-finances/contracts typecheck && pnpm --filter @i-finances/api typecheck && pnpm --filter @i-finances/web typecheck",
 		"lint": "eslint \"apps/**/*.{js,ts,tsx}\" \"packages/**/*.{js,ts,tsx}\" --max-warnings 0 && stylelint \"apps/**/*.scss\" --allow-empty-input",
 		"lint:fix": "eslint \"apps/**/*.{js,ts,tsx}\" \"packages/**/*.{js,ts,tsx}\" --fix && stylelint \"apps/**/*.scss\" --allow-empty-input --fix",

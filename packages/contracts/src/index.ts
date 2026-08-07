@@ -1,8 +1,12 @@
 export {
 	CATEGORY_LIST_STATUSES,
 	type CategoryCollection,
+	type CategoryCollectionResponse,
+	categoryCollectionSchema,
 	type CategoryCommandErrorCode,
+	categoryCommandErrorCodeSchema,
 	type CategoryCommandResult,
+	categoryCommandResultSchema,
 	type CategoryListInput,
 	categoryListInputSchema,
 	type CategoryListStatus,
@@ -16,7 +20,10 @@ export {
 	normalizeCategoryKeyword,
 	normalizeCategoryName,
 	type PersistedCategory,
+	persistedCategorySchema,
+	publicCategoriesResponseSchema,
 	type PublicCategory,
+	publicCategorySchema,
 	type UpdateCategoryInput,
 	updateCategoryInputSchema
 } from './category';
