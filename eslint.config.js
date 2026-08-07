@@ -1,8 +1,9 @@
 import stark, { typeChecked } from '@stark/eslint-config';
 import globals from 'globals';
-import { defineConfig } from 'eslint/config';
+import { defineConfig, globalIgnores } from 'eslint/config';
 
 export default defineConfig([
+	globalIgnores(['**/dist/**']),
 	...stark,
 	{
 		files: ['apps/**/*.{js,ts,tsx}', 'packages/**/*.{js,ts,tsx}'],

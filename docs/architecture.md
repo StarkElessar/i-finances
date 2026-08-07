@@ -21,6 +21,31 @@ apps/web ────────► apps/api ────────► SQLite
 - Contracts describe the public wire format, not persistence.
 - Dependencies are constructed explicitly in the API composition root.
 
+## First vertical slice: Categories
+
+```text
+Hono route
+  ▼
+CategoryHttpController ──► CategoryService ──► CategoryRules
+                                  │
+                                  ▼
+                         CategoryRepository ──► Drizzle / SQLite
+```
+
+`CategoryHttpController` owns request parsing, session/origin checks, HTTP
+status codes, and error mapping. `CategoryService` owns use-case orchestration
+and receives only application inputs. `CategoryRules` centralizes household
+scope, normalized-name uniqueness, and optimistic-lock invariants.
+
+The classes are deliberately concrete and narrowly owned: there is no generic
+base repository, service locator, decorator container, or route DSL. The
+composition root wires the production graph, while tests inject a database,
+clock, ID generator, and session resolver.
+
+The category mutation endpoints require an existing session. Session validation
+is read-only in this slice; login, logout, CSRF policy expansion, and WebAuthn
+flows remain part of the later auth migration.
+
 ## Migration reference
 
 The former SolidStart application is kept in the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances`. It is consulted only for observed behavior, tests, and invariants while a vertical slice is migrated.

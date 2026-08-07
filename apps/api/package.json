@@ -16,7 +16,8 @@
 		"@i-finances/contracts": "workspace:*",
 		"better-sqlite3": "^12.11.1",
 		"drizzle-orm": "^0.45.2",
-		"hono": "^4.9.0"
+		"hono": "^4.9.0",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@types/better-sqlite3": "^7.6.13",
