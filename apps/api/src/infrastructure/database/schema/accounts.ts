@@ -1,10 +1,6 @@
-import type {
-	AccountTypeValue,
-	CurrencyCodeValue
-} from '~/shared/lib';
-
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+import type { AccountTypeValue, CurrencyCodeValue } from './column-types';
 import { households } from './households';
 import { users } from './users';
 

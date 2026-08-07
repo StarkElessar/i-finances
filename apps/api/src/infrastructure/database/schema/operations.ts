@@ -1,7 +1,3 @@
-import type { CurrencyCodeValue } from '~/shared/lib';
-
-import type { OperationType } from '~/entities/operation/model/types';
-
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -14,6 +10,7 @@ import {
 
 import { accounts } from './accounts';
 import { categories } from './categories';
+import type { CurrencyCodeValue, OperationType } from './column-types';
 import { contacts } from './contacts';
 import { households } from './households';
 import { users } from './users';

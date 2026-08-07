@@ -1,5 +1,3 @@
-import type { ContactType } from '~/entities/contact/model/types';
-
 import {
 	index,
 	integer,
@@ -8,6 +6,7 @@ import {
 	uniqueIndex
 } from 'drizzle-orm/sqlite-core';
 
+import type { ContactType } from './column-types';
 import { households } from './households';
 import { users } from './users';
 

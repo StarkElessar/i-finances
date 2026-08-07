@@ -1,5 +1,3 @@
-import type { ReceiptProcessingJobStatus } from '~/entities/receipt-import/model/types';
-
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -9,6 +7,7 @@ import {
 	text
 } from 'drizzle-orm/sqlite-core';
 
+import type { ReceiptProcessingJobStatus } from './column-types';
 import { receiptImports } from './receipt-imports';
 
 /**

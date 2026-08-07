@@ -1,5 +1,3 @@
-import type { ReceiptImportStatus } from '~/entities/receipt-import/model/types';
-
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -11,6 +9,7 @@ import {
 } from 'drizzle-orm/sqlite-core';
 
 import { accounts } from './accounts';
+import type { ReceiptImportStatus } from './column-types';
 import { households } from './households';
 import { users } from './users';
 

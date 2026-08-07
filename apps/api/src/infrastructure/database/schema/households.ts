@@ -1,7 +1,6 @@
-import type { CurrencyCodeValue } from '~/shared/lib';
-
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+import type { CurrencyCodeValue } from './column-types';
 /**
  * Stores one isolated family finance workspace.
  */

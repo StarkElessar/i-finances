@@ -1,7 +1,6 @@
-import type { CurrencyCodeValue } from '~/shared/lib';
-
 import { integer, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
+import type { CurrencyCodeValue } from './column-types';
 /**
  * Stores successful daily exchange-rate refreshes from external providers.
  */
