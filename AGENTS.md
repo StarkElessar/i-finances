@@ -1,144 +1,39 @@
 # Agent Instructions
 
-## Project Overview
+## Project shape
 
-SolidStart 2.0 (alpha) + Solid 1.9 + Vite 7 + SQLite (better-sqlite3) + Drizzle ORM.
-TypeScript 7 (via `typescript7` npm alias), pnpm workspace, ESLint + Stylelint.
+This repository is a pnpm workspace with two applications and deliberately small shared packages:
 
-## Local API Usage
+- `apps/api` — Hono on Node.js; owns HTTP, auth, application services, repositories, SQLite, Drizzle migrations, and workers.
+- `apps/web` — client-only Solid.js application built with Vite.
+- `packages/contracts` — serializable Zod contracts shared by API and web.
 
-Before using or changing project components, utilities, hooks, services, config helpers, or other local APIs, inspect their public contract first.
+The old SolidStart implementation is not part of this worktree. Its behavior is referenced from the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances` when a migration slice requires it.
 
-Do not infer props, arguments, return values, supported options, class merging behavior, or side effects when the implementation or exports are available in the repository.
+## Non-negotiable database rule
 
-If the public API is unclear after inspection, ask a clarifying question before choosing an implementation.
+- Existing Drizzle SQL migrations, snapshots, and journal are historical data infrastructure. Do not edit, regenerate, reorder, rename, or delete them while reorganizing the repository.
+- Never run migration experiments against a user or production database. Use `DATABASE_URL=:memory:` or an explicitly disposable database path.
+- Before and after database-related changes, compare migration checksums and verify the Drizzle journal and resulting schema.
+- `apps/api` is the only owner of database code and migrations. `apps/web` must not import them.
 
-## Function Style
+## Boundaries
 
-Prefer function declarations for top-level functions, including exported helpers and components.
+- `apps/web` communicates with `apps/api` through HTTP only.
+- `apps/api` may depend on `packages/contracts`; it must not depend on `apps/web`.
+- `packages/contracts` must not depend on Hono, Solid, Drizzle, Node-only libraries, or database row types.
+- Hono `Context`, `Request`, `Response`, and status codes stop at HTTP controllers.
+- Drizzle types stop at repositories/infrastructure.
+- Use explicit constructor dependencies and a visible composition root. Do not add Inversify, decorators, `reflect-metadata`, service locators, or a custom route DSL.
 
-Use `const` arrow functions for functions declared inside another function or inside a component.
+## Code style
 
-```ts
-export function formatAmount(value: number) {
-    return value.toString();
-}
+- Tabs for indentation, single quotes, semicolons, and Stroustrup braces.
+- Prefer function declarations for top-level functions and const arrow functions inside functions/components.
+- Keep TypeScript strict and use type-only imports where appropriate.
+- SCSS is mobile-first, uses logical properties and kebab-case selectors.
+- Do not add abstractions without a concrete variation, ownership boundary, or testing seam.
 
-export function AmountLabel() {
-    const handleClick = () => {
-        // ...
-    };
+## Migration workflow
 
-    return null;
-}
-```
-
-## Code Style (lint-enforced)
-
-- Tabs for indentation (4-space width), 140 max line length
-- Single quotes, semicolons required
-- Brace style: Stroustrup (`} else {` on same line, `else` / `catch` / `finally` on new line)
-- Import sorting via `simple-import-sort`: styles → side-effects → node: → externals → `~/` aliases → relatives
-- `no-console` allowed only for `warn`/`error`
-- `@typescript-eslint/consistent-type-imports`: prefer `type` imports with `separate-type-imports` fix style
-- TypeScript strict mode, `no-explicit-any` is error
-- `no-negated-condition` is error
-
-## SCSS / Responsive Styles
-
-Write responsive SCSS mobile-first: base styles must target the smallest viewport, and larger viewport overrides must be added with `min-width` media queries.
-
-Always use the local responsive mixins from `src/shared/styles/mixins.scss` instead of raw `@media` queries. Import them as:
-
-```scss
-@use "~/shared/styles/mixins" as mx;
-```
-
-Prefer `@include mx.media-mn(...)` for adaptive layout changes. Use `media-mx` or `media-mn-mx` only when the design requirement is explicitly max-width or bounded-range specific.
-
-Additional SCSS rules:
-- CSS Modules with `camelCaseOnly` class naming (e.g. `{ styles.fooBar }`)
-- kebab-case for raw SCSS class/id selectors
-- Double quotes in SCSS, logical properties (`csstools/use-logical`)
-- `declaration-no-important` enabled
-- PostCSS sorts media queries `desktop-first` at build time
-
-## Interactive Styles
-
-Do not apply hover effects, focus effects, or `cursor: pointer` to elements that are already active, selected, current, or checked.
-
-When an interactive element has an active class or selected state, guard hover, focus, and pointer-cursor styles with `:not(...)` or an equivalent condition:
-
-```scss
-.option {
-    &:not(.option-active) {
-        cursor: pointer;
-
-        &:hover {
-            border-color: var(--color-border-strong);
-        }
-
-        &:focus-visible {
-            box-shadow: 0 0 0 3px var(--color-focus-ring);
-        }
-    }
-}
-```
-
-Active elements should keep their active visual treatment on hover and focus.
-
-## Commands (run with pnpm)
-
-| Command | What it does |
-|---|---|
-| `pnpm dev` | Start Vite dev server (`http://localhost:5173`) |
-| `pnpm build` | Runs `typecheck` then `vite build` (order matters) |
-| `pnpm typecheck` | `tsc -p tsconfig.json` (uses `typescript7` binary) |
-| `pnpm test` | `vitest run` |
-| `pnpm test:watch` | `vitest` (watch mode) |
-| `pnpm lint:js:fix` | ESLint `--fix` on `src/**/*.{js,ts,jsx,tsx}` |
-| `pnpm lint:css:fix` | Stylelint `--fix` on `**/*.scss` |
-| `pnpm g:component` | Plop generator for UI components (interactive or `pnpm g:component Name src/views/x --no-css`) |
-| `pnpm g:view` | Plop generator for view + route (interactive or `pnpm g:view ViewName --route path`) |
-| `pnpm db:generate` | `drizzle-kit generate` — creates SQL migration from schema changes |
-| `pnpm db:migrate` | `tsx scripts/migrate-db.ts` — applies pending migrations |
-| `pnpm db:rate` | Upsert exchange rate (`--from USD --to BYN --rate 3.25 --date 2026-07-24 --source manual`) |
-| `pnpm db:seed` | Create initial auth user (requires `SEED_*` env vars) |
-
-## Architecture
-
-- `src/routes/(app)/*.tsx` — app routes, each exports `route` (RouteDefinition with `preload`) + default view component
-- `src/routes/(auth)/*.tsx` — auth routes (sign-in, etc.)
-- `src/routes/api/` — API endpoints
-- `src/views/<name>/page.tsx` — page components (route defaults render these)
-- `src/server/` — server-only code (services, repositories, DB schema), never imported on client
-- `src/entities/<name>/` — shared entity logic (both server + client imports)
-- `src/features/<name>/` — feature modules
-- `src/shared/ui/` — reusable UI components (Button, Dialog, Grid, TextField, etc.)
-- `src/shared/lib/` — pure utility functions
-- `src/shared/styles/` — SCSS tokens, functions, mixins
-- `~` alias maps to `src/` (import via `~/shared/ui`)
-
-## Database
-
-- SQLite via better-sqlite3, wrapped with Drizzle ORM
-- Schema: `src/server/db/schema/` (14 tables)
-- Migrations: `drizzle/` directory (generated + applied)
-- Test pattern: `:memory:` SQLite, `migrate(database, { migrationsFolder: './drizzle' })` in `beforeEach`, close in `afterEach`
-- All monetary amounts stored as **minor units** (integers)
-- Services use dependency injection (repositories, `createId`, `now`) for testability
-- Cross-household isolation tested explicitly
-
-## Auth
-
-- Middleware (`src/middleware.ts`) guards all document routes except `/sign-in*` and `/ui-kit*` (dev only)
-- Security headers: `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`
-- Session-based auth with Argon2 password hashing + WebAuthn support
-- Environment: `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `SESSION_COOKIE_NAME`, `SESSION_TTL_DAYS`
-
-## Node & package manager
-
-- Node >= 22, pnpm
-- No pre-commit hooks or lint-staged configuration (dependency is installed but unused)
-- No CI workflows in this repo
-- Local OpenCode configuration is stored in `opencode.json`
+Work one vertical slice at a time. Inspect the old slice's tests and call sites, write down invariants, define the public contract, implement API transport, then connect the web client. Keep migration map and characterization tests updated.
