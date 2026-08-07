@@ -105,3 +105,91 @@ h2 {
     block-size: 0.75rem;
     border-radius: 50%;
 }
+
+.auth-panel {
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+
+    background: #fff;
+    box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
+}
+
+.auth-form {
+    display: grid;
+    gap: 1rem;
+}
+
+.auth-form label {
+    display: grid;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.auth-form input {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    color: #0f172a;
+}
+
+.auth-form input:focus-visible {
+    border-color: #2563eb;
+    outline: 3px solid rgb(59 130 246 / 35%);
+    outline-offset: 1px;
+}
+
+.auth-form button,
+.secondary-button {
+    cursor: pointer;
+
+    justify-self: start;
+
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    font-weight: 700;
+    color: #fff;
+
+    background: #2563eb;
+}
+
+.auth-form button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.auth-form [role="alert"],
+.user-bar + [role="alert"] {
+    margin-block: 0;
+    color: #b91c1c;
+}
+
+.user-bar {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+
+    margin-block-end: 1.5rem;
+    padding: 1rem 1.25rem;
+    border: 1px solid #dbeafe;
+    border-radius: 0.875rem;
+
+    background: #eff6ff;
+}
+
+.user-bar .eyebrow {
+    margin-block-end: 0.25rem;
+}
+
+.secondary-button {
+    background: #1e40af;
+}

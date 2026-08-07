@@ -1,7 +1,9 @@
+import type { AuthClient } from './features/auth';
+import { AuthView } from './features/auth';
 import type { CategoryClient } from './features/categories';
-import { CategoriesView } from './features/categories';
 
 export type AppProps = {
+	authClient: AuthClient;
 	categoryClient: CategoryClient;
 };
 
@@ -13,7 +15,10 @@ export function App(props: AppProps) {
 				<h1>Финансы семьи</h1>
 				<p class='app-description'>Клиентский Solid.js слой общается с API только через HTTP.</p>
 			</header>
-			<CategoriesView client={props.categoryClient}/>
+			<AuthView
+				authClient={props.authClient}
+				categoryClient={props.categoryClient}
+			/>
 		</main>
 	);
 }

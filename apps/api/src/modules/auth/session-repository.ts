@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { eq, lt } from 'drizzle-orm';
 
 import type { AppDatabase } from '../../infrastructure/database/client';
 import { sessions, users } from '../../infrastructure/database/schema';
@@ -17,8 +17,23 @@ export type SessionWithUserRecord = {
 	};
 };
 
+export type SessionInsertRecord = {
+	createdAt: Date;
+	expiresAt: Date;
+	id: string;
+	ipAddress?: string;
+	lastSeenAt: Date;
+	tokenHash: string;
+	userAgent?: string;
+	userId: string;
+};
+
 export class SessionRepository {
 	public constructor(private readonly database: AppDatabase) {}
+
+	public async insert(record: SessionInsertRecord): Promise<void> {
+		await this.database.insert(sessions).values(record);
+	}
 
 	public async findByTokenHash(
 		tokenHash: string
@@ -53,5 +68,10 @@ export class SessionRepository {
 	public async delete(sessionId: string): Promise<void> {
 		await this.database.delete(sessions)
 			.where(eq(sessions.id, sessionId));
+	}
+
+	public async deleteExpired(now: Date): Promise<void> {
+		await this.database.delete(sessions)
+			.where(lt(sessions.expiresAt, now));
 	}
 }

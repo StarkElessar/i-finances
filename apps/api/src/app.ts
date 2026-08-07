@@ -1,10 +1,12 @@
 import { Hono } from 'hono';
 
+import type { AuthHttpController } from './http/auth-controller';
 import type { CategoryHttpController } from './http/category-controller';
 import { HealthController } from './http/health-controller';
 import type { ApiEnvironment } from './http/types';
 
 export type ApiAppDependencies = {
+	authController?: AuthHttpController;
 	categoryController?: CategoryHttpController;
 };
 
@@ -15,6 +17,14 @@ export function createApiApp(
 	const healthController = new HealthController();
 
 	app.get('/api/health', healthController.get());
+
+	if (dependencies.authController !== undefined) {
+		const authController = dependencies.authController;
+
+		app.get('/api/auth/session', authController.currentSession());
+		app.post('/api/auth/sign-in', authController.signIn());
+		app.post('/api/auth/sign-out', authController.signOut());
+	}
 
 	if (dependencies.categoryController !== undefined) {
 		const categoryController = dependencies.categoryController;

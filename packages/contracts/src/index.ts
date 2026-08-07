@@ -1,4 +1,18 @@
 export {
+	authSessionUserSchema,
+	type CurrentSessionResponse,
+	currentSessionResponseSchema,
+	type PasswordSignInErrorCode,
+	passwordSignInErrorCodes,
+	passwordSignInErrorMessageByCode,
+	type PasswordSignInInput,
+	passwordSignInInputSchema,
+	type PasswordSignInResult,
+	passwordSignInResultSchema,
+	type PasswordSignOutResult,
+	passwordSignOutResultSchema
+} from './auth';
+export {
 	CATEGORY_LIST_STATUSES,
 	type CategoryCollection,
 	type CategoryCollectionResponse,

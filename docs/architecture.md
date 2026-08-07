@@ -61,6 +61,27 @@ and transport errors. `CategoryClient` owns category paths and input/response
 schemas. Solid components receive the feature client as a dependency and do
 not import Hono, Drizzle, Node auth code, or API implementation modules.
 
+## Password auth boundary
+
+```text
+Hono route
+  ▼
+AuthHttpController ──► PasswordSignInService
+                              │
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
+       PasswordUserRepo   PasswordService   SessionService
+             │             (Argon2id)           │
+             └────────────── SQLite ────────────┘
+```
+
+The controller owns HTTP status codes and cookie headers. The application
+service owns credential validation, username normalization, rate limiting,
+return-path validation, and session creation. Session tokens are opaque and
+stored only as SHA-256 hashes. Auth mutations require a valid Origin or
+Referer belonging to the API/app origin; WebAuthn remains a separate protocol
+slice.
+
 ## Migration reference
 
 The former SolidStart application is kept in the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances`. It is consulted only for observed behavior, tests, and invariants while a vertical slice is migrated.
