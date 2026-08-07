@@ -1,8 +1,15 @@
+import { AccountHttpController } from './http/account-controller';
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { db } from './infrastructure/database/client';
+import {
+	AccountCurrencyCorrectionRepository,
+	AccountCurrencyCorrector,
+	AccountRepository,
+	AccountService
+} from './modules/account';
 import {
 	getAuthConfig,
 	LoginRateLimiter,
@@ -20,6 +27,10 @@ import {
 	CategoryService
 } from './modules/category';
 import {
+	ExchangeRateRepository,
+	ExchangeRateService
+} from './modules/exchange-rate';
+import {
 	HouseholdRepository,
 	HouseholdResolver
 } from './modules/household';
@@ -29,6 +40,7 @@ import {
  */
 export function createApiDependencies(): {
 	authController: AuthHttpController;
+	accountController: AccountHttpController;
 	categoryController: CategoryHttpController;
 	passkeyController: PasskeyHttpController;
 } {
@@ -57,11 +69,25 @@ export function createApiDependencies(): {
 		categoryRepository: new CategoryRepository(db),
 		householdResolver
 	});
+	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(db));
+	const accountService = new AccountService({
+		accountCurrencyCorrector: new AccountCurrencyCorrector(
+			new AccountCurrencyCorrectionRepository(db),
+			exchangeRateService
+		),
+		accountRepository: new AccountRepository(db),
+		householdResolver
+	});
 
 	return {
 		authController: new AuthHttpController(
 			passwordSignInService,
 			sessionService,
+			sessionResolver,
+			authConfig
+		),
+		accountController: new AccountHttpController(
+			accountService,
 			sessionResolver,
 			authConfig
 		),

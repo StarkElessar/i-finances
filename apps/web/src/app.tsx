@@ -1,9 +1,11 @@
+import type { AccountClient } from './features/accounts';
 import type { AuthClient } from './features/auth';
 import { AuthView } from './features/auth';
 import type { CategoryClient } from './features/categories';
 
 export type AppProps = {
 	authClient: AuthClient;
+	accountClient: AccountClient;
 	categoryClient: CategoryClient;
 };
 
@@ -16,6 +18,7 @@ export function App(props: AppProps) {
 				<p class='app-description'>Клиентский Solid.js слой общается с API только через HTTP.</p>
 			</header>
 			<AuthView
+				accountClient={props.accountClient}
 				authClient={props.authClient}
 				categoryClient={props.categoryClient}
 			/>

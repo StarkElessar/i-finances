@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 
+import type { AccountHttpController } from './http/account-controller';
 import type { AuthHttpController } from './http/auth-controller';
 import type { CategoryHttpController } from './http/category-controller';
 import { HealthController } from './http/health-controller';
@@ -7,6 +8,7 @@ import type { PasskeyHttpController } from './http/passkey-controller';
 import type { ApiEnvironment } from './http/types';
 
 export type ApiAppDependencies = {
+	accountController?: AccountHttpController;
 	authController?: AuthHttpController;
 	categoryController?: CategoryHttpController;
 	passkeyController?: PasskeyHttpController;
@@ -26,6 +28,16 @@ export function createApiApp(
 		app.get('/api/auth/session', authController.currentSession());
 		app.post('/api/auth/sign-in', authController.signIn());
 		app.post('/api/auth/sign-out', authController.signOut());
+	}
+
+	if (dependencies.accountController !== undefined) {
+		const accountController = dependencies.accountController;
+
+		app.get('/api/accounts', accountController.list());
+		app.post('/api/accounts', accountController.create());
+		app.put('/api/accounts/:id', accountController.update());
+		app.post('/api/accounts/:id/archive', accountController.archive());
+		app.post('/api/accounts/:id/restore', accountController.restore());
 	}
 
 	if (dependencies.passkeyController !== undefined) {

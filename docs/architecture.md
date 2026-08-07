@@ -46,6 +46,37 @@ The category mutation endpoints require an existing session. Session validation
 is read-only in this slice; login, logout, CSRF policy expansion, and WebAuthn
 flows remain part of the later auth migration.
 
+## Account boundary and currency correction
+
+```text
+Hono route
+  ▼
+AccountHttpController ──► AccountService ──► AccountRules
+                                  │                 │
+                                  │                 └── HouseholdResolver
+                                  ▼
+                    AccountCurrencyCorrector
+                       │                  │
+                       ▼                  ▼
+              ExchangeRateService   CorrectionRepository
+                       │                  │
+                       └────── SQLite transaction ──────┘
+```
+
+`AccountService` owns account use cases and optimistic-lock decisions.
+`AccountRules` resolves the authenticated household and prevents cross-household
+reads or writes. The repository exposes application records instead of Drizzle
+rows. When a populated account changes currency, the service requires an
+explicit `confirmCurrencyCorrection` command flag. The corrector resolves a
+historical direct, inverse, or identity quote for every operation, and the
+correction repository atomically updates the account plus operation rate
+snapshots with version guards. Missing rates and stale rows fail the whole
+transaction, so historical ledger data is never silently reinterpreted.
+
+The account web feature talks to this boundary through `AccountClient` and the
+shared contracts. Its confirmation prompt is an explicit user action; the API
+does not infer consent from a completed background task or a changed form field.
+
 ## Web client boundary
 
 ```text

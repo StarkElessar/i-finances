@@ -4,12 +4,15 @@ import type {
 import { createResource, createSignal, Show } from 'solid-js';
 
 import { ApiHttpError } from '../../../shared/api';
+import type { AccountClient } from '../../accounts';
+import { AccountsView } from '../../accounts';
 import type { CategoryClient } from '../../categories';
 import { CategoriesView } from '../../categories';
 import type { AuthClient } from '../api';
 
 export type AuthViewProps = {
 	authClient: AuthClient;
+	accountClient: AccountClient;
 	categoryClient: CategoryClient;
 };
 
@@ -24,6 +27,7 @@ export function AuthView(props: AuthViewProps) {
 			>
 				{(currentSession) => (
 					<AuthenticatedView
+						accountClient={props.accountClient}
 						categoryClient={props.categoryClient}
 						onSignedOut={refetch}
 						session={currentSession()}
@@ -154,6 +158,7 @@ function readFormString(formData: FormData, name: string): string {
 }
 
 type AuthenticatedViewProps = {
+	accountClient: AccountClient;
 	authClient: AuthClient;
 	categoryClient: CategoryClient;
 	onSignedOut: () => void;
@@ -241,6 +246,7 @@ function AuthenticatedView(props: AuthenticatedViewProps) {
 				{(message) => <p role='alert'>{message()}</p>}
 			</Show>
 			<CategoriesView client={props.categoryClient}/>
+			<AccountsView client={props.accountClient}/>
 		</>
 	);
 }

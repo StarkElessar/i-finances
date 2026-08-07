@@ -1,4 +1,24 @@
 export {
+	type AccountCollection,
+	accountCollectionSchema,
+	type AccountCommandErrorCode,
+	accountCommandErrorCodeSchema,
+	type AccountCommandResult,
+	accountCommandResultSchema,
+	type AccountListInput,
+	accountListInputSchema,
+	type AccountType,
+	accountTypeSchema,
+	type ChangeAccountArchiveStateInput,
+	changeAccountArchiveStateInputSchema,
+	type CreateAccountInput,
+	createAccountInputSchema,
+	type PersistedAccount,
+	persistedAccountSchema,
+	type UpdateAccountInput,
+	updateAccountInputSchema
+} from './account';
+export {
 	authSessionUserSchema,
 	type CurrentSessionResponse,
 	currentSessionResponseSchema,

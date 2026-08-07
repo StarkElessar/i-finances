@@ -65,6 +65,186 @@ h2 {
     box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
 }
 
+.accounts-panel {
+    display: grid;
+    gap: 1.25rem;
+
+    margin-block-start: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+
+    background: #fff;
+    box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
+}
+
+.account-list {
+    display: grid;
+    gap: 0.75rem;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.account-item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 0.75rem;
+    align-items: center;
+
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+
+    background: #f8fafc;
+}
+
+.account-color {
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    border-radius: 50%;
+}
+
+.account-item-content {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.account-item-content small {
+    color: #64748b;
+}
+
+.account-item-actions {
+    display: flex;
+    grid-column: 2;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.account-form {
+    display: grid;
+    gap: 1rem;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid #e2e8f0;
+}
+
+.account-form h3 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.account-form label {
+    display: grid;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.account-form input,
+.account-form select,
+.account-form textarea {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    color: #0f172a;
+}
+
+.account-form textarea {
+    resize: vertical;
+    min-block-size: 5rem;
+}
+
+.account-form input:focus-visible,
+.account-form select:focus-visible,
+.account-form textarea:focus-visible {
+    border-color: #2563eb;
+    outline: 3px solid rgb(59 130 246 / 35%);
+    outline-offset: 1px;
+}
+
+.account-form button {
+    cursor: pointer;
+
+    justify-self: start;
+
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    font-weight: 700;
+    color: #fff;
+
+    background: #2563eb;
+}
+
+.account-form-grid {
+    display: grid;
+    gap: 1rem;
+}
+
+.account-form .checkbox-field {
+    display: flex;
+    gap: 0.625rem;
+    align-items: center;
+}
+
+.checkbox-field input {
+    inline-size: auto;
+}
+
+.color-field input {
+    inline-size: 4rem;
+    block-size: 2.5rem;
+    padding: 0.25rem;
+}
+
+.toggle-label {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+
+    font-size: 0.875rem;
+    color: #475569;
+}
+
+.link-button {
+    padding: 0;
+    border: 0;
+
+    font: inherit;
+    color: #2563eb;
+
+    background: transparent;
+}
+
+.account-success {
+    margin-block: 0;
+    color: #15803d;
+}
+
+.account-error {
+    margin-block: 0;
+    color: #b91c1c;
+}
+
+.account-form-grid {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.account-item {
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.account-item-actions {
+    grid-column: 2;
+}
+
 .section-heading {
     display: flex;
     gap: 1rem;
