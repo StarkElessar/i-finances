@@ -82,6 +82,28 @@ stored only as SHA-256 hashes. Auth mutations require a valid Origin or
 Referer belonging to the API/app origin; WebAuthn remains a separate protocol
 slice.
 
+## WebAuthn boundary
+
+```text
+Hono route
+  ▼
+PasskeyHttpController ──► WebAuthnService
+                                  │
+                 ┌────────────────┼────────────────┐
+                 ▼                ▼                ▼
+       ChallengeRepository  CredentialRepository  SessionService
+                 │                │                │
+                 └──────────── SQLite ────────────┘
+```
+
+The controller owns origin checks, authentication requirements, HTTP statuses,
+and session cookies. `WebAuthnService` owns ceremony policy: five-minute
+one-time challenges, expected origins/RP ID, user verification, credential
+counter updates, and passkey session creation. Repositories expose application
+records and keep Drizzle rows inside the API infrastructure boundary. The web
+client invokes the options/verification protocol through the shared contracts;
+it does not import API or database code.
+
 ## Migration reference
 
 The former SolidStart application is kept in the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances`. It is consulted only for observed behavior, tests, and invariants while a vertical slice is migrated.

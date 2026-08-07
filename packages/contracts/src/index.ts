@@ -45,3 +45,27 @@ export {
 	type HealthResponse,
 	healthResponseSchema
 } from './health';
+export {
+	type PasskeyAuthenticationOptions,
+	passkeyAuthenticationOptionsSchema,
+	type PasskeyAuthenticationResponse,
+	passkeyAuthenticationResponseSchema,
+	type PasskeyRegistrationErrorCode,
+	passkeyRegistrationErrorCodes,
+	passkeyRegistrationErrorMessageByCode,
+	type PasskeyRegistrationOptions,
+	passkeyRegistrationOptionsSchema,
+	type PasskeyRegistrationResponse,
+	passkeyRegistrationResponseSchema,
+	type PasskeyRegistrationResult,
+	passkeyRegistrationResultSchema,
+	type PasskeyRegistrationVerificationInput,
+	passkeyRegistrationVerificationInputSchema,
+	type PasskeySignInErrorCode,
+	passkeySignInErrorCodes,
+	passkeySignInErrorMessageByCode,
+	type PasskeySignInResult,
+	passkeySignInResultSchema,
+	type PasskeySignInVerificationInput,
+	passkeySignInVerificationInputSchema
+} from './passkey';

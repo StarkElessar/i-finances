@@ -9,6 +9,10 @@ export {
 	type LoginRateLimitResult
 } from './login-rate-limiter';
 export { normalizeUsername } from './normalize-username';
+export {
+	base64UrlToUint8Array,
+	uint8ArrayToBase64Url
+} from './passkey-encoding';
 export { PasswordService } from './password-service';
 export {
 	type LoginRateLimitPort,
@@ -38,3 +42,21 @@ export {
 	type SessionServiceOptions,
 	type SessionUser
 } from './session-service';
+export {
+	type ConsumeWebAuthnChallengeInput,
+	type WebAuthnChallengeInsertRecord,
+	WebAuthnChallengeRepository
+} from './webauthn-challenge-repository';
+export {
+	type WebAuthnCredential,
+	type WebAuthnCredentialInsert,
+	WebAuthnCredentialRepository,
+	type WebAuthnCredentialUsage,
+	type WebAuthnCredentialWithUser
+} from './webauthn-credential-repository';
+export {
+	type PasskeyRequestMetadata,
+	type PasskeySignInOutcome,
+	WebAuthnService,
+	type WebAuthnServiceDependencies
+} from './webauthn-service';

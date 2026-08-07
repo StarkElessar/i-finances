@@ -1,5 +1,6 @@
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
+import { PasskeyHttpController } from './http/passkey-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { db } from './infrastructure/database/client';
 import {
@@ -9,7 +10,10 @@ import {
 	PasswordSignInService,
 	PasswordUserRepository,
 	SessionRepository,
-	SessionService
+	SessionService,
+	WebAuthnChallengeRepository,
+	WebAuthnCredentialRepository,
+	WebAuthnService
 } from './modules/auth';
 import {
 	CategoryRepository,
@@ -26,6 +30,7 @@ import {
 export function createApiDependencies(): {
 	authController: AuthHttpController;
 	categoryController: CategoryHttpController;
+	passkeyController: PasskeyHttpController;
 } {
 	const authConfig = getAuthConfig();
 	const sessionService = new SessionService(new SessionRepository(db), {
@@ -40,6 +45,12 @@ export function createApiDependencies(): {
 		rateLimiter: new LoginRateLimiter(),
 		sessionService,
 		userRepository: new PasswordUserRepository(db)
+	});
+	const webAuthnService = new WebAuthnService({
+		challengeRepository: new WebAuthnChallengeRepository(db),
+		config: authConfig,
+		credentialRepository: new WebAuthnCredentialRepository(db),
+		sessionService
 	});
 	const householdResolver = new HouseholdResolver(new HouseholdRepository(db));
 	const categoryService = new CategoryService({
@@ -57,6 +68,11 @@ export function createApiDependencies(): {
 		categoryController: new CategoryHttpController(
 			categoryService,
 			sessionResolver
+		),
+		passkeyController: new PasskeyHttpController(
+			webAuthnService,
+			sessionResolver,
+			authConfig
 		)
 	};
 }

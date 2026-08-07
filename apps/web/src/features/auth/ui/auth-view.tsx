@@ -76,6 +76,33 @@ function SignInForm(props: SignInFormProps) {
 		}
 	};
 
+	const handlePasskeySignIn = async () => {
+		if (!props.client.supportsPasskeys()) {
+			setError('Этот браузер не поддерживает вход с ключом доступа.');
+			return;
+		}
+
+		setError(undefined);
+		setIsSubmitting(true);
+
+		try {
+			const result = await props.client.signInWithPasskey();
+
+			if (result.ok) {
+				props.onSignedIn();
+				return;
+			}
+
+			setError(result.message);
+		}
+		catch (caughtError: unknown) {
+			setError(resolvePasskeyErrorMessage(caughtError));
+		}
+		finally {
+			setIsSubmitting(false);
+		}
+	};
+
 	return (
 		<section aria-labelledby='sign-in-title' class='auth-panel'>
 			<p class='eyebrow'>Безопасный доступ</p>
@@ -96,8 +123,28 @@ function SignInForm(props: SignInFormProps) {
 					{isSubmitting() ? 'Входим…' : 'Войти'}
 				</button>
 			</form>
+			<Show when={props.client.supportsPasskeys()}>
+				<button
+					class='secondary-button passkey-button'
+					disabled={isSubmitting()}
+					onClick={handlePasskeySignIn}
+					type='button'
+				>
+					Войти с ключом доступа
+				</button>
+			</Show>
 		</section>
 	);
+}
+
+function resolvePasskeyErrorMessage(error: unknown): string {
+	if (error instanceof DOMException && error.name === 'NotAllowedError') {
+		return 'Вход с ключом доступа отменён.';
+	}
+
+	return error instanceof ApiHttpError
+		? 'Сервис авторизации временно недоступен.'
+		: 'Не удалось войти с ключом доступа. Попробуйте ещё раз.';
 }
 
 function readFormString(formData: FormData, name: string): string {
@@ -115,6 +162,8 @@ type AuthenticatedViewProps = {
 
 function AuthenticatedView(props: AuthenticatedViewProps) {
 	const [error, setError] = createSignal<string>();
+	const [passkeyMessage, setPasskeyMessage] = createSignal<string>();
+	const [isPasskeyPending, setIsPasskeyPending] = createSignal(false);
 
 	if (!props.session.authenticated) {
 		return null;
@@ -132,6 +181,38 @@ function AuthenticatedView(props: AuthenticatedViewProps) {
 		}
 	};
 
+	const handleRegisterPasskey = async () => {
+		if (!props.authClient.supportsPasskeys()) {
+			setError('Этот браузер не поддерживает ключи доступа.');
+			return;
+		}
+
+		setError(undefined);
+		setPasskeyMessage(undefined);
+		setIsPasskeyPending(true);
+
+		try {
+			const result = await props.authClient.registerPasskey();
+
+			if (result.ok) {
+				setPasskeyMessage('Ключ доступа добавлен.');
+				return;
+			}
+
+			setError(result.message);
+		}
+		catch (caughtError: unknown) {
+			setError(
+				caughtError instanceof DOMException && caughtError.name === 'NotAllowedError'
+					? 'Создание ключа доступа отменено.'
+					: 'Не удалось создать ключ доступа. Попробуйте ещё раз.'
+			);
+		}
+		finally {
+			setIsPasskeyPending(false);
+		}
+	};
+
 	return (
 		<>
 			<section class='user-bar'>
@@ -139,8 +220,23 @@ function AuthenticatedView(props: AuthenticatedViewProps) {
 					<p class='eyebrow'>Вы вошли как</p>
 					<strong>{props.session.user.displayName}</strong>
 				</div>
-				<button class='secondary-button' onClick={handleSignOut} type='button'>Выйти</button>
+				<div class='auth-actions'>
+					<Show when={props.authClient.supportsPasskeys()}>
+						<button
+							class='secondary-button'
+							disabled={isPasskeyPending()}
+							onClick={handleRegisterPasskey}
+							type='button'
+						>
+							{isPasskeyPending() ? 'Создаём ключ…' : 'Добавить ключ'}
+						</button>
+					</Show>
+					<button class='secondary-button' onClick={handleSignOut} type='button'>Выйти</button>
+				</div>
 			</section>
+			<Show when={passkeyMessage()}>
+				{(message) => <p class='auth-success' role='status'>{message()}</p>}
+			</Show>
 			<Show when={error()}>
 				{(message) => <p role='alert'>{message()}</p>}
 			</Show>
