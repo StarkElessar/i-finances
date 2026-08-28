@@ -48,6 +48,7 @@ export type Operation = {
 	id: string;
 	sourceOrder: number;
 	title: string;
+	transferId: string | null;
 	type: OperationType;
 	updatedAt: string;
 	version: number;

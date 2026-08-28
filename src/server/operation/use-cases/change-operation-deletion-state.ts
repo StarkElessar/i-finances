@@ -4,7 +4,7 @@ import {
 } from '~/entities/operation/api/operation.contract';
 import type { Operation } from '~/entities/operation/model/types';
 
-import { OperationVersionConflictError } from '../operation-errors';
+import { OperationTransferLinkedError, OperationVersionConflictError } from '../operation-errors';
 import { toOperation } from '../operation-mappers';
 import type { OperationUseCaseContext } from '../operation-use-case.types';
 
@@ -21,6 +21,10 @@ export function createChangeOperationDeletionStateUseCase(
 		const current = await context.rules.requireCurrent(household.id, input.id);
 
 		context.rules.assertVersion(current, input.version);
+
+		if (current.transferId !== null) {
+			throw new OperationTransferLinkedError();
+		}
 
 		const alreadyInTargetState = deleted
 			? current.deletedAt !== null

@@ -29,6 +29,7 @@ import { createAsync } from '@solidjs/router';
 import {
 	ArrowDownRight,
 	ArrowDownWideNarrow,
+	ArrowLeftRight,
 	ArrowUpNarrowWide,
 	ArrowUpRight,
 	Building2,
@@ -50,6 +51,7 @@ type OperationsTableProps = {
 	categories: readonly Category[];
 	selectedOperationId?: string;
 	onCreateOperation: () => void;
+	onCreateTransfer: () => void;
 	onOperationSelect: (operation: OperationWithBalance) => void;
 };
 
@@ -160,16 +162,22 @@ const columns: GridColumn<OperationTableItem>[] = [
 		width: 188,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
-				{(item) => (
-					<span
-						class={css.referenceCell}
-						style={{ '--reference-color': item().categoryColor }}
-						title={item().operation.categoryName ?? 'Без категории'}
-					>
-						<span aria-hidden='true' class={css.categoryIcon}><span/></span>
-						<span>{item().operation.categoryName ?? 'Без категории'}</span>
-					</span>
-				)}
+				{(item) => {
+					const label = () => item().operation.transferId
+						? 'Перевод'
+						: item().operation.categoryName ?? 'Без категории';
+
+					return (
+						<span
+							class={css.referenceCell}
+							style={{ '--reference-color': item().categoryColor }}
+							title={label()}
+						>
+							<span aria-hidden='true' class={css.categoryIcon}><span/></span>
+							<span>{label()}</span>
+						</span>
+					);
+				}}
 			</Show>
 		)
 	},
@@ -414,6 +422,15 @@ export function OperationsTable(props: OperationsTableProps) {
 							<Search size={18}/>
 						</Button>
 					</Show>
+					<Button
+						aria-label='Добавить перевод'
+						iconOnly
+						size='sm'
+						variant='secondary'
+						onClick={props.onCreateTransfer}
+					>
+						<ArrowLeftRight size={18}/>
+					</Button>
 					<Button
 						aria-label='Добавить операцию'
 						iconOnly

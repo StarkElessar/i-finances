@@ -42,6 +42,7 @@ export function toOperation(
 		id: record.id,
 		sourceOrder: record.sourceOrder,
 		title: record.title,
+		transferId: record.transferId,
 		type: record.type,
 		updatedAt: record.updatedAt.toISOString(),
 		version: record.version

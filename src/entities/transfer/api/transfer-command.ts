@@ -1,4 +1,4 @@
-import type { Operation } from '~/entities/operation/model/types';
+import type { Transfer } from '~/entities/transfer/model/types';
 
 import {
 	assertSameOriginMutation,
@@ -14,42 +14,42 @@ import {
 	HouseholdSelectionRequiredError
 } from '~/server/household/household-service';
 import {
-	OperationAccountUnavailableError,
-	OperationConversionAmountError,
-	OperationDeletedError,
-	OperationNotFoundError,
-	OperationReferenceUnavailableError,
-	OperationTransferLinkedError,
-	OperationVersionConflictError
-} from '~/server/operation/operation-errors';
+	TransferAccountsInvalidError,
+	TransferAccountUnavailableError,
+	TransferConversionAmountError,
+	TransferDeletedError,
+	TransferNotFoundError,
+	TransferReferenceUnavailableError,
+	TransferVersionConflictError
+} from '~/server/transfer/transfer-errors';
 
 import { getWebRequest } from '@solidjs/start/http';
 import type { z } from 'zod';
 
-import type { OperationCommandResult } from './operation.contract';
+import type { TransferCommandResult } from './transfer.contract';
 
-export type OperationCommandExecutorDependencies = {
+export type TransferCommandExecutorDependencies = {
 	revalidateQueries: () => Promise<void>;
 };
 
 /**
- * Creates the authenticated transport adapter shared by operation actions.
+ * Creates the authenticated transport adapter shared by transfer actions.
  */
-export function createOperationCommandExecutor(
-	dependencies: OperationCommandExecutorDependencies
+export function createTransferCommandExecutor(
+	dependencies: TransferCommandExecutorDependencies
 ) {
-	return async function executeOperationCommand<TInput>(
+	return async function executeTransferCommand<TInput>(
 		schema: z.ZodType<TInput>,
 		input: TInput,
-		command: (userId: string, value: TInput) => Promise<Operation>
-	): Promise<OperationCommandResult> {
+		command: (userId: string, value: TInput) => Promise<Transfer>
+	): Promise<TransferCommandResult> {
 		const parsedInput = schema.safeParse(input);
 
 		if (!parsedInput.success) {
 			return {
 				errorCode: 'invalid-input',
 				fieldErrors: createFieldErrors(parsedInput.error),
-				message: 'Проверьте поля операции.',
+				message: 'Проверьте поля перевода.',
 				ok: false
 			};
 		}
@@ -58,7 +58,7 @@ export function createOperationCommandExecutor(
 			assertSameOriginMutation(getWebRequest());
 
 			const session = await requireUser();
-			const operation = await command(
+			const transfer = await command(
 				session.user.id,
 				parsedInput.data
 			);
@@ -67,11 +67,11 @@ export function createOperationCommandExecutor(
 
 			return {
 				ok: true,
-				operation
+				transfer
 			};
 		}
 		catch (error: unknown) {
-			const failure = createOperationFailure(error);
+			const failure = createTransferFailure(error);
 
 			if (failure !== undefined) {
 				return failure;
@@ -96,9 +96,9 @@ function createFieldErrors(error: z.ZodError): Record<string, string> {
 	return fieldErrors;
 }
 
-function createOperationFailure(
+function createTransferFailure(
 	error: unknown
-): OperationCommandResult | undefined {
+): TransferCommandResult | undefined {
 	if (error instanceof AuthenticationRequiredError) {
 		return {
 			errorCode: 'unauthenticated',
@@ -113,26 +113,26 @@ function createOperationFailure(
 	) {
 		return {
 			errorCode: 'forbidden',
-			message: 'Недостаточно прав для изменения операций.',
+			message: 'Недостаточно прав для изменения переводов.',
 			ok: false
 		};
 	}
 
 	if (
-		error instanceof OperationVersionConflictError
+		error instanceof TransferVersionConflictError
 		|| error instanceof HouseholdSelectionRequiredError
 	) {
 		return {
 			errorCode: 'conflict',
-			message: 'Операция изменилась. Обновите данные и повторите действие.',
+			message: 'Перевод изменился. Обновите данные и повторите действие.',
 			ok: false
 		};
 	}
 
-	if (error instanceof OperationNotFoundError) {
+	if (error instanceof TransferNotFoundError) {
 		return {
 			errorCode: 'not-found',
-			message: 'Операция не найдена.',
+			message: 'Перевод не найден.',
 			ok: false
 		};
 	}
@@ -140,41 +140,52 @@ function createOperationFailure(
 	if (error instanceof ExchangeRateNotFoundError) {
 		return {
 			errorCode: 'rate-unavailable',
-			message: 'Для даты операции отсутствует подходящий курс валют.',
+			message: 'Для даты перевода отсутствует подходящий курс валют.',
 			ok: false
 		};
 	}
 
-	if (error instanceof OperationReferenceUnavailableError) {
+	if (error instanceof TransferReferenceUnavailableError) {
 		return {
 			errorCode: 'reference-unavailable',
 			fieldErrors: {
-				[error.field]: 'Выбранная запись недоступна.'
+				contactId: 'Выбранный контакт недоступен.'
 			},
-			message: 'Выберите активную категорию или контакт.',
+			message: 'Выберите активный контакт.',
+			ok: false
+		};
+	}
+
+	if (error instanceof TransferAccountsInvalidError) {
+		return {
+			errorCode: 'invalid-input',
+			fieldErrors: {
+				[error.field]: error.message
+			},
+			message: error.message,
 			ok: false
 		};
 	}
 
 	if (
-		error instanceof OperationAccountUnavailableError
-		|| error instanceof OperationDeletedError
-		|| error instanceof OperationTransferLinkedError
+		error instanceof TransferAccountUnavailableError
+		|| error instanceof TransferDeletedError
 	) {
 		return {
 			errorCode: 'invalid-state',
-			message: 'Операция недоступна для этого действия.',
+			message: 'Перевод недоступен для этого действия.',
 			ok: false
 		};
 	}
 
-	if (error instanceof OperationConversionAmountError) {
+	if (error instanceof TransferConversionAmountError) {
 		return {
 			errorCode: 'invalid-input',
 			fieldErrors: {
-				amountMinor: 'Сумма после конвертации слишком мала.'
+				exchangeRate: 'Проверьте курс обмена.',
+				fromAmountMinor: 'Сумма после конвертации слишком мала.'
 			},
-			message: 'Проверьте сумму операции.',
+			message: 'Проверьте сумму и курс перевода.',
 			ok: false
 		};
 	}

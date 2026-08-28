@@ -8,6 +8,7 @@ import {
 	OperationDeletedError,
 	OperationNotFoundError,
 	OperationReferenceUnavailableError,
+	OperationTransferLinkedError,
 	OperationVersionConflictError
 } from './operation-errors';
 import type { OperationRepository } from './operation-repository';
@@ -104,6 +105,10 @@ export function createOperationRules(
 	const assertEditable = (record: OperationRecord): void => {
 		if (record.deletedAt !== null) {
 			throw new OperationDeletedError();
+		}
+
+		if (record.transferId !== null) {
+			throw new OperationTransferLinkedError();
 		}
 	};
 

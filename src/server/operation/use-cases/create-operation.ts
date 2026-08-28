@@ -62,6 +62,7 @@ export function createCreateOperationUseCase(
 			householdId: household.id,
 			id: context.createId(),
 			title: input.title,
+			transferId: null,
 			type: input.type,
 			updatedAt: timestamp,
 			updatedByUserId: userId,

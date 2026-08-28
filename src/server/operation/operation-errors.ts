@@ -60,3 +60,13 @@ export class OperationConversionAmountError extends Error {
 		this.name = 'OperationConversionAmountError';
 	}
 }
+
+/**
+ * Signals that the operation belongs to a transfer and must be changed via transfer API.
+ */
+export class OperationTransferLinkedError extends Error {
+	constructor() {
+		super('Transfer-linked operation cannot be changed directly.');
+		this.name = 'OperationTransferLinkedError';
+	}
+}

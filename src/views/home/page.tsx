@@ -41,6 +41,13 @@ import {
 	recalculateOperationRateAction,
 	updateOperationAction
 } from '~/entities/operation';
+import type { Transfer } from '~/entities/transfer';
+import {
+	createTransferAction,
+	deleteTransferAction,
+	getTransfer,
+	updateTransferAction
+} from '~/entities/transfer';
 
 import { Title } from '@solidjs/meta';
 import {
@@ -73,6 +80,11 @@ import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
 import { OperationDetailsPanel } from './ui/operation-details-panel';
 import { OperationsTable } from './ui/operations-table';
+import type {
+	TransferDialogMode,
+	TransferDialogSubmitValue
+} from './ui/transfer-dialog';
+import { TransferDialog } from './ui/transfer-dialog';
 
 const FALLBACK_FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
@@ -241,12 +253,22 @@ function HomeContent(props: HomeContentProps) {
 	const [operationError, setOperationError] = createSignal<string>();
 	const [operationFieldErrors, setOperationFieldErrors]
 		= createSignal<Record<string, string>>();
+	const [isTransferDialogOpen, setIsTransferDialogOpen] = createSignal(false);
+	const [transferDialogMode, setTransferDialogMode]
+		= createSignal<TransferDialogMode>('create');
+	const [editingTransfer, setEditingTransfer] = createSignal<Transfer>();
+	const [transferError, setTransferError] = createSignal<string>();
+	const [transferFieldErrors, setTransferFieldErrors]
+		= createSignal<Record<string, string>>();
 	const runCreateAccount = useAction(createAccountAction);
 	const runUpdateAccount = useAction(updateAccountAction);
 	const runCreateOperation = useAction(createOperationAction);
 	const runDeleteOperation = useAction(deleteOperationAction);
 	const runRecalculateOperationRate = useAction(recalculateOperationRateAction);
 	const runUpdateOperation = useAction(updateOperationAction);
+	const runCreateTransfer = useAction(createTransferAction);
+	const runUpdateTransfer = useAction(updateTransferAction);
+	const runDeleteTransfer = useAction(deleteTransferAction);
 	const createAccountSubmission = useSubmission(createAccountAction);
 	const updateAccountSubmission = useSubmission(updateAccountAction);
 	const createOperationSubmission = useSubmission(createOperationAction);
@@ -255,6 +277,9 @@ function HomeContent(props: HomeContentProps) {
 		recalculateOperationRateAction
 	);
 	const updateOperationSubmission = useSubmission(updateOperationAction);
+	const createTransferSubmission = useSubmission(createTransferAction);
+	const updateTransferSubmission = useSubmission(updateTransferAction);
+	const deleteTransferSubmission = useSubmission(deleteTransferAction);
 
 	const accountsList = () => props.accounts() ?? [];
 	const categories = () => props.categoryCollection()?.items ?? [];
@@ -273,6 +298,11 @@ function HomeContent(props: HomeContentProps) {
 		|| deleteOperationSubmission.pending
 		|| recalculateOperationRateSubmission.pending
 		|| updateOperationSubmission.pending
+	);
+	const isTransferMutationPending = () => Boolean(
+		createTransferSubmission.pending
+		|| updateTransferSubmission.pending
+		|| deleteTransferSubmission.pending
 	);
 
 	const accountBalanceMinorById = createMemo(() => {
@@ -530,7 +560,28 @@ function HomeContent(props: HomeContentProps) {
 		}
 	};
 
-	const handleOperationSelect = (operation: OperationWithBalance) => {
+	const handleOperationSelect = async (operation: OperationWithBalance) => {
+		if (operation.transferId) {
+			setTransferError(undefined);
+			setTransferFieldErrors(undefined);
+
+			try {
+				const transfer = await getTransfer({ id: operation.transferId });
+
+				setEditingTransfer(transfer);
+				setTransferDialogMode('edit');
+				setIsTransferDialogOpen(true);
+				handleCloseDetailsPanel();
+			}
+			catch {
+				setOperationError(
+					'Не удалось открыть перевод. Обновите данные и повторите попытку.'
+				);
+			}
+
+			return;
+		}
+
 		setOperationError(undefined);
 		setOperationFieldErrors(undefined);
 		setSelectedOperation(operation);
@@ -544,6 +595,87 @@ function HomeContent(props: HomeContentProps) {
 		setSelectedOperation(undefined);
 		setDetailsPanelMode('create');
 		setIsDetailsPanelOpen(true);
+	};
+
+	const handleOpenCreateTransferDialog = () => {
+		setTransferError(undefined);
+		setTransferFieldErrors(undefined);
+		setEditingTransfer(undefined);
+		setTransferDialogMode('create');
+		setIsTransferDialogOpen(true);
+	};
+
+	const handleTransferDialogOpenChange = (open: boolean) => {
+		if (isTransferMutationPending()) {
+			return;
+		}
+
+		setIsTransferDialogOpen(open);
+
+		if (!open) {
+			setEditingTransfer(undefined);
+			setTransferError(undefined);
+			setTransferFieldErrors(undefined);
+		}
+	};
+
+	const handleTransferSubmit = async (value: TransferDialogSubmitValue) => {
+		const editing = editingTransfer();
+
+		setTransferError(undefined);
+		setTransferFieldErrors(undefined);
+
+		try {
+			const result = transferDialogMode() === 'edit' && editing
+				? await runUpdateTransfer({
+					...value,
+					id: editing.id,
+					version: editing.version
+				})
+				: await runCreateTransfer(value);
+
+			if (result.ok) {
+				handleTransferDialogOpenChange(false);
+				return;
+			}
+
+			setTransferError(result.message);
+			setTransferFieldErrors(result.fieldErrors);
+		}
+		catch {
+			setTransferError(
+				'Не удалось сохранить перевод. Проверьте подключение и повторите попытку.'
+			);
+		}
+	};
+
+	const handleTransferDelete = async () => {
+		const editing = editingTransfer();
+
+		if (!editing) {
+			return;
+		}
+
+		setTransferError(undefined);
+
+		try {
+			const result = await runDeleteTransfer({
+				id: editing.id,
+				version: editing.version
+			});
+
+			if (result.ok) {
+				handleTransferDialogOpenChange(false);
+				return;
+			}
+
+			setTransferError(result.message);
+		}
+		catch {
+			setTransferError(
+				'Не удалось удалить перевод. Проверьте подключение и повторите попытку.'
+			);
+		}
 	};
 
 	const handleOperationSubmit = async (value: OperationDraft) => {
@@ -881,6 +1013,9 @@ function HomeContent(props: HomeContentProps) {
 													onCreateOperation={
 														handleCreateOperation
 													}
+													onCreateTransfer={
+														handleOpenCreateTransferDialog
+													}
 													onOperationSelect={
 														handleOperationSelect
 													}
@@ -931,6 +1066,20 @@ function HomeContent(props: HomeContentProps) {
 				open={isAccountDialogOpen()}
 				onOpenChange={handleAccountDialogOpenChange}
 				onSubmit={handleAccountSubmit}
+			/>
+
+			<TransferDialog
+				accounts={accountsList().filter((account) => account.archivedAt === null)}
+				contacts={contacts()}
+				error={transferError()}
+				fieldErrors={transferFieldErrors()}
+				loading={isTransferMutationPending()}
+				mode={transferDialogMode()}
+				open={isTransferDialogOpen()}
+				transfer={editingTransfer()}
+				onDelete={handleTransferDelete}
+				onOpenChange={handleTransferDialogOpenChange}
+				onSubmit={handleTransferSubmit}
 			/>
 
 			<Dialog.Root
