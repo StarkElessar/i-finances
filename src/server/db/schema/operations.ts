@@ -16,6 +16,7 @@ import { accounts } from './accounts';
 import { categories } from './categories';
 import { contacts } from './contacts';
 import { households } from './households';
+import { transfers } from './transfers';
 import { users } from './users';
 
 /**
@@ -50,6 +51,8 @@ export const operations = sqliteTable(
 		contactId: text('contact_id')
 			.references(() => contacts.id, { onDelete: 'set null' }),
 		contactNameSnapshot: text('contact_name_snapshot'),
+		transferId: text('transfer_id')
+			.references(() => transfers.id),
 		exchangeRate: text('exchange_rate').notNull(),
 		exchangeRateEffectiveOn: text('exchange_rate_effective_on').notNull(),
 		exchangeRateSource: text('exchange_rate_source').notNull(),
@@ -105,6 +108,10 @@ export const operations = sqliteTable(
 		index('operations_household_deleted_idx').on(
 			table.householdId,
 			table.deletedAt
+		),
+		index('operations_household_transfer_idx').on(
+			table.householdId,
+			table.transferId
 		)
 	]
 );
