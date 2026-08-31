@@ -10,6 +10,7 @@ export {
 	resolveExchangeRateInputSchema,
 	upsertExchangeRateInputSchema
 } from './model/contract';
+export { toCurrencyExchangeRates } from './model/current-rates';
 export type {
 	CurrentExchangeRates,
 	ExchangeRateQuote,

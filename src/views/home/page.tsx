@@ -1,6 +1,5 @@
 import css from './home.module.scss';
 
-import type { CurrencyCodeValue, CurrencyExchangeRates } from '~/shared/lib';
 import {
 	amountToMinorUnits,
 	cn,
@@ -11,6 +10,7 @@ import {
 	minorUnitsToAmount,
 	sumMoney
 } from '~/shared/lib';
+import { createRouteSearchParams } from '~/shared/routing';
 import { AccountIcon, Button, Container } from '~/shared/ui';
 import { Dialog } from '~/shared/ui/dialog';
 
@@ -28,17 +28,22 @@ import type {
 	CurrentExchangeRates,
 	ExchangeRateQuote
 } from '~/entities/exchange-rate';
+import { toCurrencyExchangeRates } from '~/entities/exchange-rate';
 import { getCurrentExchangeRates } from '~/entities/exchange-rate/api';
 import type {
 	AccountBalance,
 	OperationDraft,
+	OperationPeriodMode,
 	OperationWithBalance
 } from '~/entities/operation';
 import {
 	createOperationAction,
 	deleteOperationAction,
+	formatLocalDateKey,
 	getAccountBalances,
 	recalculateOperationRateAction,
+	resolveOperationPeriodSearchState,
+	shiftOperationPeriod,
 	updateOperationAction
 } from '~/entities/operation';
 import type { Transfer } from '~/entities/transfer';
@@ -75,6 +80,7 @@ import {
 	Show
 } from 'solid-js';
 
+import { homeSearchParamsSchema } from './model/home-search-params';
 import type { AccountDialogValue } from './ui/account-dialog';
 import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
@@ -102,29 +108,6 @@ function formatExchangeRateLabel(quote: ExchangeRateQuote): string {
 		Number(quote.rate),
 		quote.toCurrency
 	)}`;
-}
-
-function toCurrencyExchangeRates(
-	currentExchangeRates: CurrentExchangeRates
-): CurrencyExchangeRates {
-	const ratesToBaseCurrency: Partial<Record<CurrencyCodeValue, number>> = {};
-
-	currentExchangeRates.quotes.forEach((quote) => {
-		const rate = Number(quote.rate);
-
-		if (
-			quote.toCurrency === currentExchangeRates.baseCurrency
-			&& Number.isFinite(rate)
-			&& rate > 0
-		) {
-			ratesToBaseCurrency[quote.fromCurrency] = rate;
-		}
-	});
-
-	return {
-		baseCurrency: currentExchangeRates.baseCurrency,
-		ratesToBaseCurrency
-	};
 }
 
 function toAccountDialogValue(account: PersistedAccount): AccountDialogValue {
@@ -235,8 +218,7 @@ type HomeContentProps = {
 };
 
 function HomeContent(props: HomeContentProps) {
-	const [activeAccountId, setActiveAccountId] = createSignal<string>();
-	const [preferredActiveAccountId, setPreferredActiveAccountId] = createSignal<string>();
+	const homeSearch = createRouteSearchParams(homeSearchParamsSchema);
 	const [editingAccount, setEditingAccount] = createSignal<PersistedAccount>();
 	const [isAccountDialogOpen, setIsAccountDialogOpen] = createSignal(false);
 	const [accountDialogError, setAccountDialogError] = createSignal<string>();
@@ -314,9 +296,48 @@ function HomeContent(props: HomeContentProps) {
 		);
 	});
 
-	const activeAccount = createMemo<PersistedAccount | undefined>(() => {
-		return accountsList().find((account) => account.id === activeAccountId()) ?? accountsList()[0];
+	/**
+	 * Resolves the active account id from the URL, falling back to the first account.
+	 */
+	const activeAccountId = createMemo(() => {
+		const accounts = accountsList();
+
+		if (accounts.length === 0) {
+			return undefined;
+		}
+
+		const accountFromUrl = homeSearch.params().account;
+
+		if (
+			accountFromUrl
+			&& accounts.some((account) => account.id === accountFromUrl)
+		) {
+			return accountFromUrl;
+		}
+
+		return accounts[0]?.id;
 	});
+
+	const activeAccount = createMemo<PersistedAccount | undefined>(() => {
+		const accountId = activeAccountId();
+
+		return accountId === undefined
+			? undefined
+			: accountsList().find((account) => account.id === accountId);
+	});
+
+	/**
+	 * Canonical period mode + start date derived from the URL.
+	 */
+	const periodSearch = createMemo(() => (
+		resolveOperationPeriodSearchState({
+			from: homeSearch.params().from,
+			period: homeSearch.params().period
+		})
+	));
+
+	const periodMode = (): OperationPeriodMode => periodSearch().period;
+	const periodFrom = (): string => periodSearch().from;
 
 	const familyAccounts = createMemo(() => {
 		return accountsList().filter((account) => account.isIncludedInFamilyTotal);
@@ -398,32 +419,30 @@ function HomeContent(props: HomeContentProps) {
 	createEffect(() => {
 		const loadedAccounts = props.accounts();
 
-		if (loadedAccounts) {
-			const preferredAccountId = preferredActiveAccountId();
+		if (!loadedAccounts || loadedAccounts.length === 0) {
+			return;
+		}
 
-			if (preferredAccountId) {
-				const preferredAccountExists = loadedAccounts.some(
-					(account) => account.id === preferredAccountId
-				);
+		const resolvedAccountId = activeAccountId();
 
-				if (preferredAccountExists) {
-					setActiveAccountId(preferredAccountId);
-					setPreferredActiveAccountId(undefined);
-				}
+		if (!resolvedAccountId) {
+			return;
+		}
 
-				return;
-			}
+		if (homeSearch.params().account !== resolvedAccountId) {
+			homeSearch.setParams({ account: resolvedAccountId }, { history: 'replace' });
+		}
+	});
 
-			const currentAccountId = activeAccountId();
-			const currentAccountExists = loadedAccounts.some(
-				(account) => account.id === currentAccountId
-			);
+	createEffect(() => {
+		const resolved = periodSearch();
+		const params = homeSearch.params();
 
-			if (currentAccountExists) {
-				return;
-			}
-
-			setActiveAccountId(loadedAccounts[0]?.id);
+		if (params.period !== resolved.period || params.from !== resolved.from) {
+			homeSearch.setParams({
+				from: resolved.from,
+				period: resolved.period
+			}, { history: 'replace' });
 		}
 	});
 
@@ -477,9 +496,38 @@ function HomeContent(props: HomeContentProps) {
 	};
 
 	const handleAccountSelect = (accountId: string) => {
-		setActiveAccountId(accountId);
+		homeSearch.setParams({ account: accountId }, { history: 'push' });
 		setIsSidebarOpen(false);
 		handleCloseDetailsPanel();
+	};
+
+	const handlePeriodModeChange = (mode: OperationPeriodMode) => {
+		const resolved = resolveOperationPeriodSearchState({
+			from: periodFrom(),
+			period: mode
+		});
+
+		homeSearch.setParams({
+			from: resolved.from,
+			period: resolved.period
+		}, { history: 'replace' });
+	};
+
+	const handlePeriodMove = (offset: number) => {
+		const shiftedAnchor = shiftOperationPeriod(
+			periodSearch().anchor,
+			periodMode(),
+			offset
+		);
+		const resolved = resolveOperationPeriodSearchState({
+			from: formatLocalDateKey(shiftedAnchor),
+			period: periodMode()
+		});
+
+		homeSearch.setParams({
+			from: resolved.from,
+			period: resolved.period
+		}, { history: 'replace' });
 	};
 
 	const handleAccountDialogOpenChange = (open: boolean) => {
@@ -525,8 +573,7 @@ function HomeContent(props: HomeContentProps) {
 
 			if (result.ok) {
 				setPendingCurrencyCorrection(undefined);
-				setPreferredActiveAccountId(result.account.id);
-				setActiveAccountId(result.account.id);
+				homeSearch.setParams({ account: result.account.id }, { history: 'push' });
 				setIsAccountDialogOpen(false);
 				return;
 			}
@@ -1007,6 +1054,8 @@ function HomeContent(props: HomeContentProps) {
 												<OperationsTable
 													account={account}
 													categories={categories()}
+													periodFrom={periodFrom()}
+													periodMode={periodMode()}
 													selectedOperationId={
 														selectedOperation()?.id
 													}
@@ -1019,6 +1068,10 @@ function HomeContent(props: HomeContentProps) {
 													onOperationSelect={
 														handleOperationSelect
 													}
+													onPeriodModeChange={
+														handlePeriodModeChange
+													}
+													onPeriodMove={handlePeriodMove}
 												/>
 											</section>
 										);
@@ -1073,6 +1126,7 @@ function HomeContent(props: HomeContentProps) {
 				contacts={contacts()}
 				error={transferError()}
 				fieldErrors={transferFieldErrors()}
+				householdBaseCurrency={familyTotalCurrency()}
 				loading={isTransferMutationPending()}
 				mode={transferDialogMode()}
 				open={isTransferDialogOpen()}

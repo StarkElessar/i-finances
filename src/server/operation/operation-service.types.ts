@@ -2,6 +2,8 @@ import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
 	GetAccountLedgerInput,
+	GetCategoryOperationsInput,
+	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	RecalculateOperationRateInput,
 	UpdateOperationInput
@@ -9,6 +11,8 @@ import type {
 import type {
 	AccountBalance,
 	AccountLedger,
+	CategoryOperations,
+	ContactOperations,
 	MonthlyExpenseSummary,
 	Operation
 } from '~/entities/operation/model/types';
@@ -33,6 +37,14 @@ export type OperationService = {
 		userId: string,
 		input: GetAccountLedgerInput
 	) => Promise<AccountLedger>;
+	getCategoryOperations: (
+		userId: string,
+		input: GetCategoryOperationsInput
+	) => Promise<CategoryOperations>;
+	getContactOperations: (
+		userId: string,
+		input: GetContactOperationsInput
+	) => Promise<ContactOperations>;
 	getMonthlyExpenseSummary: (
 		userId: string,
 		input: GetMonthlyExpenseSummaryInput

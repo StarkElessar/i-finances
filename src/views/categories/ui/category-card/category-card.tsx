@@ -1,13 +1,18 @@
 import css from './category-card.module.scss';
 
 import { cn, type CurrencyCodeValue } from '~/shared/lib';
+import { Button } from '~/shared/ui';
 
 import type { Category, CategoryBudgetSummary } from '~/entities/category';
 import { formatMinorUnitsCurrency } from '~/entities/category';
 
+import { Pencil } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { Show } from 'solid-js';
 
+/**
+ * Props for a category budget card with optional click and edit actions.
+ */
 export type CategoryCardProps = {
 	category: Category;
 	currency: CurrencyCodeValue;
@@ -15,12 +20,16 @@ export type CategoryCardProps = {
 	class?: string;
 	isDragging?: boolean;
 	onClick?: () => void;
-	onPointerCancel?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
-	onPointerDown?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
-	onPointerMove?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
-	onPointerUp?: JSX.EventHandler<HTMLButtonElement, PointerEvent>;
+	onEdit?: () => void;
+	onPointerCancel?: JSX.EventHandler<HTMLElement, PointerEvent>;
+	onPointerDown?: JSX.EventHandler<HTMLElement, PointerEvent>;
+	onPointerMove?: JSX.EventHandler<HTMLElement, PointerEvent>;
+	onPointerUp?: JSX.EventHandler<HTMLElement, PointerEvent>;
 };
 
+/**
+ * Builds CSS custom properties for the category accent and budget progress.
+ */
 function getCategoryCardStyle(category: Category, summary: CategoryBudgetSummary): JSX.CSSProperties {
 	return {
 		'--category-color': category.color,
@@ -28,6 +37,9 @@ function getCategoryCardStyle(category: Category, summary: CategoryBudgetSummary
 	};
 }
 
+/**
+ * Formats the footer budget label for the given summary and currency.
+ */
 function getBudgetLabel(summary: CategoryBudgetSummary, currency: CurrencyCodeValue): string {
 	if (!summary.hasBudget || summary.monthlyBudgetMinor === null) {
 		return 'Без бюджета';
@@ -36,6 +48,9 @@ function getBudgetLabel(summary: CategoryBudgetSummary, currency: CurrencyCodeVa
 	return `Бюджет ${formatMinorUnitsCurrency(summary.monthlyBudgetMinor, currency)}`;
 }
 
+/**
+ * Formats the usage percent label shown next to the category title.
+ */
 function getPercentLabel(summary: CategoryBudgetSummary): string {
 	if (summary.usagePercent === null) {
 		return 'Без лимита';
@@ -44,23 +59,97 @@ function getPercentLabel(summary: CategoryBudgetSummary): string {
 	return `${summary.usagePercent}%`;
 }
 
+/**
+ * Category budget card with spent amount, optional progress, and edit control.
+ */
 export function CategoryCard(props: CategoryCardProps) {
+	const handleEditClick: JSX.EventHandler<HTMLButtonElement, MouseEvent> = (event) => {
+		event.stopPropagation();
+		props.onEdit?.();
+	};
+
+	const handleEditPointerDown: JSX.EventHandler<HTMLButtonElement, PointerEvent> = (event) => {
+		event.stopPropagation();
+	};
+
 	return (
-		<button
+		<article
 			class={cn(
 				css.root,
+				props.onClick && css.clickable,
 				props.summary.isOverBudget && css.overBudget,
 				props.isDragging && css.dragging,
 				props.class
 			)}
 			style={getCategoryCardStyle(props.category, props.summary)}
-			type='button'
-			onClick={props.onClick}
-			onPointerCancel={props.onPointerCancel}
-			onPointerDown={props.onPointerDown}
-			onPointerMove={props.onPointerMove}
-			onPointerUp={props.onPointerUp}
 		>
+			{/* Drag capture + click must share one node, or click never fires. */}
+			<Show
+				fallback={(
+					<div
+						class={css.body}
+						onPointerCancel={props.onPointerCancel}
+						onPointerDown={props.onPointerDown}
+						onPointerMove={props.onPointerMove}
+						onPointerUp={props.onPointerUp}
+					>
+						<CategoryCardBody
+							category={props.category}
+							currency={props.currency}
+							summary={props.summary}
+						/>
+					</div>
+				)}
+				when={props.onClick}
+			>
+				<button
+					class={css.body}
+					type='button'
+					onClick={() => props.onClick?.()}
+					onPointerCancel={props.onPointerCancel}
+					onPointerDown={props.onPointerDown}
+					onPointerMove={props.onPointerMove}
+					onPointerUp={props.onPointerUp}
+				>
+					<CategoryCardBody
+						category={props.category}
+						currency={props.currency}
+						summary={props.summary}
+					/>
+				</button>
+			</Show>
+
+			<Show when={props.onEdit}>
+				<Button
+					aria-label={`Редактировать категорию ${props.category.name}`}
+					class={css.editButton}
+					iconOnly
+					size='sm'
+					title='Редактировать категорию'
+					type='button'
+					variant='ghost'
+					onClick={handleEditClick}
+					onPointerDown={handleEditPointerDown}
+				>
+					<Pencil size={15}/>
+				</Button>
+			</Show>
+		</article>
+	);
+}
+
+type CategoryCardBodyProps = {
+	category: Category;
+	currency: CurrencyCodeValue;
+	summary: CategoryBudgetSummary;
+};
+
+/**
+ * Renders the shared visual content of a category card.
+ */
+function CategoryCardBody(props: CategoryCardBodyProps) {
+	return (
+		<>
 			<span class={css.icon} aria-hidden='true'>
 				<span/>
 			</span>
@@ -89,6 +178,6 @@ export function CategoryCard(props: CategoryCardProps) {
 					<span class={css.limitState}>Превышен лимит</span>
 				</Show>
 			</span>
-		</button>
+		</>
 	);
 }

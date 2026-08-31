@@ -33,6 +33,15 @@ export function AmountLabel() {
 }
 ```
 
+## Solid Component Body Order
+
+Inside Solid components (and functions that return JSX), keep this order and do not interleave effects between unrelated state/handlers:
+
+1. Hooks / signals / stores / memos / derived accessors / in-component helpers
+2. Event handlers and nested function declarations
+3. Effects (`createEffect`, and similarly `createRenderEffect` / `onMount` / `onCleanup` when used as side-effect setup) — grouped together, last before `return`
+4. `return` JSX
+
 ## Code Style (lint-enforced)
 
 - Tabs for indentation (4-space width), 140 max line length

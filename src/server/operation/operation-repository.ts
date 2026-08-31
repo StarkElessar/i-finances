@@ -4,6 +4,7 @@ import type {
 	OperationRecord
 } from '~/server/db/schema';
 import {
+	accounts,
 	categories,
 	contacts,
 	operations
@@ -12,6 +13,7 @@ import {
 import {
 	and,
 	asc,
+	desc,
 	eq,
 	gte,
 	inArray,
@@ -23,6 +25,13 @@ import {
 } from 'drizzle-orm';
 
 export type OperationLedgerRow = {
+	categoryName: string | null;
+	contactName: string | null;
+	operation: OperationRecord;
+};
+
+export type CategoryOperationRow = {
+	accountName: string;
 	categoryName: string | null;
 	contactName: string | null;
 	operation: OperationRecord;
@@ -79,6 +88,18 @@ export type OperationRepository = {
 		householdId: string,
 		accountId: string
 	) => Promise<OperationRecord[]>;
+	listByCategory: (
+		householdId: string,
+		categoryId: string,
+		start: string,
+		end: string
+	) => Promise<CategoryOperationRow[]>;
+	listByContact: (
+		householdId: string,
+		contactId: string,
+		start: string,
+		end: string
+	) => Promise<CategoryOperationRow[]>;
 	listLedger: (
 		householdId: string,
 		accountId: string,
@@ -254,6 +275,46 @@ export function createOperationRepository(
 			);
 	};
 
+	/**
+	 * Lists non-deleted operations for a category in a closed date range.
+	 * Newest days first; within a day, newer inserts (lower sourceOrder) first.
+	 */
+	const listByCategory = async (
+		householdId: string,
+		categoryId: string,
+		start: string,
+		end: string
+	): Promise<CategoryOperationRow[]> => {
+		return listByReference(
+			database,
+			householdId,
+			operations.categoryId,
+			categoryId,
+			start,
+			end
+		);
+	};
+
+	/**
+	 * Lists non-deleted operations for a contact in a closed date range.
+	 * Newest days first; within a day, newer inserts (lower sourceOrder) first.
+	 */
+	const listByContact = async (
+		householdId: string,
+		contactId: string,
+		start: string,
+		end: string
+	): Promise<CategoryOperationRow[]> => {
+		return listByReference(
+			database,
+			householdId,
+			operations.contactId,
+			contactId,
+			start,
+			end
+		);
+	};
+
 	const getSignedTotalBefore = async (
 		householdId: string,
 		accountId: string,
@@ -380,6 +441,8 @@ export function createOperationRepository(
 		hasForAccount,
 		insert,
 		listByAccount,
+		listByCategory,
+		listByContact,
 		listLedger,
 		listMonthlyCategoryExpenses,
 		listMonthlyContactExpenses,
@@ -409,6 +472,40 @@ function getLeadingSourceOrder(
 		.get();
 
 	return (result?.sourceOrder ?? 0) - 1;
+}
+
+/**
+ * Lists non-deleted operations for a category or contact reference in a date range.
+ */
+function listByReference(
+	database: AppDatabase,
+	householdId: string,
+	referenceColumn: typeof operations.categoryId | typeof operations.contactId,
+	referenceId: string,
+	start: string,
+	end: string
+): Promise<CategoryOperationRow[]> {
+	return database.select({
+		accountName: accounts.name,
+		categoryName: categories.name,
+		contactName: contacts.name,
+		operation: operations
+	})
+		.from(operations)
+		.innerJoin(accounts, eq(accounts.id, operations.accountId))
+		.leftJoin(categories, eq(categories.id, operations.categoryId))
+		.leftJoin(contacts, eq(contacts.id, operations.contactId))
+		.where(and(
+			eq(operations.householdId, householdId),
+			eq(referenceColumn, referenceId),
+			isNull(operations.deletedAt),
+			gte(operations.happenedOn, start),
+			lte(operations.happenedOn, end)
+		))
+		.orderBy(
+			desc(operations.happenedOn),
+			asc(operations.sourceOrder)
+		);
 }
 
 function listMonthlyReferenceExpenses(

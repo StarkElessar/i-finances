@@ -1,0 +1,27 @@
+@use "~/shared/styles/functions" as fn;
+
+.root {
+    z-index: 60;
+}
+
+.content {
+    --dialog-inline-size: #{fn.rem(480)};
+
+    gap: 0;
+    min-block-size: min(90dvh, #{fn.rem(720)});
+}
+
+.loading-state,
+.missing-state {
+    padding: var(--space-8) var(--space-6);
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+    text-align: center;
+}
+
+.form-host {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-block-size: 0;
+}

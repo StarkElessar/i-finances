@@ -8,6 +8,8 @@ import { tryParseLocalDateKey } from '../model/period';
 import type {
 	AccountBalance,
 	AccountLedger,
+	CategoryOperations,
+	ContactOperations,
 	MonthlyExpenseSummary,
 	Operation
 } from '../model/types';
@@ -55,6 +57,30 @@ export const getAccountLedgerInputSchema = z.object({
 	}
 );
 
+export const getCategoryOperationsInputSchema = z.object({
+	categoryId: entityIdSchema,
+	end: localDateKeySchema,
+	start: localDateKeySchema
+}).refine(
+	(input) => input.start <= input.end,
+	{
+		message: 'Начало периода должно быть не позже окончания.',
+		path: ['end']
+	}
+);
+
+export const getContactOperationsInputSchema = z.object({
+	contactId: entityIdSchema,
+	end: localDateKeySchema,
+	start: localDateKeySchema
+}).refine(
+	(input) => input.start <= input.end,
+	{
+		message: 'Начало периода должно быть не позже окончания.',
+		path: ['end']
+	}
+);
+
 export const createOperationInputSchema = z.object({
 	...editableOperationFields,
 	accountId: entityIdSchema
@@ -81,6 +107,8 @@ export const getMonthlyExpenseSummaryInputSchema = z.object({
 });
 
 export type GetAccountLedgerInput = z.infer<typeof getAccountLedgerInputSchema>;
+export type GetCategoryOperationsInput = z.infer<typeof getCategoryOperationsInputSchema>;
+export type GetContactOperationsInput = z.infer<typeof getContactOperationsInputSchema>;
 export type CreateOperationInput = z.infer<typeof createOperationInputSchema>;
 export type UpdateOperationInput = z.infer<typeof updateOperationInputSchema>;
 export type ChangeOperationDeletionStateInput = z.infer<
@@ -117,4 +145,6 @@ export type OperationCommandResult =
 
 export type AccountLedgerResult = AccountLedger;
 export type AccountBalancesResult = AccountBalance[];
+export type CategoryOperationsResult = CategoryOperations;
+export type ContactOperationsResult = ContactOperations;
 export type MonthlyExpenseSummaryResult = MonthlyExpenseSummary;

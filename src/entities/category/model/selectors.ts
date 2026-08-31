@@ -1,4 +1,13 @@
-import type { Category, CategoryBudgetSummary } from './types';
+import type {
+	Category,
+	CategoryBudgetSummary,
+	PersistedCategory
+} from './types';
+
+const CATEGORY_COLLATOR = new Intl.Collator('ru-BY', {
+	numeric: true,
+	sensitivity: 'base'
+});
 
 export function getCategoryBudgetSummary(
 	category: Category,
@@ -52,6 +61,26 @@ export function findSuggestedCategory(
 				&& normalizedTitle.includes(normalizedKeyword);
 		})
 	));
+}
+
+/**
+ * Sorts categories by monthly spent amount descending; ties break by name.
+ */
+export function sortCategoriesByMonthlySpent(
+	categories: readonly PersistedCategory[],
+	spentMinorById: Readonly<Record<string, number>>
+): PersistedCategory[] {
+	return categories.toSorted((left, right) => {
+		const spentDelta = (
+			(spentMinorById[right.id] ?? 0) - (spentMinorById[left.id] ?? 0)
+		);
+
+		if (spentDelta !== 0) {
+			return spentDelta;
+		}
+
+		return CATEGORY_COLLATOR.compare(left.name, right.name);
+	});
 }
 
 function normalizeSearchValue(value: string): string {

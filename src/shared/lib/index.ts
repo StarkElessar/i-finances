@@ -24,3 +24,9 @@ export {
 	normalizeExchangeRate,
 	parseOptionalMoneyInputToMinorUnits
 } from './money';
+export type { RawSearchParams, SerializedSearchParams } from './search-params';
+export {
+	parseRouteSearchParams,
+	readFirstSearchParamValue,
+	serializeRouteSearchParams
+} from './search-params';

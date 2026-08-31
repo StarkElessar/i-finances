@@ -54,6 +54,46 @@ export type Operation = {
 	version: number;
 };
 
+/**
+ * Operation row for category drill-down, with the live account name.
+ */
+export type CategoryOperation = Operation & {
+	accountName: string;
+};
+
+/**
+ * Category operations for a closed date range.
+ */
+export type CategoryOperations = {
+	categoryId: string;
+	householdBaseCurrency: CurrencyCodeValue;
+	items: CategoryOperation[];
+	range: {
+		end: string;
+		start: string;
+	};
+};
+
+/**
+ * Operation row for contact drill-down, with the live account name.
+ */
+export type ContactOperation = Operation & {
+	accountName: string;
+};
+
+/**
+ * Contact operations for a closed date range.
+ */
+export type ContactOperations = {
+	contactId: string;
+	householdBaseCurrency: CurrencyCodeValue;
+	items: ContactOperation[];
+	range: {
+		end: string;
+		start: string;
+	};
+};
+
 export type OperationWithBalance = Operation & {
 	balanceAfterMinor: number;
 	signedAmountMinor: number;

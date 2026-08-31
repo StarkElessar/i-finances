@@ -17,6 +17,7 @@ import {
 	filterContacts,
 	getContacts,
 	restoreContact as restoreContactAction,
+	sortContactsByMonthlySpent,
 	updateContact as updateContactAction
 } from '~/entities/contact';
 import type { MonthlyExpenseSummary } from '~/entities/operation';
@@ -51,6 +52,7 @@ import {
 import { ContactCard, ContactIcon } from './ui/contact-card';
 import type { ContactDialogMode, ContactDialogValue } from './ui/contact-dialog';
 import { ContactDialog } from './ui/contact-dialog';
+import { ContactSummaryDialog } from './ui/contact-summary-dialog';
 
 type ContactListMode = 'active' | 'archive';
 
@@ -122,7 +124,9 @@ function ContactsLoadError(props: ContactsLoadErrorProps) {
 
 function ContactsContent(props: ContactsContentProps) {
 	const [editingContactId, setEditingContactId] = createSignal<string>();
+	const [summaryContactId, setSummaryContactId] = createSignal<string>();
 	const [isDialogOpen, setIsDialogOpen] = createSignal(false);
+	const [isSummaryDialogOpen, setIsSummaryDialogOpen] = createSignal(false);
 	const [listMode, setListMode] = createSignal<ContactListMode>('active');
 	const [query, setQuery] = createSignal('');
 	const [typeFilter, setTypeFilter] = createSignal<ContactTypeFilter>('all');
@@ -163,6 +167,13 @@ function ContactsContent(props: ContactsContentProps) {
 			? undefined
 			: contacts().find((contact) => contact.id === contactId);
 	});
+	const summaryContact = createMemo(() => {
+		const contactId = summaryContactId();
+
+		return contactId === undefined
+			? undefined
+			: contacts().find((contact) => contact.id === contactId);
+	});
 	const dialogMode = createMemo<ContactDialogMode>(() => (
 		editingContact() ? 'edit' : 'create'
 	));
@@ -171,11 +182,14 @@ function ContactsContent(props: ContactsContentProps) {
 
 		return contact ? toDialogValue(contact) : undefined;
 	});
-	const visibleContacts = createMemo(() => filterContacts(contacts(), {
-		archived: listMode() === 'archive',
-		query: query(),
-		type: typeFilter()
-	}));
+	const visibleContacts = createMemo(() => sortContactsByMonthlySpent(
+		filterContacts(contacts(), {
+			archived: listMode() === 'archive',
+			query: query(),
+			type: typeFilter()
+		}),
+		contactExpenses()
+	));
 	const activeCount = createMemo(() => (
 		contacts().filter((contact) => contact.archivedAt === null).length
 	));
@@ -198,6 +212,14 @@ function ContactsContent(props: ContactsContentProps) {
 		setEditingContactId(contactId);
 		resetDialogErrors();
 		setIsDialogOpen(true);
+	};
+
+	const handleSummaryDialogOpenChange = (open: boolean) => {
+		setIsSummaryDialogOpen(open);
+
+		if (!open) {
+			setSummaryContactId(undefined);
+		}
 	};
 
 	const handleArchiveContact = async (contactId: string) => {
@@ -232,12 +254,13 @@ function ContactsContent(props: ContactsContentProps) {
 		}
 	});
 
-	const handleContactClick = (contactId: string) => {
+	const handleOpenSummaryDialog = (contactId: string) => {
 		if (archiveDragAction.consumeClick(contactId)) {
 			return;
 		}
 
-		handleOpenEditDialog(contactId);
+		setSummaryContactId(contactId);
+		setIsSummaryDialogOpen(true);
 	};
 
 	const handleDialogOpenChange = (open: boolean) => {
@@ -500,7 +523,10 @@ function ContactsContent(props: ContactsContentProps) {
 													?? 0
 												}
 												onClick={() => (
-													handleContactClick(contact.id)
+													handleOpenSummaryDialog(contact.id)
+												)}
+												onEdit={() => (
+													handleOpenEditDialog(contact.id)
 												)}
 												onPointerCancel={isDraggable()
 													? archiveDragAction.onPointerCancel
@@ -570,6 +596,12 @@ function ContactsContent(props: ContactsContentProps) {
 					? handleRestoreContact
 					: undefined}
 				onSubmit={handleContactSubmit}
+			/>
+
+			<ContactSummaryDialog
+				contact={summaryContact()}
+				open={isSummaryDialogOpen()}
+				onOpenChange={handleSummaryDialogOpenChange}
 			/>
 		</>
 	);

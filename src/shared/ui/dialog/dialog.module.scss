@@ -41,7 +41,8 @@
     pointer-events: auto;
 
     overflow: hidden;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     gap: var(--space-6);
 
     inline-size: min(100%, var(--dialog-inline-size, #{fn.rem(640)}));
@@ -61,6 +62,7 @@
 
 .header {
     display: flex;
+    flex: none;
     gap: var(--space-5);
     align-items: start;
     justify-content: space-between;
@@ -94,12 +96,15 @@
 .body {
     overflow: auto;
     overscroll-behavior: contain;
+    flex: 1 1 auto;
+
     min-block-size: 0;
     padding-inline: var(--space-7);
 }
 
 .footer {
     display: flex;
+    flex: none;
     flex-wrap: wrap;
     gap: var(--space-4);
     justify-content: flex-end;

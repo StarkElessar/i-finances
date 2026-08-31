@@ -4,6 +4,8 @@ import { createChangeOperationDeletionStateUseCase } from './use-cases/change-op
 import { createCreateOperationUseCase } from './use-cases/create-operation';
 import { createGetAccountBalancesUseCase } from './use-cases/get-account-balances';
 import { createGetAccountLedgerUseCase } from './use-cases/get-account-ledger';
+import { createGetCategoryOperationsUseCase } from './use-cases/get-category-operations';
+import { createGetContactOperationsUseCase } from './use-cases/get-contact-operations';
 import { createGetMonthlyExpenseSummaryUseCase } from './use-cases/get-monthly-expense-summary';
 import { createRecalculateOperationRateUseCase } from './use-cases/recalculate-operation-rate';
 import { createUpdateOperationUseCase } from './use-cases/update-operation';
@@ -26,6 +28,8 @@ export function createOperationService(
 ): OperationService {
 	const context = {
 		accountRepository: dependencies.accountRepository,
+		categoryRepository: dependencies.categoryRepository,
+		contactRepository: dependencies.contactRepository,
 		createId: dependencies.createId ?? randomUUID,
 		exchangeRateResolver: dependencies.exchangeRateResolver,
 		householdResolver: dependencies.householdResolver,
@@ -38,6 +42,8 @@ export function createOperationService(
 		create: createCreateOperationUseCase(context),
 		getAccountBalances: createGetAccountBalancesUseCase(context),
 		getAccountLedger: createGetAccountLedgerUseCase(context),
+		getCategoryOperations: createGetCategoryOperationsUseCase(context),
+		getContactOperations: createGetContactOperationsUseCase(context),
 		getMonthlyExpenseSummary:
 			createGetMonthlyExpenseSummaryUseCase(context),
 		recalculateRate: createRecalculateOperationRateUseCase(context),

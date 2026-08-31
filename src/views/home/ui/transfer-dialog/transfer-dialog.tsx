@@ -1,5 +1,6 @@
 import css from './transfer-dialog.module.scss';
 
+import type { CurrencyCodeValue } from '~/shared/lib';
 import {
 	cn,
 	convertMinorUnitsByExchangeRate,
@@ -20,6 +21,12 @@ import {
 	tryParseLocalDateKey
 } from '~/entities/operation';
 import type { Transfer } from '~/entities/transfer';
+import {
+	formatTransferRateQuoteLabel,
+	getTransferRateQuoteMode,
+	toCanonicalTransferRate,
+	toDisplayTransferRate
+} from '~/entities/transfer';
 
 import { Building2, Trash2, UserRound } from 'lucide-solid';
 import {
@@ -44,6 +51,7 @@ export type TransferDialogSubmitValue = {
 export type TransferDialogProps = {
 	accounts: readonly PersistedAccount[];
 	contacts: readonly PersistedContact[];
+	householdBaseCurrency: CurrencyCodeValue;
 	mode: TransferDialogMode;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (value: TransferDialogSubmitValue) => Promise<void> | void;
@@ -147,23 +155,58 @@ export function TransferDialog(props: TransferDialogProps) {
 		return options;
 	});
 
+	const rateQuoteMode = createMemo(() => {
+		const from = fromAccount();
+		const to = toAccount();
+
+		if (from === undefined || to === undefined) {
+			return undefined;
+		}
+
+		return getTransferRateQuoteMode(
+			from.currency,
+			to.currency,
+			props.householdBaseCurrency
+		);
+	});
+
+	const rateFieldLabel = createMemo(() => {
+		const mode = rateQuoteMode();
+
+		return mode ? formatTransferRateQuoteLabel(mode) : 'Курс';
+	});
+
 	const creditPreview = createMemo(() => {
 		const amountMinor = parseOptionalMoneyInputToMinorUnits(amountInput());
-		const rate = normalizeExchangeRate(rateInput());
+		const from = fromAccount();
 		const target = toAccount();
 
 		if (
 			amountMinor === null
 			|| amountMinor === undefined
 			|| amountMinor <= 0
-			|| rate === undefined
+			|| from === undefined
 			|| target === undefined
 		) {
 			return undefined;
 		}
 
+		const canonicalRate = toCanonicalTransferRate(
+			rateInput(),
+			from.currency,
+			target.currency,
+			props.householdBaseCurrency
+		);
+
+		if (canonicalRate === undefined) {
+			return undefined;
+		}
+
 		try {
-			const toAmountMinor = convertMinorUnitsByExchangeRate(amountMinor, rate);
+			const toAmountMinor = convertMinorUnitsByExchangeRate(
+				amountMinor,
+				canonicalRate
+			);
 
 			return formatMinorUnitsCurrency(toAmountMinor, target.currency);
 		}
@@ -183,7 +226,12 @@ export function TransferDialog(props: TransferDialogProps) {
 			setFromAccountId(transfer.fromAccountId);
 			setToAccountId(transfer.toAccountId);
 			setAmountInput(formatMinorUnitsAsInput(transfer.fromAmountMinor));
-			setRateInput(transfer.exchangeRate);
+			setRateInput(toDisplayTransferRate(
+				transfer.exchangeRate,
+				transfer.exchangeFromCurrency,
+				transfer.exchangeToCurrency,
+				props.householdBaseCurrency
+			));
 			setHappenedOn(transfer.happenedOn);
 			setContactId(transfer.contactId);
 			setComment(transfer.comment);
@@ -207,16 +255,17 @@ export function TransferDialog(props: TransferDialogProps) {
 
 		const fromId = fromAccountId();
 		const toId = toAccountId();
+		const from = fromAccount();
+		const to = toAccount();
 		const amountMinor = parseOptionalMoneyInputToMinorUnits(amountInput());
-		const rate = normalizeExchangeRate(rateInput());
 		const date = tryParseLocalDateKey(happenedOn());
 
-		if (fromId === null) {
+		if (fromId === null || from === undefined) {
 			setLocalError('Выберите счёт списания.');
 			return;
 		}
 
-		if (toId === null) {
+		if (toId === null || to === undefined) {
 			setLocalError('Выберите счёт зачисления.');
 			return;
 		}
@@ -226,7 +275,14 @@ export function TransferDialog(props: TransferDialogProps) {
 			return;
 		}
 
-		if (rate === undefined) {
+		const canonicalRate = toCanonicalTransferRate(
+			rateInput(),
+			from.currency,
+			to.currency,
+			props.householdBaseCurrency
+		);
+
+		if (canonicalRate === undefined || normalizeExchangeRate(rateInput()) === undefined) {
 			setLocalError('Укажите курс обмена.');
 			return;
 		}
@@ -239,7 +295,7 @@ export function TransferDialog(props: TransferDialogProps) {
 		await props.onSubmit({
 			comment: comment(),
 			contactId: contactId(),
-			exchangeRate: rate,
+			exchangeRate: canonicalRate,
 			fromAccountId: fromId,
 			fromAmountMinor: amountMinor,
 			happenedOn: happenedOn(),
@@ -256,7 +312,9 @@ export function TransferDialog(props: TransferDialogProps) {
 							{props.mode === 'edit' ? 'Редактировать перевод' : 'Перевод между счетами'}
 						</Dialog.Title>
 						<Dialog.Description>
-							Сумма списывается с одного счёта и зачисляется на другой по указанному курсу.
+							Сумма списывается с одного счёта и зачисляется на другой.
+							Если одна из валют — базовая валюта семьи, курс вводится как
+							в банке: сколько базовой валюты за 1 единицу иностранной.
 							Перевод не влияет на статистику расходов.
 						</Dialog.Description>
 					</Dialog.Header>
@@ -324,8 +382,8 @@ export function TransferDialog(props: TransferDialogProps) {
 								disabled={props.loading}
 								error={props.fieldErrors?.exchangeRate}
 								inputMode='decimal'
-								label='Курс'
-								placeholder='3,015'
+								label={rateFieldLabel()}
+								placeholder='3,2'
 								required
 								value={rateInput()}
 								onInput={(event) => setRateInput(event.currentTarget.value)}

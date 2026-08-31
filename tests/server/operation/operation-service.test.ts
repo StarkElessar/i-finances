@@ -428,6 +428,106 @@ describe('operation service persistence', () => {
         });
     });
 
+    it('lists category operations for a date range with account names', async () => {
+        await createOperation({
+            amountMinor: 400,
+            happenedOn: '2026-08-05',
+            title: 'Вне периода'
+        });
+        await createOperation({
+            amountMinor: 700,
+            happenedOn: '2026-07-24',
+            title: 'Ранняя'
+        });
+        await createOperation({
+            amountMinor: 1_200,
+            happenedOn: '2026-07-24',
+            title: 'Поздняя'
+        });
+        await createOperation({
+            amountMinor: 500,
+            categoryId: null,
+            happenedOn: '2026-07-24',
+            title: 'Без категории'
+        });
+
+        const result = await operationService.getCategoryOperations(USER_ID, {
+            categoryId: CATEGORY_ID,
+            end: '2026-07-31',
+            start: '2026-07-01'
+        });
+
+        expect(result).toMatchObject({
+            categoryId: CATEGORY_ID,
+            householdBaseCurrency: CurrencyCode.BYN,
+            range: {
+                end: '2026-07-31',
+                start: '2026-07-01'
+            }
+        });
+        expect(result.items.map((item) => item.title)).toEqual([
+            'Поздняя',
+            'Ранняя'
+        ]);
+        expect(result.items[0]).toMatchObject({
+            accountName: 'Долларовая карта',
+            amountInHouseholdBaseCurrencyMinor: 3_900,
+            amountMinor: 1_200,
+            categoryId: CATEGORY_ID,
+            type: 'expense'
+        });
+    });
+
+    it('lists contact operations for a date range with account names', async () => {
+        await createOperation({
+            amountMinor: 400,
+            happenedOn: '2026-08-05',
+            title: 'Вне периода'
+        });
+        await createOperation({
+            amountMinor: 700,
+            happenedOn: '2026-07-24',
+            title: 'Ранняя'
+        });
+        await createOperation({
+            amountMinor: 1_200,
+            happenedOn: '2026-07-24',
+            title: 'Поздняя'
+        });
+        await createOperation({
+            amountMinor: 500,
+            contactId: null,
+            happenedOn: '2026-07-24',
+            title: 'Без контакта'
+        });
+
+        const result = await operationService.getContactOperations(USER_ID, {
+            contactId: CONTACT_ID,
+            end: '2026-07-31',
+            start: '2026-07-01'
+        });
+
+        expect(result).toMatchObject({
+            contactId: CONTACT_ID,
+            householdBaseCurrency: CurrencyCode.BYN,
+            range: {
+                end: '2026-07-31',
+                start: '2026-07-01'
+            }
+        });
+        expect(result.items.map((item) => item.title)).toEqual([
+            'Поздняя',
+            'Ранняя'
+        ]);
+        expect(result.items[0]).toMatchObject({
+            accountName: 'Долларовая карта',
+            amountInHouseholdBaseCurrencyMinor: 3_900,
+            amountMinor: 1_200,
+            contactId: CONTACT_ID,
+            type: 'expense'
+        });
+    });
+
     it('recalculates an existing operation only on explicit request', async () => {
         const created = await createOperation();
 

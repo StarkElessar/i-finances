@@ -21,8 +21,7 @@ import {
 	filterOperationRows,
 	getAccountLedger,
 	getOperationPeriodRange,
-	parseLocalDateKey,
-	shiftOperationPeriod
+	parseLocalDateKey
 } from '~/entities/operation';
 
 import { createAsync } from '@solidjs/router';
@@ -49,10 +48,18 @@ import { createMemo, createSignal, For, Show } from 'solid-js';
 type OperationsTableProps = {
 	account: Account;
 	categories: readonly Category[];
+	/** Canonical period start date key from the route (`YYYY-MM-DD`). */
+	periodFrom: string;
+	/** Controlled period display mode from the route search string. */
+	periodMode: OperationPeriodMode;
 	selectedOperationId?: string;
 	onCreateOperation: () => void;
 	onCreateTransfer: () => void;
 	onOperationSelect: (operation: OperationWithBalance) => void;
+	/** Notifies the parent when the user switches week/month/year. */
+	onPeriodModeChange: (mode: OperationPeriodMode) => void;
+	/** Notifies the parent when the user moves to an adjacent period. */
+	onPeriodMove: (offset: number) => void;
 };
 
 type OperationTableGroupItem = {
@@ -226,13 +233,14 @@ const columns: GridColumn<OperationTableItem>[] = [
 export function OperationsTable(props: OperationsTableProps) {
 	let searchInput: HTMLInputElement | undefined;
 	const currentDate = new Date();
-	const [periodMode, setPeriodMode] = createSignal<OperationPeriodMode>('month');
-	const [periodAnchor, setPeriodAnchor] = createSignal(new Date());
 	const [sort, setSort] = createSignal<OperationSort>({ direction: 'desc', field: 'date' });
 	const [isSearchOpen, setIsSearchOpen] = createSignal(false);
 	const [searchQuery, setSearchQuery] = createSignal('');
 
-	const periodRange = createMemo(() => getOperationPeriodRange(periodAnchor(), periodMode()));
+	const periodAnchor = createMemo(() => parseLocalDateKey(props.periodFrom));
+	const periodRange = createMemo(() => (
+		getOperationPeriodRange(periodAnchor(), props.periodMode)
+	));
 	const ledger = createAsync(() => getAccountLedger({
 		accountId: props.account.id,
 		...periodRange()
@@ -301,13 +309,13 @@ export function OperationsTable(props: OperationsTableProps) {
 	};
 
 	const handlePeriodModeChange = (mode: OperationPeriodMode) => {
-		if (periodMode() !== mode) {
-			setPeriodMode(mode);
+		if (props.periodMode !== mode) {
+			props.onPeriodModeChange(mode);
 		}
 	};
 
 	const handleMovePeriod = (offset: number) => {
-		setPeriodAnchor((anchorDate) => shiftOperationPeriod(anchorDate, periodMode(), offset));
+		props.onPeriodMove(offset);
 	};
 
 	const handleOpenSearch = () => {
@@ -374,9 +382,9 @@ export function OperationsTable(props: OperationsTableProps) {
 						<For each={PERIOD_MODES}>
 							{(mode) => (
 								<button
-									aria-pressed={periodMode() === mode}
-									class={cn(css.periodButton, periodMode() === mode && css.periodButtonActive)}
-									disabled={periodMode() === mode}
+									aria-pressed={props.periodMode === mode}
+									class={cn(css.periodButton, props.periodMode === mode && css.periodButtonActive)}
+									disabled={props.periodMode === mode}
 									type='button'
 									onClick={() => handlePeriodModeChange(mode)}
 								>
@@ -397,10 +405,10 @@ export function OperationsTable(props: OperationsTableProps) {
 					>
 						<ChevronLeft size={18}/>
 					</Button>
-					<span class={css.periodLabel}>{formatPeriodLabel(periodAnchor(), periodMode())}</span>
+					<span class={css.periodLabel}>{formatPeriodLabel(periodAnchor(), props.periodMode)}</span>
 					<Button
 						aria-label='Следующий период'
-						disabled={!canMoveToNextOperationPeriod(periodAnchor(), periodMode(), currentDate)}
+						disabled={!canMoveToNextOperationPeriod(periodAnchor(), props.periodMode, currentDate)}
 						iconOnly
 						size='sm'
 						variant='ghost'

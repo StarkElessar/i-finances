@@ -1,6 +1,8 @@
 import type {
 	AccountBalance,
 	AccountLedger,
+	CategoryOperations,
+	ContactOperations,
 	MonthlyExpenseSummary
 } from '~/entities/operation/model/types';
 
@@ -23,6 +25,8 @@ import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
 	GetAccountLedgerInput,
+	GetCategoryOperationsInput,
+	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	OperationCommandResult,
 	RecalculateOperationRateInput,
@@ -32,6 +36,8 @@ import {
 	changeOperationDeletionStateInputSchema,
 	createOperationInputSchema,
 	getAccountLedgerInputSchema,
+	getCategoryOperationsInputSchema,
+	getContactOperationsInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
 	recalculateOperationRateInputSchema,
 	updateOperationInputSchema
@@ -69,6 +75,28 @@ async function readAccountBalances(): Promise<AccountBalance[]> {
 	return operationService.getAccountBalances(session.user.id);
 }
 
+async function readCategoryOperations(
+	input: GetCategoryOperationsInput
+): Promise<CategoryOperations> {
+	'use server';
+
+	const parsedInput = getCategoryOperationsInputSchema.parse(input);
+	const session = await requireUser();
+
+	return operationService.getCategoryOperations(session.user.id, parsedInput);
+}
+
+async function readContactOperations(
+	input: GetContactOperationsInput
+): Promise<ContactOperations> {
+	'use server';
+
+	const parsedInput = getContactOperationsInputSchema.parse(input);
+	const session = await requireUser();
+
+	return operationService.getContactOperations(session.user.id, parsedInput);
+}
+
 async function readMonthlyExpenseSummary(
 	input: GetMonthlyExpenseSummaryInput
 ): Promise<MonthlyExpenseSummary> {
@@ -85,6 +113,14 @@ async function readMonthlyExpenseSummary(
 
 export const getAccountLedger = query(readAccountLedger, 'account-ledger');
 export const getAccountBalances = query(readAccountBalances, 'account-balances');
+export const getCategoryOperations = query(
+	readCategoryOperations,
+	'category-operations'
+);
+export const getContactOperations = query(
+	readContactOperations,
+	'contact-operations'
+);
 export const getMonthlyExpenseSummary = query(
 	readMonthlyExpenseSummary,
 	'monthly-expense-summary'
@@ -94,6 +130,8 @@ async function revalidateOperationQueries(): Promise<void> {
 	await Promise.all([
 		revalidate(getAccountLedger.key),
 		revalidate(getAccountBalances.key),
+		revalidate(getCategoryOperations.key),
+		revalidate(getContactOperations.key),
 		revalidate(getMonthlyExpenseSummary.key)
 	]);
 }

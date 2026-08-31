@@ -43,6 +43,26 @@ export function filterContacts(
 		.toSorted((left, right) => CONTACT_COLLATOR.compare(left.name, right.name));
 }
 
+/**
+ * Sorts contacts by monthly spent amount descending; ties break by name.
+ */
+export function sortContactsByMonthlySpent(
+	contacts: readonly PersistedContact[],
+	spentMinorById: Readonly<Record<string, number>>
+): PersistedContact[] {
+	return contacts.toSorted((left, right) => {
+		const spentDelta = (
+			(spentMinorById[right.id] ?? 0) - (spentMinorById[left.id] ?? 0)
+		);
+
+		if (spentDelta !== 0) {
+			return spentDelta;
+		}
+
+		return CONTACT_COLLATOR.compare(left.name, right.name);
+	});
+}
+
 export function getSelectableContacts(
 	contacts: readonly PersistedContact[]
 ): PersistedContact[] {

@@ -1,5 +1,17 @@
 import type { OperationDateRange, OperationPeriodMode } from './table-types';
 
+/**
+ * Resolved period mode + canonical start date for URL / UI sync.
+ */
+export type OperationPeriodSearchState = {
+	anchor: Date;
+	from: string;
+	period: OperationPeriodMode;
+};
+
+/**
+ * Builds the inclusive date range for an operations period around an anchor date.
+ */
 export function getOperationPeriodRange(anchorDate: Date, mode: OperationPeriodMode): OperationDateRange {
 	const startDate = startOfPeriod(anchorDate, mode);
 	const endDate = new Date(startDate);
@@ -20,6 +32,9 @@ export function getOperationPeriodRange(anchorDate: Date, mode: OperationPeriodM
 	};
 }
 
+/**
+ * Shifts the period anchor by a signed number of weeks, months, or years.
+ */
 export function shiftOperationPeriod(
 	anchorDate: Date,
 	mode: OperationPeriodMode,
@@ -40,6 +55,9 @@ export function shiftOperationPeriod(
 	return shiftedDate;
 }
 
+/**
+ * Whether the next period after the anchor is still not past the current period.
+ */
 export function canMoveToNextOperationPeriod(
 	anchorDate: Date,
 	mode: OperationPeriodMode,
@@ -51,6 +69,9 @@ export function canMoveToNextOperationPeriod(
 	return nextPeriod.getTime() <= currentPeriod.getTime();
 }
 
+/**
+ * Formats a local calendar date as `YYYY-MM-DD`.
+ */
 export function formatLocalDateKey(date: Date): string {
 	const year = String(date.getFullYear());
 	const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -85,6 +106,9 @@ export function tryParseLocalDateKey(dateKey: string): Date | undefined {
 	return date;
 }
 
+/**
+ * Parses a required local date key or throws when the value is invalid.
+ */
 export function parseLocalDateKey(dateKey: string): Date {
 	const date = tryParseLocalDateKey(dateKey);
 
@@ -95,7 +119,10 @@ export function parseLocalDateKey(dateKey: string): Date {
 	return date;
 }
 
-function startOfPeriod(date: Date, mode: OperationPeriodMode): Date {
+/**
+ * Snaps a date to the start of its week (Monday), month, or year.
+ */
+export function startOfPeriod(date: Date, mode: OperationPeriodMode): Date {
 	const startDate = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 12);
 
 	if (mode === 'week') {
@@ -111,4 +138,36 @@ function startOfPeriod(date: Date, mode: OperationPeriodMode): Date {
 	}
 
 	return startDate;
+}
+
+type ResolveOperationPeriodSearchStateInput = {
+	from?: string;
+	now?: Date;
+	period?: OperationPeriodMode;
+};
+
+/**
+ * Canonicalizes optional URL period/from into a safe mode + period-start date key.
+ * Invalid or future-beyond-current `from` values fall back to the current period.
+ */
+export function resolveOperationPeriodSearchState(
+	input: ResolveOperationPeriodSearchStateInput = {}
+): OperationPeriodSearchState {
+	const now = input.now ?? new Date();
+	const period = input.period ?? 'month';
+	const parsedFrom = input.from === undefined
+		? undefined
+		: tryParseLocalDateKey(input.from);
+	let anchor = startOfPeriod(parsedFrom ?? now, period);
+	const currentPeriodStart = startOfPeriod(now, period);
+
+	if (anchor.getTime() > currentPeriodStart.getTime()) {
+		anchor = currentPeriodStart;
+	}
+
+	return {
+		anchor,
+		from: formatLocalDateKey(anchor),
+		period
+	};
 }

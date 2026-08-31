@@ -15,6 +15,7 @@ import {
 	getCategories,
 	getCategoryBudgetSummary,
 	restoreCategory as restoreCategoryAction,
+	sortCategoriesByMonthlySpent,
 	updateCategory as updateCategoryAction
 } from '~/entities/category';
 import type { MonthlyExpenseSummary } from '~/entities/operation';
@@ -48,6 +49,7 @@ import {
 import { CategoryCard } from './ui/category-card';
 import type { CategoryDialogMode, CategoryDialogValue } from './ui/category-dialog';
 import { CategoryDialog } from './ui/category-dialog';
+import { CategorySummaryDialog } from './ui/category-summary-dialog';
 
 type CategoryListMode = 'active' | 'archive';
 
@@ -122,7 +124,9 @@ function CategoriesLoadError(props: CategoriesLoadErrorProps) {
 
 function CategoriesContent(props: CategoriesContentProps) {
 	const [editingCategoryId, setEditingCategoryId] = createSignal<string>();
+	const [summaryCategoryId, setSummaryCategoryId] = createSignal<string>();
 	const [isCategoryDialogOpen, setIsCategoryDialogOpen] = createSignal(false);
+	const [isSummaryDialogOpen, setIsSummaryDialogOpen] = createSignal(false);
 	const [listMode, setListMode] = createSignal<CategoryListMode>('active');
 	const [dialogError, setDialogError] = createSignal<string>();
 	const [dialogFieldErrors, setDialogFieldErrors]
@@ -151,17 +155,28 @@ function CategoriesContent(props: CategoriesContentProps) {
 	const isDialogMutationPending = () => Boolean(
 		createSubmission.pending || updateSubmission.pending
 	);
+	const categoryExpenses = () => (
+		props.monthlySummary()?.categoryExpensesMinor ?? {}
+	);
 	const activeCategories = createMemo(() => (
 		categories().filter((category) => category.archivedAt === null)
 	));
 	const archivedCategories = createMemo(() => (
 		categories().filter((category) => category.archivedAt !== null)
 	));
-	const visibleCategories = createMemo(() => (
-		listMode() === 'active' ? activeCategories() : archivedCategories()
+	const visibleCategories = createMemo(() => sortCategoriesByMonthlySpent(
+		listMode() === 'active' ? activeCategories() : archivedCategories(),
+		categoryExpenses()
 	));
 	const editableCategory = createMemo(() => {
 		const categoryId = editingCategoryId();
+
+		return categoryId === undefined
+			? undefined
+			: categories().find((category) => category.id === categoryId);
+	});
+	const summaryCategory = createMemo(() => {
+		const categoryId = summaryCategoryId();
 
 		return categoryId === undefined
 			? undefined
@@ -176,7 +191,7 @@ function CategoriesContent(props: CategoriesContentProps) {
 		return category ? toDialogValue(category) : undefined;
 	});
 	const categorySummaries = createMemo(() => {
-		const expenses = props.monthlySummary()?.categoryExpensesMinor ?? {};
+		const expenses = categoryExpenses();
 
 		return new Map(categories().map((category) => [
 			category.id,
@@ -199,6 +214,14 @@ function CategoriesContent(props: CategoriesContentProps) {
 		setEditingCategoryId(categoryId);
 		resetDialogErrors();
 		setIsCategoryDialogOpen(true);
+	};
+
+	const handleSummaryDialogOpenChange = (open: boolean) => {
+		setIsSummaryDialogOpen(open);
+
+		if (!open) {
+			setSummaryCategoryId(undefined);
+		}
 	};
 
 	const handleArchiveCategory = async (categoryId: string) => {
@@ -233,12 +256,13 @@ function CategoriesContent(props: CategoriesContentProps) {
 		}
 	});
 
-	const handleCategoryClick = (categoryId: string) => {
+	const handleOpenSummaryDialog = (categoryId: string) => {
 		if (archiveDragAction.consumeClick(categoryId)) {
 			return;
 		}
 
-		handleOpenEditDialog(categoryId);
+		setSummaryCategoryId(categoryId);
+		setIsSummaryDialogOpen(true);
 	};
 
 	const handleCategoryDialogOpenChange = (open: boolean) => {
@@ -428,7 +452,10 @@ function CategoriesContent(props: CategoriesContentProps) {
 													category.id
 												)}
 												onClick={() => (
-													handleCategoryClick(category.id)
+													handleOpenSummaryDialog(category.id)
+												)}
+												onEdit={() => (
+													handleOpenEditDialog(category.id)
 												)}
 												onPointerCancel={isDraggable()
 													? archiveDragAction.onPointerCancel
@@ -494,6 +521,13 @@ function CategoriesContent(props: CategoriesContentProps) {
 					? handleRestoreCategory
 					: undefined}
 				onSubmit={handleCategorySubmit}
+			/>
+
+			<CategorySummaryDialog
+				categories={categories()}
+				category={summaryCategory()}
+				open={isSummaryDialogOpen()}
+				onOpenChange={handleSummaryDialogOpenChange}
 			/>
 		</>
 	);
