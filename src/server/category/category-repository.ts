@@ -29,6 +29,7 @@ export type CategoryAggregateRecord = {
 export type CategoryUpdateValues = {
 	color: string;
 	description: string;
+	icon: string;
 	monthlyBudgetMinor: number | null;
 	name: string;
 	normalizedName: string;

@@ -21,6 +21,14 @@ export {
 	restoreCategory,
 	updateCategory
 } from './api/category.server';
+export type { CategoryIconId } from './model/icons';
+export {
+	CATEGORY_ICON_IDS,
+	CATEGORY_ICON_SEED_BY_NORMALIZED_NAME,
+	DEFAULT_CATEGORY_ICON_ID,
+	isCategoryIconId,
+	resolveCategoryIconId
+} from './model/icons';
 export {
 	amountToMinorUnits,
 	formatMinorUnitsAsInput,
@@ -44,3 +52,11 @@ export type {
 	CategoryCollection,
 	PersistedCategory
 } from './model/types';
+export type {
+	CategoryIconPickerProps,
+	CategoryIconProps
+} from './ui';
+export {
+	CategoryIcon,
+	CategoryIconPicker
+} from './ui';

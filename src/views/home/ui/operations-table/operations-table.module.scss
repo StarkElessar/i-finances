@@ -182,13 +182,6 @@
     color: var(--reference-color);
 
     background-color: color-mix(in srgb, var(--reference-color) 13%, var(--color-surface));
-
-    span {
-        inline-size: fn.rem(8);
-        block-size: fn.rem(8);
-        border: 1.5px solid currentcolor;
-        border-radius: fn.rem(3);
-    }
 }
 
 .group-row {

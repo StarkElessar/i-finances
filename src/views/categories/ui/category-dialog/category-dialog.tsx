@@ -5,9 +5,14 @@ import { Button, Dialog, TextField } from '~/shared/ui';
 import { ColorPicker } from '~/shared/ui/color-picker';
 
 import {
+	CategoryIcon,
+	CategoryIconPicker,
+	DEFAULT_CATEGORY_ICON_ID,
 	formatMinorUnitsAsInput,
 	formatMinorUnitsCurrency,
-	parseOptionalMoneyInputToMinorUnits
+	parseOptionalMoneyInputToMinorUnits,
+	resolveCategoryIconId,
+	type CategoryIconId
 } from '~/entities/category';
 
 import { ArchiveRestore } from 'lucide-solid';
@@ -26,6 +31,7 @@ export type CategoryDialogMode = 'create' | 'edit';
 export type CategoryDialogValue = {
 	color: string;
 	description: string;
+	icon: CategoryIconId;
 	keywords: string[];
 	monthlyBudgetMinor: number | null;
 	name: string;
@@ -72,6 +78,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
 	const [categoryDescription, setCategoryDescription] = createSignal('');
 	const [categoryBudget, setCategoryBudget] = createSignal('');
 	const [categoryColor, setCategoryColor] = createSignal<string>(DEFAULT_CATEGORY_COLOR);
+	const [categoryIcon, setCategoryIcon] = createSignal<CategoryIconId>(DEFAULT_CATEGORY_ICON_ID);
 	const [keywords, setKeywords] = createSignal<string[]>([]);
 	const [budgetError, setBudgetError] = createSignal<string>();
 
@@ -83,19 +90,6 @@ export function CategoryDialog(props: CategoryDialogProps) {
 	const previewBudget = () => resolvePositiveBudget(parsedBudget());
 	const dialogTitle = () => isEditMode() ? 'Редактирование категории' : 'Новая категория';
 	const submitLabel = () => isEditMode() ? 'Сохранить' : 'Добавить категорию';
-
-	createEffect(() => {
-		if (props.open) {
-			const initialValue = props.initialValue;
-
-			setCategoryName(initialValue?.name ?? '');
-			setCategoryDescription(initialValue?.description ?? '');
-			setCategoryBudget(resolveBudgetInputValue(initialValue?.monthlyBudgetMinor));
-			setCategoryColor(initialValue?.color ?? DEFAULT_CATEGORY_COLOR);
-			setKeywords([...(initialValue?.keywords ?? [])]);
-			setBudgetError(undefined);
-		}
-	});
 
 	const handleOpenChange = (open: boolean) => {
 		props.onOpenChange(open);
@@ -132,6 +126,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
 		props.onSubmit({
 			color: categoryColor(),
 			description: categoryDescription().trim(),
+			icon: categoryIcon(),
 			keywords: keywords(),
 			monthlyBudgetMinor: resolvePositiveBudget(budget),
 			name
@@ -141,6 +136,20 @@ export function CategoryDialog(props: CategoryDialogProps) {
 	const handleRestore = () => {
 		void props.onRestore?.();
 	};
+
+	createEffect(() => {
+		if (props.open) {
+			const initialValue = props.initialValue;
+
+			setCategoryName(initialValue?.name ?? '');
+			setCategoryDescription(initialValue?.description ?? '');
+			setCategoryBudget(resolveBudgetInputValue(initialValue?.monthlyBudgetMinor));
+			setCategoryColor(initialValue?.color ?? DEFAULT_CATEGORY_COLOR);
+			setCategoryIcon(resolveCategoryIconId(initialValue?.icon ?? DEFAULT_CATEGORY_ICON_ID));
+			setKeywords([...(initialValue?.keywords ?? [])]);
+			setBudgetError(undefined);
+		}
+	});
 
 	return (
 		<Dialog.Root
@@ -218,6 +227,12 @@ export function CategoryDialog(props: CategoryDialogProps) {
 							onChange={setCategoryColor}
 						/>
 
+						<CategoryIconPicker
+							label='Иконка'
+							value={categoryIcon()}
+							onChange={setCategoryIcon}
+						/>
+
 						<KeywordInput
 							error={props.fieldErrors?.keywords}
 							hint='Запятая или Enter создают чипс'
@@ -230,7 +245,7 @@ export function CategoryDialog(props: CategoryDialogProps) {
 							<div class={css.previewLabel}>Превью</div>
 							<div class={css.previewCard} style={getPreviewStyle(categoryColor())}>
 								<span class={css.previewIcon} aria-hidden='true'>
-									<span/>
+									<CategoryIcon icon={categoryIcon()} size={18}/>
 								</span>
 								<span class={css.previewContent}>
 									<span class={css.previewTitle}>{categoryName().trim() || 'Новая категория'}</span>

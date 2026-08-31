@@ -11,7 +11,12 @@ import { Combobox } from '~/shared/ui/combobox';
 import { Dialog } from '~/shared/ui/dialog';
 import { TextField } from '~/shared/ui/text-field';
 
-import { findSuggestedCategory } from '~/entities/category';
+import {
+	CategoryIcon,
+	DEFAULT_CATEGORY_ICON_ID,
+	findSuggestedCategory,
+	resolveCategoryIconId
+} from '~/entities/category';
 import type { ContactType } from '~/entities/contact';
 import {
 	formatLocalDateKey,
@@ -60,6 +65,7 @@ type OperationDetailsFormProps = Pick<
 type CategoryOption = {
 	color: string;
 	disabled: boolean;
+	icon: string;
 	id: string;
 	name: string;
 };
@@ -116,6 +122,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 		const options = props.categories.map((category) => ({
 			color: category.color,
 			disabled: false,
+			icon: resolveCategoryIconId(category.icon),
 			id: category.id,
 			name: category.name
 		}));
@@ -129,6 +136,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 			options.push({
 				color: '#7d8799',
 				disabled: true,
+				icon: DEFAULT_CATEGORY_ICON_ID,
 				id: operation.categoryId,
 				name: operation.categoryName
 			});
@@ -555,7 +563,9 @@ function CategoryOptionContent(props: { compact?: boolean; option: CategoryOptio
 
 	return (
 		<span class={css.optionLayout} style={style()}>
-			<span aria-hidden='true' class={css.categoryIcon}><span/></span>
+			<span aria-hidden='true' class={css.categoryIcon}>
+				<CategoryIcon icon={props.option.icon} size={16}/>
+			</span>
 			<span class={css.optionText}>
 				<strong>{props.option.name}</strong>
 				<Show when={!props.compact && props.option.disabled}>

@@ -23,6 +23,7 @@ export const categories = sqliteTable(
 		normalizedName: text('normalized_name').notNull(),
 		description: text('description').notNull().default(''),
 		color: text('color').notNull(),
+		icon: text('icon').notNull().default('tag'),
 		monthlyBudgetMinor: integer('monthly_budget_minor'),
 		archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
 		createdByUserId: text('created_by_user_id')

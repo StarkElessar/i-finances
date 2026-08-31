@@ -33,6 +33,7 @@ export function createCreateCategoryUseCase(
 				createdByUserId: userId,
 				description: input.description,
 				householdId: household.id,
+				icon: input.icon,
 				id: categoryId,
 				monthlyBudgetMinor: input.monthlyBudgetMinor,
 				name,

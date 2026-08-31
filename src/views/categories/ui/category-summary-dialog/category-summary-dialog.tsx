@@ -11,6 +11,7 @@ import {
 import { Button, Dialog } from '~/shared/ui';
 
 import type { Category, PersistedCategory } from '~/entities/category';
+import { CategoryIcon } from '~/entities/category';
 import { toCurrencyExchangeRates } from '~/entities/exchange-rate';
 import { getCurrentExchangeRates } from '~/entities/exchange-rate/api';
 import type {
@@ -164,7 +165,22 @@ export function CategorySummaryDialog(props: CategorySummaryDialogProps) {
 				<Dialog.Content class={css.dialog}>
 					<Dialog.Header closeLabel='Закрыть сводку категории'>
 						<Dialog.Kicker>Сводка</Dialog.Kicker>
-						<Dialog.Title>{props.category?.name ?? 'Категория'}</Dialog.Title>
+						<Dialog.Title>
+							<span class={css.titleWithIcon}>
+								<Show when={props.category}>
+									{(category) => (
+										<span
+											aria-hidden='true'
+											class={css.titleIcon}
+											style={{ '--category-color': category().color }}
+										>
+											<CategoryIcon icon={category().icon} size={18}/>
+										</span>
+									)}
+								</Show>
+								<span>{props.category?.name ?? 'Категория'}</span>
+							</span>
+						</Dialog.Title>
 						<Dialog.Description>
 							Операции категории за выбранный период
 						</Dialog.Description>

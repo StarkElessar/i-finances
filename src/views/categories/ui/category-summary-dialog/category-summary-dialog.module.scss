@@ -18,6 +18,31 @@
     min-block-size: 0;
 }
 
+.title-with-icon {
+    display: inline-flex;
+    gap: var(--space-3);
+    align-items: center;
+    min-inline-size: 0;
+}
+
+.title-icon {
+    --category-color: var(--color-primary);
+
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(32);
+    block-size: fn.rem(32);
+    border: 1px solid color-mix(in srgb, var(--category-color) 34%, var(--color-border));
+    border-radius: var(--radius-md);
+
+    color: var(--category-color);
+
+    background-color: color-mix(in srgb, var(--category-color) 12%, var(--color-surface));
+}
+
 .controls {
     display: grid;
     flex: none;

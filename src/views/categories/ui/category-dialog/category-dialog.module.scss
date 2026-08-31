@@ -133,13 +133,6 @@
     color: var(--category-color);
 
     background-color: color-mix(in srgb, var(--category-color) 12%, var(--color-surface));
-
-    span {
-        inline-size: fn.rem(14);
-        block-size: fn.rem(14);
-        border: 2px solid currentcolor;
-        border-radius: var(--radius-xs);
-    }
 }
 
 .preview-content {

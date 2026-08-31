@@ -5,10 +5,12 @@ import { resolve } from 'node:path';
 import { and, eq } from 'drizzle-orm';
 
 import {
+    CATEGORY_ICON_SEED_BY_NORMALIZED_NAME,
+    DEFAULT_CATEGORY_ICON_ID,
     normalizeCategoryIdentity,
     normalizeCategoryKeyword,
     normalizeCategoryName
-} from '../src/entities/category/model/normalization';
+} from '../src/entities/category';
 import { db, sqlite } from '../src/server/db/client';
 import {
     categories,
@@ -305,6 +307,12 @@ function importCategories(options: CliOptions): void {
     db.transaction((transaction) => {
         categoriesToCreate.forEach((category) => {
             const categoryId = randomUUID();
+            const normalizedName = normalizeCategoryIdentity(category.name);
+            const seededIcon = Object.hasOwn(CATEGORY_ICON_SEED_BY_NORMALIZED_NAME, normalizedName)
+                ? CATEGORY_ICON_SEED_BY_NORMALIZED_NAME[
+                    normalizedName as keyof typeof CATEGORY_ICON_SEED_BY_NORMALIZED_NAME
+                ]
+                : DEFAULT_CATEGORY_ICON_ID;
 
             transaction.insert(categories)
                 .values({
@@ -313,10 +321,11 @@ function importCategories(options: CliOptions): void {
                     createdAt: timestamp,
                     createdByUserId: importUser.userId,
                     householdId: importUser.householdId,
+                    icon: seededIcon,
                     id: categoryId,
                     monthlyBudgetMinor: null,
                     name: category.name,
-                    normalizedName: normalizeCategoryIdentity(category.name),
+                    normalizedName,
                     updatedAt: timestamp,
                     version: 1
                 })

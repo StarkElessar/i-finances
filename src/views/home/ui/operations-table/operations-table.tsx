@@ -8,6 +8,11 @@ import { TextField } from '~/shared/ui/text-field';
 
 import type { Account } from '~/entities/account';
 import type { Category } from '~/entities/category';
+import {
+	CategoryIcon,
+	DEFAULT_CATEGORY_ICON_ID,
+	resolveCategoryIconId
+} from '~/entities/category';
 import type {
 	OperationGroup,
 	OperationPeriodMode,
@@ -69,6 +74,7 @@ type OperationTableGroupItem = {
 
 type OperationTableOperationItem = {
 	categoryColor: string;
+	categoryIcon: string;
 	kind: 'operation';
 	operation: OperationWithBalance;
 };
@@ -180,7 +186,9 @@ const columns: GridColumn<OperationTableItem>[] = [
 							style={{ '--reference-color': item().categoryColor }}
 							title={label()}
 						>
-							<span aria-hidden='true' class={css.categoryIcon}><span/></span>
+							<span aria-hidden='true' class={css.categoryIcon}>
+								<CategoryIcon icon={item().categoryIcon} size={14}/>
+							</span>
 							<span>{label()}</span>
 						</span>
 					);
@@ -266,6 +274,24 @@ export function OperationsTable(props: OperationsTableProps) {
 
 		return colorByName;
 	});
+	const categoryIconById = createMemo(() => {
+		const iconById = new Map<string, string>();
+
+		props.categories.forEach((category) => {
+			iconById.set(category.id, resolveCategoryIconId(category.icon));
+		});
+
+		return iconById;
+	});
+	const categoryIconByName = createMemo(() => {
+		const iconByName = new Map<string, string>();
+
+		props.categories.forEach((category) => {
+			iconByName.set(category.name, resolveCategoryIconId(category.icon));
+		});
+
+		return iconByName;
+	});
 	const resolveCategoryColor = (operation: OperationWithBalance): string => {
 		if (operation.categoryId) {
 			const colorById = categoryColorById().get(operation.categoryId);
@@ -279,11 +305,25 @@ export function OperationsTable(props: OperationsTableProps) {
 			? categoryColorByName().get(operation.categoryName) ?? FALLBACK_CATEGORY_COLOR
 			: FALLBACK_CATEGORY_COLOR;
 	};
+	const resolveCategoryIcon = (operation: OperationWithBalance): string => {
+		if (operation.categoryId) {
+			const iconById = categoryIconById().get(operation.categoryId);
+
+			if (iconById) {
+				return iconById;
+			}
+		}
+
+		return operation.categoryName
+			? categoryIconByName().get(operation.categoryName) ?? DEFAULT_CATEGORY_ICON_ID
+			: DEFAULT_CATEGORY_ICON_ID;
+	};
 	const tableItems = createMemo<OperationTableItem[]>(() => (
 		groups().flatMap((group) => [
 			{ group, kind: 'group' as const },
 			...group.operations.map((operation) => ({
 				categoryColor: resolveCategoryColor(operation),
+				categoryIcon: resolveCategoryIcon(operation),
 				kind: 'operation' as const,
 				operation
 			}))
@@ -346,6 +386,7 @@ export function OperationsTable(props: OperationsTableProps) {
 				<OperationGroupRow
 					group={item.group}
 					resolveCategoryColor={resolveCategoryColor}
+					resolveCategoryIcon={resolveCategoryIcon}
 				/>
 			);
 		}
@@ -512,6 +553,7 @@ export function OperationsTable(props: OperationsTableProps) {
 function OperationGroupRow(props: {
 	group: OperationGroup;
 	resolveCategoryColor: (operation: OperationWithBalance) => string;
+	resolveCategoryIcon: (operation: OperationWithBalance) => string;
 }) {
 	const currency = () => props.group.operations[0]?.currency;
 	const categoryColor = () => {
@@ -519,12 +561,17 @@ function OperationGroupRow(props: {
 
 		return props.resolveCategoryColor(operation);
 	};
+	const categoryIcon = () => {
+		const operation = props.group.operations[0];
+
+		return props.resolveCategoryIcon(operation);
+	};
 	const groupStyle = (): JSX.CSSProperties => ({ '--group-color': categoryColor() });
 
 	return (
 		<div class={css.groupRow} style={groupStyle()}>
 			<span class={css.groupHeading}>
-				<GroupIcon group={props.group}/>
+				<GroupIcon categoryIcon={categoryIcon()} group={props.group}/>
 				<span>{formatGroupLabel(props.group)}</span>
 			</span>
 			<Show when={props.group.type === 'date' && currency()}>
@@ -560,13 +607,17 @@ function OperationGroupRow(props: {
 	);
 }
 
-function GroupIcon(props: { group: OperationGroup }) {
+function GroupIcon(props: { categoryIcon: string; group: OperationGroup }) {
 	if (props.group.type === 'date') {
 		return <CalendarDays aria-hidden='true' size={15}/>;
 	}
 
 	if (props.group.type === 'category') {
-		return <span aria-hidden='true' class={css.groupCategoryIcon}><span/></span>;
+		return (
+			<span aria-hidden='true' class={css.groupCategoryIcon}>
+				<CategoryIcon icon={props.categoryIcon} size={14}/>
+			</span>
+		);
 	}
 
 	if (props.group.type === 'contact') {

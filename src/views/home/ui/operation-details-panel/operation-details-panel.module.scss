@@ -334,15 +334,6 @@
     background-color: color-mix(in srgb, var(--option-color) 12%, var(--color-surface));
 }
 
-.category-icon {
-    span {
-        inline-size: fn.rem(10);
-        block-size: fn.rem(10);
-        border: 2px solid currentcolor;
-        border-radius: fn.rem(3);
-    }
-}
-
 .option-text {
     overflow: hidden;
     display: grid;

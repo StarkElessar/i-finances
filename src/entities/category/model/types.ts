@@ -1,9 +1,12 @@
 import type { CurrencyCodeValue } from '~/shared/lib';
 
+import type { CategoryIconId } from './icons';
+
 export type Category = {
 	color: string;
 	createdAt: string;
 	description: string;
+	icon: CategoryIconId;
 	id: string;
 	keywords: string[];
 	monthlyBudgetMinor: number | null;

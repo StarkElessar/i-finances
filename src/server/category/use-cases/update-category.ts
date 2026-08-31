@@ -38,6 +38,7 @@ export function createUpdateCategoryUseCase(
 			{
 				color: input.color,
 				description: input.description,
+				icon: input.icon,
 				monthlyBudgetMinor: input.monthlyBudgetMinor,
 				name,
 				normalizedName: normalizeCategoryIdentity(name),

@@ -41,6 +41,7 @@ const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const validCreateInput = createCategoryInputSchema.parse({
     color: AccentColor.BLUE,
     description: 'Аптеки, врачи и лекарства для всей семьи.',
+    icon: 'stethoscope',
     keywords: ['аптека', 'лекарства'],
     monthlyBudgetMinor: 150_000,
     name: 'Здоровье'
@@ -108,9 +109,10 @@ describe('category service persistence', () => {
         const created = await categoryService.create(USER_ID, validCreateInput);
         const collection = await categoryService.list(USER_ID, 'active');
 
-        expect(created).toMatchObject({
+		expect(created).toMatchObject({
             archivedAt: null,
             description: 'Аптеки, врачи и лекарства для всей семьи.',
+            icon: 'stethoscope',
             id: 'category-1',
             keywords: ['аптека', 'лекарства'],
             monthlyBudgetMinor: 150_000,
@@ -146,6 +148,19 @@ describe('category service persistence', () => {
         await expect(categoryService.update(USER_ID, updateInput))
             .rejects
             .toBeInstanceOf(CategoryVersionConflictError);
+    });
+
+    it('updates the category icon', async () => {
+        const created = await categoryService.create(USER_ID, validCreateInput);
+        const updated = await categoryService.update(USER_ID, {
+            ...validCreateInput,
+            id: created.id,
+            icon: 'pill',
+            version: created.version
+        });
+
+        expect(updated.icon).toBe('pill');
+        expect(updated.version).toBe(created.version + 1);
     });
 
     it('archives, filters and restores a category', async () => {

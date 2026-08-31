@@ -1,3 +1,4 @@
+import { resolveCategoryIconId } from '~/entities/category/model/icons';
 import {
 	normalizeCategoryIdentity,
 	normalizeCategoryKeyword
@@ -38,6 +39,7 @@ export function toPersistedCategory(
 		color: record.category.color,
 		createdAt: record.category.createdAt.toISOString(),
 		description: record.category.description,
+		icon: resolveCategoryIconId(record.category.icon),
 		id: record.category.id,
 		keywords: record.keywords.map((keyword) => keyword.value),
 		monthlyBudgetMinor: record.category.monthlyBudgetMinor,

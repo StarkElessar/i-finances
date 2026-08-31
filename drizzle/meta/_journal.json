@@ -71,6 +71,13 @@
       "when": 1787940892497,
       "tag": "0009_sweet_bill_hollister",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788173337822,
+      "tag": "0010_luxuriant_bishop",
+      "breakpoints": true
     }
   ]
 }

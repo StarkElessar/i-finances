@@ -14,6 +14,7 @@ import {
 	createCategory as createCategoryAction,
 	getCategories,
 	getCategoryBudgetSummary,
+	resolveCategoryIconId,
 	restoreCategory as restoreCategoryAction,
 	sortCategoriesByMonthlySpent,
 	updateCategory as updateCategoryAction
@@ -66,6 +67,7 @@ function toDialogValue(category: PersistedCategory): CategoryDialogValue {
 	return {
 		color: category.color,
 		description: category.description,
+		icon: resolveCategoryIconId(category.icon),
 		keywords: category.keywords,
 		monthlyBudgetMinor: category.monthlyBudgetMinor,
 		name: category.name

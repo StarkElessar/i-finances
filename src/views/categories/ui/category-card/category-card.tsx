@@ -4,7 +4,7 @@ import { cn, type CurrencyCodeValue } from '~/shared/lib';
 import { Button } from '~/shared/ui';
 
 import type { Category, CategoryBudgetSummary } from '~/entities/category';
-import { formatMinorUnitsCurrency } from '~/entities/category';
+import { CategoryIcon, formatMinorUnitsCurrency } from '~/entities/category';
 
 import { Pencil } from 'lucide-solid';
 import type { JSX } from 'solid-js';
@@ -151,7 +151,7 @@ function CategoryCardBody(props: CategoryCardBodyProps) {
 	return (
 		<>
 			<span class={css.icon} aria-hidden='true'>
-				<span/>
+				<CategoryIcon icon={props.category.icon} size={18}/>
 			</span>
 
 			<span class={css.content}>

@@ -1,3 +1,4 @@
+import { CATEGORY_ICON_IDS } from '~/entities/category/model/icons';
 import {
 	normalizeCategoryIdentity,
 	normalizeCategoryKeyword,
@@ -6,6 +7,8 @@ import {
 import type { PersistedCategory } from '~/entities/category/model/types';
 
 import { z } from 'zod';
+
+const categoryIconSchema = z.enum(CATEGORY_ICON_IDS);
 
 export const CATEGORY_LIST_STATUSES = [
 	'active',
@@ -52,6 +55,7 @@ const optionalBudgetSchema = z.number()
 const editableCategoryFields = {
 	color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
 	description: categoryDescriptionSchema,
+	icon: categoryIconSchema,
 	keywords: categoryKeywordsSchema,
 	monthlyBudgetMinor: optionalBudgetSchema,
 	name: categoryNameSchema
