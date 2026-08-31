@@ -15,6 +15,7 @@ export function toPersistedContact(
 		id: record.id,
 		legalName: record.legalName,
 		name: record.name,
+		phone: record.phone,
 		type: record.type,
 		updatedAt: record.updatedAt.toISOString(),
 		version: record.version

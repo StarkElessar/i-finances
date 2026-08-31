@@ -1,9 +1,18 @@
 import css from './contact-dialog.module.scss';
 
-import { AccentColor, CurrencyCode, type CurrencyCodeValue } from '~/shared/lib';
+import {
+	AccentColor,
+	CurrencyCode,
+	type CurrencyCodeValue,
+	DEFAULT_PHONE_COUNTRY_CODE,
+	normalizePhoneForSave,
+	parseStoredPhone,
+	type PhoneCountryCode
+} from '~/shared/lib';
 import { Button } from '~/shared/ui/button';
 import { ColorPicker } from '~/shared/ui/color-picker';
 import { Dialog } from '~/shared/ui/dialog';
+import { PhoneField } from '~/shared/ui/phone-field';
 import { Switch } from '~/shared/ui/switch';
 import { TextField } from '~/shared/ui/text-field';
 
@@ -23,6 +32,7 @@ export type ContactDialogValue = {
 	color: string;
 	legalName: string | null;
 	name: string;
+	phone: string | null;
 	type: Exclude<ContactType, 'unknown'>;
 };
 
@@ -56,11 +66,19 @@ function createPreviewContact(value: ContactDialogValue): PersistedContact {
 	};
 }
 
+/**
+ * Dialog for creating and editing a household contact.
+ */
 export function ContactDialog(props: ContactDialogProps) {
 	const companySwitchId = createUniqueId();
 	const [color, setColor] = createSignal<string>(DEFAULT_CONTACT_COLOR);
 	const [legalName, setLegalName] = createSignal('');
 	const [name, setName] = createSignal('');
+	const [phoneCountryCode, setPhoneCountryCode] = createSignal<PhoneCountryCode>(
+		DEFAULT_PHONE_COUNTRY_CODE
+	);
+	const [phoneDisplay, setPhoneDisplay] = createSignal('');
+	const [phoneLocalError, setPhoneLocalError] = createSignal<string>();
 	const [type, setType] = createSignal<Exclude<ContactType, 'unknown'>>('person');
 
 	const mode = () => props.mode ?? 'create';
@@ -71,23 +89,18 @@ export function ContactDialog(props: ContactDialogProps) {
 	const normalizedName = () => name().trim().replace(/\s+/g, ' ');
 	const normalizedLegalName = () => legalName().trim().replace(/\s+/g, ' ');
 	const isSubmitDisabled = () => normalizedName().length === 0;
-	const dialogValue = (): ContactDialogValue => ({
-		color: color(),
-		legalName: isCompany() ? normalizedLegalName() || null : null,
-		name: normalizedName() || (isCompany() ? 'Новая компания' : 'Новый контакт'),
-		type: type()
-	});
+	const phoneError = () => phoneLocalError() ?? props.fieldErrors?.phone;
+	const dialogValue = (): ContactDialogValue => {
+		const phoneResult = normalizePhoneForSave(phoneDisplay(), phoneCountryCode());
 
-	createEffect(() => {
-		if (props.open) {
-			const initialValue = props.initialValue;
-
-			setColor(initialValue?.color ?? DEFAULT_CONTACT_COLOR);
-			setLegalName(initialValue?.legalName ?? '');
-			setName(initialValue?.name ?? '');
-			setType(initialValue?.type ?? 'person');
-		}
-	});
+		return {
+			color: color(),
+			legalName: isCompany() ? normalizedLegalName() || null : null,
+			name: normalizedName() || (isCompany() ? 'Новая компания' : 'Новый контакт'),
+			phone: phoneResult.ok ? phoneResult.phone : null,
+			type: type()
+		};
+	};
 
 	const handleCompanyChange = (event: Event & { currentTarget: HTMLInputElement }) => {
 		setType(event.currentTarget.checked ? 'company' : 'person');
@@ -101,6 +114,16 @@ export function ContactDialog(props: ContactDialogProps) {
 		setLegalName(event.currentTarget.value);
 	};
 
+	const handlePhoneCountryChange = (code: PhoneCountryCode) => {
+		setPhoneCountryCode(code);
+		setPhoneLocalError(undefined);
+	};
+
+	const handlePhoneValueChange = (display: string) => {
+		setPhoneDisplay(display);
+		setPhoneLocalError(undefined);
+	};
+
 	const handleRestore = () => {
 		void props.onRestore?.();
 	};
@@ -109,15 +132,40 @@ export function ContactDialog(props: ContactDialogProps) {
 		event.preventDefault();
 		const submitName = normalizedName();
 
-		if (submitName.length > 0) {
-			props.onSubmit({
-				color: color(),
-				legalName: isCompany() ? normalizedLegalName() || null : null,
-				name: submitName,
-				type: type()
-			});
+		if (submitName.length === 0) {
+			return;
 		}
+
+		const phoneResult = normalizePhoneForSave(phoneDisplay(), phoneCountryCode());
+
+		if (!phoneResult.ok) {
+			setPhoneLocalError(phoneResult.message);
+			return;
+		}
+
+		props.onSubmit({
+			color: color(),
+			legalName: isCompany() ? normalizedLegalName() || null : null,
+			name: submitName,
+			phone: phoneResult.phone,
+			type: type()
+		});
 	};
+
+	createEffect(() => {
+		if (props.open) {
+			const initialValue = props.initialValue;
+			const parsedPhone = parseStoredPhone(initialValue?.phone ?? null);
+
+			setColor(initialValue?.color ?? DEFAULT_CONTACT_COLOR);
+			setLegalName(initialValue?.legalName ?? '');
+			setName(initialValue?.name ?? '');
+			setPhoneCountryCode(parsedPhone.countryCode);
+			setPhoneDisplay(parsedPhone.display);
+			setPhoneLocalError(undefined);
+			setType(initialValue?.type ?? 'person');
+		}
+	});
 
 	return (
 		<Dialog.Root
@@ -177,6 +225,15 @@ export function ContactDialog(props: ContactDialogProps) {
 								onInput={handleLegalNameInput}
 							/>
 						</Show>
+
+						<PhoneField
+							countryCode={phoneCountryCode()}
+							error={phoneError()}
+							optional
+							value={phoneDisplay()}
+							onCountryCodeChange={handlePhoneCountryChange}
+							onValueChange={handlePhoneValueChange}
+						/>
 
 						<ColorPicker label='Цвет' value={color()} onChange={setColor}/>
 

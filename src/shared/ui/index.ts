@@ -42,6 +42,8 @@ export type {
 	GridSortState
 } from './grid';
 export { Grid } from './grid';
+export type { PhoneFieldProps } from './phone-field';
+export { PhoneField } from './phone-field';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
 export type {

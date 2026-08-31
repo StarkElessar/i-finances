@@ -81,6 +81,7 @@ function toDialogValue(contact: PersistedContact): ContactDialogValue {
 		color: contact.color,
 		legalName: contact.legalName,
 		name: contact.name,
+		phone: contact.phone,
 		type: contact.type === 'company' ? 'company' : 'person'
 	};
 }

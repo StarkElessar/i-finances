@@ -26,6 +26,7 @@ export const contacts = sqliteTable(
 		normalizedName: text('normalized_name').notNull(),
 		legalName: text('legal_name'),
 		normalizedLegalName: text('normalized_legal_name'),
+		phone: text('phone'),
 		color: text('color').notNull(),
 		archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
 		createdByUserId: text('created_by_user_id')

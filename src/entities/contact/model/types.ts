@@ -8,6 +8,7 @@ export type Contact = {
 	id: string;
 	legalName: string | null;
 	name: string;
+	phone: string | null;
 	type: ContactType;
 	updatedAt: string;
 };

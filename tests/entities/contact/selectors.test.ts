@@ -20,6 +20,7 @@ function createContact(
 		id,
 		legalName: null,
 		name: id,
+		phone: null,
 		type: 'person',
 		updatedAt: timestamp,
 		version: 1,

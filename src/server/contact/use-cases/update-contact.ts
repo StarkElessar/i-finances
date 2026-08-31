@@ -44,6 +44,7 @@ export function createUpdateContactUseCase(
 					? normalizeContactIdentity(legalName)
 					: null,
 				normalizedName: normalizeContactIdentity(name),
+				phone: input.phone,
 				type: input.type,
 				updatedAt: context.now()
 			}

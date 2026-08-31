@@ -22,6 +22,7 @@ export type ContactUpdateValues = {
 	name: string;
 	normalizedLegalName: string | null;
 	normalizedName: string;
+	phone: string | null;
 	type: ContactRecord['type'];
 	updatedAt: Date;
 };

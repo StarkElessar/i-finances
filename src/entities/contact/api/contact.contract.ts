@@ -1,3 +1,5 @@
+import { isValidStoredPhone } from '~/shared/lib';
+
 import {
 	normalizeContactLegalName,
 	normalizeContactName
@@ -25,11 +27,32 @@ const contactNameSchema = z.string()
 const contactLegalNameSchema = z.union([z.string(), z.null()])
 	.transform(normalizeContactLegalName)
 	.pipe(z.string().max(180).nullable());
+const contactPhoneSchema = z.preprocess(
+	(value) => (value === undefined ? null : value),
+	z.union([z.string(), z.null()])
+		.transform((value) => {
+			if (value === null) {
+				return null;
+			}
+
+			const trimmed = value.trim();
+			return trimmed.length === 0 ? null : trimmed;
+		})
+		.superRefine((value, context) => {
+			if (value !== null && !isValidStoredPhone(value)) {
+				context.addIssue({
+					code: 'custom',
+					message: 'Укажите корректный номер телефона.'
+				});
+			}
+		})
+);
 
 const editableContactFields = {
 	color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
 	legalName: contactLegalNameSchema,
 	name: contactNameSchema,
+	phone: contactPhoneSchema,
 	type: z.enum(EDITABLE_CONTACT_TYPES)
 };
 

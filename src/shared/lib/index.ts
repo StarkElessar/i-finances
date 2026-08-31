@@ -24,6 +24,27 @@ export {
 	normalizeExchangeRate,
 	parseOptionalMoneyInputToMinorUnits
 } from './money';
+export type {
+	NormalizePhoneForSaveResult,
+	ParsedStoredPhone,
+	PhoneCountry,
+	PhoneCountryCode
+} from './phone';
+export {
+	countMaskDigitSlots,
+	DEFAULT_PHONE_COUNTRY_CODE,
+	extractPhoneDigits,
+	formatPhoneInput,
+	getPhoneCountry,
+	isPhoneComplete,
+	isValidStoredPhone,
+	listPhoneCountries,
+	normalizePhoneForSave,
+	parseStoredPhone,
+	resolvePhoneCountry,
+	sanitizeNationalPhoneDigits,
+	toE164
+} from './phone';
 export type { RawSearchParams, SerializedSearchParams } from './search-params';
 export {
 	parseRouteSearchParams,

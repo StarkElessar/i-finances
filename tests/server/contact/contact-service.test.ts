@@ -42,6 +42,7 @@ const validCreateInput = createContactInputSchema.parse({
     color: AccentColor.BLUE,
     legalName: null,
     name: 'Алексей Иванов',
+    phone: null,
     type: 'person'
 });
 
@@ -135,6 +136,7 @@ describe('contact service persistence', () => {
             color: AccentColor.GREEN,
             legalName: '  ООО   Легкий ужин ',
             name: 'Пицца Лисица',
+            phone: null,
             type: 'company'
         });
         const person = await contactService.update(
@@ -234,6 +236,36 @@ describe('contact service persistence', () => {
         expect(createContactInputSchema.safeParse({
             ...validCreateInput,
             type: 'unknown'
+        }).success).toBe(false);
+    });
+
+    it('stores a valid phone and clears an empty phone to null', async () => {
+        const withPhone = await contactService.create(USER_ID, {
+            ...validCreateInput,
+            name: 'С телефоном',
+            phone: '+375297266821'
+        });
+        const cleared = await contactService.update(
+            USER_ID,
+            updateContactInputSchema.parse({
+                color: withPhone.color,
+                id: withPhone.id,
+                legalName: withPhone.legalName,
+                name: withPhone.name,
+                phone: null,
+                type: withPhone.type,
+                version: withPhone.version
+            })
+        );
+
+        expect(withPhone.phone).toBe('+375297266821');
+        expect(cleared.phone).toBeNull();
+    });
+
+    it('rejects an incomplete stored phone on create', () => {
+        expect(createContactInputSchema.safeParse({
+            ...validCreateInput,
+            phone: '+37512'
         }).success).toBe(false);
     });
 });

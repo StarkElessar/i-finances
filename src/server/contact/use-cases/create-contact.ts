@@ -39,6 +39,7 @@ export function createCreateContactUseCase(
 				? normalizeContactIdentity(legalName)
 				: null,
 			normalizedName: normalizeContactIdentity(name),
+			phone: input.phone,
 			type: input.type,
 			updatedAt: timestamp,
 			version: 1

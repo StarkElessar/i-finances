@@ -78,6 +78,13 @@
       "when": 1788173337822,
       "tag": "0010_luxuriant_bishop",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1788192864660,
+      "tag": "0011_little_madame_web",
+      "breakpoints": true
     }
   ]
 }
