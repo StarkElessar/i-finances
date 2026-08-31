@@ -1,90 +1,90 @@
-# Contact Phone Number Design
+# Дизайн: телефон у контакта
 
-## Problem
+## Проблема
 
-Contacts have no phone field. Users need an optional phone on create/edit, with country-specific input masks (Belarus and Russia first), storing a raw international string in SQLite.
+У контактов нет поля телефона. Нужен опциональный номер при создании/редактировании, с масками по странам (сначала Беларусь и Россия), в SQLite — сырая международная строка.
 
-## Goal
+## Цель
 
-1. Add nullable `phone` on contacts (`+375…`, `+7…`).
-2. Provide a scalable phone mask stack in `~/shared` (registry + pure helpers + Solid `PhoneField`).
-3. Wire phone only into `ContactDialog` (not cards / summary).
-4. Validation: empty → `null`; incomplete/invalid mask → field error; complete → save E.164-like string.
+1. Добавить nullable `phone` у контактов (`+375…`, `+7…`).
+2. Сделать масштабируемый стек масок в `~/shared` (реестр + чистые хелперы + Solid `PhoneField`).
+3. Подключить телефон только в `ContactDialog` (не на карточках и не в сводке).
+4. Валидация: пусто → `null`; неполная/невалидная маска → ошибка поля; полная → сохранить E.164-подобную строку.
 
-## Non-goals (v1)
+## Не входит в v1
 
-- Showing phone on contact cards or summary dialogs
-- Full 201-country catalog / flag sprite (as in [international-phone-number](https://github.com/StarkElessar/international-phone-number))
+- Показ телефона на карточках контактов и в сводке
+- Каталог на 201 страну / спрайт флагов (как в [international-phone-number](https://github.com/StarkElessar/international-phone-number))
 - `imask` / `@solid-primitives/input-mask` / libphonenumber
-- SMS, dial links, or duplicate-phone uniqueness
+- SMS, ссылки «позвонить», уникальность телефона
 
-## Approach
+## Подход
 
-**Custom lightweight mask** (no third-party mask lib), inspired by the IPN data model:
+**Своя лёгкая маска** (без сторонней mask-библиотеки), по модели данных IPN:
 
-- Country select + masked input
-- Registry entries: `code`, `label`, `prefix`, `mask`
-- Persist `prefix + nationalDigits` (no spaces/punctuation)
+- селект страны + поле с маской;
+- запись реестра: `code`, `label`, `prefix`, `mask`;
+- в БД: `prefix + nationalDigits` (без пробелов и пунктуации).
 
-v1 registry: **BY** and **RU** only; adding a country later is a registry entry (+ optional UI label).
+Реестр v1: только **BY** и **RU**; новая страна позже = новая запись в реестре (+ подпись в UI).
 
-## Data model
+## Модель данных
 
-| Layer | Change |
-|-------|--------|
-| DB | `contacts.phone` `text` nullable |
+| Слой | Изменение |
+|------|-----------|
+| БД | `contacts.phone` — `text`, nullable |
 | `Contact` / `PersistedContact` | `phone: string \| null` |
 | Create/update input | `phone` optional/nullable |
-| Mapper | map `phone` through |
+| Mapper | прокидывает `phone` |
 
-Stored format examples: `+375297266821`, `+79431233223`.
+Примеры хранения: `+375297266821`, `+79431233223`.
 
-## Validation rules
+## Правила валидации
 
-| Input state | Result |
-|-------------|--------|
-| Empty / whitespace-only | `null` (OK) |
-| Digits entered but mask incomplete or not matching selected country length | Field validation error |
-| Complete for selected country | Save `toE164(digits, country)` |
+| Состояние ввода | Результат |
+|-----------------|-----------|
+| Пусто / только пробелы | `null` (ок) |
+| Есть цифры, но маска неполная или длина не совпадает со страной | Ошибка валидации поля |
+| Маска полная для выбранной страны | Сохранить `toE164(digits, country)` |
 
-Server must re-validate: after normalize, value is either `null` or matches an allowed country (prefix + exact national digit count from registry). Reject unknown prefixes / wrong length.
+Сервер обязан перепроверить: после нормализации значение либо `null`, либо соответствует разрешённой стране (prefix + точное число national-цифр из реестра). Неизвестный prefix / неверная длина — reject.
 
-## Shared phone library (`~/shared/lib/phone`)
+## Shared phone lib (`~/shared/lib/phone`)
 
-Framework-agnostic:
+Без привязки к фреймворку:
 
 - `PHONE_COUNTRIES` / `listPhoneCountries` / `getPhoneCountry`
-- Mask token: `9` = digit; other chars are literals
-- BY: `prefix +375`, `mask (99) 999-99-99` (9 national digits)
-- RU: `prefix +7`, `mask (999) 999-99-99` (10 national digits)
+- Токен маски: `9` = цифра; остальные символы — литералы
+- BY: `prefix +375`, маска `(99) 999-99-99` (9 цифр national)
+- RU: `prefix +7`, маска `(999) 999-99-99` (10 цифр national)
 - `extractPhoneDigits`, `formatPhoneInput`, `isPhoneComplete`, `toE164`
-- `resolvePhoneCountry(e164)` — longest matching `prefix`; fallback `by`
-- Save helper used by dialog / zod-friendly normalize
+- `resolvePhoneCountry(e164)` — longest matching `prefix`; иначе `by`
+- Хелпер для сохранения (диалог / удобно для zod)
 
-Caret: best-effort restore on input; acceptable v1 fallback is placing caret after last digit.
+Каретка: по возможности восстанавливать при вводе; допустимый fallback v1 — ставить курсор после последней цифры.
 
 ## UI (`~/shared/ui/phone-field`)
 
-- Country select (BY / RU) + tel input
-- Controlled: country + display value; form submits E.164 via helpers
-- Changing country clears national digits and applies new mask/placeholder
-- Default country on create: **BY**
-- Edit: resolve country from stored phone, fill formatted national part
-- Styles consistent with `TextField`; dialog-only placement
+- Селект страны (BY / RU) + input `type="tel"`
+- Controlled: страна + отображаемое значение; в форму уходит E.164 через хелперы
+- Смена страны: сброс national-цифр, новая маска/placeholder
+- Страна по умолчанию при создании: **BY**
+- Редактирование: страна из сохранённого номера, в input — отформатированная national-часть
+- Стили в духе `TextField`; только в диалоге контакта
 
-## Contact dialog
+## Диалог контакта
 
-- Extend `ContactDialogValue` with `phone: string | null`
-- Label «Телефон», optional
-- On submit: empty → `null`; incomplete → `fieldErrors.phone`; complete → E.164 string
+- В `ContactDialogValue` добавить `phone: string | null`
+- Подпись «Телефон», поле необязательное
+- При submit: пусто → `null`; неполное → `fieldErrors.phone`; полное → строка E.164
 
-## Layers to touch
+## Какие слои трогаем
 
-- Schema + Drizzle migration
-- Entity types, contract, mappers, repository, use-cases, tests
-- `PhoneField` + contact dialog wiring
-- Unit tests for phone helpers; contract/service tests for null / valid / invalid
+- Схема + миграция Drizzle
+- Entity types, contract, mappers, repository, use-cases, тесты
+- `PhoneField` + wiring в диалоге контакта
+- Unit-тесты хелперов телефона; contract/service-тесты на null / valid / invalid
 
-## Scalability
+## Масштабирование
 
-New country = add registry item (`code`, `label`, `prefix`, `mask`). Select renders from `listPhoneCountries()`. No change to storage shape. Flags/search UI can come later without changing E.164 persistence.
+Новая страна = запись в реестре (`code`, `label`, `prefix`, `mask`). Селект строится из `listPhoneCountries()`. Формат хранения не меняется. Флаги и поиск по странам можно добавить позже без смены E.164.
