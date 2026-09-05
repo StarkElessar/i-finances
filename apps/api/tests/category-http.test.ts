@@ -48,6 +48,7 @@ beforeEach(async () => {
 		createdAt: FIXED_DATE,
 		createdByUserId: USER_ID,
 		description: 'Продукты для домашних завтраков и ужинов.',
+		icon: 'tag',
 		householdId: HOUSEHOLD_ID,
 		id: 'category-food',
 		monthlyBudgetMinor: 500_000,
@@ -142,6 +143,7 @@ describe('Categories HTTP controller', () => {
 			body: JSON.stringify({
 				color: '#68a063',
 				description: '',
+				icon: 'tag',
 				keywords: ['рынок'],
 				monthlyBudgetMinor: null,
 				name: 'Новая категория'

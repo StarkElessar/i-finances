@@ -18,6 +18,7 @@ describe('category form model', () => {
 		expect(readCategoryFields(formData)).toEqual({
 			color: '#3f77a8',
 			description: 'Для ежедневных покупок',
+			icon: 'tag',
 			keywords: ['продукты', 'магазин', 'супермаркет'],
 			monthlyBudgetMinor: 125_050,
 			name: 'Продукты'
@@ -42,6 +43,7 @@ describe('category form model', () => {
 			color: '#3f77a8',
 			createdAt: '2026-08-08T10:00:00.000Z',
 			description: 'Для семьи',
+			icon: 'tag',
 			id: 'category-food',
 			keywords: ['продукты'],
 			monthlyBudgetMinor: 125_050,
@@ -51,6 +53,7 @@ describe('category form model', () => {
 		})).toEqual({
 			color: '#3f77a8',
 			description: 'Для семьи',
+			icon: 'tag',
 			keywords: ['продукты'],
 			monthlyBudgetMinor: 125_050,
 			name: 'Продукты'

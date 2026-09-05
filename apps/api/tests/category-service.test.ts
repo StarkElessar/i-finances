@@ -93,6 +93,7 @@ describe('CategoryService', () => {
 		const input = createCategoryInputSchema.parse({
 			color: '#3f77a8',
 			description: '  Домашние завтраки.  ',
+			icon: 'tag',
 			keywords: [' Магазин ', 'Еда'],
 			monthlyBudgetMinor: 500_000,
 			name: '  Продукты   для дома '
@@ -105,6 +106,7 @@ describe('CategoryService', () => {
 		expect(created).toMatchObject({
 			archivedAt: null,
 			description: 'Домашние завтраки.',
+			icon: 'tag',
 			keywords: ['магазин', 'еда'],
 			name: 'Продукты для дома',
 			version: 1
@@ -118,6 +120,7 @@ describe('CategoryService', () => {
 		const created = await service.create(USER_ID, createCategoryInputSchema.parse({
 			color: '#3f77a8',
 			description: '',
+			icon: 'tag',
 			keywords: ['магазин', 'еда'],
 			monthlyBudgetMinor: null,
 			name: 'Продукты'
@@ -127,6 +130,7 @@ describe('CategoryService', () => {
 			...created,
 			color: '#68a063',
 			description: 'Обновлено',
+			icon: 'tag',
 			keywords: ['рынок'],
 			name: 'Продукты',
 			version: created.version
@@ -136,6 +140,7 @@ describe('CategoryService', () => {
 		expect(updated).toMatchObject({
 			color: '#68a063',
 			description: 'Обновлено',
+			icon: 'tag',
 			keywords: ['рынок'],
 			version: 2
 		});
@@ -160,6 +165,7 @@ describe('CategoryService', () => {
 		const input = {
 			color: '#3f77a8',
 			description: '',
+			icon: 'tag',
 			keywords: [],
 			monthlyBudgetMinor: null,
 			name: 'Продукты'
@@ -178,6 +184,7 @@ describe('CategoryService', () => {
 		const created = await service.create(USER_ID, createCategoryInputSchema.parse({
 			color: '#3f77a8',
 			description: '',
+			icon: 'tag',
 			keywords: [],
 			monthlyBudgetMinor: null,
 			name: 'Продукты'
@@ -207,6 +214,7 @@ describe('CategoryService', () => {
 			createdAt: FIXED_DATE,
 			createdByUserId: USER_ID,
 			description: '',
+			icon: 'tag',
 			householdId: OTHER_HOUSEHOLD_ID,
 			id: 'category-other',
 			monthlyBudgetMinor: null,

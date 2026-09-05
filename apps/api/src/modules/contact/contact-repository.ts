@@ -22,6 +22,7 @@ export type ContactRecord = {
 	name: string;
 	normalizedLegalName: string | null;
 	normalizedName: string;
+	phone: string | null;
 	type: ContactType;
 	updatedAt: Date;
 	version: number;
@@ -37,6 +38,7 @@ export type ContactUpdateValues = {
 	name: string;
 	normalizedLegalName: string | null;
 	normalizedName: string;
+	phone: string | null;
 	type: ContactType;
 	updatedAt: Date;
 };
@@ -53,6 +55,7 @@ function toContactRecord(record: typeof contacts.$inferSelect): ContactRecord {
 		name: record.name,
 		normalizedLegalName: record.normalizedLegalName,
 		normalizedName: record.normalizedName,
+		phone: record.phone,
 		type: record.type,
 		updatedAt: record.updatedAt,
 		version: record.version

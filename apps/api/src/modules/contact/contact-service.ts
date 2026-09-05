@@ -68,6 +68,7 @@ export class ContactService {
 			householdId: household.id,
 			id: this.createId(),
 			legalName,
+			phone: input.phone,
 			name,
 			normalizedLegalName: legalName === null ? null : normalizeContactIdentity(legalName),
 			normalizedName: normalizeContactIdentity(name),
@@ -103,6 +104,7 @@ export class ContactService {
 				name,
 				normalizedLegalName: legalName === null ? null : normalizeContactIdentity(legalName),
 				normalizedName: normalizeContactIdentity(name),
+				phone: input.phone,
 				type: input.type,
 				updatedAt: this.now()
 			}

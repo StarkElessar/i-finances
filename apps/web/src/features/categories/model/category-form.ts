@@ -1,7 +1,9 @@
 import {
 	type CreateCategoryInput,
 	createCategoryInputSchema,
-	type PersistedCategory
+	DEFAULT_CATEGORY_ICON_ID,
+	type PersistedCategory,
+	resolveCategoryIconId
 } from '@i-finances/contracts';
 
 export type CategoryFormFields = CreateCategoryInput;
@@ -19,6 +21,7 @@ export function readCategoryFields(formData: FormData): CategoryFormFields | und
 	const fields = {
 		color: readFormString(formData, 'color'),
 		description: readFormString(formData, 'description'),
+		icon: resolveCategoryIconId(readFormString(formData, 'icon') || DEFAULT_CATEGORY_ICON_ID),
 		keywords: readFormString(formData, 'keywords')
 			.split(/[\n,]/u)
 			.map((keyword) => keyword.trim())
@@ -35,6 +38,7 @@ export function toCategoryFormFields(category: PersistedCategory): CategoryFormF
 	return {
 		color: category.color,
 		description: category.description,
+		icon: category.icon,
 		keywords: category.keywords,
 		monthlyBudgetMinor: category.monthlyBudgetMinor,
 		name: category.name

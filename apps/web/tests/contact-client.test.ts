@@ -9,6 +9,7 @@ const contact = {
 	id: 'contact/main',
 	legalName: 'ООО «Продукты»',
 	name: 'Магазин у дома',
+	phone: null,
 	type: 'company',
 	updatedAt: '2026-08-08T10:00:00.000Z',
 	version: 1
@@ -77,12 +78,14 @@ describe('ContactClient', () => {
 			color: '#3f77a8',
 			legalName: 'ООО «Продукты»',
 			name: 'Магазин у дома',
+			phone: null,
 			type: 'company'
 		});
 		await client.update({
 			...contact,
 			legalName: 'ООО «Продукты»',
 			name: 'Магазин у дома',
+			phone: null,
 			type: 'company'
 		});
 
@@ -92,6 +95,7 @@ describe('ContactClient', () => {
 					color: '#3f77a8',
 					legalName: 'ООО «Продукты»',
 					name: 'Магазин у дома',
+					phone: null,
 					type: 'company'
 				},
 				input: '/api/contacts',
@@ -103,6 +107,7 @@ describe('ContactClient', () => {
 					id: 'contact/main',
 					legalName: 'ООО «Продукты»',
 					name: 'Магазин у дома',
+					phone: null,
 					type: 'company',
 					version: 1
 				},

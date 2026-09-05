@@ -87,6 +87,7 @@ export class CategoryService {
 				createdByUserId: userId,
 				description: input.description,
 				householdId: household.id,
+				icon: input.icon,
 				id: categoryId,
 				monthlyBudgetMinor: input.monthlyBudgetMinor,
 				name,
@@ -121,6 +122,7 @@ export class CategoryService {
 			{
 				color: input.color,
 				description: input.description,
+				icon: input.icon,
 				monthlyBudgetMinor: input.monthlyBudgetMinor,
 				name,
 				normalizedName: normalizeCategoryIdentity(name),

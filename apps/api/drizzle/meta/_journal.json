@@ -64,6 +64,13 @@
       "when": 1785470616460,
       "tag": "0008_wet_salo",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1788648393793,
+      "tag": "0009_add_contact_phone_and_category_icon",
+      "breakpoints": true
     }
   ]
 }

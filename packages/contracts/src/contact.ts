@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { currencyCodeSchema } from './category';
+import { isValidStoredPhone } from './phone';
 
 export const CONTACT_LIST_STATUSES = ['active', 'archived', 'all'] as const;
 export const contactListStatusSchema = z.enum(CONTACT_LIST_STATUSES);
@@ -36,10 +37,32 @@ const contactNameSchema = z.string()
 const contactLegalNameSchema = z.union([z.string(), z.null()])
 	.transform(normalizeContactLegalName)
 	.pipe(z.string().max(180).nullable());
+const contactPhoneSchema = z.preprocess(
+	(value) => (value === undefined ? null : value),
+	z.union([z.string(), z.null()])
+		.transform((value) => {
+			if (value === null) {
+				return null;
+			}
+
+			const trimmed = value.trim();
+			return trimmed.length === 0 ? null : trimmed;
+		})
+		.superRefine((value, context) => {
+			if (value !== null && !isValidStoredPhone(value)) {
+				context.addIssue({
+					code: 'custom',
+					message: 'Укажите корректный номер телефона.'
+				});
+			}
+		})
+);
+
 const editableContactFields = {
 	color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
 	legalName: contactLegalNameSchema,
 	name: contactNameSchema,
+	phone: contactPhoneSchema,
 	type: editableContactTypeSchema
 };
 
@@ -76,6 +99,7 @@ export const persistedContactSchema = z.object({
 	id: contactIdSchema,
 	legalName: z.string().nullable(),
 	name: z.string().min(1),
+	phone: z.string().nullable(),
 	type: contactTypeSchema,
 	updatedAt: contactDateSchema,
 	version: contactVersionSchema

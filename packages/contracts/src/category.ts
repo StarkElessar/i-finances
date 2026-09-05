@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { CATEGORY_ICON_IDS } from './category-icons';
+
 export const currencyCodeSchema = z.enum(['BYN', 'EUR', 'USD']);
 
 export type CurrencyCode = z.infer<typeof currencyCodeSchema>;
@@ -72,6 +74,7 @@ const optionalBudgetSchema = z.number()
 const editableCategoryFields = {
 	color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
 	description: categoryDescriptionSchema,
+	icon: z.enum(CATEGORY_ICON_IDS),
 	keywords: categoryKeywordsSchema,
 	monthlyBudgetMinor: optionalBudgetSchema,
 	name: categoryNameSchema
@@ -121,6 +124,7 @@ export const persistedCategorySchema = z.object({
 	color: z.string(),
 	createdAt: categoryDateSchema,
 	description: z.string(),
+	icon: z.enum(CATEGORY_ICON_IDS),
 	id: z.string().min(1),
 	keywords: z.array(z.string()),
 	monthlyBudgetMinor: z.number().int().nonnegative().max(Number.MAX_SAFE_INTEGER).nullable(),

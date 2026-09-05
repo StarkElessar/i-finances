@@ -21,6 +21,7 @@ export type CategoryRecord = {
 	createdByUserId: string;
 	description: string;
 	householdId: string;
+	icon: string;
 	id: string;
 	monthlyBudgetMinor: number | null;
 	name: string;
@@ -50,6 +51,7 @@ export type NewCategoryKeywordRecord = CategoryKeywordRecord;
 export type CategoryUpdateValues = {
 	color: string;
 	description: string;
+	icon: string;
 	monthlyBudgetMinor: number | null;
 	name: string;
 	normalizedName: string;
@@ -267,6 +269,7 @@ export class CategoryRepository {
 			createdByUserId: record.createdByUserId,
 			description: record.description,
 			householdId: record.householdId,
+			icon: record.icon,
 			id: record.id,
 			monthlyBudgetMinor: record.monthlyBudgetMinor,
 			name: record.name,

@@ -17,6 +17,7 @@ describe('contact form model', () => {
 			color: '#3f77a8',
 			legalName: 'ООО «Продукты»',
 			name: 'Магазин у дома',
+			phone: null,
 			type: 'company'
 		});
 
@@ -46,6 +47,7 @@ describe('contact form model', () => {
 			id: 'contact/unknown',
 			legalName: 'ООО «Старое имя»',
 			name: 'Старый контакт',
+			phone: null,
 			type: 'unknown',
 			updatedAt: '2026-08-08T10:00:00.000Z',
 			version: 1
@@ -53,6 +55,7 @@ describe('contact form model', () => {
 			color: '#3f77a8',
 			legalName: null,
 			name: 'Старый контакт',
+			phone: null,
 			type: 'person'
 		});
 	});

@@ -62,6 +62,14 @@ export {
 	updateCategoryInputSchema
 } from './category';
 export {
+	CATEGORY_ICON_IDS,
+	CATEGORY_ICON_SEED_BY_NORMALIZED_NAME,
+	type CategoryIconId,
+	DEFAULT_CATEGORY_ICON_ID,
+	isCategoryIconId,
+	resolveCategoryIconId
+} from './category-icons';
+export {
 	type ChangeContactArchiveStateInput,
 	changeContactArchiveStateInputSchema,
 	CONTACT_LIST_STATUSES,
@@ -148,6 +156,25 @@ export {
 	type PasskeySignInVerificationInput,
 	passkeySignInVerificationInputSchema
 } from './passkey';
+export {
+	countMaskDigitSlots,
+	DEFAULT_PHONE_COUNTRY_CODE,
+	extractPhoneDigits,
+	formatPhoneInput,
+	getPhoneCountry,
+	isPhoneComplete,
+	isValidStoredPhone,
+	listPhoneCountries,
+	type NormalizePhoneForSaveResult,
+	normalizePhoneForSave,
+	type ParsedStoredPhone,
+	parseStoredPhone,
+	type PhoneCountry,
+	type PhoneCountryCode,
+	resolvePhoneCountry,
+	sanitizeNationalPhoneDigits,
+	toE164
+} from './phone';
 export {
 	type ApproveReceiptInput,
 	approveReceiptInputSchema,

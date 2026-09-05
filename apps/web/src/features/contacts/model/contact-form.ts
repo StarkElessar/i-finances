@@ -12,6 +12,7 @@ export function readContactFields(formData: FormData): ContactFormFields | undef
 		color: readFormString(formData, 'color'),
 		legalName: type === 'company' ? readFormString(formData, 'legalName') || null : null,
 		name: readFormString(formData, 'name'),
+		phone: readFormString(formData, 'phone') || null,
 		type
 	};
 	const parsedFields = createContactInputSchema.safeParse(fields);
@@ -24,6 +25,7 @@ export function toContactFormFields(contact: PersistedContact): ContactFormField
 		color: contact.color,
 		legalName: contact.type === 'company' ? contact.legalName : null,
 		name: contact.name,
+		phone: contact.phone,
 		type: contact.type === 'company' ? 'company' : 'person'
 	};
 }
