@@ -1,3 +1,17 @@
+import { createApiApp } from '@/app';
+import { AuthHttpController } from '@/http/auth-controller';
+import { CookieSessionResolver } from '@/http/session-resolver';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { users } from '@/infrastructure/database/schema';
+import type { AuthConfig } from '@/modules/auth';
+import {
+	LoginRateLimiter,
+	PasswordSignInService,
+	SessionRepository,
+	SessionService
+} from '@/modules/auth';
+
 import {
 	currentSessionResponseSchema,
 	passwordSignInResultSchema
@@ -6,20 +20,6 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-import { createApiApp } from '../src/app';
-import { AuthHttpController } from '../src/http/auth-controller';
-import { CookieSessionResolver } from '../src/http/session-resolver';
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import { users } from '../src/infrastructure/database/schema';
-import type { AuthConfig } from '../src/modules/auth';
-import {
-	LoginRateLimiter,
-	PasswordSignInService,
-	SessionRepository,
-	SessionService
-} from '../src/modules/auth';
 
 const USER_ID = 'user-1';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');

@@ -1,8 +1,8 @@
-import type { SessionService } from '../modules/auth';
+import type { SessionService } from '@/modules/auth';
 import {
 	type AuthenticatedSession,
 	getAuthConfig
-} from '../modules/auth';
+} from '@/modules/auth';
 
 import { readSessionCookie } from './session-cookie';
 

@@ -1,12 +1,12 @@
-import type { CurrencyCode } from '@i-finances/contracts';
-import { eq } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
+import type { AppDatabase } from '@/infrastructure/database/client';
 import {
 	type HouseholdMemberRole,
 	householdMembers,
 	households
-} from '../../infrastructure/database/schema';
+} from '@/infrastructure/database/schema';
+
+import type { CurrencyCode } from '@i-finances/contracts';
+import { eq } from 'drizzle-orm';
 
 export type HouseholdAccessRecord = {
 	baseCurrency: CurrencyCode;

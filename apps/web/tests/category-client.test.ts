@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { CategoryClient } from '@/features/categories/api';
 
-import { CategoryClient } from '../src/features/categories';
+import { describe, expect, it } from 'vitest';
 
 const category = {
 	archivedAt: null,

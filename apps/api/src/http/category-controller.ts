@@ -1,3 +1,16 @@
+import type { AuthenticatedSession } from '@/modules/auth';
+import type { CategoryService } from '@/modules/category';
+import {
+	CategoryNameConflictError,
+	CategoryNotFoundError,
+	CategoryVersionConflictError
+} from '@/modules/category';
+import {
+	DEFAULT_HOUSEHOLD_ID,
+	HouseholdAccessRequiredError,
+	HouseholdSelectionRequiredError
+} from '@/modules/household';
+
 import {
 	type CategoryCommandResult,
 	categoryListInputSchema,
@@ -10,19 +23,6 @@ import {
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
 import type { z } from 'zod';
-
-import type { AuthenticatedSession } from '../modules/auth';
-import type { CategoryService } from '../modules/category';
-import {
-	CategoryNameConflictError,
-	CategoryNotFoundError,
-	CategoryVersionConflictError
-} from '../modules/category';
-import {
-	DEFAULT_HOUSEHOLD_ID,
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '../modules/household';
 
 import { isSameOriginMutation } from './mutation-origin';
 import type { RequestSessionResolver } from './session-resolver';

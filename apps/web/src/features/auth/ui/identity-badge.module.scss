@@ -1,0 +1,17 @@
+.root {
+    --border-width: 2px;
+    --size: 3.125rem;
+
+    display: grid;
+    place-content: center;
+
+    aspect-ratio: 1;
+    inline-size: var(--size);
+    border: var(--border-width) solid var(--color-primary);
+    border-radius: var(--radius-round);
+
+    font-weight: var(--font-weight-semibold);
+    line-height: calc(var(--size) - var(--border-width) * 2);
+    color: var(--color-primary);
+    text-transform: uppercase;
+}

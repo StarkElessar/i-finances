@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type { HouseholdResolver } from '@/modules/household';
+
 import {
 	type CategoryCollection,
 	type CategoryListStatus,
@@ -11,8 +13,6 @@ import {
 	type PublicCategory,
 	type UpdateCategoryInput
 } from '@i-finances/contracts';
-
-import type { HouseholdResolver } from '../household';
 
 import { CategoryNameConflictError, CategoryVersionConflictError } from './category-errors';
 import {

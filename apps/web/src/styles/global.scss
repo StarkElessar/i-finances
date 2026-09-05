@@ -1,19 +1,55 @@
-:root {
-    font-family: system-ui, sans-serif;
-    color: #1f2937;
-    background: #f8fafc;
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/tokens";
+
+:where(*, *::before, *::after) {
+    box-sizing: border-box;
+}
+
+:where(html, body) {
+    min-block-size: 100%;
 }
 
 body {
+    min-inline-size: fn.rem(320);
+    min-block-size: 100dvh;
+    margin: 0;
+
+    font-family: var(--font-family-sans);
+    font-size: var(--font-size-body-md);
+    line-height: var(--line-height-body-md);
+    color: var(--color-text-primary);
+    text-rendering: optimizelegibility;
+
+    background-color: var(--color-canvas);
+
+    -webkit-font-smoothing: antialiased;
+}
+
+.root {
+    min-block-size: 100dvh;
+}
+
+:where(button, input, textarea, select) {
+    font: inherit;
+}
+
+:where(button, input, textarea, select, a) {
+    -webkit-tap-highlight-color: transparent;
+}
+
+:where(h1, h2, h3, p) {
+    margin: 0;
+}
+
+:where(button) {
     margin: 0;
 }
 
 .app-shell {
     box-sizing: border-box;
-    max-inline-size: 48rem;
-    min-block-size: 100vh;
+    min-block-size: 100dvh;
     margin-inline: auto;
-    padding: 2rem;
+    padding: var(--space-6);
 }
 
 .app-header {
@@ -21,48 +57,16 @@ body {
 }
 
 .eyebrow {
-    margin: 0 0 0.5rem;
-
-    font-size: 0.75rem;
-    font-weight: 700;
-    color: #64748b;
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
     text-transform: uppercase;
-    letter-spacing: 0.12em;
-}
-
-h1,
-h2,
-p {
-    margin-block-start: 0;
-}
-
-h1 {
-    margin-block-end: 0.75rem;
-    font-size: clamp(2rem, 8vw, 3.5rem);
-    line-height: 1;
-    color: #0f172a;
-}
-
-h2 {
-    margin-block-end: 1.5rem;
-    font-size: 1.5rem;
-    color: #0f172a;
+    letter-spacing: 0.08em;
 }
 
 .app-description {
     max-inline-size: 36rem;
-    margin-block-end: 0;
-    line-height: 1.6;
-    color: #475569;
-}
-
-.categories-panel {
-    padding: 1.5rem;
-    border: 1px solid #e2e8f0;
-    border-radius: 1rem;
-
-    background: #fff;
-    box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
+    color: var(--color-text-secondary);
 }
 
 .accounts-panel {
@@ -76,6 +80,245 @@ h2 {
 
     background: #fff;
     box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
+}
+
+.contacts-panel,
+.operations-panel,
+.receipts-panel {
+    display: grid;
+    gap: 1.25rem;
+
+    margin-block-start: 1.5rem;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 1rem;
+
+    background: #fff;
+    box-shadow: 0 1rem 2.5rem rgb(15 23 42 / 8%);
+}
+
+.contact-list,
+.operation-list,
+.operation-balances {
+    display: grid;
+    gap: 0.75rem;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.operation-balances li {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+
+    padding: 0.875rem 1rem;
+    border-radius: 0.75rem;
+
+    background: #f8fafc;
+}
+
+.contact-item {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+}
+
+.contact-item-content {
+    display: grid;
+    gap: 0.25rem;
+}
+
+.contact-item-content small {
+    color: #64748b;
+}
+
+.contact-item-actions {
+    display: flex;
+    grid-column: 2;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.contact-color {
+    flex: 0 0 auto;
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    border-radius: 50%;
+}
+
+.operation-list-item,
+.operation-list-item span,
+.operation-balances li {
+    display: flex;
+}
+
+.operation-list-item span {
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.contact-item small,
+.operation-list-item small {
+    color: #64748b;
+}
+
+.contact-heading-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.contact-form {
+    display: grid;
+    gap: 1rem;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid #e2e8f0;
+}
+
+.contact-form h3 {
+    margin: 0;
+    color: #0f172a;
+}
+
+.contact-form label {
+    display: grid;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.contact-form input,
+.contact-form select {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    color: #0f172a;
+}
+
+.contact-form input:focus-visible,
+.contact-form select:focus-visible {
+    border-color: #2563eb;
+    outline: 3px solid rgb(59 130 246 / 35%);
+    outline-offset: 1px;
+}
+
+.contact-form .color-field input {
+    inline-size: 4rem;
+    block-size: 2.5rem;
+    padding: 0.25rem;
+}
+
+.contact-form button {
+    cursor: pointer;
+
+    justify-self: start;
+
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    font-weight: 700;
+    color: #fff;
+
+    background: #2563eb;
+}
+
+.contact-form button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.contact-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.contact-field-error,
+.contact-error {
+    font-size: 0.875rem;
+    color: #b91c1c;
+}
+
+.contact-success {
+    margin-block: 0;
+    color: #15803d;
+}
+
+.contact-error {
+    margin-block: 0;
+}
+
+.operation-list-item {
+    gap: 1rem;
+    justify-content: space-between;
+
+    inline-size: 100%;
+    padding: 0.875rem 1rem;
+    border: 0;
+    border-radius: 0.75rem;
+
+    font: inherit;
+    color: #1f2937;
+    text-align: start;
+
+    background: #f8fafc;
+}
+
+.operation-form {
+    display: grid;
+    gap: 1rem;
+    padding-block-start: 1rem;
+    border-block-start: 1px solid #e2e8f0;
+}
+
+.operation-form label {
+    display: grid;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.operation-form input,
+.operation-form select,
+.operation-form textarea {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    color: #0f172a;
+}
+
+.operation-form textarea {
+    resize: vertical;
+    min-block-size: 5rem;
+}
+
+.operation-form-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.operation-success {
+    margin-block: 0;
+    color: #15803d;
+}
+
+.operation-error {
+    margin-block: 0;
+    color: #b91c1c;
 }
 
 .account-list {
@@ -252,40 +495,6 @@ h2 {
     justify-content: space-between;
 }
 
-.category-list {
-    display: grid;
-    gap: 0.75rem;
-
-    margin: 0;
-    padding: 0;
-
-    list-style: none;
-}
-
-.category-item {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    column-gap: 0.75rem;
-    align-items: center;
-
-    padding: 0.875rem 1rem;
-    border-radius: 0.75rem;
-
-    background: #f8fafc;
-}
-
-.category-item small {
-    grid-column: 2;
-    line-height: 1.4;
-    color: #64748b;
-}
-
-.category-color {
-    inline-size: 0.75rem;
-    block-size: 0.75rem;
-    border-radius: 50%;
-}
-
 .auth-panel {
     padding: 1.5rem;
     border: 1px solid #e2e8f0;
@@ -379,6 +588,190 @@ h2 {
     flex-wrap: wrap;
     gap: 0.5rem;
     justify-content: flex-end;
+}
+
+.receipts-panel {
+    gap: 1.25rem;
+}
+
+.receipt-upload-form,
+.receipt-review,
+.receipt-review-form,
+.receipt-review-merchant,
+.receipt-review-actions,
+.receipt-revision-fields {
+    display: grid;
+    gap: 1rem;
+}
+
+.receipt-upload-form,
+.receipt-review-form,
+.receipt-revision-fields {
+    padding-block-start: 1rem;
+    border-block-start: 1px solid #e2e8f0;
+}
+
+.receipt-upload-form label,
+.receipt-review label,
+.receipt-review-form label,
+.receipt-review-actions label,
+.receipt-revision-fields label {
+    display: grid;
+    gap: 0.5rem;
+    font-weight: 600;
+    color: #334155;
+}
+
+.receipt-upload-form input,
+.receipt-review select,
+.receipt-review-form input,
+.receipt-review-form select,
+.receipt-review-form textarea {
+    box-sizing: border-box;
+    inline-size: 100%;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    color: #0f172a;
+}
+
+.receipt-review-form textarea,
+.receipt-revision-fields textarea {
+    resize: vertical;
+    min-block-size: 5rem;
+}
+
+.receipt-upload-form button,
+.receipt-review-form > button,
+.receipt-review-actions > button,
+.receipt-revision-fields button {
+    cursor: pointer;
+
+    justify-self: start;
+
+    padding: 0.75rem 1rem;
+    border: 0;
+    border-radius: 0.625rem;
+
+    font: inherit;
+    font-weight: 700;
+    color: #fff;
+
+    background: #2563eb;
+}
+
+.receipt-upload-form button:disabled,
+.receipt-review-form > button:disabled,
+.receipt-review-actions > button:disabled,
+.receipt-revision-fields button:disabled {
+    cursor: wait;
+    opacity: 0.65;
+}
+
+.receipt-list,
+.receipt-item-list {
+    display: grid;
+    gap: 0.75rem;
+
+    margin: 0;
+    padding: 0;
+
+    list-style: none;
+}
+
+.receipt-list-item {
+    display: grid;
+    gap: 0.25rem;
+
+    inline-size: 100%;
+    padding: 0.875rem 1rem;
+    border: 1px solid transparent;
+    border-radius: 0.75rem;
+
+    font: inherit;
+    text-align: start;
+
+    background: #f8fafc;
+}
+
+.receipt-list-item:not(.receipt-list-item-selected) {
+    cursor: pointer;
+}
+
+.receipt-list-item:not(.receipt-list-item-selected):hover,
+.receipt-list-item:not(.receipt-list-item-selected):focus-visible {
+    border-color: #93c5fd;
+}
+
+.receipt-list-item-selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+}
+
+.receipt-list-item small,
+.receipt-item-list small,
+.receipt-state {
+    color: #64748b;
+}
+
+.receipt-item-list li {
+    display: grid;
+    gap: 0.25rem;
+
+    padding: 0.75rem 1rem;
+    border-radius: 0.625rem;
+
+    background: #f8fafc;
+}
+
+.receipt-review-item {
+    display: grid;
+    gap: 0.75rem;
+
+    padding: 1rem;
+    border: 1px solid #e2e8f0;
+    border-radius: 0.75rem;
+
+    background: #fff;
+}
+
+.receipt-review-item label {
+    font-size: 0.875rem;
+}
+
+.receipt-review-items h3 {
+    margin-block: 0 0.75rem;
+}
+
+.receipt-review-merchant {
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+}
+
+.receipt-review-actions {
+    padding-block-start: 1rem;
+    border-block-start: 1px solid #e2e8f0;
+}
+
+.receipt-image {
+    display: block;
+
+    max-inline-size: 100%;
+    max-block-size: 20rem;
+    border-radius: 0.75rem;
+
+    object-fit: contain;
+}
+
+.receipt-success {
+    margin-block: 0;
+    color: #15803d;
+}
+
+.receipt-error {
+    margin-block: 0;
+    color: #b91c1c;
 }
 
 .secondary-button {

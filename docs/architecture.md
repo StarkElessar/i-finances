@@ -13,6 +13,10 @@ apps/web ────────► apps/api ────────► SQLite
 
 `apps/web` is a client-only Solid.js application. `apps/api` is the only owner of HTTP, authentication, business services, repositories, SQLite, migrations, and worker endpoints. `packages/contracts` contains serializable Zod contracts and has no runtime dependency on either application.
 
+Both applications use the `@/*` TypeScript alias for imports rooted at their
+own `src` directory. The web Vite resolver and API Vitest resolver mirror the
+same mapping so editor, build, test, and runtime paths remain consistent.
+
 ## Layer rules
 
 - Hono is limited to routes, middleware, and HTTP controllers.
@@ -92,6 +96,57 @@ and transport errors. `CategoryClient` owns category paths and input/response
 schemas. Solid components receive the feature client as a dependency and do
 not import Hono, Drizzle, Node auth code, or API implementation modules.
 
+Web features use an FSD-like responsibility split without introducing a second
+framework or a global abstraction layer:
+
+```text
+features/<name>
+  api/    contracts-backed HTTP clients
+  model/  state, commands, form parsing, formatters
+  lib/    feature-local pure helpers and error mapping
+  ui/     presentational components and orchestration views
+  index.ts public feature boundary
+```
+
+For example, the accounts feature keeps its view orchestration in
+`AccountsView`, while account list, account form, form parsing, update command,
+labels, and error mapping live in their respective `ui`, `model`, and `lib`
+modules. The operations feature follows the same boundary and exposes its
+HTTP client separately from balances, ledger, and orchestration components.
+
+## Operations vertical slice
+
+```text
+Hono route
+  ▼
+OperationHttpController ──► OperationService ──► OperationRules
+                                  │                    │
+                    ┌─────────────┼────────────┐       ├── AccountRepository
+                    ▼             ▼            ▼       ├── CategoryRepository
+          OperationRepository  ExchangeRate  Household └── ContactRepository
+                    │             │            │
+                    └─────────────┴────────────┴──► Drizzle / SQLite
+```
+
+The operation service preserves minor-unit amounts, household isolation,
+optimistic versions, soft deletion, source ordering, and historical exchange
+rate snapshots. Updating an operation on the same date keeps its stored quote;
+changing the date resolves a new historical quote. Recalculation is a separate
+explicit command. Contact references now use the household-scoped contact
+repository; a current archived reference remains editable, while selecting a
+different archived contact is rejected.
+
+The contact slice follows the same HTTP chain:
+
+```text
+Hono route
+  ▼
+ContactHttpController ──► ContactService ──► ContactRules ──► ContactRepository
+                                                                    │
+                                                                    ▼
+                                                               SQLite
+```
+
 ## Password auth boundary
 
 ```text
@@ -135,6 +190,55 @@ records and keep Drizzle rows inside the API infrastructure boundary. The web
 client invokes the options/verification protocol through the shared contracts;
 it does not import API or database code.
 
+## Receipt import vertical slice
+
+```text
+Browser
+  │ multipart upload / review commands
+  ▼
+ReceiptImportClient ──► ReceiptImportHttpController ──► ReceiptImportService
+                                                               │
+                         ┌─────────────────────────────────────┼──────────────────┐
+                         ▼                                     ▼                  ▼
+                ReceiptImageStorage               ReceiptImportRepository   OperationService
+                         │                                     │                  │
+                         └─────────────────────────────────────┴──────────────────┘
+                                                               ▼
+                                                          SQLite / private files
+
+Worker
+  │ Bearer API key + lease token
+  ▼
+ReceiptWorkerHttpController ──► ReceiptImportService
+```
+
+Receipt processing is review-first. Upload creates a `queued` import and a
+processing job while storing an immutable snapshot of the active household
+categories. The worker can lease one job, renew its lease, read the private
+image, and submit a schema-versioned result. A completed job transitions to
+`needs_review`; it never creates ledger operations by itself.
+
+While an import is in `needs_review`, the browser can update the merchant, date,
+amounts, item names, and category assignments through the review command. The
+command uses the import version for optimistic locking and validates category
+ids against the immutable snapshot. Approval therefore consumes the latest
+saved review result rather than data held only in the browser.
+
+The approve command is authenticated, household-scoped, and guarded by the
+receipt version. It validates the account currency and item total, groups
+items by the worker category snapshot, creates expense operations through the
+existing `OperationService`, and writes `receipt_operation_links` for retry
+idempotency. The browser calls only the receipt endpoint; it does not create
+the grouped operations itself. The Mac Mini/OCR worker and broker are outside
+this repository slice and use the protected worker endpoints when integrated.
+
 ## Migration reference
 
 The former SolidStart application is kept in the sibling `master` worktree at `/Users/stark/Documents/web/experimental/i-finances`. It is consulted only for observed behavior, tests, and invariants while a vertical slice is migrated.
+
+## Production topology
+
+Nginx serves the static output of `apps/web` and proxies `/api/*` to the
+standalone API process. The browser therefore keeps a single origin for the
+Solid client, session cookie, CSRF origin checks, and API requests; the API
+does not serve frontend assets.

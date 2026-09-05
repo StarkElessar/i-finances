@@ -1,4 +1,9 @@
 import {
+	ApiClient,
+	type ApiClientOptions
+} from '@/shared/api';
+
+import {
 	categoryCollectionSchema,
 	type CategoryCommandResult,
 	categoryCommandResultSchema,
@@ -12,11 +17,6 @@ import {
 	type UpdateCategoryInput,
 	updateCategoryInputSchema
 } from '@i-finances/contracts';
-
-import {
-	ApiClient,
-	type ApiClientOptions
-} from '../../../shared/api';
 
 export type CategoryClientOptions = ApiClientOptions & {
 	client?: ApiClient;

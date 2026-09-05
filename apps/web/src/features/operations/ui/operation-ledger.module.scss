@@ -1,0 +1,41 @@
+.ledger {
+    display: grid;
+    gap: var(--space-5);
+}
+
+.balance-summary {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-4);
+}
+
+.balance-card {
+    display: grid;
+    gap: var(--space-1);
+
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background: var(--color-surface-subtle);
+}
+
+.balance-card span {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-secondary);
+}
+
+.balance-card strong {
+    font-size: var(--font-size-body-lg);
+    font-variant-numeric: tabular-nums;
+}
+
+.empty {
+    margin: 0;
+    padding: var(--space-7);
+    border: 1px dashed var(--color-border-strong);
+    border-radius: var(--radius-md);
+
+    color: var(--color-text-secondary);
+    text-align: center;
+}

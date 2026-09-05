@@ -1,17 +1,17 @@
+import { createApiApp } from '@/app';
+import { CategoryHttpController } from '@/http/category-controller';
+import type { RequestSessionResolver } from '@/http/session-resolver';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { categories, categoryKeywords, households, users } from '@/infrastructure/database/schema';
+import type { AuthenticatedSession } from '@/modules/auth';
+import { CategoryRepository, CategoryService } from '@/modules/category';
+import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-import { createApiApp } from '../src/app';
-import { CategoryHttpController } from '../src/http/category-controller';
-import type { RequestSessionResolver } from '../src/http/session-resolver';
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import { categories, categoryKeywords, households, users } from '../src/infrastructure/database/schema';
-import type { AuthenticatedSession } from '../src/modules/auth';
-import { CategoryRepository, CategoryService } from '../src/modules/category';
-import { HouseholdRepository, HouseholdResolver } from '../src/modules/household';
 
 const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'default-household';

@@ -1,11 +1,15 @@
 import './styles/global.scss';
 
-import { render } from 'solid-js/web';
+import { AccountClient } from '@/features/accounts';
+import { AuthClient } from '@/features/auth';
+import { CategoryClient } from '@/features/categories';
+import { ContactClient } from '@/features/contacts';
+import { OperationClient } from '@/features/operations';
+import { ReceiptImportClient } from '@/features/receipt-import';
 
-import { AccountClient } from './features/accounts';
-import { AuthClient } from './features/auth';
-import { CategoryClient } from './features/categories';
-import { App } from './app';
+import { App } from '@/app';
+
+import { render } from 'solid-js/web';
 
 const root = document.querySelector('#root');
 
@@ -19,6 +23,9 @@ render(
 			accountClient={new AccountClient()}
 			authClient={new AuthClient()}
 			categoryClient={new CategoryClient()}
+			contactClient={new ContactClient()}
+			operationClient={new OperationClient()}
+			receiptImportClient={new ReceiptImportClient()}
 		/>
 	),
 	root

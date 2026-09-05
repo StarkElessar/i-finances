@@ -1,7 +1,7 @@
-import type { CurrencyCode } from '@i-finances/contracts';
+import type { ExchangeRateResolver } from '@/modules/exchange-rate';
+import { convertMinorUnitsByExchangeRate } from '@/modules/exchange-rate';
 
-import type { ExchangeRateResolver } from '../exchange-rate';
-import { convertMinorUnitsByExchangeRate } from '../exchange-rate';
+import type { CurrencyCode } from '@i-finances/contracts';
 
 import type {
 	AccountCurrencyCorrectionRepository,

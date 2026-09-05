@@ -12,6 +12,7 @@
 	"dependencies": {
 		"@i-finances/contracts": "workspace:*",
 		"@simplewebauthn/browser": "^13.3.0",
+		"@solidjs/router": "^0.15.4",
 		"solid-js": "^1.9.5"
 	},
 	"devDependencies": {

@@ -1,3 +1,6 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import { accounts } from '@/infrastructure/database/schema';
+
 import type { AccountType, CurrencyCode } from '@i-finances/contracts';
 import {
 	and,
@@ -6,9 +9,6 @@ import {
 	isNull,
 	sql
 } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
-import { accounts } from '../../infrastructure/database/schema';
 
 export type AccountRecord = {
 	archivedAt: Date | null;

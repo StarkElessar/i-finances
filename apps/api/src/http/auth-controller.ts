@@ -1,3 +1,10 @@
+import type { SessionService } from '@/modules/auth';
+import type { PasswordSignInService } from '@/modules/auth';
+import {
+	type AuthConfig,
+	getAuthConfig
+} from '@/modules/auth';
+
 import {
 	type CurrentSessionResponse,
 	currentSessionResponseSchema,
@@ -7,13 +14,6 @@ import {
 	passwordSignOutResultSchema
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
-
-import type { SessionService } from '../modules/auth';
-import type { PasswordSignInService } from '../modules/auth';
-import {
-	type AuthConfig,
-	getAuthConfig
-} from '../modules/auth';
 
 import {
 	assertSameOriginMutation,

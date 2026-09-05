@@ -1,0 +1,22 @@
+@use "sass:math";
+@use "sass:meta";
+
+@function strip-unit($value, $name: "$value") {
+    @if meta.type-of($value) != "number" {
+        @error "#{$name} must be a number, got #{meta.inspect($value)}.";
+    }
+
+    @if math.is-unitless($value) {
+        @return $value;
+    }
+
+    @return math.div($value, $value * 0 + 1);
+}
+
+@function rem($value, $base: 16px) {
+    @return math.div(strip-unit($value, "$value"), strip-unit($base, "$base")) * 1rem;
+}
+
+@function em($value, $base: 16px) {
+    @return math.div(strip-unit($value, "$value"), strip-unit($base, "$base")) * 1em;
+}

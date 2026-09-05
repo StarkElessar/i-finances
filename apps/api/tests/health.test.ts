@@ -1,7 +1,7 @@
+import { createApiApp } from '@/app';
+
 import { healthResponseSchema } from '@i-finances/contracts';
 import { describe, expect, it } from 'vitest';
-
-import { createApiApp } from '../src/app';
 
 describe('API health endpoint', () => {
 	it('returns a contract-valid response without opening a server port', async () => {

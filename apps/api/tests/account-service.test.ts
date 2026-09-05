@@ -1,3 +1,24 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import {
+	accounts,
+	exchangeRates,
+	householdMembers,
+	households,
+	operations,
+	users
+} from '@/infrastructure/database/schema';
+import {
+	AccountCurrencyCorrectionRepository,
+	AccountCurrencyCorrectionRequiredError,
+	AccountCurrencyCorrector,
+	AccountRepository,
+	AccountService,
+	AccountVersionConflictError
+} from '@/modules/account';
+import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
+import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+
 import {
 	createAccountInputSchema,
 	updateAccountInputSchema
@@ -12,27 +33,6 @@ import {
 	expect,
 	it
 } from 'vitest';
-
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import {
-	accounts,
-	exchangeRates,
-	householdMembers,
-	households,
-	operations,
-	users
-} from '../src/infrastructure/database/schema';
-import {
-	AccountCurrencyCorrectionRepository,
-	AccountCurrencyCorrectionRequiredError,
-	AccountCurrencyCorrector,
-	AccountRepository,
-	AccountService,
-	AccountVersionConflictError
-} from '../src/modules/account';
-import { ExchangeRateRepository, ExchangeRateService } from '../src/modules/exchange-rate';
-import { HouseholdRepository, HouseholdResolver } from '../src/modules/household';
 
 const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'household-1';

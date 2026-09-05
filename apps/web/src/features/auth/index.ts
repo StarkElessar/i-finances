@@ -1,2 +1,2 @@
 export { AuthClient, type AuthClientOptions } from './api';
-export { AuthView, type AuthViewProps } from './ui/auth-view';
+export { SignInForm, type SignInFormProps } from './ui';

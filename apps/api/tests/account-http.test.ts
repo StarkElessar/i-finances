@@ -1,23 +1,23 @@
-import Database from 'better-sqlite3';
-import { drizzle } from 'drizzle-orm/better-sqlite3';
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-import { createApiApp } from '../src/app';
-import { AccountHttpController } from '../src/http/account-controller';
-import type { RequestSessionResolver } from '../src/http/session-resolver';
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import { householdMembers, households, users } from '../src/infrastructure/database/schema';
+import { createApiApp } from '@/app';
+import { AccountHttpController } from '@/http/account-controller';
+import type { RequestSessionResolver } from '@/http/session-resolver';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { householdMembers, households, users } from '@/infrastructure/database/schema';
 import {
 	AccountCurrencyCorrectionRepository,
 	AccountCurrencyCorrector,
 	AccountRepository,
 	AccountService
-} from '../src/modules/account';
-import type { AuthenticatedSession } from '../src/modules/auth';
-import { ExchangeRateRepository, ExchangeRateService } from '../src/modules/exchange-rate';
-import { HouseholdRepository, HouseholdResolver } from '../src/modules/household';
+} from '@/modules/account';
+import type { AuthenticatedSession } from '@/modules/auth';
+import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
+import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+
+import Database from 'better-sqlite3';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'default-household';

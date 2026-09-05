@@ -1,4 +1,4 @@
-import { type AuthConfig, getAuthConfig } from '../modules/auth';
+import { type AuthConfig, getAuthConfig } from '@/modules/auth';
 
 function readHeaderOrigin(value: string | null): string | undefined {
 	if (value === null || value.length === 0) {

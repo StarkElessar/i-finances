@@ -1,7 +1,7 @@
-import { eq } from 'drizzle-orm';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import { users } from '@/infrastructure/database/schema';
 
-import type { AppDatabase } from '../../infrastructure/database/client';
-import { users } from '../../infrastructure/database/schema';
+import { eq } from 'drizzle-orm';
 
 export type PasswordAuthUserRecord = {
 	displayName: string;

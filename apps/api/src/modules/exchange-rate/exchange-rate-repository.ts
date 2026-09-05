@@ -1,8 +1,8 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import { exchangeRates } from '@/infrastructure/database/schema';
+
 import type { CurrencyCode } from '@i-finances/contracts';
 import { and, desc, eq, lte } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
-import { exchangeRates } from '../../infrastructure/database/schema';
 
 export type FindExchangeRateInput = {
 	fromCurrency: CurrencyCode;

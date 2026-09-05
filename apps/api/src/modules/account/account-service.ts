@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type { HouseholdResolver } from '@/modules/household';
+
 import {
 	type AccountCollection,
 	type ChangeAccountArchiveStateInput,
@@ -7,8 +9,6 @@ import {
 	type PersistedAccount,
 	type UpdateAccountInput
 } from '@i-finances/contracts';
-
-import type { HouseholdResolver } from '../household';
 
 import type { AccountCurrencyCorrector } from './account-currency-corrector';
 import { AccountCurrencyCorrectionRequiredError, AccountVersionConflictError } from './account-errors';

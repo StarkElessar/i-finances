@@ -1,4 +1,10 @@
 import {
+	ApiClient,
+	type ApiClientOptions,
+	ApiHttpError
+} from '@/shared/api';
+
+import {
 	type CurrentSessionResponse,
 	currentSessionResponseSchema,
 	passkeyAuthenticationOptionsSchema,
@@ -20,12 +26,6 @@ import {
 	startAuthentication,
 	startRegistration
 } from '@simplewebauthn/browser';
-
-import {
-	ApiClient,
-	type ApiClientOptions,
-	ApiHttpError
-} from '../../../shared/api';
 
 export type AuthClientOptions = ApiClientOptions & {
 	client?: ApiClient;

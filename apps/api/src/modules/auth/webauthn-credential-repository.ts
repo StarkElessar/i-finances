@@ -1,11 +1,11 @@
-import { eq } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
+import type { AppDatabase } from '@/infrastructure/database/client';
 import {
 	users,
 	type WebauthnCredentialRecord,
 	webauthnCredentials
-} from '../../infrastructure/database/schema';
+} from '@/infrastructure/database/schema';
+
+import { eq } from 'drizzle-orm';
 
 export type WebAuthnCredential = {
 	backedUp: boolean;

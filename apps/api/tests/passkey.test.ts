@@ -1,3 +1,18 @@
+import { createApiApp } from '@/app';
+import { PasskeyHttpController } from '@/http/passkey-controller';
+import { CookieSessionResolver } from '@/http/session-resolver';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { users, webauthnChallenges } from '@/infrastructure/database/schema';
+import type { AuthConfig } from '@/modules/auth';
+import {
+	SessionRepository,
+	SessionService,
+	WebAuthnChallengeRepository,
+	WebAuthnCredentialRepository,
+	WebAuthnService
+} from '@/modules/auth';
+
 import {
 	passkeyAuthenticationOptionsSchema,
 	passkeyRegistrationOptionsSchema,
@@ -8,21 +23,6 @@ import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-
-import { createApiApp } from '../src/app';
-import { PasskeyHttpController } from '../src/http/passkey-controller';
-import { CookieSessionResolver } from '../src/http/session-resolver';
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import { users, webauthnChallenges } from '../src/infrastructure/database/schema';
-import type { AuthConfig } from '../src/modules/auth';
-import {
-	SessionRepository,
-	SessionService,
-	WebAuthnChallengeRepository,
-	WebAuthnCredentialRepository,
-	WebAuthnService
-} from '../src/modules/auth';
 
 const USER_ID = 'user-1';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');

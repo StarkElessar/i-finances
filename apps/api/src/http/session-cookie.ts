@@ -1,4 +1,4 @@
-import type { AuthConfig } from '../modules/auth';
+import type { AuthConfig } from '@/modules/auth';
 
 export function readSessionCookie(
 	request: Request,

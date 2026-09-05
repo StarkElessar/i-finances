@@ -1,8 +1,8 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import { accounts, operations } from '@/infrastructure/database/schema';
+
 import type { CurrencyCode } from '@i-finances/contracts';
 import { and, eq, sql } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
-import { accounts, operations } from '../../infrastructure/database/schema';
 
 import { AccountCurrencyCorrectionConflictError } from './account-errors';
 import type { AccountRecord, AccountUpdateValues } from './account-repository';

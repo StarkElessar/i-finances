@@ -1,4 +1,9 @@
 import {
+	ApiClient,
+	type ApiClientOptions
+} from '@/shared/api';
+
+import {
 	accountCollectionSchema,
 	type AccountCommandResult,
 	accountCommandResultSchema,
@@ -10,11 +15,6 @@ import {
 	type UpdateAccountInput,
 	updateAccountInputSchema
 } from '@i-finances/contracts';
-
-import {
-	ApiClient,
-	type ApiClientOptions
-} from '../../../shared/api';
 
 export type AccountClientOptions = ApiClientOptions & {
 	client?: ApiClient;

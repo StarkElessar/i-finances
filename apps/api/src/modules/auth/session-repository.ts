@@ -1,7 +1,7 @@
-import { eq, lt } from 'drizzle-orm';
+import type { AppDatabase } from '@/infrastructure/database/client';
+import { sessions, users } from '@/infrastructure/database/schema';
 
-import type { AppDatabase } from '../../infrastructure/database/client';
-import { sessions, users } from '../../infrastructure/database/schema';
+import { eq, lt } from 'drizzle-orm';
 
 export type SessionWithUserRecord = {
 	session: {

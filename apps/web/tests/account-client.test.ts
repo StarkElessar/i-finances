@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { AccountClient } from '@/features/accounts/api';
 
-import { AccountClient } from '../src/features/accounts/api';
+import { describe, expect, it } from 'vitest';
 
 const account = {
 	archivedAt: null,

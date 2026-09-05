@@ -4,7 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "tsx watch src/main.ts",
+		"dev": "pnpm run db:migrate && tsx watch src/main.ts",
 		"build": "pnpm run typecheck",
 		"start": "tsx src/main.ts",
 		"test": "vitest run",

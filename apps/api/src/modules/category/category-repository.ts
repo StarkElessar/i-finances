@@ -1,3 +1,9 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import {
+	categories,
+	categoryKeywords
+} from '@/infrastructure/database/schema';
+
 import type { CategoryListStatus } from '@i-finances/contracts';
 import {
 	and,
@@ -7,12 +13,6 @@ import {
 	isNull,
 	sql
 } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
-import {
-	categories,
-	categoryKeywords
-} from '../../infrastructure/database/schema';
 
 export type CategoryRecord = {
 	archivedAt: Date | null;

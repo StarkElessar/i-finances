@@ -1,27 +1,9 @@
-import type { AccountClient } from './features/accounts';
-import type { AuthClient } from './features/auth';
-import { AuthView } from './features/auth';
-import type { CategoryClient } from './features/categories';
+import { AppRouter } from '@/app/router';
 
-export type AppProps = {
-	authClient: AuthClient;
-	accountClient: AccountClient;
-	categoryClient: CategoryClient;
-};
+import type { AppServices } from './app/app-services';
+
+export type AppProps = AppServices;
 
 export function App(props: AppProps) {
-	return (
-		<main class='app-shell'>
-			<header class='app-header'>
-				<p class='eyebrow'>i-finances</p>
-				<h1>Финансы семьи</h1>
-				<p class='app-description'>Клиентский Solid.js слой общается с API только через HTTP.</p>
-			</header>
-			<AuthView
-				accountClient={props.accountClient}
-				authClient={props.authClient}
-				categoryClient={props.categoryClient}
-			/>
-		</main>
-	);
+	return <AppRouter {...props}/>;
 }

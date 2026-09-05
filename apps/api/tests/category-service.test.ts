@@ -1,3 +1,14 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { categories, categoryKeywords, householdMembers, households, users } from '@/infrastructure/database/schema';
+import {
+	CategoryNameConflictError,
+	CategoryRepository,
+	CategoryService,
+	CategoryVersionConflictError
+} from '@/modules/category';
+import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+
 import {
 	categoryListInputSchema,
 	createCategoryInputSchema,
@@ -13,17 +24,6 @@ import {
 	expect,
 	it
 } from 'vitest';
-
-import type { AppDatabase } from '../src/infrastructure/database/client';
-import * as schema from '../src/infrastructure/database/schema';
-import { categories, categoryKeywords, householdMembers, households, users } from '../src/infrastructure/database/schema';
-import {
-	CategoryNameConflictError,
-	CategoryRepository,
-	CategoryService,
-	CategoryVersionConflictError
-} from '../src/modules/category';
-import { HouseholdRepository, HouseholdResolver } from '../src/modules/household';
 
 const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'household-1';

@@ -1,7 +1,7 @@
-import { serve } from '@hono/node-server';
+import { createApiApp } from '@/app';
+import { createApiDependencies } from '@/composition-root';
 
-import { createApiApp } from './app';
-import { createApiDependencies } from './composition-root';
+import { serve } from '@hono/node-server';
 
 const port = Number(process.env.API_PORT ?? 3001);
 

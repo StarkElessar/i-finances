@@ -8,7 +8,7 @@ const passkeyMocks = vi.hoisted(() => ({
 
 vi.mock('@simplewebauthn/browser', () => passkeyMocks);
 
-import { AuthClient } from '../src/features/auth/api';
+import { AuthClient } from '@/features/auth/api';
 
 describe('AuthClient', () => {
 	it('loads the current session through the shared API client', async () => {

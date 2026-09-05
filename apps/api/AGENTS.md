@@ -8,3 +8,4 @@ The API owns HTTP transport, authentication, application services, repositories,
 - Use explicit constructor dependencies and a visible composition root; do not add Inversify, decorators, or a service locator.
 - Keep the existing migration files byte-for-byte unchanged when moving or applying them.
 - Never use a production or user database for migration experiments.
+- Use `@/*` for imports rooted at `apps/api/src`; keep same-module implementation details relative.

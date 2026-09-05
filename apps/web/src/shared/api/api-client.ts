@@ -52,6 +52,17 @@ export class ApiClient {
 		});
 	}
 
+	public async postForm<TResponse>(
+		path: string,
+		body: FormData,
+		schema: ApiResponseSchema<TResponse>
+	): Promise<TResponse> {
+		return this.request(path, schema, {
+			body,
+			method: 'POST'
+		});
+	}
+
 	public async put<TResponse>(
 		path: string,
 		body: unknown,
@@ -74,9 +85,13 @@ export class ApiClient {
 
 		requestHeaders.set('accept', 'application/json');
 
-		const serializedBody = body === undefined ? undefined : JSON.stringify(body);
+		const serializedBody = body instanceof FormData
+			? body
+			: body === undefined
+				? undefined
+				: JSON.stringify(body);
 
-		if (serializedBody !== undefined) {
+		if (serializedBody !== undefined && !(body instanceof FormData)) {
 			requestHeaders.set('content-type', 'application/json');
 		}
 

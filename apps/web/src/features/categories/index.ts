@@ -1,2 +1,16 @@
 export { CategoryClient, type CategoryClientOptions } from './api';
-export { CategoriesView, type CategoriesViewProps } from './ui/categories-view';
+export { resolveCategoryError } from './lib';
+export {
+	type CategoryFormFields,
+	formatCategoryAmount,
+	readCategoryFields,
+	toCategoryFormFields
+} from './model';
+export {
+	CategoriesView,
+	type CategoriesViewProps,
+	CategoryForm,
+	type CategoryFormProps,
+	CategoryList,
+	type CategoryListProps
+} from './ui';

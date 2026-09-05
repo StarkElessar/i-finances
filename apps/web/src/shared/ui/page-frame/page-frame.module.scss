@@ -1,0 +1,47 @@
+@use "@/shared/styles/mixins" as mx;
+
+.page {
+    padding-block: var(--space-9) calc(var(--space-12) + var(--space-10));
+}
+
+.header {
+    display: grid;
+    gap: var(--space-3);
+    margin-block-end: var(--space-9);
+}
+
+.eyebrow {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+}
+
+.title {
+    font-size: var(--font-size-display);
+    line-height: var(--line-height-display);
+    letter-spacing: -0.035em;
+}
+
+.description {
+    max-inline-size: 42rem;
+    font-size: var(--font-size-body-lg);
+    line-height: var(--line-height-body-lg);
+    color: var(--color-text-secondary);
+}
+
+.content {
+    display: grid;
+    gap: var(--space-8);
+}
+
+@include mx.media-mn(768) {
+    .page {
+        padding-block-start: var(--space-12);
+    }
+
+    .header {
+        max-inline-size: 58rem;
+    }
+}

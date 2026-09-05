@@ -1,4 +1,11 @@
 import {
+	type AuthConfig,
+	getAuthConfig,
+	type PasskeyRequestMetadata,
+	type WebAuthnService
+} from '@/modules/auth';
+
+import {
 	passkeyAuthenticationOptionsSchema,
 	type PasskeyRegistrationErrorCode,
 	passkeyRegistrationErrorMessageByCode,
@@ -14,13 +21,6 @@ import {
 } from '@i-finances/contracts';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { Context } from 'hono';
-
-import {
-	type AuthConfig,
-	getAuthConfig,
-	type PasskeyRequestMetadata,
-	type WebAuthnService
-} from '../modules/auth';
 
 import { isSameOriginMutation } from './mutation-origin';
 import { createSessionCookie } from './session-cookie';

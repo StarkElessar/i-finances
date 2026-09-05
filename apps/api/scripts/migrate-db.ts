@@ -1,6 +1,6 @@
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { db, sqlite } from '@/infrastructure/database/client';
 
-import { db, sqlite } from '../src/infrastructure/database/client';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 /**
  * Applies committed Drizzle migrations to the configured SQLite database.

@@ -1,6 +1,6 @@
-import { normalizeCategoryIdentity } from '@i-finances/contracts';
+import type { HouseholdResolver } from '@/modules/household';
 
-import type { HouseholdResolver } from '../household';
+import { normalizeCategoryIdentity } from '@i-finances/contracts';
 
 import {
 	CategoryNameConflictError,

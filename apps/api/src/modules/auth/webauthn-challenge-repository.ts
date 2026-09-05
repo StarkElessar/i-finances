@@ -1,11 +1,11 @@
-import { and, eq, gt, isNull } from 'drizzle-orm';
-
-import type { AppDatabase } from '../../infrastructure/database/client';
+import type { AppDatabase } from '@/infrastructure/database/client';
 import {
 	type WebauthnChallengePurpose,
 	type WebauthnChallengeRecord,
 	webauthnChallenges
-} from '../../infrastructure/database/schema';
+} from '@/infrastructure/database/schema';
+
+import { and, eq, gt, isNull } from 'drizzle-orm';
 
 export type WebAuthnChallengeInsertRecord = {
 	challenge: string;

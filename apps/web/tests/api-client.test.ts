@@ -1,6 +1,6 @@
-import { describe, expect, it } from 'vitest';
+import { ApiClient } from '@/shared/api';
 
-import { ApiClient } from '../src/shared/api';
+import { describe, expect, it } from 'vitest';
 
 describe('ApiClient', () => {
 	it('uses same-origin credentials and validates JSON responses', async () => {

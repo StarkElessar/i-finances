@@ -1,6 +1,6 @@
-import type { CurrencyCode } from '@i-finances/contracts';
+import type { HouseholdResolver } from '@/modules/household';
 
-import type { HouseholdResolver } from '../household';
+import type { CurrencyCode } from '@i-finances/contracts';
 
 import { AccountNotFoundError, AccountVersionConflictError } from './account-errors';
 import type { AccountRecord, AccountRepository } from './account-repository';
