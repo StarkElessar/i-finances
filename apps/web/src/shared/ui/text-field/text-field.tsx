@@ -5,9 +5,19 @@ import { cn } from '@/shared/lib';
 import type { JSX } from 'solid-js';
 import { children, createUniqueId, Show, splitProps } from 'solid-js';
 
+/**
+ * Input heights aligned with the button size scale.
+ */
 export type TextFieldSize = 'sm' | 'md' | 'lg';
+
+/**
+ * Surface treatments available for text fields.
+ */
 export type TextFieldVariant = 'outline' | 'filled';
 
+/**
+ * Text field properties extending native input behavior with accessible field chrome.
+ */
 export type TextFieldProps = Omit<JSX.InputHTMLAttributes<HTMLInputElement>, 'children' | 'class' | 'size'> & {
 	label?: string;
 	hint?: string;
@@ -32,20 +42,57 @@ const variantClassByVariant: Record<TextFieldVariant, string> = {
 	filled: css.variantFilled
 };
 
+/**
+ * Renders a labelled native input with hints, validation and optional adornments.
+ */
 export function TextField(props: TextFieldProps) {
 	const generatedId = createUniqueId();
 	const [local, inputProps] = splitProps(props, [
-		'label', 'hint', 'error', 'optional', 'size', 'variant', 'startContent', 'endContent', 'class', 'inputClass',
-		'id', 'required', 'disabled', 'readOnly', 'aria-describedby'
+		'label',
+		'hint',
+		'error',
+		'optional',
+		'size',
+		'variant',
+		'startContent',
+		'endContent',
+		'class',
+		'inputClass',
+		'id',
+		'required',
+		'disabled',
+		'readOnly',
+		'aria-describedby'
 	]);
+
+	/**
+	 * Resolves the optional leading JSX exactly once per reactive change.
+	 */
 	const startContent = children(() => local.startContent);
+
+	/**
+	 * Resolves the optional trailing JSX exactly once per reactive change.
+	 */
 	const endContent = children(() => local.endContent);
 
-	const resolveInputId = (): string => local.id ?? generatedId;
-	const resolveMessageId = (): string | undefined => local.error || local.hint
-		? `${resolveInputId()}-message`
-		: undefined;
-	const resolveAriaDescription = (): string | undefined => {
+	/**
+	 * Resolves the stable native input identifier.
+	 */
+	function resolveInputId(): string {
+		return local.id ?? generatedId;
+	}
+
+	/**
+	 * Returns the message identifier only when supporting content is visible.
+	 */
+	function resolveMessageId(): string | undefined {
+		return local.error || local.hint ? `${resolveInputId()}-message` : undefined;
+	}
+
+	/**
+	 * Combines consumer-provided and component-provided accessibility descriptions.
+	 */
+	function resolveAriaDescription(): string | undefined {
 		const providedId = local['aria-describedby'];
 		const messageId = resolveMessageId();
 
@@ -54,17 +101,22 @@ export function TextField(props: TextFieldProps) {
 		}
 
 		return providedId ?? messageId;
-	};
+	}
 
 	return (
 		<div class={cn(css.field, local.class)}>
 			<Show when={local.label}>
 				<label class={css.labelRow} for={resolveInputId()}>
 					<span class={css.label}>{local.label}</span>
-					<Show when={local.required}><span aria-hidden='true' class={css.required}>*</span></Show>
-					<Show when={local.optional && !local.required}><span class={css.optional}>необязательно</span></Show>
+					<Show when={local.required}>
+						<span aria-hidden='true' class={css.required}>*</span>
+					</Show>
+					<Show when={local.optional && !local.required}>
+						<span class={css.optional}>необязательно</span>
+					</Show>
 				</label>
 			</Show>
+
 			<div
 				class={cn(
 					css.control,
@@ -75,7 +127,9 @@ export function TextField(props: TextFieldProps) {
 					local.readOnly && css.readonly
 				)}
 			>
-				<Show keyed when={startContent()}>{(content) => <span class={css.adornment}>{content}</span>}</Show>
+				<Show keyed when={startContent()}>
+					{(content) => <span class={css.adornment}>{content}</span>}
+				</Show>
 				<input
 					{...inputProps}
 					aria-describedby={resolveAriaDescription()}
@@ -86,8 +140,11 @@ export function TextField(props: TextFieldProps) {
 					readOnly={local.readOnly}
 					required={local.required}
 				/>
-				<Show keyed when={endContent()}>{(content) => <span class={css.adornment}>{content}</span>}</Show>
+				<Show keyed when={endContent()}>
+					{(content) => <span class={css.adornment}>{content}</span>}
+				</Show>
 			</div>
+
 			<Show when={local.error || local.hint}>
 				<div
 					aria-live={local.error ? 'polite' : undefined}

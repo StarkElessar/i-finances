@@ -10,10 +10,13 @@
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},
 	"dependencies": {
+		"@floating-ui/dom": "^1.8.0",
 		"@i-finances/contracts": "workspace:*",
 		"@simplewebauthn/browser": "^13.3.0",
 		"@solidjs/router": "^0.15.4",
-		"solid-js": "^1.9.5"
+		"lucide-solid": "^1.41.0",
+		"solid-js": "^1.9.5",
+		"zod": "^4.4.3"
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",

@@ -1,0 +1,25 @@
+.country-select {
+    cursor: pointer;
+
+    margin: 0;
+    padding: 0;
+    border: 0;
+
+    font: inherit;
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+
+    background: transparent;
+
+    &:disabled {
+        cursor: not-allowed;
+        color: var(--color-text-tertiary);
+    }
+
+    &:focus-visible {
+        outline: 2px solid var(--color-focus-ring);
+        outline-offset: 2px;
+        border-radius: var(--radius-sm);
+    }
+}

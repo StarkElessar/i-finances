@@ -5,9 +5,19 @@ import { cn } from '@/shared/lib';
 import type { JSX } from 'solid-js';
 import { children, Show, splitProps } from 'solid-js';
 
+/**
+ * Visual hierarchy variants supported by the button.
+ */
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+
+/**
+ * Control heights shared with inputs and other interactive elements.
+ */
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
+/**
+ * Button properties extending the native SolidJS button contract.
+ */
 export type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'class'> & {
 	children: JSX.Element;
 	variant?: ButtonVariant;
@@ -33,6 +43,11 @@ const sizeClassBySize: Record<ButtonSize, string> = {
 	lg: css.sizeLg
 };
 
+/**
+ * Renders an accessible action control with consistent sizing and states.
+ *
+ * Icon-only usage must include an `aria-label`.
+ */
 export function Button(props: ButtonProps) {
 	const [local, buttonProps] = splitProps(props, [
 		'children',
@@ -47,7 +62,15 @@ export function Button(props: ButtonProps) {
 		'type',
 		'disabled'
 	]);
+
+	/**
+	 * Resolves the optional leading icon without evaluating its JSX getter twice.
+	 */
 	const startIcon = children(() => local.startIcon);
+
+	/**
+	 * Resolves the optional trailing icon without evaluating its JSX getter twice.
+	 */
 	const endIcon = children(() => local.endIcon);
 
 	return (
@@ -67,11 +90,17 @@ export function Button(props: ButtonProps) {
 			type={local.type ?? 'button'}
 		>
 			<span class={css.content}>
-				<Show keyed when={startIcon()}>{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}</Show>
+				<Show keyed when={startIcon()}>
+					{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}
+				</Show>
 				<span class={css.label}>{local.children}</span>
-				<Show keyed when={endIcon()}>{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}</Show>
+				<Show keyed when={endIcon()}>
+					{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}
+				</Show>
 			</span>
-			<Show when={local.loading}><span aria-hidden='true' class={css.spinner}/></Show>
+			<Show when={local.loading}>
+				<span aria-hidden='true' class={css.spinner}/>
+			</Show>
 		</button>
 	);
 }

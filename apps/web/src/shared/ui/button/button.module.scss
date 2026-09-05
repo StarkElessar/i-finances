@@ -60,6 +60,12 @@
 
     inline-size: 1.125em;
     block-size: 1.125em;
+
+    svg {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+    }
 }
 
 .variant-primary {
@@ -68,6 +74,10 @@
 
     &:hover:not(:disabled) {
         background-color: var(--color-primary-hover);
+    }
+
+    &:active:not(:disabled) {
+        background-color: var(--color-primary-active);
     }
 }
 
@@ -102,18 +112,21 @@
 }
 
 .size-sm {
+    gap: var(--space-3);
     min-block-size: var(--control-size-sm);
     padding-inline: var(--space-5);
     font-size: var(--font-size-body-sm);
 }
 
 .size-md {
+    gap: var(--space-4);
     min-block-size: var(--control-size-md);
     padding-inline: var(--space-6);
     font-size: var(--font-size-body-md);
 }
 
 .size-lg {
+    gap: var(--space-4);
     min-block-size: var(--control-size-lg);
     padding-inline: var(--space-7);
     font-size: var(--font-size-body-md);
@@ -124,6 +137,7 @@
 }
 
 .icon-only {
+    flex-shrink: 0;
     padding-inline: 0;
 
     &.size-sm {
@@ -139,8 +153,10 @@
     }
 }
 
-.loading .content {
-    visibility: hidden;
+.loading {
+    .content {
+        visibility: hidden;
+    }
 }
 
 .spinner {
@@ -161,5 +177,15 @@
 @keyframes button-spin {
     to {
         transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .button {
+        transition: none;
+    }
+
+    .spinner {
+        animation-duration: 1400ms;
     }
 }

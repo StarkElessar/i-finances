@@ -123,6 +123,12 @@
     &:last-child {
         margin-inline-start: var(--space-3);
     }
+
+    svg {
+        display: block;
+        inline-size: 1.1em;
+        block-size: 1.1em;
+    }
 }
 
 .invalid {

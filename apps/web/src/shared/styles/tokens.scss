@@ -7,6 +7,7 @@
 
 :root,
 [data-theme="light"] {
+    // Typography
     --font-family-sans: -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
     --font-family-mono: "SFMono-Regular", consolas, "Liberation Mono", monospace;
     --font-size-display: #{fn.rem(32)};
@@ -26,6 +27,8 @@
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --font-weight-bold: 700;
+
+    // Spacing
     --space-0: 0;
     --space-1: #{fn.rem(2)};
     --space-2: #{fn.rem(4)};
@@ -39,6 +42,8 @@
     --space-10: #{fn.rem(40)};
     --space-11: #{fn.rem(48)};
     --space-12: #{fn.rem(64)};
+
+    // Shape and control dimensions
     --radius-xs: #{fn.rem(4)};
     --radius-sm: #{fn.rem(6)};
     --radius-md: #{fn.rem(8)};
@@ -48,6 +53,8 @@
     --control-size-sm: #{fn.rem(32)};
     --control-size-md: #{fn.rem(40)};
     --control-size-lg: #{fn.rem(48)};
+
+    // Surfaces and text
     --color-canvas: #f6f8fb;
     --color-surface: #fff;
     --color-surface-subtle: #f1f5f9;
@@ -58,6 +65,8 @@
     --color-text-inverse: #fff;
     --color-border: #dce3ed;
     --color-border-strong: #c5cfdd;
+
+    // Brand and semantic states
     --color-primary: rgb(63 119 168);
     --color-primary-hover: color-mix(in srgb, var(--color-primary), #000 6%);
     --color-primary-active: color-mix(in srgb, var(--color-primary), #000 10%);
@@ -70,6 +79,8 @@
     --color-warning: #a15c00;
     --color-warning-soft: #fff5df;
     --color-focus-ring: rgb(37 99 235 / 22%);
+
+    // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
     --shadow-md: 0 12px 32px rgb(23 32 51 / 10%);
     --duration-fast: 120ms;

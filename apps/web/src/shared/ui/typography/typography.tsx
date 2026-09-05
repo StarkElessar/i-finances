@@ -5,6 +5,9 @@ import { cn } from '@/shared/lib';
 import type { JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 
+/**
+ * Available semantic presets in the application type scale.
+ */
 export type TypographyVariant =
 	| 'display'
 	| 'heading-1'
@@ -15,11 +18,30 @@ export type TypographyVariant =
 	| 'body-sm'
 	| 'label'
 	| 'caption';
+
+/**
+ * Supported text emphasis levels.
+ */
 export type TypographyTone = 'primary' | 'secondary' | 'tertiary' | 'danger' | 'success' | 'inherit';
+
+/**
+ * Supported font weights independent from a typography preset.
+ */
 export type TypographyWeight = 'regular' | 'medium' | 'semibold' | 'bold';
+
+/**
+ * Text alignment options used by content and form layouts.
+ */
 export type TypographyAlign = 'start' | 'center' | 'end';
+
+/**
+ * Semantic HTML elements supported by the typography primitive.
+ */
 export type TypographyElement = 'h1' | 'h2' | 'h3' | 'p' | 'span' | 'div' | 'label';
 
+/**
+ * Properties accepted by the typography primitive.
+ */
 export type TypographyProps = {
 	children: JSX.Element;
 	variant?: TypographyVariant;
@@ -74,10 +96,18 @@ const weightClassByWeight: Record<TypographyWeight, string> = {
 };
 
 const alignClassByAlign: Record<TypographyAlign, string> = {
-	start: css.alignStart, center: css.alignCenter, end: css.alignEnd
+	start: css.alignStart,
+	center: css.alignCenter,
+	end: css.alignEnd
 };
 
+/**
+ * Renders semantic text using the shared type scale and color tokens.
+ */
 export function Typography(props: TypographyProps) {
+	/**
+	 * Resolves the active preset while keeping prop reads reactive.
+	 */
 	const variant = () => props.variant ?? 'body-md';
 
 	return (
