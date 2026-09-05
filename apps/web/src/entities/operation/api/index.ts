@@ -26,3 +26,13 @@ export {
 	recalculateOperationRateInputSchema,
 	updateOperationInputSchema
 } from './operation.contract';
+export {
+	createOperationAction,
+	deleteOperationAction,
+	getAccountBalances,
+	getAccountLedger,
+	getMonthlyExpenseSummary,
+	recalculateOperationRateAction,
+	restoreOperationAction,
+	updateOperationAction
+} from './operation.client';

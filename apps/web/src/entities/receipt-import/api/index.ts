@@ -21,3 +21,8 @@ export {
 	requestReceiptRevisionInputSchema,
 	workerIdentitySchema
 } from './receipt-import.contract';
+export {
+	approveReceipt,
+	getReceiptImports,
+	requestReceiptRevision
+} from './receipt-import.client';

@@ -53,3 +53,10 @@ export {
 	CategoryIcon,
 	CategoryIconPicker
 } from './ui';
+export {
+	archiveCategory,
+	createCategory,
+	getCategories,
+	restoreCategory,
+	updateCategory
+} from './api/category.client';

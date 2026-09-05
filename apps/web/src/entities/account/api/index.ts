@@ -10,3 +10,10 @@ export {
 	createAccountInputSchema,
 	updateAccountInputSchema
 } from './account.contract';
+export {
+	archiveAccount,
+	createAccount,
+	getAccounts,
+	restoreAccount,
+	updateAccount
+} from './account.client';

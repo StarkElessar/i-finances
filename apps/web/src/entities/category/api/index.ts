@@ -14,3 +14,10 @@ export {
 	createCategoryInputSchema,
 	updateCategoryInputSchema
 } from './category.contract';
+export {
+	archiveCategory,
+	createCategory,
+	getCategories,
+	restoreCategory,
+	updateCategory
+} from './category.client';
