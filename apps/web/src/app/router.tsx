@@ -1,7 +1,9 @@
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
 
-import { AppShell } from '@/widgets/app-shell';
+import { CurrentViewerProvider } from '@/entities/viewer';
+
+import { AppHeader } from '@/widgets/app-header';
 
 import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
@@ -51,14 +53,13 @@ function ProtectedRoute(props: ProtectedRouteProps) {
 		return <Navigate href='/sign-in'/>;
 	}
 
+	const viewer = () => session.user;
+
 	return (
-		<AppShell
-			onSignedOut={props.onSignedOut}
-			session={session}
-			services={{ authClient: props.authClient }}
-		>
+		<CurrentViewerProvider viewer={viewer}>
+			<AppHeader authClient={props.authClient} onSignedOut={props.onSignedOut}/>
 			{props.children}
-		</AppShell>
+		</CurrentViewerProvider>
 	);
 }
 
