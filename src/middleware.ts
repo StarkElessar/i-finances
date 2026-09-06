@@ -4,6 +4,26 @@ import { validateReturnPath } from '~/server/auth/validate-return-path';
 import { createMiddleware } from '@solidjs/start/middleware';
 import type { FetchEvent } from '@solidjs/start/server';
 
+// Solid Router can revalidate `query()`-wrapped server functions directly in
+// this process (e.g. on an HMR client reconnect) without going through an
+// HTTP request, so their thrown auth/validation errors never reach the
+// normal per-request error handling and would otherwise crash the server.
+process.on('unhandledRejection', (reason) => {
+	const statusCode = typeof reason === 'object'
+		&& reason !== null
+		&& 'statusCode' in reason
+		&& typeof reason.statusCode === 'number'
+		? reason.statusCode
+		: undefined;
+
+	if (statusCode !== undefined && statusCode >= 400 && statusCode < 500) {
+		console.error('Ignored an unhandled client-error rejection outside a request context.', reason);
+		return;
+	}
+
+	throw reason;
+});
+
 const SIGN_IN_PATH = '/sign-in';
 const UI_KIT_PATH = '/ui-kit';
 const REDIRECT_STATUS_CODE = 302;

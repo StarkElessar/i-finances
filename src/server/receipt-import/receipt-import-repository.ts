@@ -20,7 +20,9 @@ import {
 	eq,
 	gt,
 	inArray,
+	isNull,
 	lt,
+	lte,
 	sql
 } from 'drizzle-orm';
 
@@ -75,6 +77,10 @@ export type ReceiptImportRepository = {
 		householdId: string,
 		receiptImportId: string
 	) => Promise<ReceiptImportAggregateRecord | undefined>;
+	findImagesPendingDeletion: (
+		now: Date,
+		limit: number
+	) => Promise<ReceiptImportRecord[]>;
 	findJobById: (
 		jobId: string
 	) => Promise<LeasedReceiptJobRecord | undefined>;
@@ -100,6 +106,10 @@ export type ReceiptImportRepository = {
 		expectedVersion: number,
 		accountId: string,
 		updatedAt: Date
+	) => Promise<ReceiptImportRecord | undefined>;
+	markImageDeleted: (
+		receiptImportId: string,
+		deletedAt: Date
 	) => Promise<ReceiptImportRecord | undefined>;
 	requestRevision: (
 		householdId: string,
@@ -603,18 +613,54 @@ export function createReceiptImportRepository(
 			.get();
 	};
 
+	const findImagesPendingDeletion = async (
+		now: Date,
+		limit: number
+	): Promise<ReceiptImportRecord[]> => {
+		return database.select()
+			.from(receiptImports)
+			.where(and(
+				eq(receiptImports.status, 'approved'),
+				lte(receiptImports.imageDeleteAfter, now),
+				isNull(receiptImports.imageDeletedAt)
+			))
+			.orderBy(asc(receiptImports.imageDeleteAfter))
+			.limit(limit)
+			.all();
+	};
+
+	const markImageDeleted = async (
+		receiptImportId: string,
+		deletedAt: Date
+	): Promise<ReceiptImportRecord | undefined> => {
+		return database.update(receiptImports)
+			.set({
+				imageDeletedAt: deletedAt,
+				updatedAt: deletedAt,
+				version: sql`${receiptImports.version} + 1`
+			})
+			.where(and(
+				eq(receiptImports.id, receiptImportId),
+				isNull(receiptImports.imageDeletedAt)
+			))
+			.returning()
+			.get();
+	};
+
 	return {
 		addOperationLink,
 		completeJob,
 		create,
 		failJob,
 		findById,
+		findImagesPendingDeletion,
 		findJobById,
 		finishApproval,
 		heartbeatJob,
 		leaseNextJob,
 		list,
 		markApprovalStarted,
+		markImageDeleted,
 		requestRevision,
 		restoreReviewAfterApprovalFailure
 	};

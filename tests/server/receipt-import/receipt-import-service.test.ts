@@ -258,6 +258,7 @@ beforeEach(async () => {
     );
     const accountRepository = createAccountRepository(database);
     const categoryRepository = createCategoryRepository(database);
+    const contactRepository = createContactRepository(database);
     const exchangeRateResolver = createExchangeRateService({
         exchangeRateRepository: createExchangeRateRepository(database)
     });
@@ -265,6 +266,7 @@ beforeEach(async () => {
     receiptImportService = createReceiptImportService({
         accountRepository,
         categoryRepository,
+        contactRepository,
         createId: () => `receipt-sequence-${idSequence++}`,
         householdResolver,
         imageStorage: createMemoryImageStorage(),
@@ -272,7 +274,7 @@ beforeEach(async () => {
         operationService: createOperationService({
             accountRepository,
             categoryRepository,
-            contactRepository: createContactRepository(database),
+            contactRepository,
             createId: () => `operation-${idSequence++}`,
             exchangeRateResolver,
             householdResolver,
@@ -412,5 +414,38 @@ describe('receipt import service', () => {
         expect(ledger.items).toHaveLength(2);
         expect(ledger.items.map((item) => item.amountMinor).sort())
             .toEqual([500, 700]);
+    });
+
+    it('deletes receipt images only after their retention period passes', async () => {
+        const { completed } = await completeFirstJob();
+
+        currentDate = new Date('2026-08-05T10:00:00.000Z');
+        await receiptImportService.approve(USER_ID, {
+            accountId: ACCOUNT_ID,
+            id: completed.id,
+            version: completed.version
+        });
+
+        const beforeRetention = await receiptImportService.deleteExpiredImages();
+
+        expect(beforeRetention.deletedCount).toBe(0);
+
+        currentDate = new Date('2026-09-10T10:00:00.000Z');
+
+        const afterRetention = await receiptImportService.deleteExpiredImages();
+
+        expect(afterRetention.deletedCount).toBe(1);
+
+        const [afterDeletion] = await receiptImportService.list(USER_ID);
+
+        expect(afterDeletion.imageDeletedAt).not.toBeNull();
+        expect(afterDeletion.imageUrl).toBeNull();
+        await expect(
+            receiptImportService.readImageForUser(USER_ID, completed.id)
+        ).rejects.toThrow('Фотография чека уже удалена.');
+
+        const secondRun = await receiptImportService.deleteExpiredImages();
+
+        expect(secondRun.deletedCount).toBe(0);
     });
 });

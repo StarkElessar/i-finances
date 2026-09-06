@@ -24,8 +24,11 @@ import type {
 	ReceiptWorkerResult
 } from '~/entities/receipt-import/model/types';
 
+import { normalizeContactIdentity } from '~/entities/contact/model/normalization';
+
 import type { AccountRepository } from '~/server/account/account-repository';
 import type { CategoryRepository } from '~/server/category/category-repository';
+import type { ContactRepository } from '~/server/contact/contact-repository';
 import type { HouseholdResolver } from '~/server/household/household-service';
 import type { OperationService } from '~/server/operation/operation-service';
 import type {
@@ -52,6 +55,7 @@ import type {
 const DEFAULT_LEASE_MILLISECONDS = 10 * 60 * 1_000;
 const DEFAULT_IMAGE_RETENTION_DAYS = 30;
 const REQUESTED_PIPELINE_VERSION = 'receipt-local-v1';
+const IMAGE_DELETION_BATCH_SIZE = 100;
 
 export type CreateReceiptFromImageInput = Omit<
 	SaveReceiptImageInput,
@@ -79,6 +83,7 @@ export type ReceiptImportService = {
 		userId: string,
 		input: CreateReceiptFromImageInput
 	) => Promise<CreatedReceiptImport>;
+	deleteExpiredImages: () => Promise<{ deletedCount: number }>;
 	failJob: (
 		jobId: string,
 		unsafeInput: FailReceiptJobInput
@@ -108,6 +113,7 @@ export type ReceiptImportService = {
 export type ReceiptImportServiceDependencies = {
 	accountRepository: AccountRepository;
 	categoryRepository: CategoryRepository;
+	contactRepository: ContactRepository;
 	householdResolver: HouseholdResolver;
 	imageStorage: ReceiptImageStorage;
 	operationService: OperationService;
@@ -170,6 +176,34 @@ function createOperationGroups(
 	});
 
 	return [...groups.entries()].filter(([, group]) => group.amountMinor > 0);
+}
+
+/**
+ * Matches the receipt's merchant against an existing contact by exact
+ * normalized name. Never creates a contact — per the import plan, a new
+ * contact requires explicit user confirmation, which the review screen does
+ * not yet collect.
+ */
+async function resolveContactIdByMerchantName(
+	contactRepository: ContactRepository,
+	householdId: string,
+	merchant: ReceiptWorkerResult['receipt']['merchant']
+): Promise<string | null> {
+	const candidates = [merchant.displayName, merchant.legalName]
+		.filter((name): name is string => name !== null && name.trim() !== '');
+
+	for (const candidate of candidates) {
+		const contactId = await contactRepository.findIdByNormalizedName(
+			householdId,
+			normalizeContactIdentity(candidate)
+		);
+
+		if (contactId !== undefined) {
+			return contactId;
+		}
+	}
+
+	return null;
 }
 
 /**
@@ -444,6 +478,32 @@ export function createReceiptImportService(
 		});
 	};
 
+	const deleteExpiredImages = async (): Promise<{ deletedCount: number }> => {
+		const pending = await dependencies.receiptImportRepository
+			.findImagesPendingDeletion(now(), IMAGE_DELETION_BATCH_SIZE);
+
+		let deletedCount = 0;
+
+		for (const record of pending) {
+			try {
+				await dependencies.imageStorage.delete(record.imageStorageKey);
+				await dependencies.receiptImportRepository.markImageDeleted(
+					record.id,
+					now()
+				);
+				deletedCount += 1;
+			}
+			catch (error: unknown) {
+				console.error(
+					`Failed to delete receipt image for import ${record.id}.`,
+					error
+				);
+			}
+		}
+
+		return { deletedCount };
+	};
+
 	const heartbeatJob = async (
 		jobId: string,
 		leaseToken: string
@@ -619,6 +679,14 @@ export function createReceiptImportService(
 		const linkedGroupKeys = new Set(
 			current.aggregate.links.map((link) => link.groupKey)
 		);
+		const merchantName = result.receipt.merchant.displayName
+			?? result.receipt.merchant.legalName
+			?? 'Покупка по чеку';
+		const contactId = await resolveContactIdByMerchantName(
+			dependencies.contactRepository,
+			current.householdId,
+			result.receipt.merchant
+		);
 
 		try {
 			for (const [groupKey, group] of groups) {
@@ -626,9 +694,6 @@ export function createReceiptImportService(
 					continue;
 				}
 
-				const merchantName = result.receipt.merchant.displayName
-					?? result.receipt.merchant.legalName
-					?? 'Покупка по чеку';
 				const operation = await dependencies.operationService.create(
 					userId,
 					{
@@ -636,10 +701,13 @@ export function createReceiptImportService(
 						amountMinor: group.amountMinor,
 						categoryId: group.categoryId,
 						comment: group.itemNames.join(', ').slice(0, 1_000),
-						contactId: null,
+						contactId,
 						happenedOn: result.receipt.happenedOn,
-						title: `${merchantName} · ${group.categoryName}`
-							.slice(0, 160),
+						title: (
+							contactId === null
+								? `${merchantName} · ${group.categoryName}`
+								: group.categoryName
+						).slice(0, 160),
 						type: 'expense'
 					}
 				);
@@ -696,6 +764,7 @@ export function createReceiptImportService(
 		approve,
 		completeJob,
 		createFromImage,
+		deleteExpiredImages,
 		failJob,
 		heartbeatJob,
 		leaseNextJob,

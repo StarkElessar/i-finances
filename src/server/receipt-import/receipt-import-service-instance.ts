@@ -15,9 +15,18 @@ const householdResolver = createHouseholdResolver(
 	createHouseholdRepository()
 );
 const accountRepository = createAccountRepository();
+const contactRepository = createContactRepository();
 const exchangeRateResolver = createExchangeRateService({
 	exchangeRateRepository: createExchangeRateRepository()
 });
+
+const configuredImageRetentionDays = Number(
+	process.env.RECEIPT_IMAGE_RETENTION_DAYS
+);
+const imageRetentionDays = Number.isInteger(configuredImageRetentionDays)
+	&& configuredImageRetentionDays > 0
+	? configuredImageRetentionDays
+	: 5;
 
 /**
  * Shared receipt import service used by UI actions and HTTP worker endpoints.
@@ -25,12 +34,14 @@ const exchangeRateResolver = createExchangeRateService({
 export const receiptImportService = createReceiptImportService({
 	accountRepository,
 	categoryRepository: createCategoryRepository(),
+	contactRepository,
 	householdResolver,
+	imageRetentionDays,
 	imageStorage: createReceiptImageStorage(),
 	operationService: createOperationService({
 		accountRepository,
 		categoryRepository: createCategoryRepository(),
-		contactRepository: createContactRepository(),
+		contactRepository,
 		exchangeRateResolver,
 		householdResolver,
 		operationRepository: createOperationRepository()

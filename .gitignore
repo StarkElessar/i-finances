@@ -17,6 +17,7 @@ app.config.timestamp_*.js
 /data/*.sqlite
 /data/*.sqlite-*
 /data/*.sqlite.bak-*
+/data/receipt-worker-tmp/
 
 # dependencies
 /node_modules
@@ -27,6 +28,7 @@ app.config.timestamp_*.js
 .classpath
 *.launch
 .settings/
+.claude/settings.local.json
 
 # Temp
 gitignore
