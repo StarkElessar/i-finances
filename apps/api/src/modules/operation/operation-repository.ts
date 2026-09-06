@@ -45,6 +45,7 @@ export type OperationRecord = {
 	id: string;
 	sourceOrder: number;
 	title: string;
+	transferId: string | null;
 	type: OperationType;
 	updatedAt: Date;
 	updatedByUserId: string;
@@ -113,6 +114,7 @@ function toOperationRecord(record: typeof operations.$inferSelect): OperationRec
 		id: record.id,
 		sourceOrder: record.sourceOrder,
 		title: record.title,
+		transferId: record.transferId,
 		type: record.type,
 		updatedAt: record.updatedAt,
 		updatedByUserId: record.updatedByUserId,

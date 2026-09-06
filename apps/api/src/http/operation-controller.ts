@@ -11,6 +11,7 @@ import {
 	OperationDeletedError,
 	OperationNotFoundError,
 	OperationReferenceUnavailableError,
+	OperationTransferLinkedError,
 	OperationVersionConflictError
 } from '@/modules/operation';
 
@@ -351,6 +352,14 @@ export class OperationHttpController {
 			return context.json({
 				errorCode: 'invalid-state',
 				message: 'Удалённую операцию сначала нужно восстановить.',
+				ok: false
+			}, 409);
+		}
+
+		if (error instanceof OperationTransferLinkedError) {
+			return context.json({
+				errorCode: 'invalid-state',
+				message: 'Операция относится к переводу — измените или удалите перевод целиком.',
 				ok: false
 			}, 409);
 		}

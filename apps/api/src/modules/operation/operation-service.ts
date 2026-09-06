@@ -25,6 +25,7 @@ import type {
 
 import {
 	OperationReferenceUnavailableError,
+	OperationTransferLinkedError,
 	OperationVersionConflictError
 } from './operation-errors';
 import { toPersistedOperation } from './operation-mappers';
@@ -108,6 +109,7 @@ export class OperationService {
 			householdId: household.id,
 			id: this.createId(),
 			title: input.title,
+			transferId: null,
 			type: input.type,
 			updatedAt: timestamp,
 			updatedByUserId: userId,
@@ -454,6 +456,11 @@ export class OperationService {
 		const current = await this.rules.requireCurrent(userId, input.id);
 
 		this.rules.assertVersion(current.record, input.version);
+
+		if (current.record.transferId !== null) {
+			throw new OperationTransferLinkedError();
+		}
+
 		const alreadyInTargetState = deleted
 			? current.record.deletedAt !== null
 			: current.record.deletedAt === null;

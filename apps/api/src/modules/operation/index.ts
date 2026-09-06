@@ -4,6 +4,7 @@ export {
 	OperationDeletedError,
 	OperationNotFoundError,
 	OperationReferenceUnavailableError,
+	OperationTransferLinkedError,
 	OperationVersionConflictError
 } from './operation-errors';
 export { type OperationReferenceNames, toPersistedOperation } from './operation-mappers';

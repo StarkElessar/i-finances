@@ -22,6 +22,7 @@ import {
 	OperationReferenceUnavailableError,
 	OperationRepository,
 	OperationService,
+	OperationTransferLinkedError,
 	OperationVersionConflictError
 } from '@/modules/operation';
 
@@ -403,5 +404,89 @@ describe('OperationService', () => {
 			balanceMinor: 10_000,
 			currency: 'BYN'
 		}]);
+	});
+
+	it('refuses to edit, archive, or recalculate a transfer-linked operation directly', async () => {
+		await database.insert(accounts).values({
+			archivedAt: null,
+			color: '#a06368',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'USD',
+			description: '',
+			householdId: HOUSEHOLD_ID,
+			id: 'account-transfer-target',
+			initialBalanceMinor: 0,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'USD счёт',
+			type: 'card',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		const service = createService();
+		const operation = await service.create(USER_ID, createOperationInputSchema.parse({
+			accountId: 'account-main',
+			amountMinor: 500,
+			categoryId: null,
+			comment: '',
+			contactId: null,
+			happenedOn: '2026-08-08',
+			title: 'Перевод → Основной счёт',
+			type: 'income'
+		}));
+
+		// Simulate a transfer leg without pulling in the transfer module: only
+		// the operations.transferId column matters to this guard, but the
+		// column has a real foreign key, so a matching row must exist.
+		await database.insert(schema.transfers).values({
+			comment: '',
+			contactId: null,
+			contactNameSnapshot: null,
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			deletedAt: null,
+			deletedByUserId: null,
+			exchangeFromCurrency: 'USD',
+			exchangeRate: '1',
+			exchangeToCurrency: 'BYN',
+			fromAccountId: 'account-transfer-target',
+			fromAmountMinor: 500,
+			happenedOn: '2026-08-08',
+			householdId: HOUSEHOLD_ID,
+			id: 'transfer-1',
+			toAccountId: 'account-main',
+			toAmountMinor: 500,
+			updatedAt: FIXED_DATE,
+			updatedByUserId: USER_ID,
+			version: 1
+		});
+		await database.update(schema.operations)
+			.set({ transferId: 'transfer-1' })
+			.where(eq(schema.operations.id, operation.id));
+
+		await expect(service.update(USER_ID, updateOperationInputSchema.parse({
+			accountId: 'account-main',
+			amountMinor: 600,
+			categoryId: null,
+			comment: '',
+			contactId: null,
+			happenedOn: '2026-08-08',
+			id: operation.id,
+			title: 'Изменено',
+			type: 'income',
+			version: operation.version
+		}))).rejects.toBeInstanceOf(OperationTransferLinkedError);
+
+		await expect(service.archive(USER_ID, {
+			id: operation.id,
+			version: operation.version
+		})).rejects.toBeInstanceOf(OperationTransferLinkedError);
+
+		await expect(service.recalculateRate(USER_ID, {
+			id: operation.id,
+			version: operation.version
+		})).rejects.toBeInstanceOf(OperationTransferLinkedError);
 	});
 });

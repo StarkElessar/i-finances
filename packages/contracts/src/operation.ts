@@ -135,6 +135,7 @@ export const persistedOperationSchema = z.object({
 	id: operationIdSchema,
 	sourceOrder: z.number().int(),
 	title: z.string().min(1),
+	transferId: operationIdSchema.nullable(),
 	type: operationTypeSchema,
 	updatedAt: operationDateSchema,
 	version: operationVersionSchema
