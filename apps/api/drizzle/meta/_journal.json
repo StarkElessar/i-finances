@@ -71,6 +71,13 @@
       "when": 1788648393793,
       "tag": "0009_add_contact_phone_and_category_icon",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1788680926089,
+      "tag": "0010_add_transfers",
+      "breakpoints": true
     }
   ]
 }

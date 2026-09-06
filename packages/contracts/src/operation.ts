@@ -13,7 +13,7 @@ const safeIntegerSchema = z.number()
 	.min(Number.MIN_SAFE_INTEGER)
 	.max(Number.MAX_SAFE_INTEGER);
 
-function isValidLocalDateKey(value: string): boolean {
+export function isValidLocalDateKey(value: string): boolean {
 	const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
 
 	if (match === null) {

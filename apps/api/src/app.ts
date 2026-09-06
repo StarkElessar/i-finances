@@ -8,6 +8,7 @@ import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
 import type { ReceiptWorkerHttpController } from '@/http/receipt-worker-controller';
+import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
 
 import { Hono } from 'hono';
@@ -22,6 +23,7 @@ export type ApiAppDependencies = {
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
 	receiptWorkerController?: ReceiptWorkerHttpController;
+	transferController?: TransferHttpController;
 };
 
 export function createApiApp(
@@ -119,6 +121,15 @@ export function createApiApp(
 		app.post('/api/receipt-worker/jobs/:id/heartbeat', receiptWorkerController.heartbeat());
 		app.post('/api/receipt-worker/jobs/:id/complete', receiptWorkerController.complete());
 		app.post('/api/receipt-worker/jobs/:id/fail', receiptWorkerController.fail());
+	}
+
+	if (dependencies.transferController !== undefined) {
+		const transferController = dependencies.transferController;
+
+		app.get('/api/transfers/:id', transferController.get());
+		app.post('/api/transfers', transferController.create());
+		app.put('/api/transfers/:id', transferController.update());
+		app.post('/api/transfers/:id/delete', transferController.delete());
 	}
 
 	app.notFound((context) => context.json({

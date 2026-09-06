@@ -4,12 +4,13 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
-		"dev": "pnpm run db:migrate && tsx watch src/main.ts",
 		"build": "pnpm run typecheck",
+		"db:generate": "drizzle-kit generate",
+		"db:migrate": "tsx scripts/migrate-db.ts",
+		"dev": "pnpm run db:migrate && tsx watch src/main.ts",
 		"start": "tsx src/main.ts",
 		"test": "vitest run",
-		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",
-		"db:migrate": "tsx scripts/migrate-db.ts"
+		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"@hono/node-server": "^1.19.0",

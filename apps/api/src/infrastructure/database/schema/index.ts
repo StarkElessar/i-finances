@@ -11,6 +11,7 @@ export * from './receipt-imports';
 export * from './receipt-operation-links';
 export * from './receipt-processing-jobs';
 export * from './sessions';
+export * from './transfers';
 export * from './users';
 export * from './webauthn-challenges';
 export * from './webauthn-credentials';

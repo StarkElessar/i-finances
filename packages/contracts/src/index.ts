@@ -70,6 +70,11 @@ export {
 	resolveCategoryIconId
 } from './category-icons';
 export {
+	convertMinorUnitsByExchangeRate,
+	invertExchangeRate,
+	normalizeExchangeRate
+} from './decimal-money';
+export {
 	type ChangeContactArchiveStateInput,
 	changeContactArchiveStateInputSchema,
 	CONTACT_LIST_STATUSES,
@@ -191,6 +196,22 @@ export {
 	sanitizeNationalPhoneDigits,
 	toE164
 } from './phone';
+export {
+	type ChangeTransferDeletionStateInput,
+	changeTransferDeletionStateInputSchema,
+	type CreateTransferInput,
+	createTransferInputSchema,
+	type GetTransferInput,
+	getTransferInputSchema,
+	type Transfer,
+	type TransferCommandErrorCode,
+	transferCommandErrorCodeSchema,
+	type TransferCommandResult,
+	transferCommandResultSchema,
+	transferSchema,
+	type UpdateTransferInput,
+	updateTransferInputSchema
+} from './transfer';
 export {
 	type ApproveReceiptInput,
 	approveReceiptInputSchema,

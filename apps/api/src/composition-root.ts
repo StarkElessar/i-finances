@@ -7,6 +7,7 @@ import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
 import { ReceiptWorkerHttpController } from './http/receipt-worker-controller';
+import { TransferHttpController } from './http/transfer-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { db } from './infrastructure/database/client';
 import {
@@ -49,6 +50,10 @@ import {
 	OperationService
 } from './modules/operation';
 import {
+	createTransferRepository,
+	createTransferService
+} from './modules/transfer';
+import {
 	createReceiptImageStorage,
 	createReceiptImportRepository,
 	ReceiptImportService
@@ -67,6 +72,7 @@ export function createApiDependencies(): {
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
 	receiptWorkerController: ReceiptWorkerHttpController;
+	transferController: TransferHttpController;
 } {
 	const authConfig = getAuthConfig();
 	const sessionService = new SessionService(new SessionRepository(db), {
@@ -116,6 +122,13 @@ export function createApiDependencies(): {
 		householdResolver,
 		operationRepository: new OperationRepository(db)
 	});
+	const transferService = createTransferService({
+		accountRepository: new AccountRepository(db),
+		contactRepository: new ContactRepository(db),
+		exchangeRateResolver: exchangeRateService,
+		householdResolver,
+		transferRepository: createTransferRepository(db)
+	});
 	const receiptImportService = new ReceiptImportService({
 		accountRepository: new AccountRepository(db),
 		categoryRepository: new CategoryRepository(db),
@@ -160,6 +173,10 @@ export function createApiDependencies(): {
 			authConfig
 		),
 		receiptWorkerController: new ReceiptWorkerHttpController(receiptImportService),
+		transferController: new TransferHttpController(
+			transferService,
+			sessionResolver
+		),
 		passkeyController: new PasskeyHttpController(
 			webAuthnService,
 			sessionResolver,
