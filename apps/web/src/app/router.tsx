@@ -6,7 +6,7 @@ import { AccountsPage } from '@/pages/accounts/page';
 import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
 import { HomePage } from '@/pages/home/page';
-import { ReceiptsPage } from '@/pages/receipts/page';
+import { ReceiptsPage } from '@/views/receipts/page';
 
 import type { AppServices } from '@/app/app-services';
 
@@ -103,15 +103,7 @@ export function AppRouter(props: AppServices) {
 			<Route path='/accounts' component={() => protectedPage(<AccountsPage accountClient={props.accountClient}/>)}/>
 			<Route path='/categories' component={() => protectedPage(<CategoriesPage/>)}/>
 			<Route path='/contacts' component={() => protectedPage(<ContactsPage/>)}/>
-			<Route
-				path='/receipts'
-				component={() => protectedPage(
-					<ReceiptsPage
-						accountClient={props.accountClient}
-						receiptImportClient={props.receiptImportClient}
-					/>
-				)}
-			/>
+			<Route path='/receipts' component={() => protectedPage(<ReceiptsPage/>)}/>
 			<Route path='*404' component={() => <Navigate href='/'/>}/>
 		</Router>
 	);
