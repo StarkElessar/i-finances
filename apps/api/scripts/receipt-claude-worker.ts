@@ -32,6 +32,12 @@ const CLAUDE_MODEL = process.env.RECEIPT_WORKER_CLAUDE_MODEL;
 const POLL_INTERVAL_MS = Number(
     process.env.RECEIPT_WORKER_POLL_INTERVAL_MS ?? 30_000
 );
+// Claude Pro/Max non-interactive usage gets rate-limited when `claude -p` is
+// invoked back-to-back with no gap, which is exactly what a queue of several
+// receipts causes without this pause between jobs.
+const JOB_COOLDOWN_MS = Number(
+    process.env.RECEIPT_WORKER_JOB_COOLDOWN_MS ?? 15_000
+);
 const HEARTBEAT_INTERVAL_MS = Number(
     process.env.RECEIPT_WORKER_HEARTBEAT_INTERVAL_MS ?? 3 * 60 * 1_000
 );
@@ -273,11 +279,34 @@ async function runClaude(prompt: string): Promise<string> {
         arguments_.push('--model', CLAUDE_MODEL);
     }
 
-    const { stdout } = await execFileAsync('claude', arguments_, {
-        cwd: PROJECT_ROOT,
-        maxBuffer: 20 * 1024 * 1024,
-        timeout: CLAUDE_TIMEOUT_MS
-    });
+    let stdout: string;
+
+    try {
+        ({ stdout } = await execFileAsync('claude', arguments_, {
+            cwd: PROJECT_ROOT,
+            maxBuffer: 20 * 1024 * 1024,
+            timeout: CLAUDE_TIMEOUT_MS
+        }));
+    }
+    catch (error: unknown) {
+        if (error !== null && typeof error === 'object' && 'code' in error) {
+            const execError = error as {
+                code?: number | string;
+                signal?: string | null;
+                stderr?: string;
+                stdout?: string;
+            };
+
+            throw new Error(
+                `Claude CLI exited with code ${execError.code ?? 'unknown'}`
+                + `${execError.signal ? ` (signal ${execError.signal})` : ''}. `
+                + `stdout: ${(execError.stdout ?? '(empty)').trim().slice(0, 2_000)} | `
+                + `stderr: ${(execError.stderr ?? '(empty)').trim().slice(0, 2_000)}`
+            );
+        }
+
+        throw error;
+    }
 
     const envelope = JSON.parse(stdout) as {
         result?: string;
@@ -402,6 +431,7 @@ async function mainLoop(): Promise<void> {
             }
 
             await processJob(job);
+            await sleep(JOB_COOLDOWN_MS);
         }
         catch (error: unknown) {
             log(`Poll loop error: ${

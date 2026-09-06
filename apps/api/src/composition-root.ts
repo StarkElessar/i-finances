@@ -71,6 +71,7 @@ export function createApiDependencies(): {
 	operationController: OperationHttpController;
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
+	receiptImportService: ReceiptImportService;
 	receiptWorkerController: ReceiptWorkerHttpController;
 	transferController: TransferHttpController;
 } {
@@ -136,6 +137,7 @@ export function createApiDependencies(): {
 			? configuredRetentionDays
 			: undefined,
 		categoryRepository: new CategoryRepository(db),
+		contactRepository: new ContactRepository(db),
 		householdResolver,
 		imageStorage: createReceiptImageStorage(),
 		operationService,
@@ -176,6 +178,7 @@ export function createApiDependencies(): {
 			sessionResolver,
 			authConfig
 		),
+		receiptImportService,
 		receiptWorkerController: new ReceiptWorkerHttpController(receiptImportService),
 		transferController: new TransferHttpController(
 			transferService,

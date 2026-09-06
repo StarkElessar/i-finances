@@ -2,6 +2,7 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto';
 
 import type { AccountRepository } from '@/modules/account';
 import type { CategoryRepository } from '@/modules/category';
+import type { ContactRepository } from '@/modules/contact';
 import type { HouseholdResolver } from '@/modules/household';
 import type { OperationService } from '@/modules/operation';
 
@@ -14,6 +15,7 @@ import {
 	type FailReceiptJobInput,
 	failReceiptJobInputSchema,
 	type LeasedReceiptProcessingJob,
+	normalizeContactIdentity,
 	type ReceiptCategorySnapshot,
 	type ReceiptImport,
 	type ReceiptReview,
@@ -51,6 +53,7 @@ export type CreateReceiptFromImageInput = Omit<SaveReceiptImageInput, 'receiptIm
 export type ReceiptImportServiceDependencies = {
 	accountRepository: AccountRepository;
 	categoryRepository: CategoryRepository;
+	contactRepository: ContactRepository;
 	householdResolver: HouseholdResolver;
 	imageStorage: ReceiptImageStorage;
 	operationService: OperationService;
@@ -60,6 +63,8 @@ export type ReceiptImportServiceDependencies = {
 	leaseMilliseconds?: number;
 	now?: () => Date;
 };
+
+const IMAGE_DELETION_BATCH_SIZE = 100;
 
 function hashValue(value: string): string {
 	return createHash('sha256').update(value).digest('hex');
@@ -75,6 +80,33 @@ function getCategoryName(categories: readonly ReceiptCategorySnapshot[], categor
 	}
 
 	return categories.find((category) => category.id === categoryId)?.name ?? 'Без категории';
+}
+
+/**
+ * Matches the receipt's merchant against an existing contact by exact
+ * normalized name. Never creates a contact -- a new contact requires
+ * explicit user confirmation, which the review screen does not yet collect.
+ */
+async function resolveContactIdByMerchantName(
+	contactRepository: ContactRepository,
+	householdId: string,
+	merchant: ReceiptWorkerResult['receipt']['merchant']
+): Promise<string | null> {
+	const candidates = [merchant.displayName, merchant.legalName]
+		.filter((name): name is string => name !== null && name.trim() !== '');
+
+	for (const candidate of candidates) {
+		const contactId = await contactRepository.findIdByNormalizedName(
+			householdId,
+			normalizeContactIdentity(candidate)
+		);
+
+		if (contactId !== undefined) {
+			return contactId;
+		}
+	}
+
+	return null;
 }
 
 function createOperationGroups(
@@ -313,6 +345,26 @@ export class ReceiptImportService {
 		};
 	}
 
+	public async deleteExpiredImages(): Promise<{ deletedCount: number }> {
+		const pending = await this.dependencies.receiptImportRepository
+			.findImagesPendingDeletion(this.now(), IMAGE_DELETION_BATCH_SIZE);
+
+		let deletedCount = 0;
+
+		for (const record of pending) {
+			try {
+				await this.dependencies.imageStorage.delete(record.imageStorageKey);
+				await this.dependencies.receiptImportRepository.markImageDeleted(record.id, this.now());
+				deletedCount += 1;
+			}
+			catch (error: unknown) {
+				console.error(`Failed to delete receipt image for import ${record.id}.`, error);
+			}
+		}
+
+		return { deletedCount };
+	}
+
 	public async heartbeatJob(jobId: string, leaseToken: string): Promise<string> {
 		const timestamp = this.now();
 		const leaseExpiresAt = new Date(timestamp.getTime() + this.leaseMilliseconds);
@@ -440,6 +492,14 @@ export class ReceiptImportService {
 		}
 
 		const linkedGroupKeys = new Set(current.aggregate.links.map((link) => link.groupKey));
+		const merchantName = result.receipt.merchant.displayName
+			?? result.receipt.merchant.legalName
+			?? 'Покупка по чеку';
+		const contactId = await resolveContactIdByMerchantName(
+			this.dependencies.contactRepository,
+			current.householdId,
+			result.receipt.merchant
+		);
 
 		try {
 			for (const [groupKey, group] of groups) {
@@ -447,17 +507,18 @@ export class ReceiptImportService {
 					continue;
 				}
 
-				const merchantName = result.receipt.merchant.displayName
-					?? result.receipt.merchant.legalName
-					?? 'Покупка по чеку';
 				const operation = await this.dependencies.operationService.create(userId, {
 					accountId: input.accountId,
 					amountMinor: group.amountMinor,
 					categoryId: group.categoryId,
 					comment: group.itemNames.join(', ').slice(0, 1_000),
-					contactId: null,
+					contactId,
 					happenedOn: result.receipt.happenedOn,
-					title: `${merchantName} · ${group.categoryName}`.slice(0, 160),
+					title: (
+						contactId === null
+							? `${merchantName} · ${group.categoryName}`
+							: group.categoryName
+					).slice(0, 160),
 					type: 'expense'
 				});
 

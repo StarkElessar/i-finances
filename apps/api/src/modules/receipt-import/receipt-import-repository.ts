@@ -20,7 +20,9 @@ import {
 	eq,
 	gt,
 	inArray,
+	isNull,
 	lt,
+	lte,
 	sql
 } from 'drizzle-orm';
 
@@ -69,6 +71,7 @@ export type ReceiptImportRepository = {
 		householdId: string,
 		receiptImportId: string
 	) => Promise<ReceiptImportAggregateRecord | undefined>;
+	findImagesPendingDeletion: (now: Date, limit: number) => Promise<ReceiptImportRecord[]>;
 	findJobById: (jobId: string) => Promise<LeasedReceiptJobRecord | undefined>;
 	finishApproval: (
 		householdId: string,
@@ -90,6 +93,10 @@ export type ReceiptImportRepository = {
 		expectedVersion: number,
 		accountId: string,
 		updatedAt: Date
+	) => Promise<ReceiptImportRecord | undefined>;
+	markImageDeleted: (
+		receiptImportId: string,
+		deletedAt: Date
 	) => Promise<ReceiptImportRecord | undefined>;
 	updateReview: (
 		householdId: string,
@@ -171,6 +178,36 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 
 		return record === undefined ? undefined : (await loadAggregates([record]))[0];
 	};
+
+	const findImagesPendingDeletion = async (
+		now: Date,
+		limit: number
+	): Promise<ReceiptImportRecord[]> => database.select()
+		.from(receiptImports)
+		.where(and(
+			eq(receiptImports.status, 'approved'),
+			lte(receiptImports.imageDeleteAfter, now),
+			isNull(receiptImports.imageDeletedAt)
+		))
+		.orderBy(asc(receiptImports.imageDeleteAfter))
+		.limit(limit)
+		.all();
+
+	const markImageDeleted = async (
+		receiptImportId: string,
+		deletedAt: Date
+	): Promise<ReceiptImportRecord | undefined> => database.update(receiptImports)
+		.set({
+			imageDeletedAt: deletedAt,
+			updatedAt: deletedAt,
+			version: sql`${receiptImports.version} + 1`
+		})
+		.where(and(
+			eq(receiptImports.id, receiptImportId),
+			isNull(receiptImports.imageDeletedAt)
+		))
+		.returning()
+		.get();
 
 	const list = async (householdId: string): Promise<ReceiptImportAggregateRecord[]> => {
 		const records = await database.select()
@@ -566,12 +603,14 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		create,
 		failJob,
 		findById,
+		findImagesPendingDeletion,
 		findJobById,
 		finishApproval,
 		heartbeatJob,
 		leaseNextJob,
 		list,
 		markApprovalStarted,
+		markImageDeleted,
 		requestRevision,
 		restoreReviewAfterApprovalFailure,
 		updateReview

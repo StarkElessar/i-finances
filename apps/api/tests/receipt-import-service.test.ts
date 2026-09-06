@@ -4,9 +4,10 @@ import { join } from 'node:path';
 
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { accounts, categories, householdMembers, households, users } from '@/infrastructure/database/schema';
+import { accounts, categories, contacts, householdMembers, households, users } from '@/infrastructure/database/schema';
 import { AccountRepository } from '@/modules/account';
 import { CategoryRepository } from '@/modules/category';
+import { ContactRepository } from '@/modules/contact';
 import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 import { OperationRepository, OperationService } from '@/modules/operation';
@@ -31,6 +32,7 @@ const FIXED_DATE = new Date('2026-08-08T10:00:00.000Z');
 let connection: Database.Database;
 let database: AppDatabase;
 let imageRoot: string;
+let currentDate: Date;
 
 beforeEach(async () => {
 	connection = new Database(':memory:');
@@ -38,6 +40,7 @@ beforeEach(async () => {
 	database = drizzle(connection, { schema });
 	migrate(database, { migrationsFolder: './drizzle' });
 	imageRoot = await mkdtemp(join(tmpdir(), 'i-finances-receipts-'));
+	currentDate = FIXED_DATE;
 
 	await database.insert(users).values({
 		createdAt: FIXED_DATE,
@@ -101,29 +104,29 @@ afterEach(async () => {
 
 function createService(): ReceiptImportService {
 	let idSequence = 0;
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => currentDate);
 	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
+	const contactRepository = new ContactRepository(database);
 	const operationService = new OperationService({
 		accountRepository: new AccountRepository(database),
 		categoryRepository: new CategoryRepository(database),
-		contactRepository: {
-			findById: async () => undefined
-		},
+		contactRepository,
 		exchangeRateResolver: exchangeRateService,
 		householdResolver,
 		operationRepository: new OperationRepository(database),
-		now: () => FIXED_DATE
+		now: () => currentDate
 	});
 
 	return new ReceiptImportService({
 		accountRepository: new AccountRepository(database),
 		categoryRepository: new CategoryRepository(database),
+		contactRepository,
 		householdResolver,
 		imageStorage: createReceiptImageStorage({ rootDirectory: imageRoot }),
 		operationService,
 		receiptImportRepository: createReceiptImportRepository(database),
 		createId: () => `receipt-${++idSequence}`,
-		now: () => FIXED_DATE
+		now: () => currentDate
 	});
 }
 
@@ -233,5 +236,100 @@ describe('ReceiptImportService', () => {
 
 		expect(operations).toHaveLength(1);
 		expect(operations[0]).toMatchObject({ amountMinor: 1_300, categoryId: 'category-food' });
+	});
+
+	it('matches the merchant to an existing contact by normalized name on approval', async () => {
+		await database.insert(contacts).values({
+			archivedAt: null,
+			color: '#a06368',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			householdId: HOUSEHOLD_ID,
+			id: 'contact-shop',
+			legalName: null,
+			name: 'Магазин',
+			normalizedLegalName: null,
+			normalizedName: 'магазин',
+			phone: null,
+			type: 'company',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		const service = createService();
+		const created = await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
+		});
+		const leased = await service.leaseNextJob('worker-1');
+
+		if (leased === undefined) {
+			throw new Error('Expected a leased receipt job.');
+		}
+
+		const completed = await service.completeJob(leased.processingJobId, {
+			leaseToken: leased.leaseToken,
+			result: createWorkerResult('worker-1')
+		});
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			id: created.id,
+			version: completed.version
+		});
+
+		expect(approved.operationIds).toHaveLength(1);
+
+		const [operation] = await database.select().from(schema.operations);
+
+		// A matched contact carries the merchant, so the title drops it and
+		// keeps only the category to avoid repeating the same name twice.
+		expect(operation).toMatchObject({ contactId: 'contact-shop', title: 'Продукты' });
+	});
+
+	it('deletes receipt images only after their retention period passes', async () => {
+		const service = createService();
+		const created = await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
+		});
+		const leased = await service.leaseNextJob('worker-1');
+
+		if (leased === undefined) {
+			throw new Error('Expected a leased receipt job.');
+		}
+
+		const completed = await service.completeJob(leased.processingJobId, {
+			leaseToken: leased.leaseToken,
+			result: createWorkerResult('worker-1')
+		});
+
+		await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			id: created.id,
+			version: completed.version
+		});
+
+		const beforeRetention = await service.deleteExpiredImages();
+
+		expect(beforeRetention.deletedCount).toBe(0);
+
+		currentDate = new Date(FIXED_DATE.getTime() + 40 * 24 * 60 * 60 * 1_000);
+
+		const afterRetention = await service.deleteExpiredImages();
+
+		expect(afterRetention.deletedCount).toBe(1);
+
+		const [afterDeletion] = await service.list(USER_ID);
+
+		expect(afterDeletion.imageDeletedAt).not.toBeNull();
+		expect(afterDeletion.imageUrl).toBeNull();
+		await expect(service.readImageForUser(USER_ID, created.id))
+			.rejects.toThrow('Фотография чека уже удалена.');
+
+		const secondRun = await service.deleteExpiredImages();
+
+		expect(secondRun.deletedCount).toBe(0);
 	});
 });
