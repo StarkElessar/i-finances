@@ -31,6 +31,8 @@ export {
 	deleteOperationAction,
 	getAccountBalances,
 	getAccountLedger,
+	getCategoryOperations,
+	getContactOperations,
 	getMonthlyExpenseSummary,
 	recalculateOperationRateAction,
 	restoreOperationAction,

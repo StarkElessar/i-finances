@@ -9,9 +9,13 @@ import type { HouseholdResolver } from '@/modules/household';
 import type {
 	AccountBalance,
 	AccountLedger,
+	CategoryOperations,
 	ChangeOperationDeletionStateInput,
+	ContactOperations,
 	CreateOperationInput,
 	GetAccountLedgerInput,
+	GetCategoryOperationsInput,
+	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	MonthlyExpenseSummary,
 	PersistedOperation,
@@ -19,7 +23,10 @@ import type {
 	UpdateOperationInput
 } from '@i-finances/contracts';
 
-import { OperationVersionConflictError } from './operation-errors';
+import {
+	OperationReferenceUnavailableError,
+	OperationVersionConflictError
+} from './operation-errors';
 import { toPersistedOperation } from './operation-mappers';
 import {
 	createOperationRateSnapshot,
@@ -238,6 +245,82 @@ export class OperationService {
 			householdBaseCurrency: household.baseCurrency,
 			items,
 			openingBalanceMinor,
+			range: {
+				end: input.end,
+				start: input.start
+			}
+		};
+	}
+
+	public async getCategoryOperations(
+		userId: string,
+		input: GetCategoryOperationsInput
+	): Promise<CategoryOperations> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const category = await this.dependencies.categoryRepository.findById(
+			household.id,
+			input.categoryId
+		);
+
+		if (category === undefined) {
+			throw new OperationReferenceUnavailableError('categoryId');
+		}
+
+		const rows = await this.dependencies.operationRepository.listByCategory(
+			household.id,
+			input.categoryId,
+			input.start,
+			input.end
+		);
+
+		return {
+			categoryId: input.categoryId,
+			householdBaseCurrency: household.baseCurrency,
+			items: rows.map((row) => ({
+				...toPersistedOperation(row.operation, {
+					categoryName: row.categoryName,
+					contactName: row.contactName
+				}),
+				accountName: row.accountName
+			})),
+			range: {
+				end: input.end,
+				start: input.start
+			}
+		};
+	}
+
+	public async getContactOperations(
+		userId: string,
+		input: GetContactOperationsInput
+	): Promise<ContactOperations> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const contact = await this.dependencies.contactRepository.findById(
+			household.id,
+			input.contactId
+		);
+
+		if (contact === undefined) {
+			throw new OperationReferenceUnavailableError('contactId');
+		}
+
+		const rows = await this.dependencies.operationRepository.listByContact(
+			household.id,
+			input.contactId,
+			input.start,
+			input.end
+		);
+
+		return {
+			contactId: input.contactId,
+			householdBaseCurrency: household.baseCurrency,
+			items: rows.map((row) => ({
+				...toPersistedOperation(row.operation, {
+					categoryName: row.categoryName,
+					contactName: row.contactName
+				}),
+				accountName: row.accountName
+			})),
 			range: {
 				end: input.end,
 				start: input.start

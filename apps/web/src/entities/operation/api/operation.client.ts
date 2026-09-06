@@ -6,6 +6,8 @@ import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
 	GetAccountLedgerInput,
+	GetCategoryOperationsInput,
+	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	RecalculateOperationRateInput,
 	UpdateOperationInput
@@ -21,6 +23,16 @@ export const getAccountLedger = query(
 );
 
 export const getAccountBalances = query(() => client.balances(), 'account-balances');
+
+export const getCategoryOperations = query(
+	(input: GetCategoryOperationsInput) => client.byCategory(input),
+	'category-operations'
+);
+
+export const getContactOperations = query(
+	(input: GetContactOperationsInput) => client.byContact(input),
+	'contact-operations'
+);
 
 export const getMonthlyExpenseSummary = query(
 	(input: GetMonthlyExpenseSummaryInput) => client.monthlySummary(input),

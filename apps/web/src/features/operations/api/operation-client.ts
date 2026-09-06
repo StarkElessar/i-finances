@@ -8,6 +8,8 @@ import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
 	GetAccountLedgerInput,
+	GetCategoryOperationsInput,
+	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	OperationCommandResult,
 	RecalculateOperationRateInput,
@@ -18,7 +20,11 @@ import {
 	accountLedgerSchema,
 	changeOperationDeletionStateInputSchema,
 	createOperationInputSchema,
+	categoryOperationsSchema,
+	contactOperationsSchema,
 	getAccountLedgerInputSchema,
+	getCategoryOperationsInputSchema,
+	getContactOperationsInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
 	monthlyExpenseSummarySchema,
 	operationCommandResultSchema,
@@ -46,6 +52,26 @@ export class OperationClient {
 		const query = new URLSearchParams(parsedInput);
 
 		return this.client.get(`/api/operations/ledger?${query.toString()}`, accountLedgerSchema);
+	}
+
+	public byCategory(input: GetCategoryOperationsInput) {
+		const parsedInput = getCategoryOperationsInputSchema.parse(input);
+		const query = new URLSearchParams(parsedInput);
+
+		return this.client.get(
+			`/api/operations/by-category?${query.toString()}`,
+			categoryOperationsSchema
+		);
+	}
+
+	public byContact(input: GetContactOperationsInput) {
+		const parsedInput = getContactOperationsInputSchema.parse(input);
+		const query = new URLSearchParams(parsedInput);
+
+		return this.client.get(
+			`/api/operations/by-contact?${query.toString()}`,
+			contactOperationsSchema
+		);
 	}
 
 	public monthlySummary(input: GetMonthlyExpenseSummaryInput) {

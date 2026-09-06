@@ -19,6 +19,8 @@ import {
 	type CreateOperationInput,
 	createOperationInputSchema,
 	getAccountLedgerInputSchema,
+	getCategoryOperationsInputSchema,
+	getContactOperationsInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
 	type PersistedOperation,
 	recalculateOperationRateInputSchema,
@@ -76,6 +78,66 @@ export class OperationHttpController {
 			try {
 				return context.json(
 					await this.operationService.getAccountLedger(session.user.id, parsedInput.data),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
+	public categoryOperations() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			const parsedInput = getCategoryOperationsInputSchema.safeParse({
+				categoryId: context.req.query('categoryId'),
+				end: context.req.query('end'),
+				start: context.req.query('start')
+			});
+
+			if (!parsedInput.success) {
+				return this.invalidInput(context, parsedInput.error);
+			}
+
+			try {
+				return context.json(
+					await this.operationService.getCategoryOperations(session.user.id, parsedInput.data),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
+	public contactOperations() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			const parsedInput = getContactOperationsInputSchema.safeParse({
+				contactId: context.req.query('contactId'),
+				end: context.req.query('end'),
+				start: context.req.query('start')
+			});
+
+			if (!parsedInput.success) {
+				return this.invalidInput(context, parsedInput.error);
+			}
+
+			try {
+				return context.json(
+					await this.operationService.getContactOperations(session.user.id, parsedInput.data),
 					200
 				);
 			}

@@ -296,6 +296,90 @@ describe('OperationService', () => {
 		}))).rejects.toBeInstanceOf(OperationReferenceUnavailableError);
 	});
 
+	it('lists category and contact operations with the live account name', async () => {
+		await database.insert(contacts).values({
+			archivedAt: null,
+			color: '#a06368',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			householdId: HOUSEHOLD_ID,
+			id: 'contact-shop',
+			legalName: null,
+			name: 'Магазин у дома',
+			normalizedLegalName: null,
+			normalizedName: 'магазин у дома',
+			phone: null,
+			type: 'company',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		const service = createService();
+
+		await service.create(USER_ID, createOperationInputSchema.parse({
+			accountId: 'account-main',
+			amountMinor: 1_500,
+			categoryId: 'category-food',
+			comment: '',
+			contactId: 'contact-shop',
+			happenedOn: '2026-08-08',
+			title: 'Хлеб',
+			type: 'expense'
+		}));
+		await service.create(USER_ID, createOperationInputSchema.parse({
+			accountId: 'account-main',
+			amountMinor: 900,
+			categoryId: 'category-food',
+			comment: '',
+			contactId: null,
+			happenedOn: '2026-08-09',
+			title: 'Молоко',
+			type: 'expense'
+		}));
+
+		const byCategory = await service.getCategoryOperations(USER_ID, {
+			categoryId: 'category-food',
+			end: '2026-08-31',
+			start: '2026-08-01'
+		});
+		const byContact = await service.getContactOperations(USER_ID, {
+			contactId: 'contact-shop',
+			end: '2026-08-31',
+			start: '2026-08-01'
+		});
+
+		expect(byCategory).toMatchObject({
+			categoryId: 'category-food',
+			householdBaseCurrency: 'BYN',
+			range: { end: '2026-08-31', start: '2026-08-01' }
+		});
+		expect(byCategory.items.map((item) => item.title)).toEqual(['Молоко', 'Хлеб']);
+		expect(byCategory.items[0]).toMatchObject({ accountName: 'Основной счёт' });
+
+		expect(byContact.items).toHaveLength(1);
+		expect(byContact.items[0]).toMatchObject({
+			accountName: 'Основной счёт',
+			contactName: 'Магазин у дома',
+			title: 'Хлеб'
+		});
+	});
+
+	it('rejects drill-downs for references outside the household', async () => {
+		const service = createService();
+
+		await expect(service.getCategoryOperations(USER_ID, {
+			categoryId: 'category-missing',
+			end: '2026-08-31',
+			start: '2026-08-01'
+		})).rejects.toBeInstanceOf(OperationReferenceUnavailableError);
+
+		await expect(service.getContactOperations(USER_ID, {
+			contactId: 'contact-missing',
+			end: '2026-08-31',
+			start: '2026-08-01'
+		})).rejects.toBeInstanceOf(OperationReferenceUnavailableError);
+	});
+
 	it('exposes balances through the authenticated HTTP boundary', async () => {
 		const noSessionResolver: RequestSessionResolver = {
 			resolve: async () => null

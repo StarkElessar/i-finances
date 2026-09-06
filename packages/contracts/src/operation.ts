@@ -164,6 +164,64 @@ export const accountLedgerSchema = z.object({
 
 export type AccountLedger = z.infer<typeof accountLedgerSchema>;
 
+export const getCategoryOperationsInputSchema = z.object({
+	categoryId: operationIdSchema,
+	end: localDateKeySchema,
+	start: localDateKeySchema
+}).refine(
+	(input) => input.start <= input.end,
+	{
+		message: 'Начало периода должно быть не позже окончания.',
+		path: ['end']
+	}
+);
+
+export type GetCategoryOperationsInput = z.infer<typeof getCategoryOperationsInputSchema>;
+
+export const getContactOperationsInputSchema = z.object({
+	contactId: operationIdSchema,
+	end: localDateKeySchema,
+	start: localDateKeySchema
+}).refine(
+	(input) => input.start <= input.end,
+	{
+		message: 'Начало периода должно быть не позже окончания.',
+		path: ['end']
+	}
+);
+
+export type GetContactOperationsInput = z.infer<typeof getContactOperationsInputSchema>;
+
+const referencedOperationSchema = persistedOperationSchema.extend({
+	accountName: z.string()
+});
+
+export const categoryOperationsSchema = z.object({
+	categoryId: operationIdSchema,
+	householdBaseCurrency: currencyCodeSchema,
+	items: z.array(referencedOperationSchema),
+	range: z.object({
+		end: localDateKeySchema,
+		start: localDateKeySchema
+	})
+});
+
+export type CategoryOperation = z.infer<typeof referencedOperationSchema>;
+export type CategoryOperations = z.infer<typeof categoryOperationsSchema>;
+
+export const contactOperationsSchema = z.object({
+	contactId: operationIdSchema,
+	householdBaseCurrency: currencyCodeSchema,
+	items: z.array(referencedOperationSchema),
+	range: z.object({
+		end: localDateKeySchema,
+		start: localDateKeySchema
+	})
+});
+
+export type ContactOperation = z.infer<typeof referencedOperationSchema>;
+export type ContactOperations = z.infer<typeof contactOperationsSchema>;
+
 export const accountBalanceSchema = z.object({
 	accountId: operationIdSchema,
 	balanceMinor: safeIntegerSchema,

@@ -1,14 +1,17 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import {
+	accounts,
 	categories,
 	contacts,
 	operations
 } from '@/infrastructure/database/schema';
 
 import type { CurrencyCode, OperationType } from '@i-finances/contracts';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import {
 	and,
 	asc,
+	desc,
 	eq,
 	gte,
 	inArray,
@@ -75,6 +78,10 @@ export type OperationLedgerRow = {
 	categoryName: string | null;
 	contactName: string | null;
 	operation: OperationRecord;
+};
+
+export type OperationReferenceRow = OperationLedgerRow & {
+	accountName: string;
 };
 
 export type ReferenceExpenseTotal = {
@@ -261,6 +268,67 @@ export class OperationRepository {
 			.orderBy(asc(operations.happenedOn), asc(operations.sourceOrder));
 
 		return rows.map((row) => ({
+			categoryName: row.categoryName,
+			contactName: row.contactName,
+			operation: toOperationRecord(row.operation)
+		}));
+	}
+
+	public listByCategory(
+		householdId: string,
+		categoryId: string,
+		start: string,
+		end: string
+	): Promise<OperationReferenceRow[]> {
+		return this.listByReference(householdId, operations.categoryId, categoryId, start, end);
+	}
+
+	public listByContact(
+		householdId: string,
+		contactId: string,
+		start: string,
+		end: string
+	): Promise<OperationReferenceRow[]> {
+		return this.listByReference(householdId, operations.contactId, contactId, start, end);
+	}
+
+	private async listByReference(
+		householdId: string,
+		column: SQLiteColumn,
+		referenceId: string,
+		start: string,
+		end: string
+	): Promise<OperationReferenceRow[]> {
+		const rows = await this.database.select({
+			accountName: accounts.name,
+			categoryName: categories.name,
+			contactName: contacts.name,
+			operation: operations
+		})
+			.from(operations)
+			.innerJoin(accounts, and(
+				eq(accounts.id, operations.accountId),
+				eq(accounts.householdId, householdId)
+			))
+			.leftJoin(categories, and(
+				eq(categories.id, operations.categoryId),
+				eq(categories.householdId, householdId)
+			))
+			.leftJoin(contacts, and(
+				eq(contacts.id, operations.contactId),
+				eq(contacts.householdId, householdId)
+			))
+			.where(and(
+				eq(operations.householdId, householdId),
+				eq(column, referenceId),
+				isNull(operations.deletedAt),
+				gte(operations.happenedOn, start),
+				lte(operations.happenedOn, end)
+			))
+			.orderBy(desc(operations.happenedOn), asc(operations.sourceOrder));
+
+		return rows.map((row) => ({
+			accountName: row.accountName,
 			categoryName: row.categoryName,
 			contactName: row.contactName,
 			operation: toOperationRecord(row.operation)
