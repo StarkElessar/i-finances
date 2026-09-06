@@ -1,15 +1,17 @@
 import { AppRouter } from '@/app/router';
 
+import type { AuthClient } from '@/features/auth';
+
 import { MetaProvider } from '@solidjs/meta';
 
-import type { AppServices } from './app/app-services';
-
-export type AppProps = AppServices;
+export type AppProps = {
+	authClient: AuthClient;
+};
 
 export function App(props: AppProps) {
 	return (
 		<MetaProvider>
-			<AppRouter {...props}/>
+			<AppRouter authClient={props.authClient}/>
 		</MetaProvider>
 	);
 }

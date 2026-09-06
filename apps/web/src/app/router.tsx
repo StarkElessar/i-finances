@@ -1,19 +1,21 @@
+import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
 
 import { AppShell } from '@/widgets/app-shell';
 
-import { AccountsPage } from '@/pages/accounts/page';
 import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
-import { HomePage } from '@/pages/home/page';
+import { HomePage } from '@/views/home/page';
 import { ReceiptsPage } from '@/views/receipts/page';
-
-import type { AppServices } from '@/app/app-services';
 
 import type { CurrentSessionResponse } from '@i-finances/contracts';
 import { Navigate, Route, Router } from '@solidjs/router';
 import type { Accessor, JSX } from 'solid-js';
 import { createResource, Show } from 'solid-js';
+
+export type AppRouterProps = {
+	authClient: AuthClient;
+};
 
 type SessionGateProps = {
 	children: (session: CurrentSessionResponse) => JSX.Element;
@@ -35,7 +37,8 @@ function SessionGate(props: SessionGateProps) {
 	);
 }
 
-type ProtectedRouteProps = AppServices & {
+type ProtectedRouteProps = {
+	authClient: AuthClient;
 	children: JSX.Element;
 	onSignedOut: () => void;
 	session: CurrentSessionResponse | undefined;
@@ -59,7 +62,7 @@ function ProtectedRoute(props: ProtectedRouteProps) {
 	);
 }
 
-export function AppRouter(props: AppServices) {
+export function AppRouter(props: AppRouterProps) {
 	const [session, { refetch }] = createResource(() => props.authClient.currentSession());
 
 	const protectedPage = (children: JSX.Element) => (
@@ -69,7 +72,11 @@ export function AppRouter(props: AppServices) {
 			session={() => session()}
 		>
 			{(currentSession) => (
-				<ProtectedRoute {...props} onSignedOut={refetch} session={currentSession}>
+				<ProtectedRoute
+					authClient={props.authClient}
+					onSignedOut={refetch}
+					session={currentSession}
+				>
 					{children}
 				</ProtectedRoute>
 			)}
@@ -89,18 +96,7 @@ export function AppRouter(props: AppServices) {
 					</SessionGate>
 				)}
 			/>
-			<Route
-				path='/'
-				component={() => protectedPage(
-					<HomePage
-						accountClient={props.accountClient}
-						categoryClient={props.categoryClient}
-						contactClient={props.contactClient}
-						operationClient={props.operationClient}
-					/>
-				)}
-			/>
-			<Route path='/accounts' component={() => protectedPage(<AccountsPage accountClient={props.accountClient}/>)}/>
+			<Route path='/' component={() => protectedPage(<HomePage/>)}/>
 			<Route path='/categories' component={() => protectedPage(<CategoriesPage/>)}/>
 			<Route path='/contacts' component={() => protectedPage(<ContactsPage/>)}/>
 			<Route path='/receipts' component={() => protectedPage(<ReceiptsPage/>)}/>

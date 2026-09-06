@@ -2,7 +2,7 @@ import css from './app-shell.module.scss';
 
 import { AppLogo, Container } from '@/shared/ui';
 
-import type { AppServices } from '@/app/app-services';
+import type { AuthClient } from '@/features/auth';
 
 import type { CurrentSessionResponse } from '@i-finances/contracts';
 import { A } from '@solidjs/router';
@@ -13,7 +13,7 @@ type AppShellProps = {
 	children: JSX.Element;
 	onSignedOut: () => void;
 	session: Extract<CurrentSessionResponse, { authenticated: true }>;
-	services: Pick<AppServices, 'authClient'>;
+	services: { authClient: AuthClient };
 };
 
 type NavigationLink = {

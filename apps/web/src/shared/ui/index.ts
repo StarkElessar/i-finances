@@ -55,8 +55,6 @@ export type {
 	GridSortState
 } from './grid';
 export { Grid } from './grid';
-export type { PageFrameProps } from './page-frame/page-frame';
-export { PageFrame } from './page-frame/page-frame';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
 export type { SwitchProps } from './switch';
