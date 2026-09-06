@@ -1,0 +1,11 @@
+{
+	"mcpServers": {
+		"i-finances": {
+			"command": "node_modules/.bin/tsx",
+			"args": ["mcp/server.ts"],
+			"env": {
+				"MCP_USER_ID": "d7024381-6961-4cba-8829-4a0273b4824d"
+			}
+		}
+	}
+}
