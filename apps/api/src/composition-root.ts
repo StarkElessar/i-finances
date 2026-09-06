@@ -2,6 +2,7 @@ import { AccountHttpController } from './http/account-controller';
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
 import { ContactHttpController } from './http/contact-controller';
+import { ExchangeRateHttpController } from './http/exchange-rate-controller';
 import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
@@ -36,7 +37,8 @@ import {
 } from './modules/contact';
 import {
 	ExchangeRateRepository,
-	ExchangeRateService
+	ExchangeRateService,
+	NationalBankExchangeRateClient
 } from './modules/exchange-rate';
 import {
 	HouseholdRepository,
@@ -60,6 +62,7 @@ export function createApiDependencies(): {
 	accountController: AccountHttpController;
 	categoryController: CategoryHttpController;
 	contactController: ContactHttpController;
+	exchangeRateController: ExchangeRateHttpController;
 	operationController: OperationHttpController;
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
@@ -94,7 +97,9 @@ export function createApiDependencies(): {
 		contactRepository: new ContactRepository(db),
 		householdResolver
 	});
-	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(db));
+	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(db), {
+		dailyRateProvider: new NationalBankExchangeRateClient()
+	});
 	const accountService = new AccountService({
 		accountCurrencyCorrector: new AccountCurrencyCorrector(
 			new AccountCurrencyCorrectionRepository(db),
@@ -138,6 +143,11 @@ export function createApiDependencies(): {
 		),
 		contactController: new ContactHttpController(
 			contactService,
+			sessionResolver
+		),
+		exchangeRateController: new ExchangeRateHttpController(
+			exchangeRateService,
+			householdResolver,
 			sessionResolver
 		),
 		operationController: new OperationHttpController(

@@ -97,6 +97,12 @@ export {
 	updateContactInputSchema
 } from './contact';
 export {
+	type CurrentExchangeRates,
+	currentExchangeRatesSchema,
+	type ExchangeRateQuote,
+	exchangeRateQuoteSchema
+} from './exchange-rate';
+export {
 	type HealthResponse,
 	healthResponseSchema
 } from './health';

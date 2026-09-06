@@ -2,6 +2,7 @@ import type { AccountHttpController } from '@/http/account-controller';
 import type { AuthHttpController } from '@/http/auth-controller';
 import type { CategoryHttpController } from '@/http/category-controller';
 import type { ContactHttpController } from '@/http/contact-controller';
+import type { ExchangeRateHttpController } from '@/http/exchange-rate-controller';
 import { HealthController } from '@/http/health-controller';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
@@ -16,6 +17,7 @@ export type ApiAppDependencies = {
 	authController?: AuthHttpController;
 	categoryController?: CategoryHttpController;
 	contactController?: ContactHttpController;
+	exchangeRateController?: ExchangeRateHttpController;
 	operationController?: OperationHttpController;
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
@@ -77,6 +79,10 @@ export function createApiApp(
 		app.put('/api/contacts/:id', contactController.update());
 		app.post('/api/contacts/:id/archive', contactController.archive());
 		app.post('/api/contacts/:id/restore', contactController.restore());
+	}
+
+	if (dependencies.exchangeRateController !== undefined) {
+		app.get('/api/exchange-rates/current', dependencies.exchangeRateController.current());
 	}
 
 	if (dependencies.operationController !== undefined) {
