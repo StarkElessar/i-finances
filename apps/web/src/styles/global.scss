@@ -25,7 +25,11 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
-.root {
+#root {
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+
     min-block-size: 100dvh;
 }
 
@@ -41,8 +45,19 @@ body {
     margin: 0;
 }
 
+:where(a) {
+    color: inherit;
+}
+
 :where(button) {
     margin: 0;
+}
+
+:where(fieldset) {
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
 }
 
 .app-shell {

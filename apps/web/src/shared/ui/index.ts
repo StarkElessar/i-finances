@@ -1,5 +1,9 @@
 export { AccountIcon } from './account-icon';
 export { AppLogo } from './app-logo';
+export type { ColorPickerOption, ColorPickerProps } from './color-picker';
+export { ColorPicker } from './color-picker';
+export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
+export { Combobox } from './combobox';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
 export { Button } from './button';
 export { Container } from './container';
@@ -34,6 +38,14 @@ export type {
 } from './dialog';
 export { Dialog } from './dialog';
 export type {
+	CreateDragActionOptions,
+	DragActionController,
+	DragActionOverlayProps,
+	DragActionPreviewProps,
+	DragActionTone
+} from './drag-action';
+export { createDragAction, DragAction } from './drag-action';
+export type {
 	GridCellTemplateContext,
 	GridCellValue,
 	GridColumn,
@@ -47,6 +59,8 @@ export type { PageFrameProps } from './page-frame/page-frame';
 export { PageFrame } from './page-frame/page-frame';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
+export type { SwitchProps } from './switch';
+export { Switch } from './switch';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
 export type {

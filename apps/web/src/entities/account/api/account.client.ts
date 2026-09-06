@@ -1,10 +1,13 @@
 import { AccountClient } from '@/features/accounts/api';
 
+import { resolveCommandResult } from '@/shared/api';
+
 import type {
 	ChangeAccountArchiveStateInput,
 	CreateAccountInput,
 	UpdateAccountInput
 } from '@i-finances/contracts';
+import { accountCommandResultSchema } from '@i-finances/contracts';
 import { action, query } from '@solidjs/router';
 
 const client = new AccountClient();
@@ -15,21 +18,33 @@ export const getAccounts = query(
 );
 
 export const createAccount = action(
-	(input: CreateAccountInput) => client.create(input),
+	(input: CreateAccountInput) => resolveCommandResult(
+		() => client.create(input),
+		accountCommandResultSchema
+	),
 	'create-account'
 );
 
 export const updateAccount = action(
-	(input: UpdateAccountInput) => client.update(input),
+	(input: UpdateAccountInput) => resolveCommandResult(
+		() => client.update(input),
+		accountCommandResultSchema
+	),
 	'update-account'
 );
 
 export const archiveAccount = action(
-	(input: ChangeAccountArchiveStateInput) => client.archive(input),
+	(input: ChangeAccountArchiveStateInput) => resolveCommandResult(
+		() => client.archive(input),
+		accountCommandResultSchema
+	),
 	'archive-account'
 );
 
 export const restoreAccount = action(
-	(input: ChangeAccountArchiveStateInput) => client.restore(input),
+	(input: ChangeAccountArchiveStateInput) => resolveCommandResult(
+		() => client.restore(input),
+		accountCommandResultSchema
+	),
 	'restore-account'
 );

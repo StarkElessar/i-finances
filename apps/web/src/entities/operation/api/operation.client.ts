@@ -1,5 +1,7 @@
 import { OperationClient } from '@/features/operations/api';
 
+import { resolveCommandResult } from '@/shared/api';
+
 import type {
 	ChangeOperationDeletionStateInput,
 	CreateOperationInput,
@@ -8,6 +10,7 @@ import type {
 	RecalculateOperationRateInput,
 	UpdateOperationInput
 } from '@i-finances/contracts';
+import { operationCommandResultSchema } from '@i-finances/contracts';
 import { action, query } from '@solidjs/router';
 
 const client = new OperationClient();
@@ -25,26 +28,41 @@ export const getMonthlyExpenseSummary = query(
 );
 
 export const createOperationAction = action(
-	(input: CreateOperationInput) => client.create(input),
+	(input: CreateOperationInput) => resolveCommandResult(
+		() => client.create(input),
+		operationCommandResultSchema
+	),
 	'create-operation'
 );
 
 export const updateOperationAction = action(
-	(input: UpdateOperationInput) => client.update(input),
+	(input: UpdateOperationInput) => resolveCommandResult(
+		() => client.update(input),
+		operationCommandResultSchema
+	),
 	'update-operation'
 );
 
 export const deleteOperationAction = action(
-	(input: ChangeOperationDeletionStateInput) => client.archive(input),
+	(input: ChangeOperationDeletionStateInput) => resolveCommandResult(
+		() => client.archive(input),
+		operationCommandResultSchema
+	),
 	'delete-operation'
 );
 
 export const restoreOperationAction = action(
-	(input: ChangeOperationDeletionStateInput) => client.restore(input),
+	(input: ChangeOperationDeletionStateInput) => resolveCommandResult(
+		() => client.restore(input),
+		operationCommandResultSchema
+	),
 	'restore-operation'
 );
 
 export const recalculateOperationRateAction = action(
-	(input: RecalculateOperationRateInput) => client.recalculateRate(input),
+	(input: RecalculateOperationRateInput) => resolveCommandResult(
+		() => client.recalculateRate(input),
+		operationCommandResultSchema
+	),
 	'recalculate-operation-rate'
 );
