@@ -6,9 +6,11 @@
 	"scripts": {
 		"build": "pnpm run typecheck",
 		"db:generate": "drizzle-kit generate",
-		"db:migrate": "tsx scripts/migrate-db.ts",
-		"dev": "pnpm run db:migrate && tsx watch src/main.ts",
-		"start": "tsx src/main.ts",
+		"db:migrate": "tsx --env-file-if-exists=../../.env scripts/migrate-db.ts",
+		"dev": "pnpm run db:migrate && tsx watch --env-file-if-exists=../../.env src/main.ts",
+		"receipt:claude-worker": "tsx --env-file-if-exists=../../.env scripts/receipt-claude-worker.ts",
+		"receipt:worker-key": "tsx scripts/generate-receipt-worker-api-key.ts",
+		"start": "tsx --env-file-if-exists=../../.env src/main.ts",
 		"test": "vitest run",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},

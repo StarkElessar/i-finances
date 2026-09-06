@@ -59,7 +59,7 @@ export function createReceiptImageStorage(
 	options: ReceiptImageStorageOptions = {}
 ): ReceiptImageStorage {
 	const maxImageBytes = options.maxImageBytes ?? DEFAULT_MAX_IMAGE_BYTES;
-	const rootDirectory = resolve(options.rootDirectory ?? process.env.RECEIPT_IMAGE_ROOT ?? './static/receipts');
+	const rootDirectory = resolve(options.rootDirectory ?? process.env.RECEIPT_IMAGE_ROOT ?? './storage/receipts');
 
 	const resolveStoragePath = (storageKey: string): string => {
 		if (storageKey !== basename(storageKey) || storageKey.includes('\0')) {

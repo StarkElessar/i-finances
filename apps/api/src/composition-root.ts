@@ -129,8 +129,12 @@ export function createApiDependencies(): {
 		householdResolver,
 		transferRepository: createTransferRepository(db)
 	});
+	const configuredRetentionDays = Number(process.env.RECEIPT_IMAGE_RETENTION_DAYS);
 	const receiptImportService = new ReceiptImportService({
 		accountRepository: new AccountRepository(db),
+		imageRetentionDays: Number.isInteger(configuredRetentionDays) && configuredRetentionDays > 0
+			? configuredRetentionDays
+			: undefined,
 		categoryRepository: new CategoryRepository(db),
 		householdResolver,
 		imageStorage: createReceiptImageStorage(),
