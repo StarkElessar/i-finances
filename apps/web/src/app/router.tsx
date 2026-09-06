@@ -3,7 +3,7 @@ import { SignInForm } from '@/features/auth';
 import { AppShell } from '@/widgets/app-shell';
 
 import { AccountsPage } from '@/pages/accounts/page';
-import { CategoriesPage } from '@/pages/categories/page';
+import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
 import { HomePage } from '@/pages/home/page';
 import { ReceiptsPage } from '@/pages/receipts/page';
@@ -101,7 +101,7 @@ export function AppRouter(props: AppServices) {
 				)}
 			/>
 			<Route path='/accounts' component={() => protectedPage(<AccountsPage accountClient={props.accountClient}/>)}/>
-			<Route path='/categories' component={() => protectedPage(<CategoriesPage categoryClient={props.categoryClient}/>)}/>
+			<Route path='/categories' component={() => protectedPage(<CategoriesPage/>)}/>
 			<Route path='/contacts' component={() => protectedPage(<ContactsPage/>)}/>
 			<Route
 				path='/receipts'
