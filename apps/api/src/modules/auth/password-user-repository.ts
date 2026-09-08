@@ -30,4 +30,21 @@ export class PasswordUserRepository {
 
 		return user;
 	}
+
+	public async findById(
+		id: string
+	): Promise<PasswordAuthUserRecord | undefined> {
+		const [user] = await this.database.select({
+			displayName: users.displayName,
+			id: users.id,
+			isActive: users.isActive,
+			passwordHash: users.passwordHash,
+			username: users.username
+		})
+			.from(users)
+			.where(eq(users.id, id))
+			.limit(1);
+
+		return user;
+	}
 }

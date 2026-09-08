@@ -1,14 +1,16 @@
 import { AccountHttpController } from './http/account-controller';
+import { ApiKeySessionResolver } from './http/api-key-session-resolver';
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
+import { CompositeSessionResolver } from './http/composite-session-resolver';
 import { ContactHttpController } from './http/contact-controller';
 import { ExchangeRateHttpController } from './http/exchange-rate-controller';
 import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
 import { ReceiptWorkerHttpController } from './http/receipt-worker-controller';
-import { TransferHttpController } from './http/transfer-controller';
 import { CookieSessionResolver } from './http/session-resolver';
+import { TransferHttpController } from './http/transfer-controller';
 import { db } from './infrastructure/database/client';
 import {
 	AccountCurrencyCorrectionRepository,
@@ -50,14 +52,14 @@ import {
 	OperationService
 } from './modules/operation';
 import {
-	createTransferRepository,
-	createTransferService
-} from './modules/transfer';
-import {
 	createReceiptImageStorage,
 	createReceiptImportRepository,
 	ReceiptImportService
 } from './modules/receipt-import';
+import {
+	createTransferRepository,
+	createTransferService
+} from './modules/transfer';
 
 /**
  * Builds the production object graph explicitly at the application boundary.
@@ -79,15 +81,16 @@ export function createApiDependencies(): {
 	const sessionService = new SessionService(new SessionRepository(db), {
 		config: authConfig
 	});
-	const sessionResolver = new CookieSessionResolver(
-		sessionService,
-		authConfig.sessionCookieName
-	);
+	const passwordUserRepository = new PasswordUserRepository(db);
+	const sessionResolver = new CompositeSessionResolver([
+		new CookieSessionResolver(sessionService, authConfig.sessionCookieName),
+		new ApiKeySessionResolver(passwordUserRepository)
+	]);
 	const passwordSignInService = new PasswordSignInService({
 		passwordService: new PasswordService(),
 		rateLimiter: new LoginRateLimiter(),
 		sessionService,
-		userRepository: new PasswordUserRepository(db)
+		userRepository: passwordUserRepository
 	});
 	const webAuthnService = new WebAuthnService({
 		challengeRepository: new WebAuthnChallengeRepository(db),

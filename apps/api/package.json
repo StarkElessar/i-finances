@@ -8,6 +8,7 @@
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx --env-file-if-exists=../../.env scripts/migrate-db.ts",
 		"dev": "pnpm run db:migrate && tsx watch --env-file-if-exists=../../.env src/main.ts",
+		"mcp:api-key": "tsx scripts/generate-mcp-api-key.ts",
 		"receipt:claude-worker": "tsx --env-file-if-exists=../../.env scripts/receipt-claude-worker.ts",
 		"receipt:cleanup-images": "tsx --env-file-if-exists=../../.env scripts/cleanup-receipt-images.ts",
 		"receipt:worker-key": "tsx scripts/generate-receipt-worker-api-key.ts",
