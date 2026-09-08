@@ -1,0 +1,13 @@
+{
+	"mcpServers": {
+		"i-finances": {
+			"command": "/bin/bash",
+			"args": ["-c", "cd apps/mcp && node_modules/.bin/tsx src/main.ts"],
+			"env": {
+				"MCP_API_KEY": "generate with: pnpm --filter @i-finances/api mcp:api-key",
+				"MCP_USER_ID": "your real user id from the users table",
+				"MCP_BASE_URL": "http://localhost:3001"
+			}
+		}
+	}
+}
