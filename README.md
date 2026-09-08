@@ -7,7 +7,8 @@ This branch is the migration workspace for splitting the original SolidStart app
 ```text
 apps/api              Hono + Node.js API and database owner
 apps/web              Solid.js + Vite client
-packages/contracts    Zod API contracts shared by API and client
+apps/mcp              Stdio MCP server; a thin HTTP client of apps/api, same as apps/web
+packages/contracts    Zod API contracts shared by API, web, and mcp
 ```
 
 The old implementation remains available in the sibling `master` worktree:
