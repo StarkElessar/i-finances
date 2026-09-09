@@ -7,6 +7,8 @@
 		"build": "pnpm run typecheck",
 		"db:generate": "drizzle-kit generate",
 		"db:migrate": "tsx --env-file-if-exists=../../.env scripts/migrate-db.ts",
+		"db:rate": "tsx --env-file-if-exists=../../.env scripts/upsert-exchange-rate.ts",
+		"db:seed": "tsx --env-file-if-exists=../../.env scripts/seed-auth-user.ts",
 		"dev": "pnpm run db:migrate && tsx watch --env-file-if-exists=../../.env src/main.ts",
 		"mcp:api-key": "tsx scripts/generate-mcp-api-key.ts",
 		"receipt:claude-worker": "tsx --env-file-if-exists=../../.env scripts/receipt-claude-worker.ts",
