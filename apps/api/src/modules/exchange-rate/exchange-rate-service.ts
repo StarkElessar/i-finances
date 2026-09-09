@@ -173,8 +173,9 @@ export class ExchangeRateService implements ExchangeRateResolver {
 	public async getCurrent(
 		input: GetCurrentExchangeRatesInput
 	): Promise<CurrentExchangeRates> {
-		const refreshError = await this.tryRefreshDaily(input);
-		const quoteResults = await Promise.all(input.currencies
+		const requestedCurrencies = [...new Set(input.currencies)];
+		const refreshError = await this.tryRefreshDaily({ ...input, currencies: requestedCurrencies });
+		const quoteResults = await Promise.all(requestedCurrencies
 			.filter((currency) => currency !== input.baseCurrency)
 			.map((currency) => this.resolveCurrentQuote(
 				currency,
