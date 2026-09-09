@@ -1,0 +1,31 @@
+# macOS node_modules contain darwin-arm64 binaries for better-sqlite3 —
+# they must never leak into a linux image.
+node_modules
+**/node_modules
+
+.git
+.github
+.idea
+.claude
+.cursor
+opencode
+opencode.json
+development
+docs
+
+dist
+**/dist
+**/*.tsbuildinfo
+**/coverage
+
+# Secrets, and the production database — apps/api/data would otherwise bake
+# the live sqlite file straight into the image.
+.env
+.env.*
+!.env.example
+.mcp.json
+apps/api/data
+apps/api/storage
+
+**/tests
+.DS_Store

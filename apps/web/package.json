@@ -21,6 +21,7 @@
 	},
 	"devDependencies": {
 		"@types/node": "^26.1.1",
+		"sass-embedded": "^1.100.0",
 		"typescript7": "npm:typescript@7.0.2",
 		"vite": "^7.3.6",
 		"vite-plugin-solid": "^2.11.0",
