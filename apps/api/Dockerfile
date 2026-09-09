@@ -27,6 +27,9 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY --from=deps /app /app
+# apps/api/tsconfig.json extends this; without it the "@/*" path alias never
+# loads and tsx fails to resolve the very first import at runtime.
+COPY tsconfig.base.json ./
 # contracts is consumed as raw TS source ("exports": "./src/index.ts").
 COPY packages/contracts ./packages/contracts
 COPY apps/api          ./apps/api

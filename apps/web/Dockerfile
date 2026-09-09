@@ -12,6 +12,9 @@ COPY apps/mcp/package.json           ./apps/mcp/
 COPY packages/contracts/package.json ./packages/contracts/
 RUN pnpm install --frozen-lockfile --filter "@i-finances/web..."
 
+# apps/web/tsconfig.json extends this; vite reads the tsconfig to configure
+# esbuild and fails on an unresolvable "extends" before it ever bundles.
+COPY tsconfig.base.json ./
 COPY packages/contracts ./packages/contracts
 COPY apps/web          ./apps/web
 
