@@ -1085,17 +1085,17 @@ function HomeContent(props: HomeContentProps) {
 					</Container>
 				</main>
 
-				<Show keyed when={detailsPanelContext()}>
+				<Show when={detailsPanelContext()}>
 					{(context) => (
 						<OperationDetailsPanel
-							account={context.account}
+							account={context().account}
 							categories={categories()}
 							contacts={contacts()}
 							error={operationError()}
 							fieldErrors={operationFieldErrors()}
 							loading={isOperationMutationPending()}
 							mobile={!isDesktopDetails()}
-							mode={context.mode}
+							mode={context().mode}
 							open={isDetailsPanelOpen()}
 							operation={selectedOperation()}
 							onDelete={handleOperationDelete}
