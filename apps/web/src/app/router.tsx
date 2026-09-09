@@ -1,7 +1,9 @@
-import type { AuthClient } from '@/features/auth';
-import { SignInForm } from '@/features/auth';
+import css from './router.module.scss';
 
 import { CurrentViewerProvider } from '@/entities/viewer';
+
+import type { AuthClient } from '@/features/auth';
+import { SignInForm } from '@/features/auth';
 
 import { AppHeader } from '@/widgets/app-header';
 
@@ -28,7 +30,15 @@ type SessionGateProps = {
 
 function SessionGate(props: SessionGateProps) {
 	return (
-		<Show when={!props.isLoading()} fallback={<p role='status'>Проверяем сессию…</p>}>
+		<Show
+			fallback={(
+				<div aria-busy='true' class={css.sessionGate} role='status'>
+					<span aria-hidden='true' class={css.spinner}/>
+					<span class={css.status}>Проверяем сессию…</span>
+				</div>
+			)}
+			when={!props.isLoading()}
+		>
 			<Show
 				fallback={<p role='alert'>{props.error() ? 'Не удалось проверить сессию.' : 'Сессия не найдена.'}</p>}
 				when={props.session()}

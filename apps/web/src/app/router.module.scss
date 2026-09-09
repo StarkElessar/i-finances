@@ -1,0 +1,29 @@
+.session-gate {
+    display: grid;
+    gap: var(--space-5);
+    place-content: center;
+    justify-items: center;
+
+    min-block-size: 100dvh;
+}
+
+.spinner {
+    inline-size: 32px;
+    block-size: 32px;
+    border: 3px solid var(--color-border);
+    border-block-start-color: var(--color-primary);
+    border-radius: var(--radius-round);
+
+    animation: session-gate-spin 800ms linear infinite;
+}
+
+.status {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+}
+
+@keyframes session-gate-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
