@@ -16,12 +16,8 @@ app.config.timestamp_*.js
 .env*.local
 # Contains MCP_API_KEY in plaintext, unlike master's .mcp.json (UUID only).
 /.mcp.json
-/data/*.sqlite
-/data/*.sqlite-*
-/apps/api/data/*.sqlite
-/apps/api/data/*.sqlite-*
-/apps/api/data/*.sqlite
-/apps/api/data/*.sqlite-*
+/data/*.sqlite*
+/apps/api/data/*.sqlite*
 
 # dependencies
 **/node_modules/
