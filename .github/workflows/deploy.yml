@@ -1,0 +1,67 @@
+name: Deploy to VPS
+
+on:
+    # Ручной запуск
+    workflow_dispatch:
+        inputs:
+            branch:
+                description: 'Branch to deploy'
+                required: true
+                default: 'master'
+                type: string
+
+jobs:
+    deploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            -   name: Install SSH key
+                run: |
+                    install -m 600 -D /dev/null ~/.ssh/id_rsa
+                    echo "${{ secrets.VPS_SSH_KEY }}" > ~/.ssh/id_rsa
+                    ssh-keyscan -H ${{ secrets.VPS_HOST }} > ~/.ssh/known_hosts
+
+            -   name: Deploy to VPS
+                env:
+                    BRANCH: ${{ inputs.branch }}
+                run: |
+                    ssh ${{ secrets.VPS_USER }}@${{ secrets.VPS_HOST }} << 'EOF'
+                        set -e  # Остановка при ошибке
+
+                        # Оркестрация в homelab (WORK_DIR); исходники приложения — в
+                        # соседнем репозитории. homelab/docker-compose.yml собирает
+                        # if-web/if-api из ../i-finances как build.context.
+                        echo "📥 Обновление кода i-finances..."
+                        cd ~/sites/i-finances
+                        git fetch origin
+                        git checkout ${{ env.BRANCH }}
+                        git pull origin ${{ env.BRANCH }}
+
+                        echo "📁 Переход в оркестрацию (homelab)..."
+                        cd ${{ secrets.WORK_DIR }}
+                        git pull
+
+                        echo "🔨 Сборка и публикация web..."
+                        # Без --no-deps: этот контейнер завершается сам после публикации,
+                        # exit-code-from делает так, чтобы провал сборки валил джобу.
+                        docker compose up --build --no-deps --force-recreate \
+                            --abort-on-container-exit --exit-code-from if-web if-web
+
+                        echo "🔨 Сборка и перезапуск api..."
+                        docker compose up -d --no-deps --build --force-recreate if-api
+
+                        echo "♻️ Проверка и перезагрузка nginx..."
+                        docker compose exec -T nginx nginx -t
+                        docker compose exec -T nginx nginx -s reload
+
+                        echo "🧹 Очистка неиспользуемых образов..."
+                        docker image prune -af
+
+                        echo "✅ Деплой завершён!"
+                        echo "📊 Статус контейнеров:"
+                        docker compose ps
+                    EOF
+
+            -   name: Cleanup SSH
+                if: always()
+                run: rm -rf ~/.ssh
