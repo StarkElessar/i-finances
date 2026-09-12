@@ -11,6 +11,8 @@ import {
 
 import type { PersistedAccount } from '@/entities/account';
 import { getAccounts } from '@/entities/account/api';
+import type { PersistedContact } from '@/entities/contact';
+import { getContacts } from '@/entities/contact/api';
 import type {
 	ReceiptImport,
 	ReceiptImportStatus,
@@ -52,13 +54,6 @@ import {
 type StatusPresentation = {
 	label: string;
 	tone: 'danger' | 'muted' | 'primary' | 'success' | 'warning';
-};
-
-type ReceiptOperationPreview = {
-	amountMinor: number;
-	categoryId: string | null;
-	categoryName: string;
-	items: string[];
 };
 
 const STATUS_PRESENTATION: Record<
@@ -106,46 +101,6 @@ function getMerchantName(result: ReceiptWorkerResult): string {
 	return result.receipt.merchant.displayName
 		?? result.receipt.merchant.legalName
 		?? 'Продавец не распознан';
-}
-
-function createOperationPreviews(
-	receiptImport: ReceiptImport
-): ReceiptOperationPreview[] {
-	const result = receiptImport.result;
-
-	if (result === null) {
-		return [];
-	}
-
-	const categoriesById = new Map(
-		receiptImport.categories.map((category) => [category.id, category])
-	);
-	const categoryByItemIndex = new Map(
-		result.categorizedItems.map((item) => [
-			item.itemIndex,
-			item.categoryId
-		])
-	);
-	const groups = new Map<string, ReceiptOperationPreview>();
-
-	result.receipt.items.forEach((item, itemIndex) => {
-		const categoryId = categoryByItemIndex.get(itemIndex) ?? null;
-		const groupKey = categoryId ?? 'uncategorized';
-		const group = groups.get(groupKey) ?? {
-			amountMinor: 0,
-			categoryId,
-			categoryName: categoryId === null
-				? 'Без категории'
-				: categoriesById.get(categoryId)?.name ?? 'Неизвестная категория',
-			items: []
-		};
-
-		group.amountMinor += item.totalMinor;
-		group.items.push(item.name);
-		groups.set(groupKey, group);
-	});
-
-	return [...groups.values()];
 }
 
 function StatusBadge(props: { status: ReceiptImportStatus }) {
@@ -330,6 +285,7 @@ function ImageDialog(props: ImageDialogProps) {
 
 type ReviewDialogProps = {
 	accounts: readonly PersistedAccount[];
+	contacts: readonly PersistedContact[];
 	onOpenChange: (open: boolean) => void;
 	onUpdated: () => Promise<void>;
 	open: boolean;
@@ -337,27 +293,109 @@ type ReviewDialogProps = {
 	onViewImage: () => void;
 };
 
+type EditableOperation = {
+	amountMinor: number;
+	categoryId: string | null;
+	itemIndexes: number[];
+	title: string;
+};
+
+function buildInitialOperations(receiptImport: ReceiptImport): EditableOperation[] {
+	const result = receiptImport.result;
+
+	if (result === null) {
+		return [];
+	}
+
+	const categoriesById = new Map(receiptImport.categories.map((category) => [category.id, category]));
+	const groups = new Map<string, EditableOperation>();
+
+	result.receipt.items.forEach((item, itemIndex) => {
+		const categoryId = result.categorizedItems.find((entry) => entry.itemIndex === itemIndex)?.categoryId ?? null;
+		const groupKey = categoryId ?? 'uncategorized';
+		const group = groups.get(groupKey) ?? {
+			amountMinor: 0,
+			categoryId,
+			itemIndexes: [],
+			title: categoryId === null ? 'Без категории' : categoriesById.get(categoryId)?.name ?? 'Без категории'
+		};
+
+		group.amountMinor += item.totalMinor;
+		group.itemIndexes.push(itemIndex);
+		groups.set(groupKey, group);
+	});
+
+	return [...groups.values()].filter((group) => group.amountMinor > 0);
+}
+
 function ReviewDialog(props: ReviewDialogProps) {
 	const [accountId, setAccountId] = createSignal('');
+	const [contactId, setContactId] = createSignal<string | null>(null);
 	const [comment, setComment] = createSignal('');
 	const [error, setError] = createSignal<string>();
+	const [editableOperations, setEditableOperations] = createSignal<EditableOperation[]>([]);
 	const runApprove = useAction(approveReceiptAction);
 	const runRequestRevision = useAction(requestReceiptRevisionAction);
 	const approveSubmission = useSubmission(approveReceiptAction);
 	const revisionSubmission = useSubmission(requestReceiptRevisionAction);
-	const operationPreviews = createMemo(() => {
-		const receiptImport = props.receiptImport;
-
-		return receiptImport
-			? createOperationPreviews(receiptImport)
-			: [];
-	});
+	const categoryOptions = createMemo(() => props.receiptImport?.categories ?? []);
 	const availableAccounts = createMemo(() => (
 		props.accounts.filter((account) => account.archivedAt === null)
 	));
 	const isPending = () => Boolean(
 		approveSubmission.pending || revisionSubmission.pending
 	);
+
+	function moveItemToCategory(itemIndex: number, categoryId: string | null): void {
+		const receiptImport = props.receiptImport;
+
+		if (receiptImport?.result === undefined || receiptImport.result === null) {
+			return;
+		}
+
+		const items = receiptImport.result.receipt.items;
+		const current = editableOperations();
+		const amountMinor = items[itemIndex].totalMinor;
+		const remaining = current
+			.map((operation) => (
+				operation.itemIndexes.includes(itemIndex)
+					? {
+						...operation,
+						amountMinor: operation.amountMinor - amountMinor,
+						itemIndexes: operation.itemIndexes.filter((index) => index !== itemIndex)
+					}
+					: operation
+			))
+			.filter((operation) => operation.itemIndexes.length > 0);
+		const targetGroupKey = categoryId ?? 'uncategorized';
+		const existingTarget = remaining.find((operation) => operation.categoryId === categoryId);
+
+		if (existingTarget !== undefined) {
+			existingTarget.itemIndexes.push(itemIndex);
+			existingTarget.amountMinor += amountMinor;
+		}
+		else {
+			const categoriesById = new Map(receiptImport.categories.map((category) => [category.id, category]));
+
+			remaining.push({
+				amountMinor,
+				categoryId,
+				itemIndexes: [itemIndex],
+				title: categoryId === null ? 'Без категории' : categoriesById.get(categoryId)?.name ?? targetGroupKey
+			});
+		}
+
+		setEditableOperations(remaining.map((operation) => ({
+			...operation,
+			itemIndexes: [...operation.itemIndexes].sort((a, b) => a - b)
+		})));
+	}
+
+	function updateOperationTitle(operationIndex: number, title: string): void {
+		setEditableOperations((operations) => operations.map(
+			(operation, index) => (index === operationIndex ? { ...operation, title } : operation)
+		));
+	}
 
 	const syncDefaults = () => {
 		const receiptImport = props.receiptImport;
@@ -374,6 +412,12 @@ function ReviewDialog(props: ReviewDialogProps) {
 			?? ''
 		);
 		setComment(receiptImport.reviewComment);
+
+		if (receiptImport.result !== null) {
+			setEditableOperations(buildInitialOperations(receiptImport));
+		}
+
+		setContactId(receiptImport.result?.receipt.contactId ?? null);
 		setError(undefined);
 	};
 
@@ -419,7 +463,14 @@ function ReviewDialog(props: ReviewDialogProps) {
 
 		const result = await runApprove({
 			accountId: accountId(),
+			contactId: contactId(),
 			id: receiptImport.id,
+			operations: editableOperations().map((operation) => ({
+				amountMinor: operation.amountMinor,
+				categoryId: operation.categoryId,
+				itemIndexes: operation.itemIndexes,
+				title: operation.title
+			})),
 			version: receiptImport.version
 		});
 
@@ -574,28 +625,60 @@ function ReviewDialog(props: ReviewDialogProps) {
 													<h3>
 														Будущие операции
 													</h3>
-													<For each={operationPreviews()}>
-														{(group) => (
-															<article
-																class={css.operationCard}
-															>
-																<div>
-																	<strong>
-																		{group.categoryName}
-																	</strong>
-																	<span>
-																		{group.items.join(', ')}
-																	</span>
-																</div>
-																<b>
-																	{formatMinor(
-																		group.amountMinor
+													<For each={editableOperations()}>
+														{(operation, operationIndex) => (
+															<article class={css.operationCard}>
+																<input
+																	class={css.operationTitleInput}
+																	value={operation.title}
+																	onInput={(event) => updateOperationTitle(
+																		operationIndex(),
+																		event.currentTarget.value
 																	)}
-																</b>
+																/>
+																<b>{formatMinor(operation.amountMinor)}</b>
+																<ul class={css.operationItemList}>
+																	<For each={operation.itemIndexes}>
+																		{(itemIndex) => (
+																			<li>
+																				<span>{result().receipt.items[itemIndex].name}</span>
+																				<select
+																					value={operation.categoryId ?? ''}
+																					onChange={(event) => moveItemToCategory(
+																						itemIndex,
+																						event.currentTarget.value || null
+																					)}
+																				>
+																					<option value=''>Без категории</option>
+																					<For each={categoryOptions()}>
+																						{(category) => (
+																							<option value={category.id}>{category.name}</option>
+																						)}
+																					</For>
+																				</select>
+																			</li>
+																		)}
+																	</For>
+																</ul>
 															</article>
 														)}
 													</For>
 												</section>
+
+												<label class={css.selectField}>
+													<span>Продавец / контакт</span>
+													<select
+														value={contactId() ?? ''}
+														onChange={(event) => setContactId(event.currentTarget.value || null)}
+													>
+														<option value=''>Без контакта</option>
+														<For each={props.contacts}>
+															{(contact) => (
+																<option value={contact.id}>{contact.name}</option>
+															)}
+														</For>
+													</select>
+												</label>
 
 												<label class={css.selectField}>
 													<span>Счёт списания</span>
@@ -697,6 +780,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 function ReceiptsContent() {
 	const receiptImports = createAsync(() => getReceiptImports());
 	const accounts = createAsync(() => getAccounts(false));
+	const contacts = createAsync(() => getContacts({ status: 'active' }));
 	const [isUploadOpen, setIsUploadOpen] = createSignal(false);
 	const [isReviewOpen, setIsReviewOpen] = createSignal(false);
 	const [isImageOpen, setIsImageOpen] = createSignal(false);
@@ -876,6 +960,7 @@ function ReceiptsContent() {
 			/>
 			<ReviewDialog
 				accounts={accounts() ?? []}
+				contacts={contacts()?.items ?? []}
 				open={isReviewOpen()}
 				receiptImport={selectedReceipt()}
 				onOpenChange={setIsReviewOpen}

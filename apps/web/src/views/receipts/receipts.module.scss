@@ -327,6 +327,7 @@
 
 .operation-card {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-4);
     align-items: start;
     justify-content: space-between;
@@ -353,6 +354,43 @@
 
     b {
         flex: none;
+    }
+}
+
+.operation-title-input {
+    inline-size: 100%;
+    padding-block-end: var(--space-1);
+    border: none;
+    border-block-end: 1px solid var(--color-border);
+
+    font: inherit;
+    color: var(--color-text-primary);
+
+    background: transparent;
+    outline: none;
+
+    &:hover {
+        border-block-end-color: var(--color-border-strong);
+    }
+
+    &:focus {
+        border-block-end-color: var(--color-primary);
+    }
+}
+
+.operation-item-list {
+    inline-size: 100%;
+    display: grid;
+    gap: var(--space-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+
+    li {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: var(--space-2);
     }
 }
 
