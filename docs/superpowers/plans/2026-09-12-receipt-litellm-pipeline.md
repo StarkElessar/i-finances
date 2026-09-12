@@ -2645,25 +2645,38 @@ version:
 										onChange={(event) => setContactId(event.currentTarget.value || null)}
 									>
 										<option value=''>Без контакта</option>
-										<For each={props.receiptImport?.result?.receipt.contactId !== undefined
-											? []
-											: []}
-										>
-											{() => null}
+										<For each={props.contacts}>
+											{(contact) => (
+												<option value={contact.id}>{contact.name}</option>
+											)}
 										</For>
 									</select>
 								</label>
 ```
 
-(The contact `<select>` needs a real list of household contacts — this
+The contact `<select>` needs a real list of household contacts — this
 view doesn't currently load contacts. Fetch them the same way `accounts`
-is already fetched: add `const contacts = createAsync(() => getContacts(false));`
-near the top of `ReceiptsContent`, import `getContacts` from
-`@/entities/contact/api` — check the exact export name there, mirroring
-how `getAccounts` is imported from `@/entities/account/api` — and pass
-`contacts={contacts() ?? []}` down to `<ReviewDialog>` as a new prop,
-then replace the empty `<For each={[]}>` placeholder above with
-`<For each={props.contacts}>{(contact) => (<option value={contact.id}>{contact.name}</option>)}</For>`.)
+is already fetched, but note `getContacts` has a **different signature**
+than `getAccounts`: it takes `{ status: ContactListStatus }` (not a plain
+boolean) and resolves to `ContactCollection` — `{ baseCurrency, items:
+PersistedContact[] }` — not a bare array (confirmed by reading
+`apps/web/src/entities/contact/api/contact.client.ts:19` and
+`apps/web/src/entities/contact/model/types.ts:22-25`). `PersistedContact`
+has `id`/`name` fields, same shape need as the categories snapshot.
+
+In `ReceiptsContent`, near the existing
+`const accounts = createAsync(() => getAccounts(false));`, add:
+
+```ts
+	const contacts = createAsync(() => getContacts({ status: 'active' }));
+```
+
+Import `getContacts` from `@/entities/contact/api`. Pass
+`contacts={contacts()?.items ?? []}` down to `<ReviewDialog>` as a new
+prop, and add `contacts: readonly PersistedContact[];` to
+`ReviewDialogProps` (import `PersistedContact` from `@/entities/contact` —
+mirror how `PersistedAccount` is already imported for `accounts` in this
+same file).
 
 - [ ] **Step 4: Rewrite `handleApprove` to submit `operations[]`**
 
