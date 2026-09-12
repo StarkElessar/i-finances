@@ -45,6 +45,7 @@ import {
 	createSignal,
 	ErrorBoundary,
 	For,
+	onCleanup,
 	Show
 } from 'solid-js';
 
@@ -710,6 +711,24 @@ function ReceiptsContent() {
 			revalidate(getAccounts.key)
 		]);
 	};
+
+	const POLL_INTERVAL_MS = 2_500;
+
+	createEffect(() => {
+		const hasActiveReceipt = (receiptImports() ?? []).some(
+			(receiptImport) => ACTIVE_STATUSES.has(receiptImport.status)
+		);
+
+		if (!hasActiveReceipt) {
+			return;
+		}
+
+		const timer = setInterval(() => {
+			void handleRefresh();
+		}, POLL_INTERVAL_MS);
+
+		onCleanup(() => clearInterval(timer));
+	});
 
 	const handleOpenReceipt = (receiptImport: ReceiptImport) => {
 		setSelectedReceiptId(receiptImport.id);
