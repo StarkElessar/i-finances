@@ -52,8 +52,7 @@ describe('ReceiptImportClient', () => {
 						id: 'job-1',
 						lastError: null,
 						status: 'queued',
-						updatedAt: '2026-08-08T10:00:00.000Z',
-						workerId: null
+						updatedAt: '2026-08-08T10:00:00.000Z'
 					},
 					operationIds: [],
 					result: null,
@@ -85,7 +84,13 @@ describe('ReceiptImportClient', () => {
 			},
 			version: 2
 		});
-		await client.approve({ accountId: 'account-1', id: 'receipt-1', version: 2 });
+		await client.approve({
+			accountId: 'account-1',
+			contactId: null,
+			id: 'receipt-1',
+			operations: [{ amountMinor: 1_000, categoryId: null, itemIndexes: [0], title: 'Продукты' }],
+			version: 2
+		});
 
 		expect(requests).toEqual([
 			'/api/receipt-imports/receipt-1/revision',

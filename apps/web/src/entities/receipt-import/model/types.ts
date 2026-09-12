@@ -60,6 +60,7 @@ export type ReceiptWorkerResult = {
 	};
 	rawOcrText: string;
 	receipt: {
+		contactId: string | null;
 		currency: 'BYN';
 		happenedOn: string;
 		items: ReceiptItem[];
@@ -78,7 +79,6 @@ export type ReceiptProcessingJob = {
 	lastError: string | null;
 	status: ReceiptProcessingJobStatus;
 	updatedAt: string;
-	workerId: string | null;
 };
 
 export type ReceiptImport = {
@@ -102,22 +102,22 @@ export type ReceiptImport = {
 	version: number;
 };
 
-export type LeasedReceiptProcessingJob = {
-	attempt: number;
-	categories: ReceiptCategorySnapshot[];
-	categoriesSnapshotVersion: string;
-	imageUrl: string;
-	leaseExpiresAt: string;
-	leaseToken: string;
-	previousResult: ReceiptWorkerResult | null;
-	processingJobId: string;
-	receiptImportId: string;
-	requestedPipelineVersion: string;
-	reviewComment: string;
-	schemaVersion: 1;
-};
-
 export type CreatedReceiptImport = {
 	id: string;
 	status: ReceiptImportStatus;
+};
+
+export type ApproveReceiptOperationInput = {
+	amountMinor: number;
+	categoryId: string | null;
+	itemIndexes: number[];
+	title: string;
+};
+
+export type ApproveReceiptInput = {
+	accountId: string;
+	contactId: string | null;
+	id: string;
+	operations: ApproveReceiptOperationInput[];
+	version: number;
 };

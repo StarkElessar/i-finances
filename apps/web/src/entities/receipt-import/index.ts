@@ -1,7 +1,8 @@
 export * from './api';
 export type {
+	ApproveReceiptInput,
+	ApproveReceiptOperationInput,
 	CreatedReceiptImport,
-	LeasedReceiptProcessingJob,
 	ReceiptCategorySnapshot,
 	ReceiptImport,
 	ReceiptImportStatus,
