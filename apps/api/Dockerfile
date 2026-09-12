@@ -42,4 +42,7 @@ USER node
 # DATABASE_URL (./data/...) and migrationsFolder ('./drizzle') resolve from CWD.
 WORKDIR /app/apps/api
 EXPOSE 3001
-CMD ["./node_modules/.bin/tsx", "src/main.ts"]
+# migrate-db.ts is idempotent (drizzle tracks applied migrations), so running it
+# on every start is safe. Without this, a deploy that ships a new migration
+# would boot the API against a stale schema instead of failing loudly.
+CMD ["sh", "-c", "./node_modules/.bin/tsx scripts/migrate-db.ts && ./node_modules/.bin/tsx src/main.ts"]
