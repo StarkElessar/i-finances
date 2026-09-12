@@ -1,4 +1,14 @@
 export {
+	type CategorizeReceiptInput,
+	createLiteLlmClient,
+	type LiteLlmClient,
+	type LiteLlmClientOptions
+} from './litellm-client';
+export {
+	type NormalizedReceiptImage,
+	normalizeReceiptImageForModel
+} from './receipt-image-normalizer';
+export {
 	createReceiptImageStorage,
 	type ReceiptImage,
 	type ReceiptImageStorage,
@@ -29,12 +39,7 @@ export {
 	type ReceiptImportServiceDependencies
 } from './receipt-import-service';
 export {
-	createLiteLlmClient,
-	type CategorizeReceiptInput,
-	type LiteLlmClient,
-	type LiteLlmClientOptions
-} from './litellm-client';
-export {
-	normalizeReceiptImageForModel,
-	type NormalizedReceiptImage
-} from './receipt-image-normalizer';
+	type ReceiptProcessingLoop,
+	type ReceiptProcessingLoopOptions,
+	startReceiptProcessingLoop
+} from './receipt-processing-loop';
