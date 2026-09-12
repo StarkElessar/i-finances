@@ -51,7 +51,16 @@ export function startReceiptProcessingLoop(options: ReceiptProcessingLoopOptions
 
 	const loop = async (): Promise<void> => {
 		while (!stopped) {
-			const job = await options.receiptImportService.claimNextQueuedJob();
+			let job: ClaimedReceiptProcessingJob | undefined;
+
+			try {
+				job = await options.receiptImportService.claimNextQueuedJob();
+			}
+			catch (error: unknown) {
+				console.error('Failed to claim the next queued receipt processing job.', error);
+				await sleep(options.pollIntervalMs);
+				continue;
+			}
 
 			if (job === undefined) {
 				await sleep(options.pollIntervalMs);

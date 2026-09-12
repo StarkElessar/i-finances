@@ -128,4 +128,47 @@ describe('startReceiptProcessingLoop', () => {
 		expect(extractReceiptText).not.toHaveBeenCalled();
 		expect(categorizeReceipt).not.toHaveBeenCalled();
 	});
+
+	it('survives claimNextQueuedJob throwing and keeps polling afterwards', async () => {
+		mockedNormalize.mockResolvedValue({ bytes: new Uint8Array([9, 9, 9]), contentType: 'image/jpeg' });
+
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+
+		const claimNextQueuedJob = vi.fn()
+			.mockRejectedValueOnce(new Error('connection reset'))
+			.mockResolvedValueOnce({
+				attempt: 1,
+				categories: [],
+				contacts: [],
+				imageStorageKey: 'key-1',
+				previousResult: null,
+				processingJobId: 'job-1',
+				receiptImportId: 'receipt-1',
+				requestedPipelineVersion: 'receipt-litellm-v1',
+				reviewComment: ''
+			})
+			.mockResolvedValue(undefined);
+		const completeJob = vi.fn().mockResolvedValue(undefined);
+		const failJob = vi.fn().mockResolvedValue(undefined);
+		const readImage = vi.fn().mockResolvedValue(new Uint8Array([1, 2, 3]));
+		const extractReceiptText = vi.fn().mockResolvedValue('raw ocr text');
+		const categorizeReceipt = vi.fn().mockResolvedValue(SAMPLE_RESULT);
+
+		const loop = startReceiptProcessingLoop({
+			imageStorage: { read: readImage },
+			litellmClient: { categorizeReceipt, extractReceiptText },
+			pollIntervalMs: 20,
+			receiptImportService: { claimNextQueuedJob, completeJob, failJob }
+		});
+
+		await sleep(100);
+		loop.stop();
+
+		expect(claimNextQueuedJob.mock.calls.length).toBeGreaterThan(1);
+		expect(completeJob).toHaveBeenCalledWith('job-1', SAMPLE_RESULT);
+		expect(failJob).not.toHaveBeenCalled();
+		expect(consoleErrorSpy).toHaveBeenCalled();
+
+		consoleErrorSpy.mockRestore();
+	});
 });
