@@ -34,3 +34,7 @@ export {
 	type LiteLlmClient,
 	type LiteLlmClientOptions
 } from './litellm-client';
+export {
+	normalizeReceiptImageForModel,
+	type NormalizedReceiptImage
+} from './receipt-image-normalizer';
