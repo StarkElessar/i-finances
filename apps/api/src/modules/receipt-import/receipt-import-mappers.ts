@@ -1,5 +1,6 @@
 import {
 	receiptCategorySnapshotSchema,
+	receiptContactSnapshotSchema,
 	type ReceiptImport,
 	type ReceiptProcessingJob,
 	receiptWorkerResultSchema
@@ -14,6 +15,12 @@ export function parseReceiptCategoriesSnapshot(value: string) {
 	return categoriesSnapshotSchema.parse(JSON.parse(value));
 }
 
+const contactsSnapshotSchema = z.array(receiptContactSnapshotSchema);
+
+export function parseReceiptContactsSnapshot(value: string) {
+	return contactsSnapshotSchema.parse(JSON.parse(value));
+}
+
 export function parseReceiptWorkerResult(value: string | null) {
 	return value === null ? null : receiptWorkerResultSchema.parse(JSON.parse(value));
 }
@@ -26,8 +33,7 @@ function toProcessingJob(record: ReceiptImportAggregateRecord['jobs'][number]): 
 		id: record.id,
 		lastError: record.lastError,
 		status: record.status,
-		updatedAt: record.updatedAt.toISOString(),
-		workerId: record.workerId
+		updatedAt: record.updatedAt.toISOString()
 	};
 }
 

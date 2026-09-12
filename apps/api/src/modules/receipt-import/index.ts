@@ -11,23 +11,20 @@ export {
 	ReceiptImportNotFoundError,
 	ReceiptImportStateError,
 	ReceiptImportVersionConflictError,
-	ReceiptJobLeaseError,
-	ReceiptWorkerAuthenticationError,
-	ReceiptWorkerConfigurationError,
 	ReceiptWorkerResultError
 } from './receipt-import-errors';
 export {
+	type ClaimedReceiptJobRecord,
 	type CompleteReceiptJobRecordInput,
 	createReceiptImportRepository,
 	type FailReceiptJobRecordInput,
-	type LeasedReceiptJobRecord,
-	type LeaseReceiptJobInput,
 	type ReceiptImportAggregateRecord,
-	type ReceiptImportRepository
+	type ReceiptImportRepository,
+	type ReceiptJobRecord
 } from './receipt-import-repository';
 export {
+	type ClaimedReceiptProcessingJob,
 	type CreateReceiptFromImageInput,
 	ReceiptImportService,
 	type ReceiptImportServiceDependencies
 } from './receipt-import-service';
-export { assertReceiptWorkerApiKey } from './receipt-worker-auth';

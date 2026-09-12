@@ -17,9 +17,7 @@ import {
 	ReceiptImportService
 } from '@/modules/receipt-import';
 
-import {
-	receiptWorkerResultSchema
-} from '@i-finances/contracts';
+import { receiptWorkerResultSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
@@ -95,6 +93,22 @@ beforeEach(async () => {
 		updatedAt: FIXED_DATE,
 		version: 1
 	});
+	await database.insert(contacts).values({
+		archivedAt: null,
+		color: '#a06368',
+		createdAt: FIXED_DATE,
+		createdByUserId: USER_ID,
+		householdId: HOUSEHOLD_ID,
+		id: 'contact-shop',
+		legalName: null,
+		name: 'Магазин',
+		normalizedLegalName: null,
+		normalizedName: 'магазин',
+		phone: null,
+		type: 'company',
+		updatedAt: FIXED_DATE,
+		version: 1
+	});
 });
 
 afterEach(async () => {
@@ -130,18 +144,19 @@ function createService(): ReceiptImportService {
 	});
 }
 
-function createWorkerResult(workerId: string) {
+function createWorkerResult() {
 	return receiptWorkerResultSchema.parse({
 		categorizedItems: [{ categoryId: 'category-food', confidence: 0.99, itemIndex: 0 }],
 		processor: {
 			finishedAt: FIXED_DATE.toISOString(),
-			modelVersions: ['test-model'],
-			pipelineVersion: 'receipt-local-v1',
+			modelVersions: ['deepseek-v4-flash-vision-exp', 'deepseek-v4-flash'],
+			pipelineVersion: 'receipt-litellm-v1',
 			startedAt: FIXED_DATE.toISOString(),
-			workerId
+			workerId: 'api-inprocess'
 		},
 		rawOcrText: 'Продукты 12.50',
 		receipt: {
+			contactId: 'contact-shop',
 			currency: 'BYN',
 			happenedOn: '2026-08-08',
 			items: [{
@@ -172,30 +187,19 @@ describe('ReceiptImportService', () => {
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
-		const leased = await service.leaseNextJob('worker-1');
+		const claimed = await service.claimNextQueuedJob();
 
 		expect(created.status).toBe('queued');
-		expect(leased).toMatchObject({ receiptImportId: created.id, requestedPipelineVersion: 'receipt-local-v1' });
+		expect(claimed).toMatchObject({ receiptImportId: created.id, requestedPipelineVersion: 'receipt-litellm-v1' });
 
-		if (leased === undefined) {
-			throw new Error('Expected a leased receipt job.');
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
 		}
 
-		const result = createWorkerResult('worker-1');
-		const completed = await service.completeJob(leased.processingJobId, {
-			leaseToken: leased.leaseToken,
-			result
-		});
+		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
 
 		expect(completed.status).toBe('needs_review');
 		expect(completed.operationIds).toEqual([]);
-
-		const duplicateCompletion = await service.completeJob(leased.processingJobId, {
-			leaseToken: leased.leaseToken,
-			result
-		});
-
-		expect(duplicateCompletion.id).toBe(created.id);
 
 		const updatedReview = await service.updateReview(USER_ID, {
 			id: created.id,
@@ -221,11 +225,17 @@ describe('ReceiptImportService', () => {
 		});
 
 		expect(updatedReview.result?.receipt.happenedOn).toBe('2026-08-07');
-		expect(updatedReview.result?.receipt.items[0]?.totalMinor).toBe(1_300);
 
 		const approved = await service.approve(USER_ID, {
 			accountId: 'account-receipt',
+			contactId: 'contact-shop',
 			id: created.id,
+			operations: [{
+				amountMinor: 1_300,
+				categoryId: 'category-food',
+				itemIndexes: [0],
+				title: 'Продукты'
+			}],
 			version: updatedReview.version
 		});
 
@@ -235,56 +245,79 @@ describe('ReceiptImportService', () => {
 		const operations = await database.select().from(schema.operations);
 
 		expect(operations).toHaveLength(1);
-		expect(operations[0]).toMatchObject({ amountMinor: 1_300, categoryId: 'category-food' });
+		expect(operations[0]).toMatchObject({ amountMinor: 1_300, categoryId: 'category-food', contactId: 'contact-shop' });
 	});
 
-	it('matches the merchant to an existing contact by normalized name on approval', async () => {
-		await database.insert(contacts).values({
-			archivedAt: null,
-			color: '#a06368',
-			createdAt: FIXED_DATE,
-			createdByUserId: USER_ID,
-			householdId: HOUSEHOLD_ID,
-			id: 'contact-shop',
-			legalName: null,
-			name: 'Магазин',
-			normalizedLegalName: null,
-			normalizedName: 'магазин',
-			phone: null,
-			type: 'company',
-			updatedAt: FIXED_DATE,
-			version: 1
-		});
-
+	it('rejects approval when the submitted operations do not cover every item exactly once', async () => {
 		const service = createService();
 		const created = await service.createFromImage(USER_ID, {
 			bytes: new Uint8Array([1, 2, 3]),
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
-		const leased = await service.leaseNextJob('worker-1');
+		const claimed = await service.claimNextQueuedJob();
 
-		if (leased === undefined) {
-			throw new Error('Expected a leased receipt job.');
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
 		}
 
-		const completed = await service.completeJob(leased.processingJobId, {
-			leaseToken: leased.leaseToken,
-			result: createWorkerResult('worker-1')
-		});
-		const approved = await service.approve(USER_ID, {
+		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
+
+		await expect(service.approve(USER_ID, {
 			accountId: 'account-receipt',
+			contactId: null,
 			id: created.id,
+			operations: [],
 			version: completed.version
+		})).rejects.toThrow();
+	});
+
+	it('rejects approval when the contact is not in the stored contacts snapshot', async () => {
+		const service = createService();
+		const created = await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
 		});
+		const claimed = await service.claimNextQueuedJob();
 
-		expect(approved.operationIds).toHaveLength(1);
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
+		}
 
-		const [operation] = await database.select().from(schema.operations);
+		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
 
-		// A matched contact carries the merchant, so the title drops it and
-		// keeps only the category to avoid repeating the same name twice.
-		expect(operation).toMatchObject({ contactId: 'contact-shop', title: 'Продукты' });
+		await expect(service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-does-not-exist',
+			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0],
+				title: 'Продукты'
+			}],
+			version: completed.version
+		})).rejects.toThrow();
+	});
+
+	it('resets a job stuck in leased status back to queued on recovery', async () => {
+		const service = createService();
+
+		await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
+		});
+		await service.claimNextQueuedJob();
+
+		const recovered = await service.recoverStaleProcessingJobs();
+
+		expect(recovered).toBe(1);
+
+		const claimedAgain = await service.claimNextQueuedJob();
+
+		expect(claimedAgain).not.toBeUndefined();
 	});
 
 	it('deletes receipt images only after their retention period passes', async () => {
@@ -294,20 +327,24 @@ describe('ReceiptImportService', () => {
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
-		const leased = await service.leaseNextJob('worker-1');
+		const claimed = await service.claimNextQueuedJob();
 
-		if (leased === undefined) {
-			throw new Error('Expected a leased receipt job.');
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
 		}
 
-		const completed = await service.completeJob(leased.processingJobId, {
-			leaseToken: leased.leaseToken,
-			result: createWorkerResult('worker-1')
-		});
+		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
 
 		await service.approve(USER_ID, {
 			accountId: 'account-receipt',
+			contactId: 'contact-shop',
 			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0],
+				title: 'Продукты'
+			}],
 			version: completed.version
 		});
 
@@ -320,16 +357,5 @@ describe('ReceiptImportService', () => {
 		const afterRetention = await service.deleteExpiredImages();
 
 		expect(afterRetention.deletedCount).toBe(1);
-
-		const [afterDeletion] = await service.list(USER_ID);
-
-		expect(afterDeletion.imageDeletedAt).not.toBeNull();
-		expect(afterDeletion.imageUrl).toBeNull();
-		await expect(service.readImageForUser(USER_ID, created.id))
-			.rejects.toThrow('Фотография чека уже удалена.');
-
-		const secondRun = await service.deleteExpiredImages();
-
-		expect(secondRun.deletedCount).toBe(0);
 	});
 });

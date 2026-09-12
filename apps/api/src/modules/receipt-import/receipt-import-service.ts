@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
 
 import type { AccountRepository } from '@/modules/account';
 import type { CategoryRepository } from '@/modules/category';
@@ -9,14 +9,9 @@ import type { OperationService } from '@/modules/operation';
 import {
 	type ApproveReceiptInput,
 	approveReceiptInputSchema,
-	type CompleteReceiptJobInput,
-	completeReceiptJobInputSchema,
 	type CreatedReceiptImport,
-	type FailReceiptJobInput,
-	failReceiptJobInputSchema,
-	type LeasedReceiptProcessingJob,
-	normalizeContactIdentity,
 	type ReceiptCategorySnapshot,
+	type ReceiptContactSnapshot,
 	type ReceiptImport,
 	type ReceiptReview,
 	type ReceiptWorkerResult,
@@ -26,16 +21,17 @@ import {
 	updateReceiptReviewInputSchema
 } from '@i-finances/contracts';
 
+import { sha256Hex } from './receipt-hash';
 import type { ReceiptImage, ReceiptImageStorage, SaveReceiptImageInput } from './receipt-image-storage';
 import {
 	ReceiptImportNotFoundError,
 	ReceiptImportStateError,
 	ReceiptImportVersionConflictError,
-	ReceiptJobLeaseError,
 	ReceiptWorkerResultError
 } from './receipt-import-errors';
 import {
 	parseReceiptCategoriesSnapshot,
+	parseReceiptContactsSnapshot,
 	parseReceiptWorkerResult,
 	toReceiptImport
 } from './receipt-import-mappers';
@@ -44,11 +40,22 @@ import type {
 	ReceiptImportRepository
 } from './receipt-import-repository';
 
-const DEFAULT_LEASE_MILLISECONDS = 10 * 60 * 1_000;
 const DEFAULT_IMAGE_RETENTION_DAYS = 30;
-const REQUESTED_PIPELINE_VERSION = 'receipt-local-v1';
+const REQUESTED_PIPELINE_VERSION = 'receipt-litellm-v1';
 
 export type CreateReceiptFromImageInput = Omit<SaveReceiptImageInput, 'receiptImportId'>;
+
+export type ClaimedReceiptProcessingJob = {
+	attempt: number;
+	categories: ReceiptCategorySnapshot[];
+	contacts: ReceiptContactSnapshot[];
+	imageStorageKey: string;
+	previousResult: ReceiptWorkerResult | null;
+	processingJobId: string;
+	receiptImportId: string;
+	requestedPipelineVersion: string;
+	reviewComment: string;
+};
 
 export type ReceiptImportServiceDependencies = {
 	accountRepository: AccountRepository;
@@ -60,95 +67,23 @@ export type ReceiptImportServiceDependencies = {
 	receiptImportRepository: ReceiptImportRepository;
 	createId?: () => string;
 	imageRetentionDays?: number;
-	leaseMilliseconds?: number;
 	now?: () => Date;
 };
 
 const IMAGE_DELETION_BATCH_SIZE = 100;
 
-function hashValue(value: string): string {
-	return createHash('sha256').update(value).digest('hex');
-}
-
 function createCategoriesSnapshotVersion(categories: readonly ReceiptCategorySnapshot[]): string {
-	return hashValue(JSON.stringify(categories));
-}
-
-function getCategoryName(categories: readonly ReceiptCategorySnapshot[], categoryId: string | null): string {
-	if (categoryId === null) {
-		return 'Без категории';
-	}
-
-	return categories.find((category) => category.id === categoryId)?.name ?? 'Без категории';
-}
-
-/**
- * Matches the receipt's merchant against an existing contact by exact
- * normalized name. Never creates a contact -- a new contact requires
- * explicit user confirmation, which the review screen does not yet collect.
- */
-async function resolveContactIdByMerchantName(
-	contactRepository: ContactRepository,
-	householdId: string,
-	merchant: ReceiptWorkerResult['receipt']['merchant']
-): Promise<string | null> {
-	const candidates = [merchant.displayName, merchant.legalName]
-		.filter((name): name is string => name !== null && name.trim() !== '');
-
-	for (const candidate of candidates) {
-		const contactId = await contactRepository.findIdByNormalizedName(
-			householdId,
-			normalizeContactIdentity(candidate)
-		);
-
-		if (contactId !== undefined) {
-			return contactId;
-		}
-	}
-
-	return null;
-}
-
-function createOperationGroups(
-	result: ReceiptWorkerResult,
-	categories: readonly ReceiptCategorySnapshot[]
-) {
-	const categoryByItem = new Map(result.categorizedItems.map((item) => [item.itemIndex, item.categoryId]));
-	const groups = new Map<string, {
-		amountMinor: number;
-		categoryId: string | null;
-		categoryName: string;
-		itemNames: string[];
-	}>();
-
-	result.receipt.items.forEach((item, itemIndex) => {
-		const categoryId = categoryByItem.get(itemIndex) ?? null;
-		const groupKey = categoryId ?? 'uncategorized';
-		const group = groups.get(groupKey) ?? {
-			amountMinor: 0,
-			categoryId,
-			categoryName: getCategoryName(categories, categoryId),
-			itemNames: []
-		};
-
-		group.amountMinor += item.totalMinor;
-		group.itemNames.push(item.name);
-		groups.set(groupKey, group);
-	});
-
-	return [...groups.entries()].filter(([, group]) => group.amountMinor > 0);
+	return sha256Hex(JSON.stringify(categories));
 }
 
 export class ReceiptImportService {
 	private readonly createId: () => string;
 	private readonly imageRetentionDays: number;
-	private readonly leaseMilliseconds: number;
 	private readonly now: () => Date;
 
 	public constructor(private readonly dependencies: ReceiptImportServiceDependencies) {
 		this.createId = dependencies.createId ?? randomUUID;
 		this.imageRetentionDays = dependencies.imageRetentionDays ?? DEFAULT_IMAGE_RETENTION_DAYS;
-		this.leaseMilliseconds = dependencies.leaseMilliseconds ?? DEFAULT_LEASE_MILLISECONDS;
 		this.now = dependencies.now ?? (() => new Date());
 	}
 
@@ -171,6 +106,11 @@ export class ReceiptImportService {
 			keywords: record.keywords.map((keyword) => keyword.value),
 			name: record.category.name
 		}));
+		const contactRecords = await this.dependencies.contactRepository.list(household.id, 'active');
+		const contacts: ReceiptContactSnapshot[] = contactRecords.map((record) => ({
+			id: record.id,
+			name: record.name
+		}));
 		const receiptImportId = this.createId();
 		const timestamp = this.now();
 		const storedImage = await this.dependencies.imageStorage.save({
@@ -185,6 +125,8 @@ export class ReceiptImportService {
 					approvedAt: null,
 					categoriesSnapshotJson: JSON.stringify(categories),
 					categoriesSnapshotVersion: createCategoriesSnapshotVersion(categories),
+					contactsSnapshotJson: JSON.stringify(contacts),
+					contactsSnapshotVersion: sha256Hex(JSON.stringify(contacts)),
 					createdAt: timestamp,
 					createdByUserId: userId,
 					householdId: household.id,
@@ -208,16 +150,12 @@ export class ReceiptImportService {
 					createdAt: timestamp,
 					id: this.createId(),
 					lastError: null,
-					lastHeartbeatAt: null,
-					leaseExpiresAt: null,
-					leaseTokenHash: null,
 					receiptImportId,
 					requestedPipelineVersion: REQUESTED_PIPELINE_VERSION,
 					resultSha256: null,
 					status: 'queued',
 					updatedAt: timestamp,
-					version: 1,
-					workerId: null
+					version: 1
 				}
 			);
 		}
@@ -247,16 +185,12 @@ export class ReceiptImportService {
 				createdAt: timestamp,
 				id: this.createId(),
 				lastError: null,
-				lastHeartbeatAt: null,
-				leaseExpiresAt: null,
-				leaseTokenHash: null,
 				receiptImportId: input.id,
 				requestedPipelineVersion: REQUESTED_PIPELINE_VERSION,
 				resultSha256: null,
 				status: 'queued',
 				updatedAt: timestamp,
-				version: 1,
-				workerId: null
+				version: 1
 			},
 			timestamp
 		);
@@ -314,35 +248,28 @@ export class ReceiptImportService {
 		return toReceiptImport(aggregate);
 	}
 
-	public async leaseNextJob(workerId: string): Promise<LeasedReceiptProcessingJob | undefined> {
-		const timestamp = this.now();
-		const leaseExpiresAt = new Date(timestamp.getTime() + this.leaseMilliseconds);
-		const leaseToken = randomBytes(32).toString('base64url');
-		const leased = await this.dependencies.receiptImportRepository.leaseNextJob({
-			leaseExpiresAt,
-			leaseTokenHash: hashValue(leaseToken),
-			now: timestamp,
-			workerId
-		});
+	public async claimNextQueuedJob(): Promise<ClaimedReceiptProcessingJob | undefined> {
+		const claimed = await this.dependencies.receiptImportRepository.claimNextQueuedJob(this.now());
 
-		if (leased === undefined) {
+		if (claimed === undefined) {
 			return undefined;
 		}
 
 		return {
-			attempt: leased.job.attempt,
-			categories: parseReceiptCategoriesSnapshot(leased.import.categoriesSnapshotJson),
-			categoriesSnapshotVersion: leased.import.categoriesSnapshotVersion,
-			imageUrl: `/api/receipt-worker/jobs/${encodeURIComponent(leased.job.id)}/image`,
-			leaseExpiresAt: leaseExpiresAt.toISOString(),
-			leaseToken,
-			previousResult: parseReceiptWorkerResult(leased.import.resultJson),
-			processingJobId: leased.job.id,
-			receiptImportId: leased.import.id,
-			requestedPipelineVersion: leased.job.requestedPipelineVersion,
-			reviewComment: leased.import.reviewComment,
-			schemaVersion: 1
+			attempt: claimed.job.attempt,
+			categories: parseReceiptCategoriesSnapshot(claimed.import.categoriesSnapshotJson),
+			contacts: parseReceiptContactsSnapshot(claimed.import.contactsSnapshotJson),
+			imageStorageKey: claimed.import.imageStorageKey,
+			previousResult: parseReceiptWorkerResult(claimed.import.resultJson),
+			processingJobId: claimed.job.id,
+			receiptImportId: claimed.import.id,
+			requestedPipelineVersion: claimed.job.requestedPipelineVersion,
+			reviewComment: claimed.import.reviewComment
 		};
+	}
+
+	public async recoverStaleProcessingJobs(): Promise<number> {
+		return this.dependencies.receiptImportRepository.resetStaleProcessingJobs(this.now());
 	}
 
 	public async deleteExpiredImages(): Promise<{ deletedCount: number }> {
@@ -365,30 +292,9 @@ export class ReceiptImportService {
 		return { deletedCount };
 	}
 
-	public async heartbeatJob(jobId: string, leaseToken: string): Promise<string> {
-		const timestamp = this.now();
-		const leaseExpiresAt = new Date(timestamp.getTime() + this.leaseMilliseconds);
-		const job = await this.dependencies.receiptImportRepository.heartbeatJob(
-			jobId,
-			hashValue(leaseToken),
-			timestamp,
-			leaseExpiresAt
-		);
-
-		if (job === undefined) {
-			throw new ReceiptJobLeaseError();
-		}
-
-		return leaseExpiresAt.toISOString();
-	}
-
-	public async completeJob(
-		jobId: string,
-		unsafeInput: CompleteReceiptJobInput
-	): Promise<ReceiptImport> {
-		const input = completeReceiptJobInputSchema.parse(unsafeInput);
-		const serializedResult = JSON.stringify(input.result);
-		const resultSha256 = hashValue(serializedResult);
+	public async completeJob(jobId: string, result: ReceiptWorkerResult): Promise<ReceiptImport> {
+		const serializedResult = JSON.stringify(result);
+		const resultSha256 = sha256Hex(serializedResult);
 		const current = await this.dependencies.receiptImportRepository.findJobById(jobId);
 
 		if (current?.job.status === 'completed' && current.job.resultSha256 === resultSha256) {
@@ -402,16 +308,14 @@ export class ReceiptImportService {
 			}
 		}
 
-		const active = await this.requireActiveLease(jobId, input.leaseToken);
-
-		if (input.result.processor.workerId !== active.job.workerId) {
-			throw new ReceiptWorkerResultError('workerId результата не совпадает с worker-ом задания.');
+		if (current === undefined || current.job.status !== 'leased') {
+			throw new ReceiptImportNotFoundError();
 		}
 
 		const allowedCategoryIds = new Set(
-			parseReceiptCategoriesSnapshot(active.import.categoriesSnapshotJson).map((category) => category.id)
+			parseReceiptCategoriesSnapshot(current.import.categoriesSnapshotJson).map((category) => category.id)
 		);
-		const invalidCategory = input.result.categorizedItems.find((item) => (
+		const invalidCategory = result.categorizedItems.find((item) => (
 			item.categoryId !== null && !allowedCategoryIds.has(item.categoryId)
 		));
 
@@ -419,34 +323,37 @@ export class ReceiptImportService {
 			throw new ReceiptWorkerResultError('Результат содержит категорию, которой не было в задании.');
 		}
 
+		const allowedContactIds = new Set(
+			parseReceiptContactsSnapshot(current.import.contactsSnapshotJson).map((contact) => contact.id)
+		);
+
+		if (result.receipt.contactId !== null && !allowedContactIds.has(result.receipt.contactId)) {
+			throw new ReceiptWorkerResultError('Результат содержит контакт, которого не было в задании.');
+		}
+
 		const completed = await this.dependencies.receiptImportRepository.completeJob({
 			completedAt: this.now(),
 			jobId,
-			leaseTokenHash: hashValue(input.leaseToken),
 			resultJson: serializedResult,
 			resultSha256
 		});
 
 		if (completed === undefined) {
-			throw new ReceiptJobLeaseError();
+			throw new ReceiptImportNotFoundError();
 		}
 
 		return toReceiptImport(completed);
 	}
 
-	public async failJob(jobId: string, unsafeInput: FailReceiptJobInput): Promise<ReceiptImport> {
-		const input = failReceiptJobInputSchema.parse(unsafeInput);
-
-		await this.requireActiveLease(jobId, input.leaseToken);
+	public async failJob(jobId: string, error: string): Promise<ReceiptImport> {
 		const failed = await this.dependencies.receiptImportRepository.failJob({
-			error: input.error,
+			error: error.slice(0, 2_000),
 			failedAt: this.now(),
-			jobId,
-			leaseTokenHash: hashValue(input.leaseToken)
+			jobId
 		});
 
 		if (failed === undefined) {
-			throw new ReceiptJobLeaseError();
+			throw new ReceiptImportNotFoundError();
 		}
 
 		return toReceiptImport(failed);
@@ -472,12 +379,9 @@ export class ReceiptImportService {
 		}
 
 		const categories = parseReceiptCategoriesSnapshot(current.aggregate.import.categoriesSnapshotJson);
-		const groups = createOperationGroups(result, categories);
-		const groupedTotalMinor = groups.reduce((total, [, group]) => total + group.amountMinor, 0);
+		const contacts = parseReceiptContactsSnapshot(current.aggregate.import.contactsSnapshotJson);
 
-		if (groupedTotalMinor !== result.receipt.totalAmountMinor) {
-			throw new ReceiptImportStateError('Сумма товарных строк не совпадает с итогом чека.');
-		}
+		this.assertApproveOperations(input, result, categories, contacts);
 
 		const approvalStarted = await this.dependencies.receiptImportRepository.markApprovalStarted(
 			current.householdId,
@@ -492,33 +396,26 @@ export class ReceiptImportService {
 		}
 
 		const linkedGroupKeys = new Set(current.aggregate.links.map((link) => link.groupKey));
-		const merchantName = result.receipt.merchant.displayName
-			?? result.receipt.merchant.legalName
-			?? 'Покупка по чеку';
-		const contactId = await resolveContactIdByMerchantName(
-			this.dependencies.contactRepository,
-			current.householdId,
-			result.receipt.merchant
-		);
 
 		try {
-			for (const [groupKey, group] of groups) {
+			for (const [operationIndex, operationInput] of input.operations.entries()) {
+				const groupKey = String(operationIndex);
+
 				if (linkedGroupKeys.has(groupKey)) {
 					continue;
 				}
 
+				const itemNames = operationInput.itemIndexes.map(
+					(itemIndex) => result.receipt.items[itemIndex].name
+				);
 				const operation = await this.dependencies.operationService.create(userId, {
 					accountId: input.accountId,
-					amountMinor: group.amountMinor,
-					categoryId: group.categoryId,
-					comment: group.itemNames.join(', ').slice(0, 1_000),
-					contactId,
+					amountMinor: operationInput.amountMinor,
+					categoryId: operationInput.categoryId,
+					comment: itemNames.join(', ').slice(0, 1_000),
+					contactId: input.contactId,
 					happenedOn: result.receipt.happenedOn,
-					title: (
-						contactId === null
-							? `${merchantName} · ${group.categoryName}`
-							: group.categoryName
-					).slice(0, 160),
+					title: operationInput.title,
 					type: 'expense'
 				});
 
@@ -567,12 +464,6 @@ export class ReceiptImportService {
 		return this.readStoredImage(current.aggregate);
 	}
 
-	public async readImageForWorker(jobId: string, leaseToken: string): Promise<ReceiptImage> {
-		const record = await this.requireActiveLease(jobId, leaseToken);
-
-		return this.readStoredImage({ import: record.import, jobs: [record.job], links: [] });
-	}
-
 	private async requireAggregate(userId: string, receiptImportId: string): Promise<{
 		aggregate: ReceiptImportAggregateRecord;
 		householdId: string;
@@ -585,22 +476,6 @@ export class ReceiptImportService {
 		}
 
 		return { aggregate, householdId: household.id };
-	}
-
-	private async requireActiveLease(jobId: string, leaseToken: string) {
-		const record = await this.dependencies.receiptImportRepository.findJobById(jobId);
-
-		if (
-			record === undefined
-			|| record.job.status !== 'leased'
-			|| record.job.leaseTokenHash !== hashValue(leaseToken)
-			|| record.job.leaseExpiresAt === null
-			|| record.job.leaseExpiresAt <= this.now()
-		) {
-			throw new ReceiptJobLeaseError();
-		}
-
-		return record;
 	}
 
 	private assertReviewCategories(
@@ -616,6 +491,51 @@ export class ReceiptImportService {
 
 		if (invalidCategory !== undefined) {
 			throw new ReceiptWorkerResultError('Результат содержит категорию, которой не было в задании.');
+		}
+	}
+
+	private assertApproveOperations(
+		input: ApproveReceiptInput,
+		result: ReceiptWorkerResult,
+		categories: readonly ReceiptCategorySnapshot[],
+		contacts: readonly ReceiptContactSnapshot[]
+	): void {
+		const allowedCategoryIds = new Set(categories.map((category) => category.id));
+		const allowedContactIds = new Set(contacts.map((contact) => contact.id));
+
+		if (input.contactId !== null && !allowedContactIds.has(input.contactId)) {
+			throw new ReceiptImportStateError('Выбранный контакт недоступен для этого чека.');
+		}
+
+		const seenItemIndexes = new Set<number>();
+		let totalMinor = 0;
+
+		for (const operation of input.operations) {
+			if (operation.categoryId !== null && !allowedCategoryIds.has(operation.categoryId)) {
+				throw new ReceiptImportStateError('Указана категория, которой не было в задании.');
+			}
+
+			for (const itemIndex of operation.itemIndexes) {
+				if (itemIndex >= result.receipt.items.length) {
+					throw new ReceiptImportStateError('Операция ссылается на отсутствующую строку чека.');
+				}
+
+				if (seenItemIndexes.has(itemIndex)) {
+					throw new ReceiptImportStateError('Строка чека не может входить в две операции.');
+				}
+
+				seenItemIndexes.add(itemIndex);
+			}
+
+			totalMinor += operation.amountMinor;
+		}
+
+		if (seenItemIndexes.size !== result.receipt.items.length) {
+			throw new ReceiptImportStateError('Каждая строка чека должна попасть ровно в одну операцию.');
+		}
+
+		if (totalMinor !== result.receipt.totalAmountMinor) {
+			throw new ReceiptImportStateError('Сумма операций не совпадает с итогом чека.');
 		}
 	}
 
