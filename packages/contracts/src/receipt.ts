@@ -39,6 +39,13 @@ export const receiptCategorySnapshotSchema = z.object({
 
 export type ReceiptCategorySnapshot = z.infer<typeof receiptCategorySnapshotSchema>;
 
+export const receiptContactSnapshotSchema = z.object({
+	id: entityIdSchema,
+	name: z.string().trim().min(1).max(160)
+});
+
+export type ReceiptContactSnapshot = z.infer<typeof receiptContactSnapshotSchema>;
+
 export const receiptItemSchema = z.object({
 	discountMinor: nonnegativeIntegerSchema,
 	name: z.string().trim().min(1).max(500),
@@ -75,6 +82,7 @@ export const receiptWorkerResultSchema = z.object({
 	}),
 	rawOcrText: z.string().max(500_000),
 	receipt: z.object({
+		contactId: entityIdSchema.nullable(),
 		currency: z.literal('BYN'),
 		happenedOn: localDateKeySchema,
 		items: z.array(receiptItemSchema).min(1).max(1_000),
@@ -173,39 +181,27 @@ export const requestReceiptRevisionInputSchema = z.object({
 
 export type RequestReceiptRevisionInput = z.infer<typeof requestReceiptRevisionInputSchema>;
 
+export const approveReceiptOperationInputSchema = z.object({
+	amountMinor: positiveIntegerSchema,
+	categoryId: entityIdSchema.nullable(),
+	itemIndexes: z.array(z.number().int().nonnegative()).min(1),
+	title: z.string().trim().min(1).max(160)
+});
+
+export type ApproveReceiptOperationInput = z.infer<typeof approveReceiptOperationInputSchema>;
+
 export const approveReceiptInputSchema = z.object({
 	accountId: entityIdSchema,
+	contactId: entityIdSchema.nullable(),
 	id: entityIdSchema,
+	operations: z.array(approveReceiptOperationInputSchema).min(1).max(50),
 	version: z.number().int().positive()
 });
 
 export type ApproveReceiptInput = z.infer<typeof approveReceiptInputSchema>;
 
-export const workerIdentitySchema = z.object({
-	workerId: z.string().trim().min(1).max(128)
-});
-
-export const completeReceiptJobInputSchema = z.object({
-	leaseToken: z.string().trim().min(32).max(512),
-	result: receiptWorkerResultSchema
-});
-
-export const failReceiptJobInputSchema = z.object({
-	error: z.string().trim().min(1).max(2_000),
-	leaseToken: z.string().trim().min(32).max(512)
-});
-
-export const heartbeatReceiptJobInputSchema = z.object({
-	leaseToken: z.string().trim().min(32).max(512)
-});
-
 export const receiptImportStatusSchema = z.enum(RECEIPT_IMPORT_STATUSES);
 export const receiptProcessingJobStatusSchema = z.enum(RECEIPT_PROCESSING_JOB_STATUSES);
-
-export type WorkerIdentity = z.infer<typeof workerIdentitySchema>;
-export type CompleteReceiptJobInput = z.infer<typeof completeReceiptJobInputSchema>;
-export type FailReceiptJobInput = z.infer<typeof failReceiptJobInputSchema>;
-export type HeartbeatReceiptJobInput = z.infer<typeof heartbeatReceiptJobInputSchema>;
 
 const receiptProcessingJobSchema = z.object({
 	attempt: z.number().int().nonnegative(),
@@ -214,8 +210,7 @@ const receiptProcessingJobSchema = z.object({
 	id: entityIdSchema,
 	lastError: z.string().nullable(),
 	status: receiptProcessingJobStatusSchema,
-	updatedAt: z.string(),
-	workerId: z.string().nullable()
+	updatedAt: z.string()
 });
 
 export type ReceiptProcessingJob = z.infer<typeof receiptProcessingJobSchema>;
@@ -258,32 +253,13 @@ export const createdReceiptImportResponseSchema = z.object({
 	receiptImport: createdReceiptImportSchema
 });
 
-export const leasedReceiptProcessingJobSchema = z.object({
-	attempt: z.number().int().positive(),
-	categories: z.array(receiptCategorySnapshotSchema),
-	categoriesSnapshotVersion: z.string().min(1),
-	imageUrl: z.string().min(1),
-	leaseExpiresAt: z.string(),
-	leaseToken: z.string().min(32),
-	previousResult: receiptWorkerResultSchema.nullable(),
-	processingJobId: entityIdSchema,
-	receiptImportId: entityIdSchema,
-	requestedPipelineVersion: z.string().min(1),
-	reviewComment: z.string(),
-	schemaVersion: z.literal(1)
-});
-
-export type LeasedReceiptProcessingJob = z.infer<typeof leasedReceiptProcessingJobSchema>;
-
 export const receiptImportCommandErrorCodeSchema = z.enum([
 	'conflict',
 	'forbidden',
 	'invalid-input',
 	'invalid-state',
 	'not-found',
-	'unauthenticated',
-	'worker-authentication',
-	'worker-configuration'
+	'unauthenticated'
 ]);
 
 export type ReceiptImportCommandErrorCode = z.infer<typeof receiptImportCommandErrorCodeSchema>;
@@ -306,20 +282,4 @@ export type ReceiptImportCommandResult = z.infer<typeof receiptImportCommandResu
 export const receiptJobCommandResponseSchema = z.object({
 	ok: z.literal(true),
 	receiptImport: receiptImportSchema
-});
-
-export const receiptWorkerLeaseResponseSchema = z.object({
-	job: leasedReceiptProcessingJobSchema.nullable(),
-	ok: z.literal(true)
-});
-
-export const receiptWorkerResultResponseSchema = z.object({
-	ok: z.literal(true),
-	receiptImportId: entityIdSchema,
-	status: receiptImportStatusSchema
-});
-
-export const receiptHeartbeatResponseSchema = z.object({
-	leaseExpiresAt: z.string(),
-	ok: z.literal(true)
 });

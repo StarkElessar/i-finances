@@ -8,12 +8,14 @@
 	},
 	"scripts": {
 		"build": "pnpm run typecheck",
+		"test": "vitest run",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},
 	"dependencies": {
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
-		"typescript7": "npm:typescript@7.0.2"
+		"typescript7": "npm:typescript@7.0.2",
+		"vitest": "^4.1.10"
 	}
 }
