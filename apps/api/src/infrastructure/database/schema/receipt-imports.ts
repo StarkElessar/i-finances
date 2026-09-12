@@ -35,6 +35,8 @@ export const receiptImports = sqliteTable(
 		imageDeletedAt: integer('image_deleted_at', { mode: 'timestamp_ms' }),
 		categoriesSnapshotJson: text('categories_snapshot_json').notNull(),
 		categoriesSnapshotVersion: text('categories_snapshot_version').notNull(),
+		contactsSnapshotJson: text('contacts_snapshot_json').notNull().default('[]'),
+		contactsSnapshotVersion: text('contacts_snapshot_version').notNull().default(''),
 		resultJson: text('result_json'),
 		reviewComment: text('review_comment').notNull().default(''),
 		createdByUserId: text('created_by_user_id')
