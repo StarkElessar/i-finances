@@ -18,10 +18,8 @@ import {
 	asc,
 	desc,
 	eq,
-	gt,
 	inArray,
 	isNull,
-	lt,
 	lte,
 	sql
 } from 'drizzle-orm';
@@ -32,22 +30,16 @@ export type ReceiptImportAggregateRecord = {
 	links: ReceiptOperationLinkRecord[];
 };
 
-export type LeasedReceiptJobRecord = {
+export type ReceiptJobRecord = {
 	import: ReceiptImportRecord;
 	job: ReceiptProcessingJobRecord;
 };
 
-export type LeaseReceiptJobInput = {
-	leaseExpiresAt: Date;
-	leaseTokenHash: string;
-	now: Date;
-	workerId: string;
-};
+export type ClaimedReceiptJobRecord = ReceiptJobRecord;
 
 export type CompleteReceiptJobRecordInput = {
 	completedAt: Date;
 	jobId: string;
-	leaseTokenHash: string;
 	resultJson: string;
 	resultSha256: string;
 };
@@ -56,7 +48,6 @@ export type FailReceiptJobRecordInput = {
 	error: string;
 	failedAt: Date;
 	jobId: string;
-	leaseTokenHash: string;
 };
 
 export type ReceiptImportRepository = {
@@ -72,20 +63,15 @@ export type ReceiptImportRepository = {
 		receiptImportId: string
 	) => Promise<ReceiptImportAggregateRecord | undefined>;
 	findImagesPendingDeletion: (now: Date, limit: number) => Promise<ReceiptImportRecord[]>;
-	findJobById: (jobId: string) => Promise<LeasedReceiptJobRecord | undefined>;
+	findJobById: (jobId: string) => Promise<ReceiptJobRecord | undefined>;
 	finishApproval: (
 		householdId: string,
 		receiptImportId: string,
 		approvedAt: Date,
 		imageDeleteAfter: Date
 	) => Promise<ReceiptImportRecord | undefined>;
-	heartbeatJob: (
-		jobId: string,
-		leaseTokenHash: string,
-		heartbeatAt: Date,
-		leaseExpiresAt: Date
-	) => Promise<ReceiptProcessingJobRecord | undefined>;
-	leaseNextJob: (input: LeaseReceiptJobInput) => Promise<LeasedReceiptJobRecord | undefined>;
+	claimNextQueuedJob: (now: Date) => Promise<ClaimedReceiptJobRecord | undefined>;
+	resetStaleProcessingJobs: (now: Date) => Promise<number>;
 	list: (householdId: string) => Promise<ReceiptImportAggregateRecord[]>;
 	markApprovalStarted: (
 		householdId: string,
@@ -238,7 +224,7 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		};
 	});
 
-	const findJobById = async (jobId: string): Promise<LeasedReceiptJobRecord | undefined> => database.select({
+	const findJobById = async (jobId: string): Promise<ReceiptJobRecord | undefined> => database.select({
 		import: receiptImports,
 		job: receiptProcessingJobs
 	})
@@ -248,49 +234,9 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		.limit(1)
 		.get();
 
-	const leaseNextJob = async (
-		input: LeaseReceiptJobInput
-	): Promise<LeasedReceiptJobRecord | undefined> => database.transaction((transaction) => {
-		const expiredJobs = transaction.select({
-			receiptImportId: receiptProcessingJobs.receiptImportId
-		})
-			.from(receiptProcessingJobs)
-			.where(and(
-				eq(receiptProcessingJobs.status, 'leased'),
-				lt(receiptProcessingJobs.leaseExpiresAt, input.now)
-			))
-			.all();
-
-		if (expiredJobs.length > 0) {
-			const expiredImportIds = expiredJobs.map((job) => job.receiptImportId);
-
-			transaction.update(receiptProcessingJobs)
-				.set({
-					leaseExpiresAt: null,
-					leaseTokenHash: null,
-					status: 'queued',
-					updatedAt: input.now,
-					version: sql`${receiptProcessingJobs.version} + 1`,
-					workerId: null
-				})
-				.where(and(
-					eq(receiptProcessingJobs.status, 'leased'),
-					lt(receiptProcessingJobs.leaseExpiresAt, input.now)
-				))
-				.run();
-			transaction.update(receiptImports)
-				.set({
-					status: 'queued',
-					updatedAt: input.now,
-					version: sql`${receiptImports.version} + 1`
-				})
-				.where(and(
-					inArray(receiptImports.id, expiredImportIds),
-					eq(receiptImports.status, 'processing')
-				))
-				.run();
-		}
-
+	const claimNextQueuedJob = async (
+		now: Date
+	): Promise<ClaimedReceiptJobRecord | undefined> => database.transaction((transaction) => {
 		const row = transaction.select({
 			import: receiptImports,
 			job: receiptProcessingJobs
@@ -309,16 +255,12 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 			return undefined;
 		}
 
-		const leasedJob = transaction.update(receiptProcessingJobs)
+		const claimedJob = transaction.update(receiptProcessingJobs)
 			.set({
 				attempt: sql`${receiptProcessingJobs.attempt} + 1`,
-				lastHeartbeatAt: input.now,
-				leaseExpiresAt: input.leaseExpiresAt,
-				leaseTokenHash: input.leaseTokenHash,
 				status: 'leased',
-				updatedAt: input.now,
-				version: sql`${receiptProcessingJobs.version} + 1`,
-				workerId: input.workerId
+				updatedAt: now,
+				version: sql`${receiptProcessingJobs.version} + 1`
 			})
 			.where(and(
 				eq(receiptProcessingJobs.id, row.job.id),
@@ -327,43 +269,22 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 			.returning()
 			.get() as ReceiptProcessingJobRecord | undefined;
 
-		if (leasedJob === undefined) {
+		if (claimedJob === undefined) {
 			return undefined;
 		}
 
 		const updatedImport = transaction.update(receiptImports)
 			.set({
 				status: 'processing',
-				updatedAt: input.now,
+				updatedAt: now,
 				version: sql`${receiptImports.version} + 1`
 			})
 			.where(eq(receiptImports.id, row.import.id))
 			.returning()
 			.get();
 
-		return { import: updatedImport, job: leasedJob };
+		return { import: updatedImport, job: claimedJob };
 	});
-
-	const heartbeatJob = async (
-		jobId: string,
-		leaseTokenHash: string,
-		heartbeatAt: Date,
-		leaseExpiresAt: Date
-	): Promise<ReceiptProcessingJobRecord | undefined> => database.update(receiptProcessingJobs)
-		.set({
-			lastHeartbeatAt: heartbeatAt,
-			leaseExpiresAt,
-			updatedAt: heartbeatAt,
-			version: sql`${receiptProcessingJobs.version} + 1`
-		})
-		.where(and(
-			eq(receiptProcessingJobs.id, jobId),
-			eq(receiptProcessingJobs.status, 'leased'),
-			eq(receiptProcessingJobs.leaseTokenHash, leaseTokenHash),
-			gt(receiptProcessingJobs.leaseExpiresAt, heartbeatAt)
-		))
-		.returning()
-		.get();
 
 	const completeJob = async (
 		input: CompleteReceiptJobRecordInput
@@ -372,8 +293,6 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 			const completedJob = transaction.update(receiptProcessingJobs)
 				.set({
 					completedAt: input.completedAt,
-					leaseExpiresAt: null,
-					leaseTokenHash: null,
 					resultSha256: input.resultSha256,
 					status: 'completed',
 					updatedAt: input.completedAt,
@@ -381,9 +300,7 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 				})
 				.where(and(
 					eq(receiptProcessingJobs.id, input.jobId),
-					eq(receiptProcessingJobs.status, 'leased'),
-					eq(receiptProcessingJobs.leaseTokenHash, input.leaseTokenHash),
-					gt(receiptProcessingJobs.leaseExpiresAt, input.completedAt)
+					eq(receiptProcessingJobs.status, 'leased')
 				))
 				.returning()
 				.get() as ReceiptProcessingJobRecord | undefined;
@@ -427,16 +344,13 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 				.set({
 					completedAt: input.failedAt,
 					lastError: input.error,
-					leaseExpiresAt: null,
-					leaseTokenHash: null,
 					status: 'failed',
 					updatedAt: input.failedAt,
 					version: sql`${receiptProcessingJobs.version} + 1`
 				})
 				.where(and(
 					eq(receiptProcessingJobs.id, input.jobId),
-					eq(receiptProcessingJobs.status, 'leased'),
-					eq(receiptProcessingJobs.leaseTokenHash, input.leaseTokenHash)
+					eq(receiptProcessingJobs.status, 'leased')
 				))
 				.returning()
 				.get() as ReceiptProcessingJobRecord | undefined;
@@ -467,6 +381,37 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 			? undefined
 			: findById(record.import.householdId, receiptImportId);
 	};
+
+	const resetStaleProcessingJobs = async (now: Date): Promise<number> => database.transaction((transaction) => {
+		const staleJobs = transaction.select({
+			id: receiptProcessingJobs.id,
+			receiptImportId: receiptProcessingJobs.receiptImportId
+		})
+			.from(receiptProcessingJobs)
+			.where(eq(receiptProcessingJobs.status, 'leased'))
+			.all();
+
+		if (staleJobs.length === 0) {
+			return 0;
+		}
+
+		const staleImportIds = staleJobs.map((job) => job.receiptImportId);
+
+		transaction.update(receiptProcessingJobs)
+			.set({ status: 'queued', updatedAt: now, version: sql`${receiptProcessingJobs.version} + 1` })
+			.where(eq(receiptProcessingJobs.status, 'leased'))
+			.run();
+
+		transaction.update(receiptImports)
+			.set({ status: 'queued', updatedAt: now, version: sql`${receiptImports.version} + 1` })
+			.where(and(
+				inArray(receiptImports.id, staleImportIds),
+				eq(receiptImports.status, 'processing')
+			))
+			.run();
+
+		return staleJobs.length;
+	});
 
 	const requestRevision = async (
 		householdId: string,
@@ -606,8 +551,8 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		findImagesPendingDeletion,
 		findJobById,
 		finishApproval,
-		heartbeatJob,
-		leaseNextJob,
+		claimNextQueuedJob,
+		resetStaleProcessingJobs,
 		list,
 		markApprovalStarted,
 		markImageDeleted,
