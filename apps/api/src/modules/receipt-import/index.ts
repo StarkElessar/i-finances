@@ -28,3 +28,9 @@ export {
 	ReceiptImportService,
 	type ReceiptImportServiceDependencies
 } from './receipt-import-service';
+export {
+	createLiteLlmClient,
+	type CategorizeReceiptInput,
+	type LiteLlmClient,
+	type LiteLlmClientOptions
+} from './litellm-client';
