@@ -9,8 +9,12 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 	throw new Error('API_PORT must be a valid TCP port.');
 }
 
+const dependencies = createApiDependencies();
+
+void dependencies.startReceiptProcessing();
+
 serve({
-	fetch: createApiApp(createApiDependencies()).fetch,
+	fetch: createApiApp(dependencies).fetch,
 	port
 }, (info) => {
 	console.warn(`API listening on http://localhost:${info.port}`);

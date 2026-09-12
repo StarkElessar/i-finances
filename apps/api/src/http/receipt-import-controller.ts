@@ -10,7 +10,6 @@ import {
 	type ReceiptImportService,
 	ReceiptImportStateError,
 	ReceiptImportVersionConflictError,
-	ReceiptJobLeaseError,
 	ReceiptWorkerResultError
 } from '@/modules/receipt-import';
 
@@ -244,7 +243,7 @@ export class ReceiptImportHttpController {
 	}
 
 	private domainFailure(context: Context<ApiEnvironment>, error: unknown): Response {
-		if (error instanceof ReceiptImportVersionConflictError || error instanceof ReceiptJobLeaseError) {
+		if (error instanceof ReceiptImportVersionConflictError) {
 			return context.json({
 				errorCode: 'conflict',
 				message: 'Состояние чека изменилось. Обновите данные и повторите действие.',

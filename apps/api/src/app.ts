@@ -7,7 +7,6 @@ import { HealthController } from '@/http/health-controller';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
-import type { ReceiptWorkerHttpController } from '@/http/receipt-worker-controller';
 import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
 
@@ -22,7 +21,6 @@ export type ApiAppDependencies = {
 	operationController?: OperationHttpController;
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
-	receiptWorkerController?: ReceiptWorkerHttpController;
 	transferController?: TransferHttpController;
 };
 
@@ -111,16 +109,6 @@ export function createApiApp(
 		app.post('/api/receipt-imports/:id/revision', receiptImportController.requestRevision());
 		app.put('/api/receipt-imports/:id/review', receiptImportController.updateReview());
 		app.post('/api/receipt-imports/:id/approve', receiptImportController.approve());
-	}
-
-	if (dependencies.receiptWorkerController !== undefined) {
-		const receiptWorkerController = dependencies.receiptWorkerController;
-
-		app.post('/api/receipt-worker/jobs/lease', receiptWorkerController.lease());
-		app.get('/api/receipt-worker/jobs/:id/image', receiptWorkerController.image());
-		app.post('/api/receipt-worker/jobs/:id/heartbeat', receiptWorkerController.heartbeat());
-		app.post('/api/receipt-worker/jobs/:id/complete', receiptWorkerController.complete());
-		app.post('/api/receipt-worker/jobs/:id/fail', receiptWorkerController.fail());
 	}
 
 	if (dependencies.transferController !== undefined) {

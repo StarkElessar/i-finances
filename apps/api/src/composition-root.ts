@@ -8,7 +8,6 @@ import { ExchangeRateHttpController } from './http/exchange-rate-controller';
 import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
-import { ReceiptWorkerHttpController } from './http/receipt-worker-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { TransferHttpController } from './http/transfer-controller';
 import { db } from './infrastructure/database/client';
@@ -52,9 +51,12 @@ import {
 	OperationService
 } from './modules/operation';
 import {
+	createLiteLlmClient,
 	createReceiptImageStorage,
 	createReceiptImportRepository,
-	ReceiptImportService
+	ReceiptImportService,
+	type ReceiptProcessingLoop,
+	startReceiptProcessingLoop
 } from './modules/receipt-import';
 import {
 	createTransferRepository,
@@ -74,7 +76,7 @@ export function createApiDependencies(): {
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
 	receiptImportService: ReceiptImportService;
-	receiptWorkerController: ReceiptWorkerHttpController;
+	startReceiptProcessing: () => Promise<ReceiptProcessingLoop | undefined>;
 	transferController: TransferHttpController;
 } {
 	const authConfig = getAuthConfig();
@@ -147,6 +149,31 @@ export function createApiDependencies(): {
 		receiptImportRepository: createReceiptImportRepository(db)
 	});
 
+	const startReceiptProcessing = async (): Promise<ReceiptProcessingLoop | undefined> => {
+		const apiKey = process.env.RECEIPT_LITELLM_API_KEY;
+
+		if (apiKey === undefined || apiKey.trim() === '') {
+			console.warn('RECEIPT_LITELLM_API_KEY is not set; the receipt processing loop will not start.');
+
+			return undefined;
+		}
+
+		await receiptImportService.recoverStaleProcessingJobs();
+
+		return startReceiptProcessingLoop({
+			imageStorage: createReceiptImageStorage(),
+			litellmClient: createLiteLlmClient({
+				apiKey,
+				baseUrl: process.env.RECEIPT_LITELLM_BASE_URL ?? 'https://litellm.holdingbp.ru:4000/v1',
+				categorizationModel: process.env.RECEIPT_LITELLM_CATEGORIZATION_MODEL ?? 'deepseek-v4-flash',
+				ocrModel: process.env.RECEIPT_LITELLM_OCR_MODEL ?? 'deepseek-v4-flash-vision-exp',
+				timeoutMs: Number(process.env.RECEIPT_PROCESSING_TIMEOUT_MS ?? 120_000)
+			}),
+			pollIntervalMs: Number(process.env.RECEIPT_PROCESSING_POLL_INTERVAL_MS ?? 5_000),
+			receiptImportService
+		});
+	};
+
 	return {
 		authController: new AuthHttpController(
 			passwordSignInService,
@@ -182,7 +209,7 @@ export function createApiDependencies(): {
 			authConfig
 		),
 		receiptImportService,
-		receiptWorkerController: new ReceiptWorkerHttpController(receiptImportService),
+		startReceiptProcessing,
 		transferController: new TransferHttpController(
 			transferService,
 			sessionResolver
