@@ -23,11 +23,17 @@ import { receiptWorkerResultSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import sharp from 'sharp';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-receipt';
 const HOUSEHOLD_ID = 'household-receipt';
 const FIXED_DATE = new Date('2026-08-08T10:00:00.000Z');
+// Uploads are decoded and re-encoded to JPEG on save (receipt-image-storage.ts),
+// so tests need a genuinely valid image rather than placeholder bytes.
+const sampleImageBytes = new Uint8Array(await sharp({
+	create: { background: { b: 0, g: 0, r: 220 }, channels: 3, height: 8, width: 8 }
+}).jpeg().toBuffer());
 
 let connection: Database.Database;
 let database: AppDatabase;
@@ -248,7 +254,7 @@ async function createReviewableReceipt(
 	result = createWorkerResult()
 ) {
 	const created = await service.createFromImage(USER_ID, {
-		bytes: new Uint8Array([1, 2, 3]),
+		bytes: sampleImageBytes,
 		contentType: 'image/jpeg',
 		originalName: 'receipt.jpg'
 	});
@@ -265,7 +271,7 @@ describe('ReceiptImportService', () => {
 	it('keeps the review boundary and creates linked operations only after approval', async () => {
 		const service = createService();
 		const created = await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
+			bytes: sampleImageBytes,
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
@@ -473,7 +479,7 @@ describe('ReceiptImportService', () => {
 		const service = createService();
 
 		await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
+			bytes: sampleImageBytes,
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
@@ -494,7 +500,7 @@ describe('ReceiptImportService', () => {
 	it('rejects a model result whose contact is not in the stored contacts snapshot', async () => {
 		const service = createService();
 		const created = await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
+			bytes: sampleImageBytes,
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
@@ -679,7 +685,7 @@ describe('ReceiptImportService', () => {
 		const service = createService();
 
 		await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
+			bytes: sampleImageBytes,
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});
@@ -697,7 +703,7 @@ describe('ReceiptImportService', () => {
 	it('deletes receipt images only after their retention period passes', async () => {
 		const service = createService();
 		const created = await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
+			bytes: sampleImageBytes,
 			contentType: 'image/jpeg',
 			originalName: 'receipt.jpg'
 		});

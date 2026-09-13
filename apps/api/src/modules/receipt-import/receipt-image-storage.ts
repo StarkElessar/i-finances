@@ -3,21 +3,25 @@ import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 
 import { ReceiptImageValidationError } from './receipt-import-errors';
+import { convertReceiptImageToJpeg } from './receipt-image-normalizer';
 
 const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-// HEIC is deliberately absent: the bundled sharp/libvips build has no HEVC decoder
-// ("Support for this compression format has not been built in"), so a HEIC upload would
-// only fail later, deep inside the background processing job, with a cryptic libvips error.
-const EXTENSION_BY_CONTENT_TYPE = {
-	'image/jpeg': '.jpg',
-	'image/png': '.png'
-} as const;
-
-type SupportedReceiptImageContentType = keyof typeof EXTENSION_BY_CONTENT_TYPE;
+// Every accepted upload is re-encoded to JPEG before it touches disk (see
+// convertReceiptImageToJpeg) -- HEIC goes through a pure-JS decoder first
+// since the bundled sharp/libvips build has no HEVC support. The stored file
+// is therefore always a single, predictable format regardless of upload.
+const ACCEPTED_UPLOAD_CONTENT_TYPES = new Set([
+	'image/heic',
+	'image/heif',
+	'image/jpeg',
+	'image/png'
+]);
+const STORED_EXTENSION = '.jpg';
+const STORED_CONTENT_TYPE = 'image/jpeg';
 
 export type StoredReceiptImage = {
 	contentSha256: string;
-	contentType: SupportedReceiptImageContentType;
+	contentType: typeof STORED_CONTENT_TYPE;
 	originalName: string;
 	sizeBytes: number;
 	storageKey: string;
@@ -49,10 +53,6 @@ export type ReceiptImageStorageOptions = {
 	rootDirectory?: string;
 };
 
-function isSupportedContentType(value: string): value is SupportedReceiptImageContentType {
-	return value in EXTENSION_BY_CONTENT_TYPE;
-}
-
 function normalizeOriginalName(originalName: string): string {
 	return (basename(originalName.trim()).slice(0, 255) || 'receipt');
 }
@@ -72,12 +72,8 @@ export function createReceiptImageStorage(
 	};
 
 	const save = async (input: SaveReceiptImageInput): Promise<StoredReceiptImage> => {
-		if (input.contentType === 'image/heic' || input.contentType === 'image/heif') {
-			throw new ReceiptImageValidationError('Формат HEIC не поддерживается, конвертируйте фото в JPEG или PNG.');
-		}
-
-		if (!isSupportedContentType(input.contentType)) {
-			throw new ReceiptImageValidationError('Поддерживаются изображения JPEG и PNG.');
+		if (!ACCEPTED_UPLOAD_CONTENT_TYPES.has(input.contentType)) {
+			throw new ReceiptImageValidationError('Поддерживаются изображения JPEG, PNG и HEIC.');
 		}
 
 		if (input.bytes.byteLength === 0) {
@@ -88,12 +84,21 @@ export function createReceiptImageStorage(
 			throw new ReceiptImageValidationError(`Размер изображения не должен превышать ${Math.floor(maxImageBytes / 1024 / 1024)} МБ.`);
 		}
 
-		const storageKey = `${input.receiptImportId}${EXTENSION_BY_CONTENT_TYPE[input.contentType]}`;
+		let converted: Awaited<ReturnType<typeof convertReceiptImageToJpeg>>;
+
+		try {
+			converted = await convertReceiptImageToJpeg(input.bytes, input.contentType);
+		}
+		catch {
+			throw new ReceiptImageValidationError('Не удалось прочитать изображение. Проверьте файл и попробуйте снова.');
+		}
+
+		const storageKey = `${input.receiptImportId}${STORED_EXTENSION}`;
 		const targetPath = resolveStoragePath(storageKey);
 		const temporaryPath = `${targetPath}.uploading`;
 
 		await mkdir(dirname(targetPath), { recursive: true });
-		await writeFile(temporaryPath, input.bytes, { flag: 'wx' });
+		await writeFile(temporaryPath, converted.bytes, { flag: 'wx' });
 
 		try {
 			await rename(temporaryPath, targetPath);
@@ -104,10 +109,10 @@ export function createReceiptImageStorage(
 		}
 
 		return {
-			contentSha256: createHash('sha256').update(input.bytes).digest('hex'),
-			contentType: input.contentType,
+			contentSha256: createHash('sha256').update(converted.bytes).digest('hex'),
+			contentType: STORED_CONTENT_TYPE,
 			originalName: normalizeOriginalName(input.originalName),
-			sizeBytes: input.bytes.byteLength,
+			sizeBytes: converted.bytes.byteLength,
 			storageKey
 		};
 	};

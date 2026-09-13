@@ -215,10 +215,10 @@ function UploadDialog(props: UploadDialogProps) {
 							<strong>
 								{selectedFileName() ?? 'Выбрать фотографию'}
 							</strong>
-							<span>JPEG или PNG, не больше 15 МБ</span>
+							<span>JPEG, PNG или HEIC, не больше 15 МБ</span>
 							<input
 								ref={imageInput}
-								accept='image/jpeg,image/png'
+								accept='image/jpeg,image/png,image/heic,image/heif'
 								capture='environment'
 								type='file'
 								onChange={handleFileChange}
