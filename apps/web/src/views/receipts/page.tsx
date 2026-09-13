@@ -505,7 +505,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 		}
 
 		if (!comment().trim()) {
-			setError('Опишите, что Mac Mini должен исправить.');
+			setError('Опишите, что нужно исправить.');
 			return;
 		}
 
@@ -533,7 +533,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 					</Dialog.Kicker>
 					<Dialog.Title>Проверка чека</Dialog.Title>
 					<Dialog.Description>
-						Сверьте фотографию с результатом Mac Mini.
+						Сверьте фотографию с результатом распознавания.
 					</Dialog.Description>
 				</Dialog.Header>
 				<Dialog.Body>
@@ -602,7 +602,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 													</strong>
 													<p>
 														Задача ожидает или уже
-														обрабатывается на Mac Mini.
+														обрабатывается.
 													</p>
 												</div>
 											</div>
@@ -939,7 +939,7 @@ function ReceiptsContent() {
 							<h1>Чеки</h1>
 						</div>
 						<p>
-							Загрузите фотографию, дождитесь Mac Mini и проверьте
+							Загрузите фотографию, дождитесь результата и проверьте
 							будущие операции.
 						</p>
 					</div>

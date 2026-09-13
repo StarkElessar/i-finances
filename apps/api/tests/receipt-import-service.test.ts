@@ -405,16 +405,16 @@ describe('ReceiptImportService', () => {
 		expect(approved.operationIds).toHaveLength(1);
 	});
 
-	it('accepts a standalone zero-amount operation at the contract boundary', async () => {
+	it('rejects a standalone zero-amount operation with a clear message', async () => {
 		const service = createService();
 		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
 			{ name: 'Продукты', totalMinor: 1_250 },
 			{ name: 'Подарок по акции', totalMinor: 0 }
 		]));
 
-		// The receipt-level guards (item coverage, snapshot membership, sum equality) all pass with
-		// a zero-amount group. Creating the operation itself is still refused further down: the
-		// operation domain requires `amountMinor > 0` for every operation in the app.
+		// A zero-priced promo line may be grouped into a paid operation, but never stand alone:
+		// the operation domain requires `amountMinor > 0`, and without this guard the request would
+		// only blow up mid-approval, after earlier operations were already written.
 		await expect(service.approve(USER_ID, {
 			accountId: 'account-receipt',
 			contactId: 'contact-shop',
@@ -424,7 +424,39 @@ describe('ReceiptImportService', () => {
 				{ amountMinor: 0, categoryId: 'category-food', itemIndexes: [1], title: 'Подарок по акции' }
 			],
 			version: completed.version
-		})).rejects.not.toBeInstanceOf(ReceiptImportStateError);
+		})).rejects.toThrow(
+			new ReceiptImportStateError('Строку с нулевой ценой нужно объединить с оплаченной позицией.')
+		);
+
+		// Rejected before `markApprovalStarted`: no status change, no operations, no links.
+		const untouched = (await service.list(USER_ID)).find((item) => item.id === created.id);
+
+		expect(untouched?.status).toBe('needs_review');
+		expect(untouched?.version).toBe(completed.version);
+		expect(await database.select().from(schema.operations)).toHaveLength(0);
+	});
+
+	it('groups a zero-priced promo line into a paid operation', async () => {
+		const service = createService();
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_250 },
+			{ name: 'Подарок по акции', totalMinor: 0 }
+		]));
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0, 1],
+				title: 'Продукты'
+			}],
+			version: completed.version
+		});
+
+		expect(approved.status).toBe('approved');
+		expect(approved.operationIds).toHaveLength(1);
 	});
 
 	it('never re-claims a job that already failed', async () => {

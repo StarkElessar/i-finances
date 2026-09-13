@@ -518,6 +518,13 @@ export class ReceiptImportService {
 				throw new ReceiptImportStateError('Указана категория, которой не было в задании.');
 			}
 
+			// Zero-priced promo lines are allowed inside a group, but never as a standalone
+			// operation: the ledger requires `amountMinor > 0`, and letting one through would only
+			// blow up mid-approval, after earlier operations were already created.
+			if (operation.amountMinor <= 0) {
+				throw new ReceiptImportStateError('Строку с нулевой ценой нужно объединить с оплаченной позицией.');
+			}
+
 			for (const itemIndex of operation.itemIndexes) {
 				if (itemIndex >= result.receipt.items.length) {
 					throw new ReceiptImportStateError('Операция ссылается на отсутствующую строку чека.');
