@@ -130,7 +130,7 @@ Active elements should keep their active visual treatment on hover and focus.
 | `pnpm lint` / `pnpm lint:fix` | ESLint + Stylelint over `apps/**` and `packages/**` |
 | `pnpm db:migrate` | Apply pending migrations in `apps/api` |
 
-`apps/api` also owns `db:generate` (drizzle-kit), `mcp:api-key`, `receipt:worker-key`, `receipt:claude-worker`, and `receipt:cleanup-images`.
+`apps/api` also owns `db:generate` (drizzle-kit), `mcp:api-key`, and `receipt:cleanup-images`.
 
 ## Architecture
 

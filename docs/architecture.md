@@ -206,17 +206,28 @@ ReceiptImportClient ──► ReceiptImportHttpController ──► ReceiptImpor
                                                                ▼
                                                           SQLite / private files
 
-Worker
-  │ Bearer API key + lease token
+ReceiptProcessingLoop (in-process background poller)
+  │ claims a queued job, reads the stored image, normalizes it to JPEG
   ▼
-ReceiptWorkerHttpController ──► ReceiptImportService
+LiteLlmClient ──► corporate LiteLLM proxy (vision OCR, then categorization)
+  │ validated ReceiptWorkerResult
+  ▼
+ReceiptImportService
 ```
 
 Receipt processing is review-first. Upload creates a `queued` import and a
-processing job while storing an immutable snapshot of the active household
-categories. The worker can lease one job, renew its lease, read the private
-image, and submit a schema-versioned result. A completed job transitions to
-`needs_review`; it never creates ledger operations by itself.
+processing job while storing immutable snapshots of the active household
+categories and contacts. A background loop inside the API process — started
+from `main.ts`, with exactly one instance ever running — claims the oldest
+queued job, reads the private image directly from storage, normalizes it with
+`sharp`, and makes two outbound calls to the corporate LiteLLM proxy: a vision
+model transcribes the receipt, then a text model assembles the structured JSON,
+assigns a category to each line, and picks a contact. The result is validated
+against `receiptWorkerResultSchema` plus the stored category/contact snapshots.
+A completed job transitions to `needs_review`; it never creates ledger
+operations by itself. A failed job stays `failed` — there is no automatic
+retry, only the user's "request revision" action. A job left `leased` by a
+crash is reset to `queued` on the next API boot.
 
 While an import is in `needs_review`, the browser can update the merchant, date,
 amounts, item names, and category assignments through the review command. The
@@ -225,12 +236,13 @@ ids against the immutable snapshot. Approval therefore consumes the latest
 saved review result rather than data held only in the browser.
 
 The approve command is authenticated, household-scoped, and guarded by the
-receipt version. It validates the account currency and item total, groups
-items by the worker category snapshot, creates expense operations through the
-existing `OperationService`, and writes `receipt_operation_links` for retry
-idempotency. The browser calls only the receipt endpoint; it does not create
-the grouped operations itself. The Mac Mini/OCR worker and broker are outside
-this repository slice and use the protected worker endpoints when integrated.
+receipt version. The browser submits the finalized operation groups it built in
+the review dialog; the server validates the account currency, that every receipt
+line is covered exactly once, that every category and the contact come from the
+stored snapshots, and that the operation amounts sum to the receipt total. It
+then creates expense operations through the existing `OperationService` and
+writes `receipt_operation_links` keyed by the covered item indexes, so a retried
+approval after a partial failure neither duplicates nor silently skips a group.
 
 ## Migration reference
 
