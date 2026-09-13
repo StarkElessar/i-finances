@@ -78,6 +78,31 @@ describe('createLiteLlmClient', () => {
 		expect(result.processor.pipelineVersion).toBe('receipt-litellm-v1');
 	});
 
+	it('instructs the categorization model to reconcile item totals with the receipt total', async () => {
+		let prompt = '';
+
+		vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+			prompt = JSON.parse(init.body as string).messages[0].content as string;
+
+			return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] }), { status: 200 });
+		}));
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+
+		await expect(client.categorizeReceipt({
+			categories: [],
+			contacts: [],
+			ocrText: 'Продукты 12.50',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		})).rejects.toThrow();
+
+		expect(prompt).toContain('сумма всех receipt.items[].totalMinor');
+		expect(prompt).toContain('равняться receipt.totalAmountMinor');
+		expect(prompt).toContain('скорректируй totalMinor последней строки');
+	});
+
 	it('throws when the LiteLLM response is not ok', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => new Response('server error', { status: 500 })));
 
