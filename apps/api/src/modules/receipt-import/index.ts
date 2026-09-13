@@ -1,8 +1,8 @@
 export {
-	type CategorizeReceiptInput,
 	createLiteLlmClient,
 	type LiteLlmClient,
-	type LiteLlmClientOptions
+	type LiteLlmClientOptions,
+	type ProcessReceiptImageInput
 } from './litellm-client';
 export {
 	type NormalizedReceiptImage,

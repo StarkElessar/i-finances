@@ -41,7 +41,7 @@ import type {
 } from './receipt-import-repository';
 
 const DEFAULT_IMAGE_RETENTION_DAYS = 30;
-const REQUESTED_PIPELINE_VERSION = 'receipt-litellm-v1';
+const REQUESTED_PIPELINE_VERSION = 'receipt-litellm-v2';
 
 export type CreateReceiptFromImageInput = Omit<SaveReceiptImageInput, 'receiptImportId'>;
 

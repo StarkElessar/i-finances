@@ -5,28 +5,31 @@ import type {
 } from '@i-finances/contracts';
 import { receiptWorkerResultSchema } from '@i-finances/contracts';
 
-const PIPELINE_VERSION = 'receipt-litellm-v1';
+// v1 split OCR and categorization across two model calls, back when the
+// corporate proxy offered a vision-only model and a separate text/reasoning
+// model. Only one model remains now and it handles both in a single vision
+// call, so the pipeline shape itself changed, not just its configuration.
+const PIPELINE_VERSION = 'receipt-litellm-v2';
 
 export type LiteLlmClientOptions = {
 	apiKey: string;
 	baseUrl: string;
-	categorizationModel: string;
-	ocrModel: string;
+	model: string;
 	timeoutMs: number;
 };
 
-export type CategorizeReceiptInput = {
+export type ProcessReceiptImageInput = {
 	categories: readonly ReceiptCategorySnapshot[];
 	contacts: readonly ReceiptContactSnapshot[];
-	ocrText: string;
+	imageBytes: Uint8Array;
+	imageContentType: string;
 	previousResult: ReceiptWorkerResult | null;
 	reviewComment: string;
 	startedAt: Date;
 };
 
 export type LiteLlmClient = {
-	categorizeReceipt: (input: CategorizeReceiptInput) => Promise<ReceiptWorkerResult>;
-	extractReceiptText: (imageBytes: Uint8Array, imageContentType: string) => Promise<string>;
+	processReceiptImage: (input: ProcessReceiptImageInput) => Promise<ReceiptWorkerResult>;
 };
 
 type ChatCompletionResponse = {
@@ -57,7 +60,7 @@ function extractJsonObject(text: string): unknown {
 	}
 }
 
-function buildCategorizationPrompt(input: CategorizeReceiptInput): string {
+function buildReceiptPrompt(input: ProcessReceiptImageInput): string {
 	const revisionNote = input.reviewComment.trim().length > 0
 		? `Пользователь уже отправлял этот чек на доработку с замечанием: "${input.reviewComment.trim()}". Обязательно учти его.`
 		: 'Это первая попытка обработки данного чека.';
@@ -66,13 +69,13 @@ function buildCategorizationPrompt(input: CategorizeReceiptInput): string {
 		: '';
 
 	return [
-		'Ты получаешь сырой OCR-текст фотографии чека для семейного бюджетного приложения.',
-		`Текст чека:\n${input.ocrText}`,
+		'Ты обрабатываешь фотографию чека для семейного бюджетного приложения. Изображение приложено к этому сообщению.',
 		revisionNote,
 		previousResultNote,
 		'',
-		'Собери структурированный JSON чека и распредели каждую товарную строку по одной из переданных категорий. '
-			+ 'Также попробуй сопоставить продавца чека с одним из переданных контактов.',
+		'Выполни за один проход: 1) прочитай всё видимое на фото и извлеки точный сырой текст чека; '
+			+ '2) собери из него структурированный JSON; 3) распредели каждую товарную строку по одной из '
+			+ 'переданных категорий; 4) попробуй сопоставить продавца чека с одним из переданных контактов.',
 		'',
 		'Доступные категории (используй только эти id, либо null для "Без категории"):',
 		JSON.stringify(input.categories),
@@ -83,7 +86,7 @@ function buildCategorizationPrompt(input: CategorizeReceiptInput): string {
 		'Верни ОДИН JSON-объект и больше ничего — без markdown-разметки, без пояснений до или после. Строго такой формы:',
 		JSON.stringify({
 			categorizedItems: [{ categoryId: 'id-категории-или-null', confidence: 0.9, itemIndex: 0 }],
-			rawOcrText: input.ocrText,
+			rawOcrText: 'полный сырой текст, распознанный на чеке',
 			receipt: {
 				contactId: 'id-контакта-или-null',
 				currency: 'BYN',
@@ -106,7 +109,7 @@ function buildCategorizationPrompt(input: CategorizeReceiptInput): string {
 			+ 'округления числа не сходятся, скорректируй totalMinor последней строки так, чтобы равенство '
 			+ 'выполнялось; ровно одна запись в categorizedItems на каждую строку receipt.items, itemIndex '
 			+ 'ссылается на позицию в этом массиве; неизвестные поля — null, а не пропуск поля; не придумывай '
-			+ 'данные, которых нет в тексте.'
+			+ 'данные, которых нет на фото.'
 	].filter((line) => line.length > 0).join('\n');
 }
 
@@ -147,31 +150,17 @@ async function postChatCompletion(
 }
 
 export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClient {
-	const extractReceiptText = async (imageBytes: Uint8Array, imageContentType: string): Promise<string> => {
-		const base64 = Buffer.from(imageBytes).toString('base64');
+	const processReceiptImage = async (input: ProcessReceiptImageInput): Promise<ReceiptWorkerResult> => {
+		const base64 = Buffer.from(input.imageBytes).toString('base64');
 		const content = await postChatCompletion(options, {
 			messages: [{
 				content: [
-					{
-						text: 'Прочитай изображение чека. Верни только plain-text транскрипцию всего видимого текста '
-							+ 'в естественном порядке чтения, построчно. Не добавляй комментариев, не переводи, не '
-							+ 'придумывай текст, которого нет.',
-						type: 'text'
-					},
-					{ image_url: { url: `data:${imageContentType};base64,${base64}` }, type: 'image_url' }
+					{ text: buildReceiptPrompt(input), type: 'text' },
+					{ image_url: { url: `data:${input.imageContentType};base64,${base64}` }, type: 'image_url' }
 				],
 				role: 'user'
 			}],
-			model: options.ocrModel
-		});
-
-		return content.trim();
-	};
-
-	const categorizeReceipt = async (input: CategorizeReceiptInput): Promise<ReceiptWorkerResult> => {
-		const content = await postChatCompletion(options, {
-			messages: [{ content: buildCategorizationPrompt(input), role: 'user' }],
-			model: options.categorizationModel
+			model: options.model
 		});
 		const parsed = extractJsonObject(content) as Record<string, unknown>;
 
@@ -179,7 +168,7 @@ export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClien
 			...parsed,
 			processor: {
 				finishedAt: new Date().toISOString(),
-				modelVersions: [options.ocrModel, options.categorizationModel],
+				modelVersions: [options.model],
 				pipelineVersion: PIPELINE_VERSION,
 				startedAt: input.startedAt.toISOString(),
 				workerId: 'api-inprocess'
@@ -188,5 +177,5 @@ export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClien
 		});
 	};
 
-	return { categorizeReceipt, extractReceiptText };
+	return { processReceiptImage };
 }

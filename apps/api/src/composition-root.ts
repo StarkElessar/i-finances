@@ -169,8 +169,7 @@ export function createApiDependencies(): {
 			litellmClient: createLiteLlmClient({
 				apiKey,
 				baseUrl: process.env.RECEIPT_LITELLM_BASE_URL ?? 'https://litellm.holdingbp.ru:4000/v1',
-				categorizationModel: process.env.RECEIPT_LITELLM_CATEGORIZATION_MODEL ?? 'deepseek-v4-flash',
-				ocrModel: process.env.RECEIPT_LITELLM_OCR_MODEL ?? 'deepseek-v4-flash-vision-exp',
+				model: process.env.RECEIPT_LITELLM_MODEL ?? 'deepseek-flash',
 				timeoutMs: Number.isInteger(configuredTimeoutMs) && configuredTimeoutMs > 0
 					? configuredTimeoutMs
 					: 120_000

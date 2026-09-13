@@ -193,8 +193,8 @@ function createWorkerResult(
 		})),
 		processor: {
 			finishedAt: FIXED_DATE.toISOString(),
-			modelVersions: ['deepseek-v4-flash-vision-exp', 'deepseek-v4-flash'],
-			pipelineVersion: 'receipt-litellm-v1',
+			modelVersions: ['deepseek-flash'],
+			pipelineVersion: 'receipt-litellm-v2',
 			startedAt: FIXED_DATE.toISOString(),
 			workerId: 'api-inprocess'
 		},
@@ -278,7 +278,7 @@ describe('ReceiptImportService', () => {
 		const claimed = await service.claimNextQueuedJob();
 
 		expect(created.status).toBe('queued');
-		expect(claimed).toMatchObject({ receiptImportId: created.id, requestedPipelineVersion: 'receipt-litellm-v1' });
+		expect(claimed).toMatchObject({ receiptImportId: created.id, requestedPipelineVersion: 'receipt-litellm-v2' });
 
 		if (claimed === undefined) {
 			throw new Error('Expected a claimed receipt job.');

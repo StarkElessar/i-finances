@@ -27,11 +27,11 @@ async function processJob(
 	try {
 		const imageBytes = await options.imageStorage.read(job.imageStorageKey);
 		const normalized = await normalizeReceiptImageForModel(imageBytes);
-		const ocrText = await options.litellmClient.extractReceiptText(normalized.bytes, normalized.contentType);
-		const result = await options.litellmClient.categorizeReceipt({
+		const result = await options.litellmClient.processReceiptImage({
 			categories: job.categories,
 			contacts: job.contacts,
-			ocrText,
+			imageBytes: normalized.bytes,
+			imageContentType: normalized.contentType,
 			previousResult: job.previousResult,
 			reviewComment: job.reviewComment,
 			startedAt: new Date()
