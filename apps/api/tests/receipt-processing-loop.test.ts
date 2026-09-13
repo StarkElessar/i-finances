@@ -129,6 +129,45 @@ describe('startReceiptProcessingLoop', () => {
 		expect(categorizeReceipt).not.toHaveBeenCalled();
 	});
 
+	it('survives failJob itself throwing and keeps polling afterwards', async () => {
+		mockedNormalize.mockResolvedValue({ bytes: new Uint8Array([9, 9, 9]), contentType: 'image/jpeg' });
+
+		const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const unhandledRejections: unknown[] = [];
+		const onUnhandledRejection = (reason: unknown) => unhandledRejections.push(reason);
+
+		process.on('unhandledRejection', onUnhandledRejection);
+
+		const claimNextQueuedJob = claimOnceThenIdle();
+		const completeJob = vi.fn();
+		// Both the processing step and the failure bookkeeping blow up.
+		const failJob = vi.fn().mockRejectedValueOnce(new Error('SQLITE_BUSY'));
+
+		const loop = startReceiptProcessingLoop({
+			imageStorage: { read: vi.fn().mockResolvedValue(new Uint8Array([1])) },
+			litellmClient: {
+				categorizeReceipt: vi.fn().mockRejectedValue(new Error('categorization failed')),
+				extractReceiptText: vi.fn().mockResolvedValue('raw ocr text')
+			},
+			pollIntervalMs: 20,
+			receiptImportService: { claimNextQueuedJob, completeJob, failJob }
+		});
+
+		await sleep(120);
+		loop.stop();
+		await sleep(40);
+		process.off('unhandledRejection', onUnhandledRejection);
+
+		expect(failJob).toHaveBeenCalledWith('job-1', 'categorization failed');
+		expect(completeJob).not.toHaveBeenCalled();
+		expect(unhandledRejections).toEqual([]);
+		// The loop kept polling instead of dying with the rejection.
+		expect(claimNextQueuedJob.mock.calls.length).toBeGreaterThan(1);
+		expect(consoleErrorSpy).toHaveBeenCalled();
+
+		consoleErrorSpy.mockRestore();
+	});
+
 	it('survives claimNextQueuedJob throwing and keeps polling afterwards', async () => {
 		mockedNormalize.mockResolvedValue({ bytes: new Uint8Array([9, 9, 9]), contentType: 'image/jpeg' });
 

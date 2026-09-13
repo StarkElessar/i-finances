@@ -42,7 +42,17 @@ async function processJob(
 	catch (error: unknown) {
 		const message = error instanceof Error ? error.message : String(error);
 
-		await options.receiptImportService.failJob(job.processingJobId, message);
+		console.error(`Receipt processing job ${job.processingJobId} failed.`, error);
+
+		try {
+			await options.receiptImportService.failJob(job.processingJobId, message);
+		}
+		catch (failJobError: unknown) {
+			// The DB connection is shared with the HTTP handlers, so this can transiently fail
+			// (SQLITE_BUSY). Swallowing it here keeps the rejection from escaping the `void loop()`
+			// and crashing the process as an unhandled rejection.
+			console.error(`Failed to record failure for receipt processing job ${job.processingJobId}.`, failJobError);
+		}
 	}
 }
 

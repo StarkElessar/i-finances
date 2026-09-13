@@ -11,7 +11,9 @@ if (!Number.isInteger(port) || port < 1 || port > 65535) {
 
 const dependencies = createApiDependencies();
 
-void dependencies.startReceiptProcessing();
+dependencies.startReceiptProcessing().catch((error: unknown) => {
+	console.error('Failed to start receipt processing.', error);
+});
 
 serve({
 	fetch: createApiApp(dependencies).fetch,

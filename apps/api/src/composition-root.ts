@@ -151,6 +151,10 @@ export function createApiDependencies(): {
 
 	const startReceiptProcessing = async (): Promise<ReceiptProcessingLoop | undefined> => {
 		const apiKey = process.env.RECEIPT_LITELLM_API_KEY;
+		// `??` only covers an unset variable; an empty string (the documented ".env.example" style
+		// for "unset") would turn into 0 — a no-delay poll loop and an instantly aborting timeout.
+		const configuredTimeoutMs = Number(process.env.RECEIPT_PROCESSING_TIMEOUT_MS);
+		const configuredPollIntervalMs = Number(process.env.RECEIPT_PROCESSING_POLL_INTERVAL_MS);
 
 		if (apiKey === undefined || apiKey.trim() === '') {
 			console.warn('RECEIPT_LITELLM_API_KEY is not set; the receipt processing loop will not start.');
@@ -167,9 +171,13 @@ export function createApiDependencies(): {
 				baseUrl: process.env.RECEIPT_LITELLM_BASE_URL ?? 'https://litellm.holdingbp.ru:4000/v1',
 				categorizationModel: process.env.RECEIPT_LITELLM_CATEGORIZATION_MODEL ?? 'deepseek-v4-flash',
 				ocrModel: process.env.RECEIPT_LITELLM_OCR_MODEL ?? 'deepseek-v4-flash-vision-exp',
-				timeoutMs: Number(process.env.RECEIPT_PROCESSING_TIMEOUT_MS ?? 120_000)
+				timeoutMs: Number.isInteger(configuredTimeoutMs) && configuredTimeoutMs > 0
+					? configuredTimeoutMs
+					: 120_000
 			}),
-			pollIntervalMs: Number(process.env.RECEIPT_PROCESSING_POLL_INTERVAL_MS ?? 5_000),
+			pollIntervalMs: Number.isInteger(configuredPollIntervalMs) && configuredPollIntervalMs > 0
+				? configuredPollIntervalMs
+				: 5_000,
 			receiptImportService
 		});
 	};
