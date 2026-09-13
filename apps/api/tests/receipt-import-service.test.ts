@@ -14,14 +14,16 @@ import { OperationRepository, OperationService } from '@/modules/operation';
 import {
 	createReceiptImageStorage,
 	createReceiptImportRepository,
-	ReceiptImportService
+	ReceiptImportService,
+	ReceiptImportStateError,
+	ReceiptWorkerResultError
 } from '@/modules/receipt-import';
 
 import { receiptWorkerResultSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-receipt';
 const HOUSEHOLD_ID = 'household-receipt';
@@ -79,6 +81,23 @@ beforeEach(async () => {
 		updatedAt: FIXED_DATE,
 		version: 1
 	});
+	await database.insert(accounts).values({
+		archivedAt: null,
+		color: '#a87f3f',
+		createdAt: FIXED_DATE,
+		createdByUserId: USER_ID,
+		currency: 'USD',
+		description: '',
+		householdId: HOUSEHOLD_ID,
+		id: 'account-usd',
+		initialBalanceMinor: 0,
+		isColorAccentEnabled: false,
+		isIncludedInFamilyTotal: true,
+		name: 'Валютный счёт',
+		type: 'card',
+		updatedAt: FIXED_DATE,
+		version: 1
+	});
 	await database.insert(categories).values({
 		archivedAt: null,
 		color: '#68a063',
@@ -116,20 +135,25 @@ afterEach(async () => {
 	await rm(imageRoot, { force: true, recursive: true });
 });
 
-function createService(): ReceiptImportService {
-	let idSequence = 0;
+function createOperationService(): OperationService {
 	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => currentDate);
 	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
-	const contactRepository = new ContactRepository(database);
-	const operationService = new OperationService({
+
+	return new OperationService({
 		accountRepository: new AccountRepository(database),
 		categoryRepository: new CategoryRepository(database),
-		contactRepository,
+		contactRepository: new ContactRepository(database),
 		exchangeRateResolver: exchangeRateService,
 		householdResolver,
 		operationRepository: new OperationRepository(database),
 		now: () => currentDate
 	});
+}
+
+function createService(operationService: OperationService = createOperationService()): ReceiptImportService {
+	let idSequence = 0;
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => currentDate);
+	const contactRepository = new ContactRepository(database);
 
 	return new ReceiptImportService({
 		accountRepository: new AccountRepository(database),
@@ -144,9 +168,23 @@ function createService(): ReceiptImportService {
 	});
 }
 
-function createWorkerResult() {
+type WorkerResultItem = {
+	name: string;
+	totalMinor: number;
+};
+
+const DEFAULT_WORKER_RESULT_ITEMS: WorkerResultItem[] = [{ name: 'Продукты', totalMinor: 1_250 }];
+
+function createWorkerResult(
+	items: readonly WorkerResultItem[] = DEFAULT_WORKER_RESULT_ITEMS,
+	contactId: string | null = 'contact-shop'
+) {
 	return receiptWorkerResultSchema.parse({
-		categorizedItems: [{ categoryId: 'category-food', confidence: 0.99, itemIndex: 0 }],
+		categorizedItems: items.map((_, itemIndex) => ({
+			categoryId: 'category-food',
+			confidence: 0.99,
+			itemIndex
+		})),
 		processor: {
 			finishedAt: FIXED_DATE.toISOString(),
 			modelVersions: ['deepseek-v4-flash-vision-exp', 'deepseek-v4-flash'],
@@ -156,27 +194,61 @@ function createWorkerResult() {
 		},
 		rawOcrText: 'Продукты 12.50',
 		receipt: {
-			contactId: 'contact-shop',
+			contactId,
 			currency: 'BYN',
 			happenedOn: '2026-08-08',
-			items: [{
+			items: items.map((item) => ({
 				discountMinor: 0,
-				name: 'Продукты',
+				name: item.name,
 				quantity: 1,
-				totalMinor: 1_250,
-				unitPriceMinor: 1_250
-			}],
+				totalMinor: item.totalMinor,
+				unitPriceMinor: item.totalMinor
+			})),
 			merchant: {
 				address: null,
 				displayName: 'Магазин',
 				legalName: null,
 				unp: null
 			},
-			totalAmountMinor: 1_250
+			totalAmountMinor: items.reduce((sum, item) => sum + item.totalMinor, 0)
 		},
 		schemaVersion: 1,
 		warnings: []
 	});
+}
+
+/** Lets the first operations through and fails the nth one, simulating a mid-loop approval crash. */
+function failOperationCreateOnCall(operationService: OperationService, failingCall: number) {
+	const original = operationService.create.bind(operationService);
+	let callCount = 0;
+
+	return vi.spyOn(operationService, 'create').mockImplementation(async (userId, input) => {
+		callCount += 1;
+
+		if (callCount === failingCall) {
+			throw new Error('SQLITE_BUSY');
+		}
+
+		return original(userId, input);
+	});
+}
+
+async function createReviewableReceipt(
+	service: ReceiptImportService,
+	result = createWorkerResult()
+) {
+	const created = await service.createFromImage(USER_ID, {
+		bytes: new Uint8Array([1, 2, 3]),
+		contentType: 'image/jpeg',
+		originalName: 'receipt.jpg'
+	});
+	const claimed = await service.claimNextQueuedJob();
+
+	if (claimed === undefined) {
+		throw new Error('Expected a claimed receipt job.');
+	}
+
+	return { claimed, created, completed: await service.completeJob(claimed.processingJobId, result) };
 }
 
 describe('ReceiptImportService', () => {
@@ -250,42 +322,30 @@ describe('ReceiptImportService', () => {
 
 	it('rejects approval when the submitted operations do not cover every item exactly once', async () => {
 		const service = createService();
-		const created = await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
-			contentType: 'image/jpeg',
-			originalName: 'receipt.jpg'
-		});
-		const claimed = await service.claimNextQueuedJob();
-
-		if (claimed === undefined) {
-			throw new Error('Expected a claimed receipt job.');
-		}
-
-		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
+		// Two items, one non-empty operation covering only the first: passes the schema's
+		// `min(1)` so the service-level coverage guard is what actually rejects this.
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_000 },
+			{ name: 'Вода', totalMinor: 250 }
+		]));
 
 		await expect(service.approve(USER_ID, {
 			accountId: 'account-receipt',
 			contactId: null,
 			id: created.id,
-			operations: [],
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0],
+				title: 'Продукты'
+			}],
 			version: completed.version
-		})).rejects.toThrow();
+		})).rejects.toThrow(new ReceiptImportStateError('Каждая строка чека должна попасть ровно в одну операцию.'));
 	});
 
 	it('rejects approval when the contact is not in the stored contacts snapshot', async () => {
 		const service = createService();
-		const created = await service.createFromImage(USER_ID, {
-			bytes: new Uint8Array([1, 2, 3]),
-			contentType: 'image/jpeg',
-			originalName: 'receipt.jpg'
-		});
-		const claimed = await service.claimNextQueuedJob();
-
-		if (claimed === undefined) {
-			throw new Error('Expected a claimed receipt job.');
-		}
-
-		const completed = await service.completeJob(claimed.processingJobId, createWorkerResult());
+		const { completed, created } = await createReviewableReceipt(service);
 
 		await expect(service.approve(USER_ID, {
 			accountId: 'account-receipt',
@@ -298,7 +358,215 @@ describe('ReceiptImportService', () => {
 				title: 'Продукты'
 			}],
 			version: completed.version
-		})).rejects.toThrow();
+		})).rejects.toThrow(new ReceiptImportStateError('Выбранный контакт недоступен для этого чека.'));
+	});
+
+	it('rejects approval when the settlement account currency differs from the receipt currency', async () => {
+		const service = createService();
+		const { completed, created } = await createReviewableReceipt(service);
+
+		await expect(service.approve(USER_ID, {
+			accountId: 'account-usd',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0],
+				title: 'Продукты'
+			}],
+			version: completed.version
+		})).rejects.toThrow(
+			new ReceiptImportStateError('В первой версии валюта счёта должна совпадать с валютой чека.')
+		);
+	});
+
+	it('approves a receipt whose zero-priced promotional item is grouped with a paid one', async () => {
+		const service = createService();
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_250 },
+			{ name: 'Подарок по акции', totalMinor: 0 }
+		]));
+
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0, 1],
+				title: 'Продукты'
+			}],
+			version: completed.version
+		});
+
+		expect(approved.status).toBe('approved');
+		expect(approved.operationIds).toHaveLength(1);
+	});
+
+	it('accepts a standalone zero-amount operation at the contract boundary', async () => {
+		const service = createService();
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_250 },
+			{ name: 'Подарок по акции', totalMinor: 0 }
+		]));
+
+		// The receipt-level guards (item coverage, snapshot membership, sum equality) all pass with
+		// a zero-amount group. Creating the operation itself is still refused further down: the
+		// operation domain requires `amountMinor > 0` for every operation in the app.
+		await expect(service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [
+				{ amountMinor: 1_250, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+				{ amountMinor: 0, categoryId: 'category-food', itemIndexes: [1], title: 'Подарок по акции' }
+			],
+			version: completed.version
+		})).rejects.not.toBeInstanceOf(ReceiptImportStateError);
+	});
+
+	it('never re-claims a job that already failed', async () => {
+		const service = createService();
+
+		await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
+		});
+
+		const claimed = await service.claimNextQueuedJob();
+
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
+		}
+
+		const failed = await service.failJob(claimed.processingJobId, 'LiteLLM request failed');
+
+		expect(failed.status).toBe('failed');
+		// No automatic retry: only the "request revision" user action creates a new attempt.
+		expect(await service.claimNextQueuedJob()).toBeUndefined();
+	});
+
+	it('rejects a model result whose contact is not in the stored contacts snapshot', async () => {
+		const service = createService();
+		const created = await service.createFromImage(USER_ID, {
+			bytes: new Uint8Array([1, 2, 3]),
+			contentType: 'image/jpeg',
+			originalName: 'receipt.jpg'
+		});
+		const claimed = await service.claimNextQueuedJob();
+
+		if (claimed === undefined) {
+			throw new Error('Expected a claimed receipt job.');
+		}
+
+		expect(created.status).toBe('queued');
+
+		await expect(service.completeJob(
+			claimed.processingJobId,
+			createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, 'contact-invented-by-the-model')
+		)).rejects.toThrow(
+			new ReceiptWorkerResultError('Результат содержит контакт, которого не было в задании.')
+		);
+	});
+
+	it('creates the regrouped operations when a partially failed approval is resubmitted', async () => {
+		const operationService = createOperationService();
+		const service = createService(operationService);
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_000 },
+			{ name: 'Вода', totalMinor: 250 }
+		]));
+		const createSpy = failOperationCreateOnCall(operationService, 2);
+
+		await expect(service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [
+				{ amountMinor: 1_000, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+				{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
+			],
+			version: completed.version
+		})).rejects.toThrow('SQLITE_BUSY');
+
+		createSpy.mockRestore();
+
+		const restored = (await service.list(USER_ID)).find((item) => item.id === created.id);
+
+		if (restored === undefined) {
+			throw new Error('Expected the receipt to be restored for review.');
+		}
+
+		expect(restored.status).toBe('needs_review');
+
+		// The user regroups both items into a single operation and resubmits. A positional
+		// group key would collide with the link left behind by the failed attempt and skip it.
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [{
+				amountMinor: 1_250,
+				categoryId: 'category-food',
+				itemIndexes: [0, 1],
+				title: 'Продукты и вода'
+			}],
+			version: restored.version
+		});
+
+		expect(approved.status).toBe('approved');
+
+		const operations = await database.select().from(schema.operations);
+
+		expect(operations.some((operation) => operation.amountMinor === 1_250)).toBe(true);
+	});
+
+	it('treats an identical resubmitted grouping as already linked and a different one as new', async () => {
+		const operationService = createOperationService();
+		const service = createService(operationService);
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_000 },
+			{ name: 'Вода', totalMinor: 250 }
+		]));
+		const createSpy = failOperationCreateOnCall(operationService, 2);
+		const operations = [
+			{ amountMinor: 1_000, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+			{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
+		];
+
+		await expect(service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations,
+			version: completed.version
+		})).rejects.toThrow('SQLITE_BUSY');
+
+		createSpy.mockRestore();
+
+		const restored = (await service.list(USER_ID)).find((item) => item.id === created.id);
+
+		if (restored === undefined) {
+			throw new Error('Expected the receipt to be restored for review.');
+		}
+
+		// The first operation failed, the second one got linked under the key "1".
+		expect(restored.operationIds).toHaveLength(1);
+
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations,
+			version: restored.version
+		});
+
+		// Only the missing group is created; the unchanged one stays idempotent.
+		expect(approved.operationIds).toHaveLength(2);
+		expect(await database.select().from(schema.operations)).toHaveLength(2);
 	});
 
 	it('resets a job stuck in leased status back to queued on recovery', async () => {

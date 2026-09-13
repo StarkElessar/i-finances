@@ -398,8 +398,11 @@ export class ReceiptImportService {
 		const linkedGroupKeys = new Set(current.aggregate.links.map((link) => link.groupKey));
 
 		try {
-			for (const [operationIndex, operationInput] of input.operations.entries()) {
-				const groupKey = String(operationIndex);
+			for (const operationInput of input.operations) {
+				// Derived from the covered item indexes, not the array position: a retried approval
+				// after a partial failure regroups items freely, and a positional key would make a
+				// different operation look like one that was already created.
+				const groupKey = [...operationInput.itemIndexes].sort((a, b) => a - b).join('-');
 
 				if (linkedGroupKeys.has(groupKey)) {
 					continue;
