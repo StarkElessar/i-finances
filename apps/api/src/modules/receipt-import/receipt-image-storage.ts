@@ -5,8 +5,10 @@ import { basename, dirname, resolve } from 'node:path';
 import { ReceiptImageValidationError } from './receipt-import-errors';
 
 const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
+// HEIC is deliberately absent: the bundled sharp/libvips build has no HEVC decoder
+// ("Support for this compression format has not been built in"), so a HEIC upload would
+// only fail later, deep inside the background processing job, with a cryptic libvips error.
 const EXTENSION_BY_CONTENT_TYPE = {
-	'image/heic': '.heic',
 	'image/jpeg': '.jpg',
 	'image/png': '.png'
 } as const;
@@ -70,8 +72,12 @@ export function createReceiptImageStorage(
 	};
 
 	const save = async (input: SaveReceiptImageInput): Promise<StoredReceiptImage> => {
+		if (input.contentType === 'image/heic' || input.contentType === 'image/heif') {
+			throw new ReceiptImageValidationError('Формат HEIC не поддерживается, конвертируйте фото в JPEG или PNG.');
+		}
+
 		if (!isSupportedContentType(input.contentType)) {
-			throw new ReceiptImageValidationError('Поддерживаются изображения JPEG, PNG и HEIC.');
+			throw new ReceiptImageValidationError('Поддерживаются изображения JPEG и PNG.');
 		}
 
 		if (input.bytes.byteLength === 0) {

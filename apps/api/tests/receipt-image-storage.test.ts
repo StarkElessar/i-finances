@@ -68,6 +68,18 @@ describe('receipt image storage', () => {
 		})).rejects.toBeInstanceOf(ReceiptImageValidationError);
 	});
 
+	it('rejects HEIC uploads with an explanation instead of failing later in the background job', async () => {
+		const rootDirectory = await createTemporaryRoot();
+		const storage = createReceiptImageStorage({ rootDirectory });
+
+		await expect(storage.save({
+			bytes: new Uint8Array([1]),
+			contentType: 'image/heic',
+			originalName: 'receipt.heic',
+			receiptImportId: 'receipt-1'
+		})).rejects.toThrow('Формат HEIC не поддерживается, конвертируйте фото в JPEG или PNG.');
+	});
+
 	it('rejects traversal when reading a storage key', async () => {
 		const rootDirectory = await createTemporaryRoot();
 		const storage = createReceiptImageStorage({ rootDirectory });
