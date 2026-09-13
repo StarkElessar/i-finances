@@ -57,6 +57,10 @@ export type ReceiptImportRepository = {
 		receiptImport: NewReceiptImportRecord,
 		job: NewReceiptProcessingJobRecord
 	) => Promise<ReceiptImportAggregateRecord>;
+	deleteOperationLinks: (
+		receiptImportId: string,
+		groupKeys: readonly string[]
+	) => Promise<ReceiptOperationLinkRecord[]>;
 	failJob: (input: FailReceiptJobRecordInput) => Promise<ReceiptImportAggregateRecord | undefined>;
 	findById: (
 		householdId: string,
@@ -542,10 +546,32 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		.returning()
 		.get();
 
+	/**
+	 * Removes the links a failed approval attempt left behind. Returns the deleted rows so the
+	 * caller can tell which operations were actually linked and reverse them too.
+	 */
+	const deleteOperationLinks = async (
+		receiptImportId: string,
+		groupKeys: readonly string[]
+	): Promise<ReceiptOperationLinkRecord[]> => {
+		if (groupKeys.length === 0) {
+			return [];
+		}
+
+		return database.delete(receiptOperationLinks)
+			.where(and(
+				eq(receiptOperationLinks.receiptImportId, receiptImportId),
+				inArray(receiptOperationLinks.groupKey, [...groupKeys])
+			))
+			.returning()
+			.all();
+	};
+
 	return {
 		addOperationLink,
 		completeJob,
 		create,
+		deleteOperationLinks,
 		failJob,
 		findById,
 		findImagesPendingDeletion,

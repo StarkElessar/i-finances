@@ -217,6 +217,16 @@ function createWorkerResult(
 	});
 }
 
+/**
+ * Operations that still count in the ledger. A reversed approval archives (soft-deletes) the
+ * operations it created, so the rows survive but must never be counted again.
+ */
+async function listLedgerOperations() {
+	const rows = await database.select().from(schema.operations);
+
+	return rows.filter((operation) => operation.deletedAt === null);
+}
+
 /** Lets the first operations through and fails the nth one, simulating a mid-loop approval crash. */
 function failOperationCreateOnCall(operationService: OperationService, failingCall: number) {
 	const original = operationService.create.bind(operationService);
@@ -533,6 +543,10 @@ describe('ReceiptImportService', () => {
 		}
 
 		expect(restored.status).toBe('needs_review');
+		// The failed attempt left nothing behind: no links, and the 1000 operation it managed to
+		// create before the crash is archived out of the ledger.
+		expect(restored.operationIds).toHaveLength(0);
+		expect(await listLedgerOperations()).toHaveLength(0);
 
 		// The user regroups both items into a single operation and resubmits. A positional
 		// group key would collide with the link left behind by the failed attempt and skip it.
@@ -550,34 +564,42 @@ describe('ReceiptImportService', () => {
 		});
 
 		expect(approved.status).toBe('approved');
+		expect(approved.operationIds).toHaveLength(1);
 
-		const operations = await database.select().from(schema.operations);
+		const operations = await listLedgerOperations();
 
-		expect(operations.some((operation) => operation.amountMinor === 1_250)).toBe(true);
+		// Exactly what the final submission asked for — the 1000 orphan is not counted on top.
+		expect(operations).toHaveLength(1);
+		expect(operations[0].amountMinor).toBe(1_250);
+		expect(operations.reduce((sum, operation) => sum + operation.amountMinor, 0)).toBe(1_250);
 	});
 
-	it('treats an identical resubmitted grouping as already linked and a different one as new', async () => {
+	it('reverses the operations of a failed approval so a resubmission cannot double-count', async () => {
 		const operationService = createOperationService();
 		const service = createService(operationService);
 		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
-			{ name: 'Продукты', totalMinor: 1_000 },
+			{ name: 'Продукты', totalMinor: 1_250 },
 			{ name: 'Вода', totalMinor: 250 }
 		]));
 		const createSpy = failOperationCreateOnCall(operationService, 2);
-		const operations = [
-			{ amountMinor: 1_000, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
-			{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
-		];
 
+		// The first operation (1250) is written and linked, the second one crashes.
 		await expect(service.approve(USER_ID, {
 			accountId: 'account-receipt',
 			contactId: 'contact-shop',
 			id: created.id,
-			operations,
+			operations: [
+				{ amountMinor: 1_250, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+				{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
+			],
 			version: completed.version
 		})).rejects.toThrow('SQLITE_BUSY');
 
 		createSpy.mockRestore();
+
+		// No orphan survives: zero ledger operations and zero links, exactly the pre-approval state.
+		expect(await listLedgerOperations()).toHaveLength(0);
+		expect(await database.select().from(schema.receiptOperationLinks)).toHaveLength(0);
 
 		const restored = (await service.list(USER_ID)).find((item) => item.id === created.id);
 
@@ -585,20 +607,72 @@ describe('ReceiptImportService', () => {
 			throw new Error('Expected the receipt to be restored for review.');
 		}
 
-		// The first operation failed, the second one got linked under the key "1".
-		expect(restored.operationIds).toHaveLength(1);
+		expect(restored.status).toBe('needs_review');
+		expect(restored.operationIds).toHaveLength(0);
 
 		const approved = await service.approve(USER_ID, {
 			accountId: 'account-receipt',
 			contactId: 'contact-shop',
 			id: created.id,
-			operations,
+			operations: [
+				{ amountMinor: 1_250, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+				{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
+			],
 			version: restored.version
 		});
 
-		// Only the missing group is created; the unchanged one stays idempotent.
+		expect(approved.status).toBe('approved');
 		expect(approved.operationIds).toHaveLength(2);
-		expect(await database.select().from(schema.operations)).toHaveLength(2);
+
+		const operations = await listLedgerOperations();
+
+		expect(operations).toHaveLength(2);
+		// The ledger total matches the receipt total exactly — the 1250 orphan is not counted twice.
+		expect(operations.reduce((sum, operation) => sum + operation.amountMinor, 0)).toBe(1_500);
+	});
+
+	it('treats a group linked by an earlier attempt as already created', async () => {
+		const operationService = createOperationService();
+		const service = createService(operationService);
+		const { completed, created } = await createReviewableReceipt(service, createWorkerResult([
+			{ name: 'Продукты', totalMinor: 1_000 },
+			{ name: 'Вода', totalMinor: 250 }
+		]));
+		// A crash between `addOperationLink` and the next iteration (no catch block runs, e.g. the
+		// process dies) can leave a link behind. The approval loop must skip that group, not
+		// create a second operation for it.
+		const orphanedOperation = await operationService.create(USER_ID, {
+			accountId: 'account-receipt',
+			amountMinor: 1_000,
+			categoryId: 'category-food',
+			comment: 'Продукты',
+			contactId: 'contact-shop',
+			happenedOn: '2026-08-08',
+			title: 'Продукты',
+			type: 'expense'
+		});
+
+		await database.insert(schema.receiptOperationLinks).values({
+			createdAt: FIXED_DATE,
+			groupKey: '0',
+			operationId: orphanedOperation.id,
+			receiptImportId: created.id
+		});
+
+		const approved = await service.approve(USER_ID, {
+			accountId: 'account-receipt',
+			contactId: 'contact-shop',
+			id: created.id,
+			operations: [
+				{ amountMinor: 1_000, categoryId: 'category-food', itemIndexes: [0], title: 'Продукты' },
+				{ amountMinor: 250, categoryId: 'category-food', itemIndexes: [1], title: 'Вода' }
+			],
+			version: completed.version
+		});
+
+		// Only the missing group is created; the already linked one stays idempotent.
+		expect(approved.operationIds).toHaveLength(2);
+		expect(await listLedgerOperations()).toHaveLength(2);
 	});
 
 	it('resets a job stuck in leased status back to queued on recovery', async () => {

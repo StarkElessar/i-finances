@@ -72,6 +72,13 @@ export type ReceiptImportServiceDependencies = {
 
 const IMAGE_DELETION_BATCH_SIZE = 100;
 
+/** An operation created by the approval loop of the current attempt, and its link group key. */
+type CreatedApprovalGroup = {
+	groupKey: string;
+	operationId: string;
+	operationVersion: number;
+};
+
 function createCategoriesSnapshotVersion(categories: readonly ReceiptCategorySnapshot[]): string {
 	return sha256Hex(JSON.stringify(categories));
 }
@@ -396,6 +403,7 @@ export class ReceiptImportService {
 		}
 
 		const linkedGroupKeys = new Set(current.aggregate.links.map((link) => link.groupKey));
+		const createdGroups: CreatedApprovalGroup[] = [];
 
 		try {
 			for (const operationInput of input.operations) {
@@ -422,6 +430,14 @@ export class ReceiptImportService {
 					type: 'expense'
 				});
 
+				// Recorded before the link is written: if `addOperationLink` is what throws, the
+				// operation still exists and still has to be reversed.
+				createdGroups.push({
+					groupKey,
+					operationId: operation.id,
+					operationVersion: operation.version
+				});
+
 				await this.dependencies.receiptImportRepository.addOperationLink({
 					createdAt: this.now(),
 					groupKey,
@@ -431,6 +447,13 @@ export class ReceiptImportService {
 			}
 		}
 		catch (error: unknown) {
+			// Reverse this attempt before handing the receipt back for review. Otherwise a
+			// resubmission with a different grouping derives different group keys, never
+			// recognizes the orphaned operations, and silently doubles them in the ledger.
+			// If the reversal itself fails we let that error out with the receipt still in
+			// `approving`: a stuck receipt is recoverable, a silent duplicate is not.
+			await this.reverseCreatedGroups(userId, input.id, createdGroups);
+
 			await this.dependencies.receiptImportRepository.restoreReviewAfterApprovalFailure(
 				current.householdId,
 				input.id,
@@ -479,6 +502,33 @@ export class ReceiptImportService {
 		}
 
 		return { aggregate, householdId: household.id };
+	}
+
+	/**
+	 * Undoes every operation the current approval attempt created: its link is deleted and the
+	 * operation itself is archived, so the receipt is back to exactly the state it had before the
+	 * attempt and any resubmission — same grouping or a different one — starts clean.
+	 */
+	private async reverseCreatedGroups(
+		userId: string,
+		receiptImportId: string,
+		createdGroups: readonly CreatedApprovalGroup[]
+	): Promise<void> {
+		if (createdGroups.length === 0) {
+			return;
+		}
+
+		await this.dependencies.receiptImportRepository.deleteOperationLinks(
+			receiptImportId,
+			createdGroups.map((group) => group.groupKey)
+		);
+
+		for (const group of createdGroups) {
+			await this.dependencies.operationService.archive(userId, {
+				id: group.operationId,
+				version: group.operationVersion
+			});
+		}
 	}
 
 	private assertReviewCategories(
