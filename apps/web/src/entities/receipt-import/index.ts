@@ -4,6 +4,7 @@ export type {
 	ApproveReceiptOperationInput,
 	CreatedReceiptImport,
 	ReceiptCategorySnapshot,
+	ReceiptContactSnapshot,
 	ReceiptImport,
 	ReceiptImportStatus,
 	ReceiptItem,

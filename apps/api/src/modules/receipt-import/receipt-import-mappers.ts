@@ -45,6 +45,7 @@ export function toReceiptImport(record: ReceiptImportAggregateRecord): ReceiptIm
 		approvedAt: record.import.approvedAt?.toISOString() ?? null,
 		categories: parseReceiptCategoriesSnapshot(record.import.categoriesSnapshotJson),
 		categoriesSnapshotVersion: record.import.categoriesSnapshotVersion,
+		contacts: parseReceiptContactsSnapshot(record.import.contactsSnapshotJson),
 		createdAt: record.import.createdAt.toISOString(),
 		id: record.import.id,
 		imageContentType: record.import.imageContentType,

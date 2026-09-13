@@ -82,7 +82,8 @@ export const receiptWorkerResultSchema = z.object({
 	}),
 	rawOcrText: z.string().max(500_000),
 	receipt: z.object({
-		contactId: entityIdSchema.nullable(),
+		// Older persisted results predate contact matching, and the model may omit the key entirely.
+		contactId: entityIdSchema.nullable().default(null),
 		currency: z.literal('BYN'),
 		happenedOn: localDateKeySchema,
 		items: z.array(receiptItemSchema).min(1).max(1_000),
@@ -182,7 +183,8 @@ export const requestReceiptRevisionInputSchema = z.object({
 export type RequestReceiptRevisionInput = z.infer<typeof requestReceiptRevisionInputSchema>;
 
 export const approveReceiptOperationInputSchema = z.object({
-	amountMinor: positiveIntegerSchema,
+	// Zero is valid: promo/loyalty lines on real receipts are priced at 0.
+	amountMinor: nonnegativeIntegerSchema,
 	categoryId: entityIdSchema.nullable(),
 	itemIndexes: z.array(z.number().int().nonnegative()).min(1),
 	title: z.string().trim().min(1).max(160)
@@ -220,6 +222,7 @@ export const receiptImportSchema = z.object({
 	approvedAt: z.string().nullable(),
 	categories: z.array(receiptCategorySnapshotSchema),
 	categoriesSnapshotVersion: z.string().min(1),
+	contacts: z.array(receiptContactSnapshotSchema),
 	createdAt: z.string(),
 	id: entityIdSchema,
 	imageContentType: z.string().min(1),

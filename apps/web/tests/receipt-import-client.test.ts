@@ -38,6 +38,7 @@ describe('ReceiptImportClient', () => {
 					approvedAt: null,
 					categories: [],
 					categoriesSnapshotVersion: 'snapshot',
+					contacts: [],
 					createdAt: '2026-08-08T10:00:00.000Z',
 					id: 'receipt-1',
 					imageContentType: 'image/jpeg',

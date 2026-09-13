@@ -28,6 +28,11 @@ export type ReceiptCategorySnapshot = {
 	name: string;
 };
 
+export type ReceiptContactSnapshot = {
+	id: string;
+	name: string;
+};
+
 export type ReceiptMerchant = {
 	address: string | null;
 	displayName: string | null;
@@ -86,6 +91,7 @@ export type ReceiptImport = {
 	approvedAt: string | null;
 	categories: ReceiptCategorySnapshot[];
 	categoriesSnapshotVersion: string;
+	contacts: ReceiptContactSnapshot[];
 	createdAt: string;
 	id: string;
 	imageContentType: string;
