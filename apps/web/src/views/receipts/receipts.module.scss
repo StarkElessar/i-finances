@@ -394,6 +394,41 @@
     }
 }
 
+.operations-total {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+    align-items: center;
+
+    margin: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-secondary);
+
+    svg {
+        flex: none;
+        color: var(--color-success);
+    }
+
+    b {
+        color: var(--color-text-primary);
+    }
+}
+
+.operations-total-mismatch {
+    border-color: color-mix(in srgb, var(--color-danger) 32%, var(--color-border));
+    color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+
+    svg,
+    b {
+        color: var(--color-danger);
+    }
+}
+
 .select-field,
 .comment-field {
     display: grid;

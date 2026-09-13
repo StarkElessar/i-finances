@@ -11,8 +11,6 @@ import {
 
 import type { PersistedAccount } from '@/entities/account';
 import { getAccounts } from '@/entities/account/api';
-import type { PersistedContact } from '@/entities/contact';
-import { getContacts } from '@/entities/contact/api';
 import type {
 	ReceiptImport,
 	ReceiptImportStatus,
@@ -38,6 +36,7 @@ import {
 	ReceiptText,
 	RefreshCw,
 	RotateCcw,
+	TriangleAlert,
 	Upload
 } from 'lucide-solid';
 import type { JSX } from 'solid-js';
@@ -216,10 +215,10 @@ function UploadDialog(props: UploadDialogProps) {
 							<strong>
 								{selectedFileName() ?? 'Выбрать фотографию'}
 							</strong>
-							<span>JPEG, PNG или HEIC, не больше 15 МБ</span>
+							<span>JPEG или PNG, не больше 15 МБ</span>
 							<input
 								ref={imageInput}
-								accept='image/jpeg,image/png,image/heic'
+								accept='image/jpeg,image/png'
 								capture='environment'
 								type='file'
 								onChange={handleFileChange}
@@ -285,7 +284,6 @@ function ImageDialog(props: ImageDialogProps) {
 
 type ReviewDialogProps = {
 	accounts: readonly PersistedAccount[];
-	contacts: readonly PersistedContact[];
 	onOpenChange: (open: boolean) => void;
 	onUpdated: () => Promise<void>;
 	open: boolean;
@@ -325,7 +323,9 @@ function buildInitialOperations(receiptImport: ReceiptImport): EditableOperation
 		groups.set(groupKey, group);
 	});
 
-	return [...groups.values()].filter((group) => group.amountMinor > 0);
+	// Zero-amount groups stay: a promo line priced at 0 still has to be visible so the
+	// user can move it into another group or approve it as a zero-amount operation.
+	return [...groups.values()];
 }
 
 function ReviewDialog(props: ReviewDialogProps) {
@@ -339,6 +339,20 @@ function ReviewDialog(props: ReviewDialogProps) {
 	const approveSubmission = useSubmission(approveReceiptAction);
 	const revisionSubmission = useSubmission(requestReceiptRevisionAction);
 	const categoryOptions = createMemo(() => props.receiptImport?.categories ?? []);
+	// The server validates the chosen contact against the snapshot frozen at upload time,
+	// so the picker has to offer exactly that snapshot — not the live household list.
+	const contactOptions = createMemo(() => props.receiptImport?.contacts ?? []);
+	const operationsTotalMinor = createMemo(() => editableOperations().reduce(
+		(sum, operation) => sum + operation.amountMinor,
+		0
+	));
+	// The server rejects an approval whose operation sum differs from the receipt total, so show
+	// the drift here instead of letting the user discover it from a rejected submission.
+	const totalsMismatchMinor = createMemo(() => {
+		const totalAmountMinor = props.receiptImport?.result?.receipt.totalAmountMinor;
+
+		return totalAmountMinor === undefined ? 0 : operationsTotalMinor() - totalAmountMinor;
+	});
 	const availableAccounts = createMemo(() => (
 		props.accounts.filter((account) => account.archivedAt === null)
 	));
@@ -663,6 +677,34 @@ function ReviewDialog(props: ReviewDialogProps) {
 															</article>
 														)}
 													</For>
+													<p
+														class={cn(
+															css.operationsTotal,
+															totalsMismatchMinor() !== 0 && css.operationsTotalMismatch
+														)}
+													>
+														<Show
+															fallback={<Check aria-hidden='true' size={16}/>}
+															when={totalsMismatchMinor() !== 0}
+														>
+															<TriangleAlert aria-hidden='true' size={16}/>
+														</Show>
+														<span>
+															Сумма операций:
+															{' '}
+															<b>{formatMinor(operationsTotalMinor())}</b>
+															{' · итог чека: '}
+															<b>{formatMinor(result().receipt.totalAmountMinor)}</b>
+														</span>
+														<Show when={totalsMismatchMinor() !== 0}>
+															<span>
+																{`Расхождение ${
+																	totalsMismatchMinor() > 0 ? '+' : '−'
+																}${formatMinor(Math.abs(totalsMismatchMinor()))}`}
+																{' — подтвердить чек не получится.'}
+															</span>
+														</Show>
+													</p>
 												</section>
 
 												<label class={css.selectField}>
@@ -672,7 +714,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 														onChange={(event) => setContactId(event.currentTarget.value || null)}
 													>
 														<option value=''>Без контакта</option>
-														<For each={props.contacts}>
+														<For each={contactOptions()}>
 															{(contact) => (
 																<option value={contact.id}>{contact.name}</option>
 															)}
@@ -780,7 +822,6 @@ function ReviewDialog(props: ReviewDialogProps) {
 function ReceiptsContent() {
 	const receiptImports = createAsync(() => getReceiptImports());
 	const accounts = createAsync(() => getAccounts(false));
-	const contacts = createAsync(() => getContacts({ status: 'active' }));
 	const [isUploadOpen, setIsUploadOpen] = createSignal(false);
 	const [isReviewOpen, setIsReviewOpen] = createSignal(false);
 	const [isImageOpen, setIsImageOpen] = createSignal(false);
@@ -960,7 +1001,6 @@ function ReceiptsContent() {
 			/>
 			<ReviewDialog
 				accounts={accounts() ?? []}
-				contacts={contacts()?.items ?? []}
 				open={isReviewOpen()}
 				receiptImport={selectedReceipt()}
 				onOpenChange={setIsReviewOpen}
