@@ -219,7 +219,6 @@ function UploadDialog(props: UploadDialogProps) {
 							<input
 								ref={imageInput}
 								accept='image/jpeg,image/png,image/heic,image/heif'
-								capture='environment'
 								type='file'
 								onChange={handleFileChange}
 							/>
