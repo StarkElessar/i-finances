@@ -156,10 +156,9 @@ export function createApiDependencies(): {
 		const configuredTimeoutMs = Number(process.env.RECEIPT_PROCESSING_TIMEOUT_MS);
 		const configuredPollIntervalMs = Number(process.env.RECEIPT_PROCESSING_POLL_INTERVAL_MS);
 
-		if (apiKey === undefined || apiKey.trim() === '') {
+		if (!apiKey?.trim()) {
 			console.warn('RECEIPT_LITELLM_API_KEY is not set; the receipt processing loop will not start.');
-
-			return undefined;
+			return;
 		}
 
 		await receiptImportService.recoverStaleProcessingJobs();

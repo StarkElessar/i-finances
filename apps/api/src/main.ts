@@ -15,9 +15,12 @@ dependencies.startReceiptProcessing().catch((error: unknown) => {
 	console.error('Failed to start receipt processing.', error);
 });
 
-serve({
-	fetch: createApiApp(dependencies).fetch,
-	port
-}, (info) => {
-	console.warn(`API listening on http://localhost:${info.port}`);
-});
+serve(
+	{
+		fetch: createApiApp(dependencies).fetch,
+		port
+	},
+	(info) => {
+		console.warn(`API listening on http://localhost:${info.port}`);
+	}
+);
