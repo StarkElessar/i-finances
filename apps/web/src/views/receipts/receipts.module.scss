@@ -345,6 +345,7 @@
 
     span {
         overflow: hidden;
+        min-inline-size: 0;
 
         font-size: var(--font-size-body-sm);
         color: var(--color-text-secondary);
