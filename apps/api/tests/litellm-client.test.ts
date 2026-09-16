@@ -97,6 +97,51 @@ describe('createLiteLlmClient', () => {
 		expect(promptText).toContain('скорректируй totalMinor последней строки');
 	});
 
+	it('recovers a JSON object that follows an unrelated fenced code block', async () => {
+		// Reasoning models occasionally preface their answer with an unrelated
+		// snippet (e.g. suggesting an OCR script) before the actual JSON answer.
+		// Reproduces the "Unexpected token 'b', \"bash pip i\"..." failure seen in
+		// production: operation 103204BF-3683-4E5D-B511-E31328792FE7.
+		const modelJson = {
+			categorizedItems: [{ categoryId: null, confidence: 0.5, itemIndex: 0 }],
+			rawOcrText: 'Продукты 12.50',
+			receipt: {
+				contactId: null,
+				currency: 'BYN',
+				happenedOn: '2026-08-08',
+				items: [{
+					discountMinor: 0,
+					name: 'Продукты',
+					quantity: 1,
+					totalMinor: 1_250,
+					unitPriceMinor: 1_250
+				}],
+				merchant: { address: null, displayName: 'Магазин', legalName: null, unp: null },
+				totalAmountMinor: 1_250
+			},
+			warnings: []
+		};
+		const content = '```bash\npip install pytesseract\n```\n'
+			+ `Вот результат:\n\`\`\`json\n${JSON.stringify(modelJson)}\n\`\`\``;
+
+		vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+			choices: [{ message: { content } }]
+		}), { status: 200 })));
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+		const result = await client.processReceiptImage({
+			categories: [],
+			contacts: [],
+			imageBytes: new Uint8Array([1, 2, 3]),
+			imageContentType: 'image/jpeg',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		});
+
+		expect(result.receipt.totalAmountMinor).toBe(1_250);
+	});
+
 	it('throws when the LiteLLM response is not ok', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => new Response('server error', { status: 500 })));
 

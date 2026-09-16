@@ -46,7 +46,15 @@ function extractJsonObject(text: string): unknown {
 		const fenceMatch = /```(?:json)?\s*([\s\S]*?)```/iu.exec(trimmed);
 
 		if (fenceMatch) {
-			return JSON.parse(fenceMatch[1].trim());
+			try {
+				return JSON.parse(fenceMatch[1].trim());
+			}
+			catch {
+				// The regex is non-greedy, so it can land on an unrelated fenced
+				// block the model emitted before the real answer (e.g. a reasoning
+				// model suggesting an OCR script). Fall through to brace extraction
+				// over the full text instead of failing on that first block.
+			}
 		}
 
 		const start = trimmed.indexOf('{');
