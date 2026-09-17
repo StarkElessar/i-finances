@@ -1,6 +1,6 @@
 import css from './operations-table.module.scss';
 
-import { cn, formatDate, formatMinorUnitsCurrency } from '@/shared/lib';
+import { cn, formatMinorUnitsCurrency } from '@/shared/lib';
 import { Button } from '@/shared/ui/button';
 import type { GridColumn } from '@/shared/ui/grid';
 import { Grid } from '@/shared/ui/grid';
@@ -31,24 +31,20 @@ import {
 
 import { createAsync } from '@solidjs/router';
 import {
-	ArrowDownRight,
 	ArrowDownWideNarrow,
 	ArrowLeftRight,
 	ArrowUpNarrowWide,
-	ArrowUpRight,
 	Building2,
-	CalendarDays,
 	ChevronLeft,
 	ChevronRight,
-	CircleDollarSign,
-	Minus,
 	Plus,
 	Search,
-	WalletCards,
 	X
 } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { createMemo, createSignal, For, Show } from 'solid-js';
+
+import { OperationGroupRow } from '../operation-group-row/operation-group-row';
 
 type OperationsTableProps = {
 	account: Account;
@@ -550,99 +546,6 @@ export function OperationsTable(props: OperationsTableProps) {
 	);
 }
 
-function OperationGroupRow(props: {
-	group: OperationGroup;
-	resolveCategoryColor: (operation: OperationWithBalance) => string;
-	resolveCategoryIcon: (operation: OperationWithBalance) => string;
-}) {
-	const currency = () => props.group.operations[0]?.currency;
-	const categoryColor = () => {
-		const operation = props.group.operations[0];
-
-		return props.resolveCategoryColor(operation);
-	};
-	const categoryIcon = () => {
-		const operation = props.group.operations[0];
-
-		return props.resolveCategoryIcon(operation);
-	};
-	const groupStyle = (): JSX.CSSProperties => ({ '--group-color': categoryColor() });
-
-	return (
-		<div class={css.groupRow} style={groupStyle()}>
-			<span class={css.groupHeading}>
-				<GroupIcon categoryIcon={categoryIcon()} group={props.group}/>
-				<span>{formatGroupLabel(props.group)}</span>
-			</span>
-			<Show when={props.group.type === 'date' && currency()}>
-				{(resolvedCurrency) => (
-					<span class={css.groupBalance}>
-						<span>{formatMinorUnitsCurrency(
-							props.group.openingBalanceMinor ?? 0,
-							resolvedCurrency()
-						)}</span>
-						<BalanceDirection differenceMinor={props.group.differenceMinor ?? 0}/>
-						<span>{formatMinorUnitsCurrency(
-							props.group.closingBalanceMinor ?? 0,
-							resolvedCurrency()
-						)}</span>
-						<span
-							class={cn(
-								css.groupDifference,
-								(props.group.differenceMinor ?? 0) > 0 && css.groupDifferencePositive,
-								(props.group.differenceMinor ?? 0) < 0 && css.groupDifferenceNegative
-							)}
-						>
-							({formatMinorUnitsCurrency(
-								props.group.differenceMinor ?? 0,
-								resolvedCurrency(),
-								{ signDisplay: 'always' }
-							)})
-						</span>
-					</span>
-				)}
-			</Show>
-			<span class={css.groupCount}>{props.group.operations.length}</span>
-		</div>
-	);
-}
-
-function GroupIcon(props: { categoryIcon: string; group: OperationGroup }) {
-	if (props.group.type === 'date') {
-		return <CalendarDays aria-hidden='true' size={15}/>;
-	}
-
-	if (props.group.type === 'category') {
-		return (
-			<span aria-hidden='true' class={css.groupCategoryIcon}>
-				<CategoryIcon icon={props.categoryIcon} size={14}/>
-			</span>
-		);
-	}
-
-	if (props.group.type === 'contact') {
-		return <Building2 aria-hidden='true' size={15}/>;
-	}
-
-	if (props.group.type === 'amount') {
-		return <CircleDollarSign aria-hidden='true' size={15}/>;
-	}
-
-	return <WalletCards aria-hidden='true' size={15}/>;
-}
-
-function BalanceDirection(props: { differenceMinor: number }) {
-	if (props.differenceMinor > 0) {
-		return <ArrowUpRight aria-label='Баланс увеличился' class={css.balanceUp} size={17}/>;
-	}
-
-	if (props.differenceMinor < 0) {
-		return <ArrowDownRight aria-label='Баланс уменьшился' class={css.balanceDown} size={17}/>;
-	}
-
-	return <Minus aria-label='Баланс не изменился' class={css.balanceNeutral} size={17}/>;
-}
-
 function getOperationItem(item: OperationTableItem): OperationTableOperationItem | undefined {
 	return item.kind === 'operation' ? item : undefined;
 }
@@ -651,10 +554,6 @@ function formatShortDate(dateKey: string): string {
 	const [year, month, day] = dateKey.split('-');
 
 	return `${day}.${month}.${year}`;
-}
-
-function formatGroupLabel(group: OperationGroup): string {
-	return group.type === 'date' ? formatDate(parseLocalDateKey(group.label)) : group.label;
 }
 
 function formatPeriodLabel(anchorDate: Date, mode: OperationPeriodMode): string {
