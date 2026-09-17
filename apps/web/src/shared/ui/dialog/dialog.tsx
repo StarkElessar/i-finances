@@ -25,10 +25,6 @@ import type {
 
 const CLOSE_ANIMATION_MS = 180;
 
-/** Standard focusable-elements query, scoped to a dialog's content element for the Tab focus trap. */
-const FOCUSABLE_SELECTOR = 'a[href], button:not([disabled]), textarea:not([disabled]), '
-	+ 'input:not([disabled]), select:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 const DialogContext = createContext<DialogContextValue>();
 
 /**
@@ -195,49 +191,11 @@ function DialogRoot(props: DialogRootProps) {
 	});
 
 	createEffect(() => {
-		if (isOpen()) {
+		if (isOpen() && shouldCloseOnEscape()) {
 			const handleKeyDown = (event: KeyboardEvent): void => {
 				if (event.key === 'Escape') {
-					if (shouldCloseOnEscape()) {
-						event.preventDefault();
-						close();
-					}
-
-					return;
-				}
-
-				if (event.key === 'Tab') {
-					if (!contentElement) {
-						return;
-					}
-
-					const focusableElements = Array.from(
-						contentElement.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
-					).filter((element) => element.offsetParent !== null || element === document.activeElement);
-
-					if (!focusableElements.length) {
-						event.preventDefault();
-						contentElement.focus();
-						return;
-					}
-
-					const firstElement = focusableElements[0]!;
-					const lastElement = focusableElements[focusableElements.length - 1]!;
-					const activeElement = document.activeElement;
-
-					if (event.shiftKey) {
-						if (activeElement === firstElement || !contentElement.contains(activeElement)) {
-							event.preventDefault();
-							lastElement.focus();
-						}
-
-						return;
-					}
-
-					if (activeElement === lastElement || !contentElement.contains(activeElement)) {
-						event.preventDefault();
-						firstElement.focus();
-					}
+					event.preventDefault();
+					close();
 				}
 			};
 
