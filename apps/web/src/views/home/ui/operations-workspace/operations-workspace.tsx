@@ -7,14 +7,11 @@ import { TextField } from '@/shared/ui/text-field';
 import type { Account } from '@/entities/account';
 import type { Category } from '@/entities/category';
 import type { OperationPeriodMode, OperationSortField, OperationWithBalance } from '@/entities/operation';
-import { getOperationPeriodRange, parseLocalDateKey } from '@/entities/operation';
-
-import { useOperationsView } from './lib/use-operations-view';
-import { OperationsTable } from '../operations-table/operations-table';
+import { getOperationPeriodRange, parseLocalDateKey, useOperationsDisplayMode } from '@/entities/operation';
 
 import {
-	ArrowLeftRight,
 	ArrowDownWideNarrow,
+	ArrowLeftRight,
 	ArrowUpNarrowWide,
 	ChevronLeft,
 	ChevronRight,
@@ -23,6 +20,11 @@ import {
 	X
 } from 'lucide-solid';
 import { createSignal, For, Show } from 'solid-js';
+
+import { OperationsList } from '../operations-list/operations-list';
+import { OperationsTable } from '../operations-table/operations-table';
+
+import { useOperationsView } from './lib/use-operations-view';
 
 const PERIOD_LABELS: Record<OperationPeriodMode, string> = {
 	month: 'Месяц',
@@ -71,6 +73,7 @@ function formatPeriodLabel(anchorDate: Date, mode: OperationPeriodMode): string 
 export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 	let searchInput: HTMLInputElement | undefined;
 	const view = useOperationsView(props);
+	const { resolvedMode } = useOperationsDisplayMode();
 	const [isSearchOpen, setIsSearchOpen] = createSignal(false);
 
 	const handleSortDirectionChange = () => {
@@ -95,6 +98,28 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 			handleCloseSearch();
 		}
 	};
+
+	const bodyProps = () => ({
+		account: props.account,
+		emptyContent: view.isLoading()
+			? 'Загрузка операций…'
+			: view.searchQuery()
+				? 'По вашему запросу ничего не найдено'
+				: 'В этом периоде операций нет',
+		groups: view.groups(),
+		resolveCategoryColor: view.resolveCategoryColor,
+		resolveCategoryIcon: view.resolveCategoryIcon,
+		selectedOperationId: props.selectedOperationId,
+		sort: view.sort(),
+		onOperationSelect: props.onOperationSelect,
+		onSortFieldChange: (columnId: string) => {
+			if (view.sort().field === columnId) {
+				return;
+			}
+
+			view.setSort({ direction: columnId === 'date' ? 'desc' : 'asc', field: columnId as OperationSortField });
+		}
+	});
 
 	return (
 		<section aria-busy={view.isLoading()} aria-label='Операции счёта' class={css.root}>
@@ -183,7 +208,9 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 			<Show when={isSearchOpen()}>
 				<div class={css.searchRow}>
 					<TextField
-						ref={(element) => { searchInput = element; }}
+						ref={(element) => {
+							searchInput = element;
+						}}
 						aria-label='Поиск операций'
 						class={css.searchField}
 						placeholder='Название, комментарий, категория, получатель или сумма'
@@ -199,27 +226,9 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 				</div>
 			</Show>
 
-			<OperationsTable
-				account={props.account}
-				emptyContent={view.isLoading()
-					? 'Загрузка операций…'
-					: view.searchQuery()
-						? 'По вашему запросу ничего не найдено'
-						: 'В этом периоде операций нет'}
-				groups={view.groups()}
-				resolveCategoryColor={view.resolveCategoryColor}
-				resolveCategoryIcon={view.resolveCategoryIcon}
-				selectedOperationId={props.selectedOperationId}
-				sort={view.sort()}
-				onOperationSelect={props.onOperationSelect}
-				onSortFieldChange={(columnId) => {
-					if (view.sort().field === columnId) {
-						return;
-					}
-
-					view.setSort({ direction: columnId === 'date' ? 'desc' : 'asc', field: columnId as OperationSortField });
-				}}
-			/>
+			<Show fallback={<OperationsList {...bodyProps()}/>} when={resolvedMode() === 'table'}>
+				<OperationsTable {...bodyProps()}/>
+			</Show>
 		</section>
 	);
 }
