@@ -1,0 +1,47 @@
+.section {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.section-title {
+    margin: 0;
+    font-size: var(--font-size-heading-3);
+}
+
+.section-description {
+    margin: 0;
+    color: var(--color-text-secondary);
+}
+
+.segmented-control {
+    display: inline-flex;
+    gap: var(--space-1);
+
+    padding: var(--space-1);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.segmented-option {
+    cursor: pointer;
+
+    padding: var(--space-2) var(--space-4);
+    border: none;
+    border-radius: var(--radius-sm);
+
+    font: inherit;
+    color: var(--color-text-secondary);
+
+    background: none;
+
+    &:hover {
+        color: var(--color-text-primary);
+    }
+}
+
+.segmented-option-active {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}

@@ -10,6 +10,8 @@ import { PasskeyRegistrationMenuItem } from '@/features/passkey-registration';
 
 import { createSignal, Show } from 'solid-js';
 
+import { ProfileSettingsDialog } from './profile-settings-dialog';
+
 /**
  * Returns the best available user-facing viewer name.
  */
@@ -58,6 +60,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 	const triggerLabel = () => `Открыть меню профиля: ${viewerName()}`;
 	const [isSigningOut, setIsSigningOut] = createSignal(false);
 	const [signOutError, setSignOutError] = createSignal<string>();
+	const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
 
 	const handleSignOut = async (): Promise<void> => {
 		setSignOutError(undefined);
@@ -76,35 +79,42 @@ export function ProfileMenu(props: ProfileMenuProps) {
 	};
 
 	return (
-		<ContextMenu.Root class={css.root} mobileBreakpoint={640} triggerMode='click'>
-			<ContextMenu.Trigger aria-label={triggerLabel()} class={css.trigger}>
-				{createViewerInitials(viewer())}
-			</ContextMenu.Trigger>
-			<ContextMenu.Content align='end' class={css.content}>
-				<ContextMenu.Label class={css.viewer}>
-					<span class={css.viewerName}>{viewerName()}</span>
-					<span class={css.viewerMeta}>{viewerMeta()}</span>
-				</ContextMenu.Label>
-				<PasskeyRegistrationMenuItem/>
-				<ContextMenu.Item disabled title='Раздел профиля будет добавлен позже'>
-					Профиль
-				</ContextMenu.Item>
-				<ContextMenu.Item disabled title='Раздел безопасности будет добавлен позже'>
-					Безопасность
-				</ContextMenu.Item>
-				<ContextMenu.Separator/>
-				<Show when={signOutError()}>
-					{(message) => <p class={css.error} role='alert'>{message()}</p>}
-				</Show>
-				<ContextMenu.Item
-					closeOnSelect={false}
-					disabled={isSigningOut()}
-					onSelect={handleSignOut}
-					variant='danger'
-				>
-					{isSigningOut() ? 'Выходим…' : 'Выйти'}
-				</ContextMenu.Item>
-			</ContextMenu.Content>
-		</ContextMenu.Root>
+		<>
+			<ContextMenu.Root class={css.root} mobileBreakpoint={640} triggerMode='click'>
+				<ContextMenu.Trigger aria-label={triggerLabel()} class={css.trigger}>
+					{createViewerInitials(viewer())}
+				</ContextMenu.Trigger>
+				<ContextMenu.Content align='end' class={css.content}>
+					<ContextMenu.Label class={css.viewer}>
+						<span class={css.viewerName}>{viewerName()}</span>
+						<span class={css.viewerMeta}>{viewerMeta()}</span>
+					</ContextMenu.Label>
+					<PasskeyRegistrationMenuItem/>
+					<ContextMenu.Item
+						onSelect={() => {
+							setIsSettingsOpen(true);
+						}}
+					>
+						Профиль
+					</ContextMenu.Item>
+					<ContextMenu.Item disabled title='Раздел безопасности будет добавлен позже'>
+						Безопасность
+					</ContextMenu.Item>
+					<ContextMenu.Separator/>
+					<Show when={signOutError()}>
+						{(message) => <p class={css.error} role='alert'>{message()}</p>}
+					</Show>
+					<ContextMenu.Item
+						closeOnSelect={false}
+						disabled={isSigningOut()}
+						onSelect={handleSignOut}
+						variant='danger'
+					>
+						{isSigningOut() ? 'Выходим…' : 'Выйти'}
+					</ContextMenu.Item>
+				</ContextMenu.Content>
+			</ContextMenu.Root>
+			<ProfileSettingsDialog open={isSettingsOpen()} onOpenChange={setIsSettingsOpen}/>
+		</>
 	);
 }
