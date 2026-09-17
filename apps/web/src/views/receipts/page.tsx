@@ -20,7 +20,8 @@ import type {
 import {
 	approveReceipt as approveReceiptAction,
 	getReceiptImports,
-	requestReceiptRevision as requestReceiptRevisionAction
+	requestReceiptRevision as requestReceiptRevisionAction,
+	retryReceiptImport as retryReceiptImportAction
 } from '@/entities/receipt-import';
 
 import { Title } from '@solidjs/meta';
@@ -387,8 +388,10 @@ function ReviewDialog(props: ReviewDialogProps) {
 	const [editableOperations, setEditableOperations] = createSignal<EditableOperation[]>([]);
 	const runApprove = useAction(approveReceiptAction);
 	const runRequestRevision = useAction(requestReceiptRevisionAction);
+	const runRetry = useAction(retryReceiptImportAction);
 	const approveSubmission = useSubmission(approveReceiptAction);
 	const revisionSubmission = useSubmission(requestReceiptRevisionAction);
+	const retrySubmission = useSubmission(retryReceiptImportAction);
 	const categoryOptions = createMemo(() => props.receiptImport?.categories ?? []);
 	// The server validates the chosen contact against the snapshot frozen at upload time,
 	// so the picker has to offer exactly that snapshot — not the live household list.
@@ -408,7 +411,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 		props.accounts.filter((account) => account.archivedAt === null)
 	));
 	const isPending = () => Boolean(
-		approveSubmission.pending || revisionSubmission.pending
+		approveSubmission.pending || revisionSubmission.pending || retrySubmission.pending
 	);
 
 	function moveItemToCategory(itemIndex: number, categoryId: string | null): void {
@@ -562,6 +565,27 @@ function ReviewDialog(props: ReviewDialogProps) {
 
 		const result = await runRequestRevision({
 			comment: comment(),
+			id: receiptImport.id,
+			version: receiptImport.version
+		});
+
+		if (!result.ok) {
+			setError(result.message);
+			return;
+		}
+
+		await props.onUpdated();
+		props.onOpenChange(false);
+	};
+
+	const handleRetry = async () => {
+		const receiptImport = props.receiptImport;
+
+		if (receiptImport === undefined) {
+			return;
+		}
+
+		const result = await runRetry({
 			id: receiptImport.id,
 			version: receiptImport.version
 		});
@@ -847,6 +871,18 @@ function ReviewDialog(props: ReviewDialogProps) {
 					>
 						Закрыть
 					</Dialog.Action>
+					<Show when={props.receiptImport?.status === 'failed'}>
+						<Button
+							disabled={isPending()}
+							loading={retrySubmission.pending}
+							startIcon={<RefreshCw size={18}/>}
+							type='button'
+							variant='secondary'
+							onClick={() => void handleRetry()}
+						>
+							Повторить
+						</Button>
+					</Show>
 					<Button
 						disabled={
 							props.receiptImport?.status !== 'needs_review'

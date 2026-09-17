@@ -11,6 +11,12 @@ import { receiptWorkerResultSchema } from '@i-finances/contracts';
 // call, so the pipeline shape itself changed, not just its configuration.
 const PIPELINE_VERSION = 'receipt-litellm-v2';
 
+// The model occasionally answers with prose instead of the requested JSON object (a refusal, a
+// restated plan, stray reasoning) — rare enough that a plain do-over as a fresh, independent
+// request usually succeeds, so it's cheaper than trying to coach the same answer into shape.
+const MAX_MODEL_ATTEMPTS = 2;
+const RAW_OUTPUT_SNIPPET_LENGTH = 1_000;
+
 export type LiteLlmClientOptions = {
 	apiKey: string;
 	baseUrl: string;
@@ -157,10 +163,40 @@ async function postChatCompletion(
 	}
 }
 
+/**
+ * Calls the model for a JSON object, retrying with an identical fresh request (no reference to
+ * the earlier bad answer) if extraction fails, since there's no conversation to carry over.
+ */
+async function requestReceiptJson(
+	options: LiteLlmClientOptions,
+	body: Record<string, unknown>
+): Promise<Record<string, unknown>> {
+	let lastFailure: { content: string; reason: string } | undefined;
+
+	for (let attempt = 1; attempt <= MAX_MODEL_ATTEMPTS; attempt += 1) {
+		const content = await postChatCompletion(options, body);
+
+		try {
+			return extractJsonObject(content) as Record<string, unknown>;
+		}
+		catch (error: unknown) {
+			lastFailure = {
+				content,
+				reason: error instanceof Error ? error.message : String(error)
+			};
+		}
+	}
+
+	throw new Error(
+		`${lastFailure?.reason} (after ${MAX_MODEL_ATTEMPTS} attempts) `
+			+ `Raw model output: ${lastFailure?.content.slice(0, RAW_OUTPUT_SNIPPET_LENGTH)}`
+	);
+}
+
 export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClient {
 	const processReceiptImage = async (input: ProcessReceiptImageInput): Promise<ReceiptWorkerResult> => {
 		const base64 = Buffer.from(input.imageBytes).toString('base64');
-		const content = await postChatCompletion(options, {
+		const parsed = await requestReceiptJson(options, {
 			messages: [{
 				content: [
 					{ text: buildReceiptPrompt(input), type: 'text' },
@@ -168,9 +204,9 @@ export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClien
 				],
 				role: 'user'
 			}],
-			model: options.model
+			model: options.model,
+			response_format: { type: 'json_object' }
 		});
-		const parsed = extractJsonObject(content) as Record<string, unknown>;
 
 		return receiptWorkerResultSchema.parse({
 			...parsed,

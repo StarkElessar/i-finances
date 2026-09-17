@@ -95,6 +95,13 @@ export type ReceiptImportRepository = {
 		resultJson: string,
 		updatedAt: Date
 	) => Promise<ReceiptImportRecord | undefined>;
+	retryFailedJob: (
+		householdId: string,
+		receiptImportId: string,
+		expectedVersion: number,
+		job: NewReceiptProcessingJobRecord,
+		updatedAt: Date
+	) => Promise<ReceiptImportAggregateRecord | undefined>;
 	requestRevision: (
 		householdId: string,
 		receiptImportId: string,
@@ -454,6 +461,41 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		return updated ? findById(householdId, receiptImportId) : undefined;
 	};
 
+	const retryFailedJob = async (
+		householdId: string,
+		receiptImportId: string,
+		expectedVersion: number,
+		job: NewReceiptProcessingJobRecord,
+		updatedAt: Date
+	): Promise<ReceiptImportAggregateRecord | undefined> => {
+		const updated = database.transaction((transaction) => {
+			const updatedImport = transaction.update(receiptImports)
+				.set({
+					status: 'queued',
+					updatedAt,
+					version: sql`${receiptImports.version} + 1`
+				})
+				.where(and(
+					eq(receiptImports.householdId, householdId),
+					eq(receiptImports.id, receiptImportId),
+					eq(receiptImports.status, 'failed'),
+					eq(receiptImports.version, expectedVersion)
+				))
+				.returning()
+				.get() as ReceiptImportRecord | undefined;
+
+			if (updatedImport === undefined) {
+				return false;
+			}
+
+			transaction.insert(receiptProcessingJobs).values(job).run();
+
+			return true;
+		});
+
+		return updated ? findById(householdId, receiptImportId) : undefined;
+	};
+
 	const markApprovalStarted = async (
 		householdId: string,
 		receiptImportId: string,
@@ -584,6 +626,7 @@ export function createReceiptImportRepository(database: AppDatabase): ReceiptImp
 		markImageDeleted,
 		requestRevision,
 		restoreReviewAfterApprovalFailure,
+		retryFailedJob,
 		updateReview
 	};
 }

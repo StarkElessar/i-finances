@@ -142,6 +142,96 @@ describe('createLiteLlmClient', () => {
 		expect(result.receipt.totalAmountMinor).toBe(1_250);
 	});
 
+	it('requests JSON-mode output from the model', async () => {
+		let requestedResponseFormat: unknown;
+
+		vi.stubGlobal('fetch', vi.fn(async (_url: string, init: RequestInit) => {
+			const body = JSON.parse(init.body as string);
+
+			requestedResponseFormat = body.response_format;
+
+			return new Response(JSON.stringify({ choices: [{ message: { content: '{}' } }] }), { status: 200 });
+		}));
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+
+		await expect(client.processReceiptImage({
+			categories: [],
+			contacts: [],
+			imageBytes: new Uint8Array([1]),
+			imageContentType: 'image/jpeg',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		})).rejects.toThrow();
+
+		expect(requestedResponseFormat).toEqual({ type: 'json_object' });
+	});
+
+	it('retries with a fresh request when the model answers with no JSON at all, and keeps the retried result', async () => {
+		const modelJson = {
+			categorizedItems: [{ categoryId: null, confidence: null, itemIndex: 0 }],
+			rawOcrText: 'Продукты 12.50',
+			receipt: {
+				contactId: null,
+				currency: 'BYN',
+				happenedOn: '2026-08-08',
+				items: [{
+					discountMinor: 0,
+					name: 'Продукты',
+					quantity: 1,
+					totalMinor: 1_250,
+					unitPriceMinor: 1_250
+				}],
+				merchant: { address: null, displayName: 'Магазин', legalName: null, unp: null },
+				totalAmountMinor: 1_250
+			},
+			warnings: []
+		};
+
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(new Response(JSON.stringify({
+				choices: [{ message: { content: 'Извините, не могу разобрать это изображение.' } }]
+			}), { status: 200 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({
+				choices: [{ message: { content: JSON.stringify(modelJson) } }]
+			}), { status: 200 }));
+
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+		const result = await client.processReceiptImage({
+			categories: [],
+			contacts: [],
+			imageBytes: new Uint8Array([1, 2, 3]),
+			imageContentType: 'image/jpeg',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(result.receipt.totalAmountMinor).toBe(1_250);
+	});
+
+	it('fails with the raw model output attached once every retry still has no JSON', async () => {
+		vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({
+			choices: [{ message: { content: 'Извините, не могу разобрать это изображение.' } }]
+		}), { status: 200 })));
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+
+		await expect(client.processReceiptImage({
+			categories: [],
+			contacts: [],
+			imageBytes: new Uint8Array([1]),
+			imageContentType: 'image/jpeg',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		})).rejects.toThrow(/Извините, не могу разобрать/);
+	});
+
 	it('throws when the LiteLLM response is not ok', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => new Response('server error', { status: 500 })));
 

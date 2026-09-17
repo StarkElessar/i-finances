@@ -1,3 +1,9 @@
+export {
+	approveReceipt,
+	getReceiptImports,
+	requestReceiptRevision,
+	retryReceiptImport
+} from './receipt-import.client';
 export type {
 	ApproveReceiptInput,
 	CompleteReceiptJobInput,
@@ -21,8 +27,3 @@ export {
 	requestReceiptRevisionInputSchema,
 	workerIdentitySchema
 } from './receipt-import.contract';
-export {
-	approveReceipt,
-	getReceiptImports,
-	requestReceiptRevision
-} from './receipt-import.client';

@@ -17,6 +17,8 @@ import {
 	type ReceiptWorkerResult,
 	type RequestReceiptRevisionInput,
 	requestReceiptRevisionInputSchema,
+	type RetryReceiptImportInput,
+	retryReceiptImportInputSchema,
 	type UpdateReceiptReviewInput,
 	updateReceiptReviewInputSchema
 } from '@i-finances/contracts';
@@ -186,6 +188,44 @@ export class ReceiptImportService {
 			input.id,
 			input.version,
 			input.comment,
+			{
+				attempt: 0,
+				completedAt: null,
+				createdAt: timestamp,
+				id: this.createId(),
+				lastError: null,
+				receiptImportId: input.id,
+				requestedPipelineVersion: REQUESTED_PIPELINE_VERSION,
+				resultSha256: null,
+				status: 'queued',
+				updatedAt: timestamp,
+				version: 1
+			},
+			timestamp
+		);
+
+		if (updated === undefined) {
+			throw new ReceiptImportVersionConflictError();
+		}
+
+		return toReceiptImport(updated);
+	}
+
+	/**
+	 * Re-queues a permanently failed import for another processing attempt, without the user
+	 * having to re-photograph and re-upload the same receipt.
+	 */
+	public async retry(
+		userId: string,
+		unsafeInput: RetryReceiptImportInput
+	): Promise<ReceiptImport> {
+		const input = retryReceiptImportInputSchema.parse(unsafeInput);
+		const current = await this.requireAggregate(userId, input.id);
+		const timestamp = this.now();
+		const updated = await this.dependencies.receiptImportRepository.retryFailedJob(
+			current.householdId,
+			input.id,
+			input.version,
 			{
 				attempt: 0,
 				completedAt: null,

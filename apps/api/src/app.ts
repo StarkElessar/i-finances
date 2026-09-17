@@ -107,6 +107,7 @@ export function createApiApp(
 		app.post('/api/receipt-imports', receiptImportController.create());
 		app.get('/api/receipt-imports/:id/image', receiptImportController.image());
 		app.post('/api/receipt-imports/:id/revision', receiptImportController.requestRevision());
+		app.post('/api/receipt-imports/:id/retry', receiptImportController.retry());
 		app.put('/api/receipt-imports/:id/review', receiptImportController.updateReview());
 		app.post('/api/receipt-imports/:id/approve', receiptImportController.approve());
 	}

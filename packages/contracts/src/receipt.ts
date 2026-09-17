@@ -182,6 +182,13 @@ export const requestReceiptRevisionInputSchema = z.object({
 
 export type RequestReceiptRevisionInput = z.infer<typeof requestReceiptRevisionInputSchema>;
 
+export const retryReceiptImportInputSchema = z.object({
+	id: entityIdSchema,
+	version: z.number().int().positive()
+});
+
+export type RetryReceiptImportInput = z.infer<typeof retryReceiptImportInputSchema>;
+
 export const approveReceiptOperationInputSchema = z.object({
 	// Zero is valid: promo/loyalty lines on real receipts are priced at 0.
 	amountMinor: nonnegativeIntegerSchema,

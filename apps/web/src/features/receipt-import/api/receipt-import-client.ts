@@ -13,6 +13,8 @@ import {
 	receiptImportCommandResultSchema,
 	type RequestReceiptRevisionInput,
 	requestReceiptRevisionInputSchema,
+	type RetryReceiptImportInput,
+	retryReceiptImportInputSchema,
 	type UpdateReceiptReviewInput,
 	updateReceiptReviewInputSchema
 } from '@i-finances/contracts';
@@ -59,6 +61,16 @@ export class ReceiptImportClient {
 
 		return this.client.post(
 			`/api/receipt-imports/${encodeURIComponent(parsedInput.id)}/approve`,
+			parsedInput,
+			receiptImportCommandResultSchema
+		);
+	}
+
+	public retry(input: RetryReceiptImportInput): Promise<ReceiptImportCommandResult> {
+		const parsedInput = retryReceiptImportInputSchema.parse(input);
+
+		return this.client.post(
+			`/api/receipt-imports/${encodeURIComponent(parsedInput.id)}/retry`,
 			parsedInput,
 			receiptImportCommandResultSchema
 		);

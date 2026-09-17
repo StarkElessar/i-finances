@@ -20,6 +20,7 @@ import {
 	receiptImportCollectionSchema,
 	receiptImportCommandResultSchema,
 	requestReceiptRevisionInputSchema,
+	retryReceiptImportInputSchema,
 	updateReceiptReviewInputSchema
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
@@ -103,6 +104,16 @@ export class ReceiptImportHttpController {
 				context,
 				requestReceiptRevisionInputSchema,
 				(input, userId) => this.receiptImportService.requestRevision(userId, input)
+			);
+		};
+	}
+
+	public retry() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			return this.executeCommand(
+				context,
+				retryReceiptImportInputSchema,
+				(input, userId) => this.receiptImportService.retry(userId, input)
 			);
 		};
 	}

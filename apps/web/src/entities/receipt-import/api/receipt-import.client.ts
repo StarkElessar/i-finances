@@ -1,11 +1,12 @@
-import { ReceiptImportClient } from '@/features/receipt-import/api';
-
 import { resolveCommandResult } from '@/shared/api';
+
+import { ReceiptImportClient } from '@/features/receipt-import/api';
 
 import type {
 	ApproveReceiptInput,
 	ReceiptImport,
-	RequestReceiptRevisionInput
+	RequestReceiptRevisionInput,
+	RetryReceiptImportInput
 } from '@i-finances/contracts';
 import { receiptImportCommandResultSchema } from '@i-finances/contracts';
 import { action, query } from '@solidjs/router';
@@ -31,4 +32,12 @@ export const requestReceiptRevision = action(
 		receiptImportCommandResultSchema
 	),
 	'request-receipt-revision'
+);
+
+export const retryReceiptImport = action(
+	(input: RetryReceiptImportInput) => resolveCommandResult(
+		() => client.retry(input),
+		receiptImportCommandResultSchema
+	),
+	'retry-receipt-import'
 );
