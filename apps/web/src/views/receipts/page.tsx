@@ -14,6 +14,7 @@ import { getAccounts } from '@/entities/account/api';
 import type {
 	ReceiptImport,
 	ReceiptImportStatus,
+	ReceiptProcessingJob,
 	ReceiptWorkerResult
 } from '@/entities/receipt-import';
 import {
@@ -96,6 +97,29 @@ function formatMinor(amountMinor: number): string {
 	}).format(amountMinor / 100);
 }
 
+function formatDuration(durationMs: number): string {
+	const totalSeconds = Math.max(0, Math.round(durationMs / 1_000));
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+
+	return minutes > 0 ? `${minutes} мин ${seconds} с` : `${seconds} с`;
+}
+
+// `completedAt` is set for both a successful and a failed attempt, so this is a
+// valid total for any terminal job; for one still running it falls back to "now".
+function getProcessingDurationMs(job: ReceiptProcessingJob): number {
+	const startedAt = new Date(job.createdAt).getTime();
+	const endedAt = job.completedAt === null ? Date.now() : new Date(job.completedAt).getTime();
+
+	return endedAt - startedAt;
+}
+
+function formatProcessingDuration(job: ReceiptProcessingJob): string {
+	const durationLabel = formatDuration(getProcessingDurationMs(job));
+
+	return job.completedAt === null ? `${durationLabel}…` : durationLabel;
+}
+
 function getMerchantName(result: ReceiptWorkerResult): string {
 	return result.receipt.merchant.displayName
 		?? result.receipt.merchant.legalName
@@ -131,6 +155,7 @@ function UploadDialog(props: UploadDialogProps) {
 	const [error, setError] = createSignal<string>();
 	const [isUploading, setIsUploading] = createSignal(false);
 	const [selectedFileName, setSelectedFileName] = createSignal<string>();
+	const [uploadDurationMs, setUploadDurationMs] = createSignal<number>();
 
 	const handleOpenChange = (open: boolean) => {
 		if (isUploading()) {
@@ -142,6 +167,7 @@ function UploadDialog(props: UploadDialogProps) {
 		if (!open) {
 			setError(undefined);
 			setSelectedFileName(undefined);
+			setUploadDurationMs(undefined);
 		}
 	};
 
@@ -167,6 +193,8 @@ function UploadDialog(props: UploadDialogProps) {
 		setError(undefined);
 		setIsUploading(true);
 
+		const uploadStartedAt = performance.now();
+
 		try {
 			const formData = new FormData();
 
@@ -183,17 +211,22 @@ function UploadDialog(props: UploadDialogProps) {
 
 			if (!response.ok || !payload.ok) {
 				setError(payload.message ?? 'Не удалось загрузить чек.');
+				setIsUploading(false);
 				return;
 			}
 
+			setUploadDurationMs(performance.now() - uploadStartedAt);
 			await props.onUploaded();
+
+			// Keep the success message on screen for a moment instead of closing
+			// instantly, so the just-measured upload duration is actually readable.
+			await new Promise((resolve) => setTimeout(resolve, 1_200));
+
 			setIsUploading(false);
 			handleOpenChange(false);
 		}
 		catch {
 			setError('Не удалось загрузить чек. Проверьте соединение.');
-		}
-		finally {
 			setIsUploading(false);
 		}
 	};
@@ -210,21 +243,40 @@ function UploadDialog(props: UploadDialogProps) {
 				</Dialog.Header>
 				<Dialog.Body>
 					<div class={css.uploadBody}>
-						<label class={css.filePicker}>
-							<Camera aria-hidden='true' size={32}/>
-							<strong>
-								{selectedFileName() ?? 'Выбрать фотографию'}
-							</strong>
-							<span>JPEG, PNG или HEIC, не больше 15 МБ</span>
-							<input
-								ref={imageInput}
-								accept='image/jpeg,image/png,image/heic,image/heif'
-								type='file'
-								onChange={handleFileChange}
-							/>
-						</label>
-						<Show when={error()}>
-							<p class={css.formError} role='alert'>{error()}</p>
+						<Show
+							fallback={(
+								<>
+									<label class={css.filePicker}>
+										<Camera aria-hidden='true' size={32}/>
+										<strong>
+											{selectedFileName() ?? 'Выбрать фотографию'}
+										</strong>
+										<span>JPEG, PNG или HEIC, не больше 15 МБ</span>
+										<input
+											ref={imageInput}
+											accept='image/jpeg,image/png,image/heic,image/heif'
+											type='file'
+											onChange={handleFileChange}
+										/>
+									</label>
+									<Show when={error()}>
+										<p class={css.formError} role='alert'>{error()}</p>
+									</Show>
+								</>
+							)}
+							when={uploadDurationMs()}
+						>
+							{(durationMs) => (
+								<div class={css.uploadSuccess}>
+									<Check aria-hidden='true' size={22}/>
+									<div>
+										<strong>
+											{`Загружено за ${formatDuration(durationMs())}`}
+										</strong>
+										<p>Чек поставлен в очередь на обработку.</p>
+									</div>
+								</div>
+							)}
 						</Show>
 					</div>
 				</Dialog.Body>
@@ -589,6 +641,14 @@ function ReviewDialog(props: ReviewDialogProps) {
 												{receiptImport().latestJob.attempt}
 											</strong>
 										</div>
+										<div>
+											<span>Обработка</span>
+											<strong>
+												{formatProcessingDuration(
+													receiptImport().latestJob
+												)}
+											</strong>
+										</div>
 									</div>
 
 									<Show
@@ -918,6 +978,15 @@ function ReceiptsContent() {
 			width: 220,
 			clientTemplate: ({ dataItem }) => (
 				<StatusBadge status={dataItem.status}/>
+			)
+		},
+		{
+			accessor: (row) => getProcessingDurationMs(row.latestJob),
+			header: 'Обработка',
+			id: 'duration',
+			width: 140,
+			clientTemplate: ({ dataItem }) => (
+				formatProcessingDuration(dataItem.latestJob)
 			)
 		},
 		{
