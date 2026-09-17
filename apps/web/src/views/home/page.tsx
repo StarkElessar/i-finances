@@ -85,7 +85,7 @@ import type { AccountDialogValue } from './ui/account-dialog';
 import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
 import { OperationDetailsPanel } from './ui/operation-details-panel';
-import { OperationsTable } from './ui/operations-table';
+import { OperationsWorkspace } from './ui/operations-workspace';
 import type {
 	TransferDialogMode,
 	TransferDialogSubmitValue
@@ -1051,7 +1051,7 @@ function HomeContent(props: HomeContentProps) {
 													</div>
 												</header>
 
-												<OperationsTable
+												<OperationsWorkspace
 													account={account}
 													categories={categories()}
 													periodFrom={periodFrom()}

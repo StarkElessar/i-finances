@@ -1,0 +1,122 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+.root {
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: var(--space-4);
+
+    min-inline-size: 0;
+    min-block-size: 0;
+}
+
+.toolbar {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: var(--space-4);
+    align-items: center;
+}
+
+.toolbar-group {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+    min-inline-size: 0;
+}
+
+.toolbar-actions {
+    justify-self: end;
+}
+
+.period-switch {
+    display: flex;
+    gap: var(--space-1);
+
+    padding: var(--space-1);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.period-button {
+    padding: var(--space-3) var(--space-5);
+    border: 0;
+    border-radius: var(--radius-sm);
+
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+
+    background-color: transparent;
+
+    &:not(.period-button-active) {
+        cursor: pointer;
+
+        &:hover {
+            color: var(--color-primary);
+            background-color: var(--color-surface);
+        }
+
+        &:focus-visible {
+            outline: 3px solid var(--color-focus-ring);
+            outline-offset: 1px;
+        }
+    }
+}
+
+.period-button-active {
+    color: var(--color-text-primary);
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+}
+
+.period-navigation {
+    display: flex;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    gap: var(--space-3);
+    align-items: center;
+    justify-self: center;
+}
+
+.period-label {
+    overflow: hidden;
+
+    min-inline-size: fn.rem(138);
+    max-inline-size: min(52vw, fn.rem(260));
+
+    font-size: var(--font-size-body-sm);
+    font-weight: var(--font-weight-bold);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.search-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.search-field {
+    flex: 1 1 0;
+}
+
+@include mx.media-mn(720) {
+    .toolbar {
+        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    }
+
+    .period-navigation {
+        grid-column: auto;
+        grid-row: auto;
+    }
+}
+
+@include mx.media-mx(520) {
+    .period-button {
+        padding-inline: var(--space-4);
+    }
+}
