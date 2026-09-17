@@ -165,18 +165,23 @@ async function postChatCompletion(
 
 /**
  * Calls the model for a JSON object, retrying with an identical fresh request (no reference to
- * the earlier bad answer) if extraction fails, since there's no conversation to carry over.
+ * the earlier bad answer) if the call fails outright or its content isn't extractable JSON, since
+ * there's no conversation to carry over. Covers both failure shapes seen in production: the
+ * proxy/model rejecting the request itself (e.g. an inconsistent `response_format` validation),
+ * and a 200 response whose content isn't a JSON object.
  */
 async function requestReceiptJson(
 	options: LiteLlmClientOptions,
 	body: Record<string, unknown>
 ): Promise<Record<string, unknown>> {
-	let lastFailure: { content: string; reason: string } | undefined;
+	let lastFailure: { content: string | undefined; reason: string } | undefined;
 
 	for (let attempt = 1; attempt <= MAX_MODEL_ATTEMPTS; attempt += 1) {
-		const content = await postChatCompletion(options, body);
+		let content: string | undefined;
 
 		try {
+			content = await postChatCompletion(options, body);
+
 			return extractJsonObject(content) as Record<string, unknown>;
 		}
 		catch (error: unknown) {
@@ -187,10 +192,11 @@ async function requestReceiptJson(
 		}
 	}
 
-	throw new Error(
-		`${lastFailure?.reason} (after ${MAX_MODEL_ATTEMPTS} attempts) `
-			+ `Raw model output: ${lastFailure?.content.slice(0, RAW_OUTPUT_SNIPPET_LENGTH)}`
-	);
+	const rawOutputSuffix = lastFailure?.content === undefined
+		? ''
+		: ` Raw model output: ${lastFailure.content.slice(0, RAW_OUTPUT_SNIPPET_LENGTH)}`;
+
+	throw new Error(`${lastFailure?.reason} (after ${MAX_MODEL_ATTEMPTS} attempts)${rawOutputSuffix}`);
 }
 
 export function createLiteLlmClient(options: LiteLlmClientOptions): LiteLlmClient {

@@ -232,6 +232,59 @@ describe('createLiteLlmClient', () => {
 		})).rejects.toThrow(/Извините, не могу разобрать/);
 	});
 
+	it('retries with a fresh request when the proxy rejects the request outright, and keeps the retried result', async () => {
+		// Reproduces production operation 561b96c1-ceee-4d10-a13c-c2e5477a8b51: the same
+		// request, resubmitted unchanged, succeeded on the very next attempt — this is the
+		// corporate LiteLLM proxy's response_format validation being flaky, not a real problem
+		// with our prompt (the request replayed outside the app used the exact same prompt text).
+		const modelJson = {
+			categorizedItems: [{ categoryId: null, confidence: null, itemIndex: 0 }],
+			rawOcrText: 'Продукты 12.50',
+			receipt: {
+				contactId: null,
+				currency: 'BYN',
+				happenedOn: '2026-08-08',
+				items: [{
+					discountMinor: 0,
+					name: 'Продукты',
+					quantity: 1,
+					totalMinor: 1_250,
+					unitPriceMinor: 1_250
+				}],
+				merchant: { address: null, displayName: 'Магазин', legalName: null, unp: null },
+				totalAmountMinor: 1_250
+			},
+			warnings: []
+		};
+
+		const fetchMock = vi.fn()
+			.mockResolvedValueOnce(new Response(JSON.stringify({
+				error: {
+					message: "litellm.BadRequestError: Prompt must contain the word 'json' "
+						+ "in some form to use 'response_format' of type 'json_object'."
+				}
+			}), { status: 400 }))
+			.mockResolvedValueOnce(new Response(JSON.stringify({
+				choices: [{ message: { content: JSON.stringify(modelJson) } }]
+			}), { status: 200 }));
+
+		vi.stubGlobal('fetch', fetchMock);
+
+		const client = createLiteLlmClient(BASE_OPTIONS);
+		const result = await client.processReceiptImage({
+			categories: [],
+			contacts: [],
+			imageBytes: new Uint8Array([1, 2, 3]),
+			imageContentType: 'image/jpeg',
+			previousResult: null,
+			reviewComment: '',
+			startedAt: new Date('2026-08-08T10:00:00.000Z')
+		});
+
+		expect(fetchMock).toHaveBeenCalledTimes(2);
+		expect(result.receipt.totalAmountMinor).toBe(1_250);
+	});
+
 	it('throws when the LiteLLM response is not ok', async () => {
 		vi.stubGlobal('fetch', vi.fn(async () => new Response('server error', { status: 500 })));
 
