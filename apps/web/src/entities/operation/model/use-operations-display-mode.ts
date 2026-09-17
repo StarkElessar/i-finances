@@ -13,12 +13,25 @@ import type { OperationsDisplayModePreference, ResolvedOperationsDisplayMode } f
 /** Matches the `768px` breakpoint token used elsewhere in `apps/web`'s SCSS. */
 const WIDE_VIEWPORT_QUERY = '(min-width: 768px)';
 
+/**
+ * Reads the stored preference, defaulting to `'auto'` if `localStorage` is
+ * unavailable or throws (e.g. blocked site data raising `SecurityError`).
+ */
+function readInitialPreference(): OperationsDisplayModePreference {
+	try {
+		return readStoredOperationsDisplayModePreference(window.localStorage);
+	}
+	catch {
+		return 'auto';
+	}
+}
+
 // Module-level singleton: every caller of `useOperationsDisplayMode()` shares
 // this exact signal, so writing the preference from the profile settings
 // dialog is immediately visible on the operations page. See the plan's
 // Task 2 note for why this must stay at module scope.
 const [preference, setPreferenceSignal] = createSignal<OperationsDisplayModePreference>(
-	readStoredOperationsDisplayModePreference(window.localStorage)
+	readInitialPreference()
 );
 
 export type OperationsDisplayMode = {
@@ -32,7 +45,15 @@ export function useOperationsDisplayMode(): OperationsDisplayMode {
 	const resolvedMode = createMemo(() => resolveOperationsDisplayMode(preference(), isWideViewport()));
 
 	const setPreference = (nextPreference: OperationsDisplayModePreference): void => {
-		writeStoredOperationsDisplayModePreference(window.localStorage, nextPreference);
+		try {
+			writeStoredOperationsDisplayModePreference(window.localStorage, nextPreference);
+		}
+		catch {
+			// Nothing actionable to do about a full/blocked localStorage for a
+			// cosmetic preference — fall through to still update the in-memory
+			// signal so the UI responds for the current session.
+		}
+
 		setPreferenceSignal(nextPreference);
 	};
 

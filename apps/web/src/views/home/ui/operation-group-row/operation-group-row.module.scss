@@ -38,6 +38,7 @@
 
 .group-category-icon {
     display: grid;
+    flex: none;
     place-items: center;
 
     inline-size: fn.rem(20);

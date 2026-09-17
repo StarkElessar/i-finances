@@ -92,7 +92,11 @@ export function ProfileMenu(props: ProfileMenuProps) {
 					<PasskeyRegistrationMenuItem/>
 					<ContextMenu.Item
 						onSelect={() => {
-							setIsSettingsOpen(true);
+							// Deferred by one tick so this runs after ContextMenu's own
+							// close()/focusTrigger() setTimeout(...,0) restores focus to
+							// the trigger button — otherwise the two timers race and the
+							// dialog's focus-into-content can lose to the menu's restore.
+							setTimeout(() => setIsSettingsOpen(true), 0);
 						}}
 					>
 						Профиль

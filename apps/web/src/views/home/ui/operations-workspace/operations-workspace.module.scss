@@ -131,4 +131,11 @@
     .period-button {
         padding-inline: var(--space-4);
     }
+
+    .sort-field {
+        inline-size: auto;
+        min-inline-size: 0;
+        max-inline-size: fn.rem(110);
+        flex: 1 1 auto;
+    }
 }
