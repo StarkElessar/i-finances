@@ -13,6 +13,8 @@ export {
 	normalizeOperationComment,
 	normalizeOperationTitle
 } from './model/normalization';
+export type { OperationsDisplayMode } from './model/use-operations-display-mode';
+export { useOperationsDisplayMode } from './model/use-operations-display-mode';
 export type { OperationPeriodSearchState } from './model/period';
 export {
 	canMoveToNextOperationPeriod,
