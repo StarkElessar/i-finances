@@ -1,4 +1,14 @@
 export * from './api';
+export type {
+	OperationsDisplayModePreference,
+	ResolvedOperationsDisplayMode
+} from './model/display-mode';
+export {
+	OPERATIONS_DISPLAY_MODE_STORAGE_KEY,
+	readStoredOperationsDisplayModePreference,
+	resolveOperationsDisplayMode,
+	writeStoredOperationsDisplayModePreference
+} from './model/display-mode';
 export {
 	normalizeOperationComment,
 	normalizeOperationTitle
