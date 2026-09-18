@@ -1069,6 +1069,7 @@ function ReceiptsContent() {
 
 				<Grid
 					aria-label='Задачи по обработке чеков'
+					class={css.grid}
 					columns={columns}
 					data={receiptImports() ?? []}
 					emptyContent={(

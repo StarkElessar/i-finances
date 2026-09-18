@@ -2,8 +2,10 @@
 @use "@/shared/styles/mixins" as mx;
 
 .root {
-    overflow: auto;
+    overflow: hidden;
+    display: flex;
     flex: 1 1 0;
+    flex-direction: column;
 
     min-block-size: 0;
     padding-block: var(--space-7) calc(var(--space-12) + fn.rem(72));
@@ -16,20 +18,28 @@
 }
 
 .page {
-    display: grid;
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
     gap: var(--space-8);
-    align-content: start;
+
+    min-block-size: 0;
     inline-size: 100%;
 }
 
 .header {
     display: grid;
+    flex: none;
     gap: var(--space-5);
     align-items: start;
 
     @include mx.media-mn(640) {
         grid-template-columns: minmax(0, 1fr) auto;
     }
+}
+
+.grid {
+    flex: 1 1 0;
 }
 
 .header-content {
