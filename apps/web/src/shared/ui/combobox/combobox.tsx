@@ -25,6 +25,7 @@ import {
 import { Portal } from 'solid-js/web';
 
 const POPOVER_OFFSET = 4;
+const POPOVER_VIEWPORT_PADDING = 8;
 
 export type ComboboxOptionRenderState = {
 	active: Accessor<boolean>;
@@ -117,8 +118,10 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 				shift({ altBoundary: true }),
 				size({
 					altBoundary: true,
-					apply({ elements, rects }) {
+					padding: POPOVER_VIEWPORT_PADDING,
+					apply({ availableHeight, elements, rects }) {
 						elements.floating.style.inlineSize = `${rects.reference.width}px`;
+						elements.floating.style.maxBlockSize = `${availableHeight}px`;
 					}
 				}),
 				hide({ strategy: 'referenceHidden' })
@@ -266,8 +269,25 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 			return;
 		}
 
-		const cleanup = autoUpdate(reference, popover, () => {
+		const handleUpdate = (): void => {
 			void updatePopoverPosition();
+		};
+		const cleanup = autoUpdate(reference, popover, handleUpdate);
+
+		// iOS Safari never fires `window`'s own `resize` when the on-screen
+		// keyboard opens/closes — only the layout viewport is reported there,
+		// and it doesn't shrink. `visualViewport` is what actually shrinks, and
+		// it fires its own resize/scroll events, which `autoUpdate` above does
+		// not listen to. Without this, the popover keeps the position/height it
+		// computed before the keyboard appeared and ends up partly hidden
+		// underneath it.
+		const { visualViewport } = window;
+
+		visualViewport?.addEventListener('resize', handleUpdate);
+		visualViewport?.addEventListener('scroll', handleUpdate);
+		onCleanup(() => {
+			visualViewport?.removeEventListener('resize', handleUpdate);
+			visualViewport?.removeEventListener('scroll', handleUpdate);
 		});
 
 		onCleanup(cleanup);

@@ -161,7 +161,7 @@
     display: flex;
     flex-direction: column;
 
-    block-size: fn.rem(360);
+    max-block-size: fn.rem(360);
     padding: var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -196,6 +196,9 @@
         min-inline-size: 0;
         border: 0;
 
+        // Below 16px, Safari on iOS auto-zooms the page on focus — this isn't
+        // just a visual choice.
+        font-size: var(--font-size-body-lg);
         color: var(--color-text-primary);
 
         background: transparent;
