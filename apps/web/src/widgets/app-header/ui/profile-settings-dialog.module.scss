@@ -45,3 +45,14 @@
     background-color: var(--color-surface);
     box-shadow: var(--shadow-sm);
 }
+
+.display-name-form {
+    display: flex;
+    gap: var(--space-3);
+    align-items: start;
+
+    > :first-child {
+        flex: 1 1 auto;
+        min-inline-size: 0;
+    }
+}

@@ -18,7 +18,9 @@ import {
 	type PasswordSignInResult,
 	passwordSignInResultSchema,
 	type PasswordSignOutResult,
-	passwordSignOutResultSchema
+	passwordSignOutResultSchema,
+	type UpdateDisplayNameResult,
+	updateDisplayNameResultSchema
 } from '@i-finances/contracts';
 import {
 	browserSupportsWebAuthn,
@@ -75,6 +77,27 @@ export class AuthClient {
 			{},
 			passwordSignOutResultSchema
 		);
+	}
+
+	public async updateDisplayName(displayName: string): Promise<UpdateDisplayNameResult> {
+		try {
+			return await this.client.put(
+				'/api/auth/display-name',
+				{ displayName },
+				updateDisplayNameResultSchema
+			);
+		}
+		catch (error: unknown) {
+			if (error instanceof ApiHttpError) {
+				const result = updateDisplayNameResultSchema.safeParse(error.body);
+
+				if (result.success) {
+					return result.data;
+				}
+			}
+
+			throw error;
+		}
 	}
 
 	public async signInWithPasskey(returnTo?: string): Promise<PasskeySignInResult> {

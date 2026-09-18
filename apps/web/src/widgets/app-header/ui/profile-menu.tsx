@@ -118,7 +118,11 @@ export function ProfileMenu(props: ProfileMenuProps) {
 					</ContextMenu.Item>
 				</ContextMenu.Content>
 			</ContextMenu.Root>
-			<ProfileSettingsDialog open={isSettingsOpen()} onOpenChange={setIsSettingsOpen}/>
+			<ProfileSettingsDialog
+				authClient={props.authClient}
+				open={isSettingsOpen()}
+				onOpenChange={setIsSettingsOpen}
+			/>
 		</>
 	);
 }

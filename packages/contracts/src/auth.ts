@@ -70,3 +70,39 @@ export const passwordSignOutResultSchema = z.object({
 });
 
 export type PasswordSignOutResult = z.infer<typeof passwordSignOutResultSchema>;
+
+export const updateDisplayNameErrorCodes = [
+	'invalid-input',
+	'invalid-origin',
+	'unauthenticated',
+	'unexpected'
+] as const;
+
+export type UpdateDisplayNameErrorCode = (typeof updateDisplayNameErrorCodes)[number];
+
+export const updateDisplayNameErrorMessageByCode: Record<UpdateDisplayNameErrorCode, string> = {
+	'invalid-input': 'Введите имя от 1 до 100 символов.',
+	'invalid-origin': 'Не удалось подтвердить источник запроса. Обновите страницу и попробуйте снова.',
+	unauthenticated: 'Сессия истекла. Войдите заново.',
+	unexpected: 'Не удалось сохранить имя. Попробуйте ещё раз.'
+};
+
+export const updateDisplayNameInputSchema = z.object({
+	displayName: z.string().trim().min(1, 'Введите имя.').max(100, 'Имя слишком длинное.')
+});
+
+export type UpdateDisplayNameInput = z.infer<typeof updateDisplayNameInputSchema>;
+
+export const updateDisplayNameResultSchema = z.discriminatedUnion('ok', [
+	z.object({
+		displayName: z.string(),
+		ok: z.literal(true)
+	}),
+	z.object({
+		errorCode: z.enum(updateDisplayNameErrorCodes),
+		message: z.string(),
+		ok: z.literal(false)
+	})
+]);
+
+export type UpdateDisplayNameResult = z.infer<typeof updateDisplayNameResultSchema>;

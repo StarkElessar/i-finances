@@ -47,4 +47,10 @@ export class PasswordUserRepository {
 
 		return user;
 	}
+
+	public async updateDisplayName(userId: string, displayName: string): Promise<void> {
+		await this.database.update(users)
+			.set({ displayName, updatedAt: new Date() })
+			.where(eq(users.id, userId));
+	}
 }

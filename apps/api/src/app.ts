@@ -38,6 +38,7 @@ export function createApiApp(
 		app.get('/api/auth/session', authController.currentSession());
 		app.post('/api/auth/sign-in', authController.signIn());
 		app.post('/api/auth/sign-out', authController.signOut());
+		app.put('/api/auth/display-name', authController.updateDisplayName());
 	}
 
 	if (dependencies.accountController !== undefined) {

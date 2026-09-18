@@ -8,6 +8,7 @@ import type { AuthConfig } from '@/modules/auth';
 import {
 	LoginRateLimiter,
 	PasswordSignInService,
+	PasswordUserRepository,
 	SessionRepository,
 	SessionService
 } from '@/modules/auth';
@@ -17,6 +18,7 @@ import {
 	passwordSignInResultSchema
 } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -86,6 +88,7 @@ function createAuthApp(options: { passwordValid?: boolean } = {}) {
 		passwordSignInService,
 		sessionService,
 		sessionResolver,
+		new PasswordUserRepository(database),
 		AUTH_CONFIG
 	);
 
@@ -204,5 +207,150 @@ describe('password session API', () => {
 			ok: false
 		});
 		expect(response.headers.get('set-cookie')).toBeNull();
+	});
+});
+
+async function signIn(app: ReturnType<typeof createAuthApp>): Promise<string> {
+	const response = await app.request('/api/auth/sign-in', {
+		body: JSON.stringify({
+			password: 'correct-password',
+			username: 'sergei'
+		}),
+		headers: {
+			'content-type': 'application/json',
+			origin: AUTH_CONFIG.origin
+		},
+		method: 'POST'
+	});
+
+	return response.headers.get('set-cookie')?.split(';')[0] ?? '';
+}
+
+describe('update display name API', () => {
+	it('updates the display name and persists it', async () => {
+		const app = createAuthApp();
+		const cookie = await signIn(app);
+
+		const response = await app.request('/api/auth/display-name', {
+			body: JSON.stringify({ displayName: '  Новый Сергей  ' }),
+			headers: {
+				cookie,
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin
+			},
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({
+			displayName: 'Новый Сергей',
+			ok: true
+		});
+
+		const [persisted] = await database.select({ displayName: users.displayName })
+			.from(users)
+			.where(eq(users.id, USER_ID));
+
+		expect(persisted?.displayName).toBe('Новый Сергей');
+
+		const currentResponse = await app.request('/api/auth/session', {
+			headers: { cookie }
+		});
+
+		expect(currentSessionResponseSchema.parse(await currentResponse.json())).toEqual({
+			authenticated: true,
+			user: {
+				displayName: 'Новый Сергей',
+				id: USER_ID,
+				username: 'sergei'
+			}
+		});
+	});
+
+	it('rejects an empty display name', async () => {
+		const app = createAuthApp();
+		const cookie = await signIn(app);
+
+		const response = await app.request('/api/auth/display-name', {
+			body: JSON.stringify({ displayName: '   ' }),
+			headers: {
+				cookie,
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin
+			},
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({
+			errorCode: 'invalid-input',
+			ok: false
+		});
+	});
+
+	it('rejects a display name longer than 100 characters', async () => {
+		const app = createAuthApp();
+		const cookie = await signIn(app);
+
+		const response = await app.request('/api/auth/display-name', {
+			body: JSON.stringify({ displayName: 'a'.repeat(101) }),
+			headers: {
+				cookie,
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin
+			},
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(400);
+		expect(await response.json()).toMatchObject({
+			errorCode: 'invalid-input',
+			ok: false
+		});
+	});
+
+	it('rejects the request without an active session', async () => {
+		const app = createAuthApp();
+
+		const response = await app.request('/api/auth/display-name', {
+			body: JSON.stringify({ displayName: 'Кто-то' }),
+			headers: {
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin
+			},
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(401);
+		expect(await response.json()).toMatchObject({
+			errorCode: 'unauthenticated',
+			ok: false
+		});
+	});
+
+	it('rejects mutations without a valid origin hint', async () => {
+		const app = createAuthApp();
+		const cookie = await signIn(app);
+
+		const response = await app.request('/api/auth/display-name', {
+			body: JSON.stringify({ displayName: 'Кто-то' }),
+			headers: {
+				cookie,
+				'content-type': 'application/json'
+			},
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toMatchObject({
+			errorCode: 'invalid-origin',
+			ok: false
+		});
+
+		const [persisted] = await database.select({ displayName: users.displayName })
+			.from(users)
+			.where(eq(users.id, USER_ID));
+
+		expect(persisted?.displayName).toBe('Sergei Test');
 	});
 });

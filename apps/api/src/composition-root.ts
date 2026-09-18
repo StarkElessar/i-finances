@@ -185,6 +185,7 @@ export function createApiDependencies(): {
 			passwordSignInService,
 			sessionService,
 			sessionResolver,
+			passwordUserRepository,
 			authConfig
 		),
 		accountController: new AccountHttpController(

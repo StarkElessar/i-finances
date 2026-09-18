@@ -30,7 +30,14 @@ export {
 	type PasswordSignInResult,
 	passwordSignInResultSchema,
 	type PasswordSignOutResult,
-	passwordSignOutResultSchema
+	passwordSignOutResultSchema,
+	type UpdateDisplayNameErrorCode,
+	updateDisplayNameErrorCodes,
+	updateDisplayNameErrorMessageByCode,
+	type UpdateDisplayNameInput,
+	updateDisplayNameInputSchema,
+	type UpdateDisplayNameResult,
+	updateDisplayNameResultSchema
 } from './auth';
 export {
 	CATEGORY_LIST_STATUSES,

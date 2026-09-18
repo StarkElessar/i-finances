@@ -1,4 +1,4 @@
-import type { SessionService } from '@/modules/auth';
+import type { PasswordUserRepository, SessionService } from '@/modules/auth';
 import type { PasswordSignInService } from '@/modules/auth';
 import {
 	type AuthConfig,
@@ -11,7 +11,11 @@ import {
 	passwordSignInErrorMessageByCode,
 	type PasswordSignInResult,
 	type PasswordSignOutResult,
-	passwordSignOutResultSchema
+	passwordSignOutResultSchema,
+	type UpdateDisplayNameErrorCode,
+	updateDisplayNameErrorMessageByCode,
+	updateDisplayNameInputSchema,
+	type UpdateDisplayNameResult
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
 
@@ -33,6 +37,7 @@ export class AuthHttpController {
 		private readonly passwordSignInService: PasswordSignInService,
 		private readonly sessionService: SessionService,
 		private readonly sessionResolver: RequestSessionResolver,
+		private readonly passwordUserRepository: PasswordUserRepository,
 		config: AuthConfig = getAuthConfig()
 	) {
 		this.config = config;
@@ -116,6 +121,47 @@ export class AuthHttpController {
 		};
 	}
 
+	public updateDisplayName() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			try {
+				assertSameOriginMutation(context.req.raw, this.config);
+			}
+			catch (error: unknown) {
+				if (error instanceof InvalidMutationOriginError) {
+					return this.updateDisplayNameFailure(context, 'invalid-origin', 403);
+				}
+
+				throw error;
+			}
+
+			const session = await this.sessionResolver.resolve(context.req.raw);
+
+			if (session === null) {
+				return this.updateDisplayNameFailure(context, 'unauthenticated', 401);
+			}
+
+			const parsed = updateDisplayNameInputSchema.safeParse(await this.readBody(context));
+
+			if (!parsed.success) {
+				return this.updateDisplayNameFailure(context, 'invalid-input', 400);
+			}
+
+			try {
+				await this.passwordUserRepository.updateDisplayName(session.user.id, parsed.data.displayName);
+
+				return context.json<UpdateDisplayNameResult>({
+					displayName: parsed.data.displayName,
+					ok: true
+				}, 200);
+			}
+			catch (error: unknown) {
+				console.error(error);
+
+				return this.updateDisplayNameFailure(context, 'unexpected', 500);
+			}
+		};
+	}
+
 	private async readBody(context: Context<ApiEnvironment>): Promise<unknown> {
 		try {
 			return await context.req.json();
@@ -160,5 +206,17 @@ export class AuthHttpController {
 		}
 
 		return 401;
+	}
+
+	private updateDisplayNameFailure(
+		context: Context<ApiEnvironment>,
+		errorCode: UpdateDisplayNameErrorCode,
+		status: AuthFailureStatus
+	): Response {
+		return context.json<UpdateDisplayNameResult>({
+			errorCode,
+			message: updateDisplayNameErrorMessageByCode[errorCode],
+			ok: false
+		}, status);
 	}
 }
