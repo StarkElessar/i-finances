@@ -1,4 +1,5 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 @use "@/shared/styles/tokens";
 
 :where(*, *::before, *::after) {
@@ -58,4 +59,17 @@ body {
     margin: 0;
     padding: 0;
     border: 0;
+}
+
+// Below 16px, Safari on iOS auto-zooms the whole page on focus, regardless
+// of which component the field belongs to. `!important` is deliberate here:
+// this must win over every component's own font-size (most of this app's
+// text sizes are 12-14px), and CSS Modules' generated class names make a
+// specificity-based override unreliable across Vite's chunking.
+@include mx.media-mx(767.984) {
+    input,
+    select,
+    textarea {
+        font-size: fn.rem(16) !important;
+    }
 }
