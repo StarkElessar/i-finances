@@ -196,9 +196,6 @@
         min-inline-size: 0;
         border: 0;
 
-        // Below 16px, Safari on iOS auto-zooms the page on focus — this isn't
-        // just a visual choice.
-        font-size: var(--font-size-body-lg);
         color: var(--color-text-primary);
 
         background: transparent;

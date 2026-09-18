@@ -61,15 +61,24 @@ body {
     border: 0;
 }
 
-// Below 16px, Safari on iOS auto-zooms the whole page on focus, regardless
-// of which component the field belongs to. `!important` is deliberate here:
-// this must win over every component's own font-size (most of this app's
-// text sizes are 12-14px), and CSS Modules' generated class names make a
-// specificity-based override unreliable across Vite's chunking.
-@include mx.media-mx(767.984) {
+// Mobile-first floor: below 16px, Safari on iOS auto-zooms the whole page on
+// focus, regardless of which component the field belongs to. No `!important`
+// needed — every component that sizes its own input/select/textarea does so
+// on a *wrapper* (e.g. TextField's `.control`) and lets the field itself
+// inherit, so a plain element selector here is already the only rule
+// touching the field's own font-size at this specificity. The min-width
+// override below hands sizing back to that inherited value once the device
+// is wide enough not to need the floor.
+input,
+select,
+textarea {
+    font-size: fn.rem(16);
+}
+
+@include mx.media-mn(768) {
     input,
     select,
     textarea {
-        font-size: fn.rem(16) !important;
+        font-size: inherit;
     }
 }

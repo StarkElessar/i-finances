@@ -98,7 +98,7 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 		setActiveIndex(0);
 	};
 
-	const updatePopoverPosition = async (): Promise<void> => {
+	const updatePopoverPosition = async (options: { closeIfReferenceHidden?: boolean } = {}): Promise<void> => {
 		const reference = controlElement();
 		const popover = popoverElement();
 
@@ -134,7 +134,16 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 			return;
 		}
 
-		if (position.middlewareData.hide?.referenceHidden) {
+		// `referenceHidden` means the trigger control is currently clipped out
+		// of view. On a normal scroll (autoUpdate's ancestorScroll) that means
+		// the popover lost its anchor and should close. But the on-screen
+		// keyboard opening also clips the trigger — by covering it, not by the
+		// user scrolling anything — and here the popover has already
+		// repositioned itself into the space still visible above the keyboard,
+		// so closing would fight the very keyboard-avoidance this update is
+		// for (visible symptom: tapping the search field on a lower-positioned
+		// combobox instantly closed it, right as the keyboard tried to open).
+		if (position.middlewareData.hide?.referenceHidden && (options.closeIfReferenceHidden ?? true)) {
 			close();
 			return;
 		}
@@ -282,12 +291,15 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 		// computed before the keyboard appeared and ends up partly hidden
 		// underneath it.
 		const { visualViewport } = window;
+		const handleVisualViewportChange = (): void => {
+			void updatePopoverPosition({ closeIfReferenceHidden: false });
+		};
 
-		visualViewport?.addEventListener('resize', handleUpdate);
-		visualViewport?.addEventListener('scroll', handleUpdate);
+		visualViewport?.addEventListener('resize', handleVisualViewportChange);
+		visualViewport?.addEventListener('scroll', handleVisualViewportChange);
 		onCleanup(() => {
-			visualViewport?.removeEventListener('resize', handleUpdate);
-			visualViewport?.removeEventListener('scroll', handleUpdate);
+			visualViewport?.removeEventListener('resize', handleVisualViewportChange);
+			visualViewport?.removeEventListener('scroll', handleVisualViewportChange);
 		});
 
 		onCleanup(cleanup);
