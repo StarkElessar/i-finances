@@ -281,7 +281,21 @@ export function Combobox<TOption>(props: ComboboxProps<TOption>) {
 		const handleUpdate = (): void => {
 			void updatePopoverPosition();
 		};
-		const cleanup = autoUpdate(reference, popover, handleUpdate);
+		// `elementResize`/`layoutShift` are disabled here because they fire on
+		// the popover's OWN size changes — and the visualViewport handler below
+		// changes that size (via `size()`'s maxBlockSize) on every keyboard
+		// animation frame. That self-triggered resize would otherwise call
+		// `handleUpdate` (default `closeIfReferenceHidden: true`) while the
+		// trigger is still legitimately covered by the keyboard, closing the
+		// popover a frame after it opened (symptom: search field tapped →
+		// keyboard starts sliding up → popover instantly closes → focus is
+		// lost → keyboard slides back down). `ancestorScroll`/`ancestorResize`
+		// stay on: those only fire for a real scroll/resize of the page, which
+		// should still close the popover when the trigger truly leaves view.
+		const cleanup = autoUpdate(reference, popover, handleUpdate, {
+			elementResize: false,
+			layoutShift: false
+		});
 
 		// iOS Safari never fires `window`'s own `resize` when the on-screen
 		// keyboard opens/closes — only the layout viewport is reported there,
