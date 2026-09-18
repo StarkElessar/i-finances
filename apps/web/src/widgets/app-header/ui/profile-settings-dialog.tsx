@@ -101,7 +101,7 @@ export function ProfileSettingsDialog(props: ProfileSettingsDialogProps) {
 					<Dialog.Kicker>Профиль</Dialog.Kicker>
 					<Dialog.Title>Настройки</Dialog.Title>
 				</Dialog.Header>
-				<Dialog.Body>
+				<Dialog.Body class={css.sections}>
 					<section class={css.section}>
 						<h3 class={css.sectionTitle}>Отображение операций</h3>
 						<p class={css.sectionDescription}>
