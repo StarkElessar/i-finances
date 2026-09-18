@@ -1,8 +1,17 @@
 @use "@/shared/styles/functions" as fn;
 
 .root {
+    overflow-y: auto;
     display: grid;
+    // Without an explicit max-content, grid rows lose their content-based
+    // minimum size once a descendant (.group) has overflow: hidden and the
+    // container itself gets a bounded height — every row silently shrinks
+    // to fit the viewport instead of the list scrolling.
+    grid-auto-rows: max-content;
+    flex: 1 1 0;
     gap: var(--space-4);
+
+    min-block-size: 0;
 }
 
 .group {
