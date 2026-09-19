@@ -1,6 +1,6 @@
-import { OperationClient } from '@/features/operations/api';
-
 import { resolveCommandResult } from '@/shared/api';
+
+import { OperationClient } from '@/features/operations/api';
 
 import type {
 	ChangeOperationDeletionStateInput,
@@ -9,6 +9,7 @@ import type {
 	GetCategoryOperationsInput,
 	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
+	OperationCommandResult,
 	RecalculateOperationRateInput,
 	UpdateOperationInput
 } from '@i-finances/contracts';
@@ -46,6 +47,20 @@ export const createOperationAction = action(
 	),
 	'create-operation'
 );
+
+/**
+ * Same request as `createOperationAction`, without going through
+ * `action()`/`useAction`: this app's actions are plain client functions, not
+ * real HTTP `Response`s carrying an `X-Revalidate` header, so solid-router
+ * can't tell which queries the mutation affects and invalidates every cached
+ * query on the page. Callers that patch the affected caches themselves (see
+ * `insertOperationIntoLedger`) use this instead to avoid that blanket refetch.
+ */
+export function createOperationWithoutRevalidation(
+	input: CreateOperationInput
+): Promise<OperationCommandResult> {
+	return resolveCommandResult(() => client.create(input), operationCommandResultSchema);
+}
 
 export const updateOperationAction = action(
 	(input: UpdateOperationInput) => resolveCommandResult(

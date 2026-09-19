@@ -36,6 +36,7 @@ const PERIOD_MODES: OperationPeriodMode[] = ['week', 'month', 'year'];
 export type OperationsWorkspaceProps = {
 	account: Account;
 	categories: readonly Category[];
+	highlightOperationId?: string;
 	periodFrom: string;
 	periodMode: OperationPeriodMode;
 	selectedOperationId?: string;
@@ -107,6 +108,7 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 				? 'По вашему запросу ничего не найдено'
 				: 'В этом периоде операций нет',
 		groups: view.groups(),
+		highlightOperationId: props.highlightOperationId,
 		resolveCategoryColor: view.resolveCategoryColor,
 		resolveCategoryIcon: view.resolveCategoryIcon,
 		selectedOperationId: props.selectedOperationId,

@@ -1,3 +1,16 @@
+export {
+	createOperationAction,
+	createOperationWithoutRevalidation,
+	deleteOperationAction,
+	getAccountBalances,
+	getAccountLedger,
+	getCategoryOperations,
+	getContactOperations,
+	getMonthlyExpenseSummary,
+	recalculateOperationRateAction,
+	restoreOperationAction,
+	updateOperationAction
+} from './operation.client';
 export type {
 	AccountBalancesResult,
 	AccountLedgerResult,
@@ -26,15 +39,3 @@ export {
 	recalculateOperationRateInputSchema,
 	updateOperationInputSchema
 } from './operation.contract';
-export {
-	createOperationAction,
-	deleteOperationAction,
-	getAccountBalances,
-	getAccountLedger,
-	getCategoryOperations,
-	getContactOperations,
-	getMonthlyExpenseSummary,
-	recalculateOperationRateAction,
-	restoreOperationAction,
-	updateOperationAction
-} from './operation.client';

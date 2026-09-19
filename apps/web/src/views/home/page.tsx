@@ -32,15 +32,21 @@ import { toCurrencyExchangeRates } from '@/entities/exchange-rate';
 import { getCurrentExchangeRates } from '@/entities/exchange-rate/api';
 import type {
 	AccountBalance,
+	Operation,
 	OperationDraft,
 	OperationPeriodMode,
 	OperationWithBalance
 } from '@/entities/operation';
 import {
-	createOperationAction,
+	createOperationWithoutRevalidation,
 	deleteOperationAction,
 	formatLocalDateKey,
 	getAccountBalances,
+	getAccountLedger,
+	getOperationPeriodRange,
+	getSignedAccountAmountMinor,
+	insertOperationIntoLedger,
+	parseLocalDateKey,
 	recalculateOperationRateAction,
 	resolveOperationPeriodSearchState,
 	shiftOperationPeriod,
@@ -57,6 +63,7 @@ import {
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
+	query,
 	revalidate,
 	useAction,
 	useSubmission
@@ -219,6 +226,9 @@ type HomeContentProps = {
 
 function HomeContent(props: HomeContentProps) {
 	const homeSearch = createRouteSearchParams(homeSearchParamsSchema);
+	let justCreatedHighlightTimeout: ReturnType<typeof setTimeout> | undefined;
+
+	onCleanup(() => clearTimeout(justCreatedHighlightTimeout));
 	const [editingAccount, setEditingAccount] = createSignal<PersistedAccount>();
 	const [isAccountDialogOpen, setIsAccountDialogOpen] = createSignal(false);
 	const [accountDialogError, setAccountDialogError] = createSignal<string>();
@@ -235,6 +245,8 @@ function HomeContent(props: HomeContentProps) {
 	const [operationError, setOperationError] = createSignal<string>();
 	const [operationFieldErrors, setOperationFieldErrors]
 		= createSignal<Record<string, string>>();
+	const [isCreatingOperation, setIsCreatingOperation] = createSignal(false);
+	const [justCreatedOperationId, setJustCreatedOperationId] = createSignal<string>();
 	const [isTransferDialogOpen, setIsTransferDialogOpen] = createSignal(false);
 	const [transferDialogMode, setTransferDialogMode]
 		= createSignal<TransferDialogMode>('create');
@@ -244,7 +256,6 @@ function HomeContent(props: HomeContentProps) {
 		= createSignal<Record<string, string>>();
 	const runCreateAccount = useAction(createAccountAction);
 	const runUpdateAccount = useAction(updateAccountAction);
-	const runCreateOperation = useAction(createOperationAction);
 	const runDeleteOperation = useAction(deleteOperationAction);
 	const runRecalculateOperationRate = useAction(recalculateOperationRateAction);
 	const runUpdateOperation = useAction(updateOperationAction);
@@ -253,7 +264,6 @@ function HomeContent(props: HomeContentProps) {
 	const runDeleteTransfer = useAction(deleteTransferAction);
 	const createAccountSubmission = useSubmission(createAccountAction);
 	const updateAccountSubmission = useSubmission(updateAccountAction);
-	const createOperationSubmission = useSubmission(createOperationAction);
 	const deleteOperationSubmission = useSubmission(deleteOperationAction);
 	const recalculateOperationRateSubmission = useSubmission(
 		recalculateOperationRateAction
@@ -276,7 +286,7 @@ function HomeContent(props: HomeContentProps) {
 		createAccountSubmission.pending || updateAccountSubmission.pending
 	);
 	const isOperationMutationPending = () => Boolean(
-		createOperationSubmission.pending
+		isCreatingOperation()
 		|| deleteOperationSubmission.pending
 		|| recalculateOperationRateSubmission.pending
 		|| updateOperationSubmission.pending
@@ -338,6 +348,9 @@ function HomeContent(props: HomeContentProps) {
 
 	const periodMode = (): OperationPeriodMode => periodSearch().period;
 	const periodFrom = (): string => periodSearch().from;
+	const periodRange = createMemo(() => (
+		getOperationPeriodRange(parseLocalDateKey(periodFrom()), periodMode())
+	));
 
 	const familyAccounts = createMemo(() => {
 		return accountsList().filter((account) => account.isIncludedInFamilyTotal);
@@ -725,6 +738,63 @@ function HomeContent(props: HomeContentProps) {
 		}
 	};
 
+	/**
+	 * Patches the ledger and balances caches directly instead of letting the
+	 * router's blanket post-action revalidation refetch everything: see
+	 * `createOperationWithoutRevalidation` for why a full refetch happens by
+	 * default, and `insertOperationIntoLedger` for the splice itself.
+	 */
+	/**
+	 * `query.set` alone doesn't retrigger `createAsync` subscribers — it only
+	 * writes the cache entry's value, not the tracked signal a live query
+	 * reads. `revalidate(key, false)` retriggers that signal without the
+	 * `force` flag that would mark the entry stale and cause a real refetch,
+	 * which is exactly the full-refetch this patch is meant to avoid.
+	 */
+	const setQueryCache = (key: string, value: unknown) => {
+		query.set(key, value);
+		void revalidate(key, false);
+	};
+
+	const patchOperationCachesAfterCreate = (accountId: string, operation: Operation) => {
+		const ledgerKey = getAccountLedger.keyFor({ accountId, ...periodRange() });
+
+		try {
+			const cachedLedger = query.get(ledgerKey);
+
+			if (cachedLedger) {
+				setQueryCache(ledgerKey, insertOperationIntoLedger(cachedLedger, operation));
+			}
+		}
+		catch {
+			// No cached ledger for this account/period — the next real fetch
+			// already includes the new operation, nothing to patch.
+		}
+
+		const balancesKey = getAccountBalances.keyFor();
+
+		try {
+			const cachedBalances = query.get(balancesKey);
+
+			if (cachedBalances) {
+				const signedAmountMinor = getSignedAccountAmountMinor(operation);
+
+				setQueryCache(balancesKey, cachedBalances.map((balance: AccountBalance) => (
+					balance.accountId === accountId
+						? { ...balance, balanceMinor: balance.balanceMinor + signedAmountMinor }
+						: balance
+				)));
+			}
+		}
+		catch {
+			// Same as above — balances will catch up on the next real fetch.
+		}
+
+		setJustCreatedOperationId(operation.id);
+		clearTimeout(justCreatedHighlightTimeout);
+		justCreatedHighlightTimeout = setTimeout(() => setJustCreatedOperationId(undefined), 1_700);
+	};
+
 	const handleOperationSubmit = async (value: OperationDraft) => {
 		const selected = selectedOperation();
 		const account = activeAccount();
@@ -736,30 +806,55 @@ function HomeContent(props: HomeContentProps) {
 		setOperationError(undefined);
 		setOperationFieldErrors(undefined);
 
-		try {
-			const result = detailsPanelMode() === 'edit' && selected
-				? await runUpdateOperation({
+		if (detailsPanelMode() === 'edit' && selected) {
+			try {
+				const result = await runUpdateOperation({
 					...value,
 					id: selected.id,
 					version: selected.version
-				})
-				: await runCreateOperation({
-					...value,
-					accountId: account.id
 				});
 
-			if (result.ok) {
-				handleCloseDetailsPanel();
+				if (result.ok) {
+					handleCloseDetailsPanel();
+					return;
+				}
+
+				setOperationError(result.message);
+				setOperationFieldErrors(result.fieldErrors);
+			}
+			catch {
+				setOperationError(
+					'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
+				);
+			}
+
+			return;
+		}
+
+		setIsCreatingOperation(true);
+
+		try {
+			const result = await createOperationWithoutRevalidation({
+				...value,
+				accountId: account.id
+			});
+
+			if (!result.ok) {
+				setOperationError(result.message);
+				setOperationFieldErrors(result.fieldErrors);
 				return;
 			}
 
-			setOperationError(result.message);
-			setOperationFieldErrors(result.fieldErrors);
+			patchOperationCachesAfterCreate(account.id, result.operation);
+			handleCloseDetailsPanel();
 		}
 		catch {
 			setOperationError(
 				'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
 			);
+		}
+		finally {
+			setIsCreatingOperation(false);
 		}
 	};
 
@@ -1054,6 +1149,7 @@ function HomeContent(props: HomeContentProps) {
 												<OperationsWorkspace
 													account={account}
 													categories={categories()}
+													highlightOperationId={justCreatedOperationId()}
 													periodFrom={periodFrom()}
 													periodMode={periodMode()}
 													selectedOperationId={

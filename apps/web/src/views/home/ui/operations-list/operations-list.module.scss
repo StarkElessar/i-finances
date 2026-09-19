@@ -56,6 +56,26 @@
     background-color: var(--color-primary-soft);
 }
 
+.item-highlighted {
+    animation: just-created-flash 1.6s var(--ease-standard);
+}
+
+@keyframes just-created-flash {
+    from {
+        background-color: var(--color-primary-soft);
+    }
+
+    to {
+        background-color: transparent;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .item-highlighted {
+        animation: none;
+    }
+}
+
 .category-icon {
     display: grid;
     grid-row: 1 / 3;

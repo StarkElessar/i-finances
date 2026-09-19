@@ -38,7 +38,11 @@ export function OperationsList(props: OperationsTableProps) {
 										<li>
 											<button
 												aria-current={operation.id === props.selectedOperationId}
-												class={cn(css.item, operation.id === props.selectedOperationId && css.itemSelected)}
+												class={cn(
+													css.item,
+													operation.id === props.selectedOperationId && css.itemSelected,
+													operation.id === props.highlightOperationId && css.itemHighlighted
+												)}
 												style={{ '--category-color': props.resolveCategoryColor(operation) }}
 												type='button'
 												onClick={() => handleRowClick(operation)}

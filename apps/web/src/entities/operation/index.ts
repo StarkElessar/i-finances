@@ -13,8 +13,6 @@ export {
 	normalizeOperationComment,
 	normalizeOperationTitle
 } from './model/normalization';
-export type { OperationsDisplayMode } from './model/use-operations-display-mode';
-export { useOperationsDisplayMode } from './model/use-operations-display-mode';
 export type { OperationPeriodSearchState } from './model/period';
 export {
 	canMoveToNextOperationPeriod,
@@ -28,7 +26,8 @@ export {
 } from './model/period';
 export {
 	createOperationGroups,
-	filterOperationRows
+	filterOperationRows,
+	insertOperationIntoLedger
 } from './model/selectors';
 export type {
 	SummaryFxOperation,
@@ -61,3 +60,5 @@ export type {
 	OperationType,
 	OperationWithBalance
 } from './model/types';
+export type { OperationsDisplayMode } from './model/use-operations-display-mode';
+export { useOperationsDisplayMode } from './model/use-operations-display-mode';

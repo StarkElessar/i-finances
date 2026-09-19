@@ -1,17 +1,77 @@
 import { amountToMinorUnits } from '@/shared/lib';
 
+import { getSignedAccountAmountMinor } from './summary-fx';
 import type {
 	OperationDateRange,
 	OperationGroup,
 	OperationSort,
 	OperationSortDirection
 } from './table-types';
-import type { Operation, OperationWithBalance } from './types';
+import type { AccountLedger, Operation, OperationWithBalance } from './types';
 
 const NAME_COLLATOR = new Intl.Collator('ru-BY', {
 	numeric: true,
 	sensitivity: 'base'
 });
+
+/**
+ * Splices a freshly created operation into a cached ledger in place of a full
+ * refetch, so unaffected rows keep their object identity and `<For>` doesn't
+ * tear down the whole table (see the operations-list-scroll-grid-bug memory
+ * for the identity-loss symptom this avoids).
+ */
+export function insertOperationIntoLedger(
+	ledger: AccountLedger,
+	operation: Operation
+): AccountLedger {
+	if (operation.happenedOn > ledger.range.end) {
+		return ledger;
+	}
+
+	const signedAmountMinor = getSignedAccountAmountMinor(operation);
+
+	if (operation.happenedOn < ledger.range.start) {
+		return {
+			...ledger,
+			closingBalanceMinor: ledger.closingBalanceMinor + signedAmountMinor,
+			items: ledger.items.map((item) => ({
+				...item,
+				balanceAfterMinor: item.balanceAfterMinor + signedAmountMinor
+			})),
+			openingBalanceMinor: ledger.openingBalanceMinor + signedAmountMinor
+		};
+	}
+
+	const insertIndex = ledger.items.findIndex((item) => (
+		item.happenedOn > operation.happenedOn
+		|| (item.happenedOn === operation.happenedOn && item.sourceOrder > operation.sourceOrder)
+	));
+	const targetIndex = insertIndex === -1 ? ledger.items.length : insertIndex;
+	const precedingBalance = targetIndex === 0
+		? ledger.openingBalanceMinor
+		: ledger.items[targetIndex - 1].balanceAfterMinor;
+	const insertedRow: OperationWithBalance = {
+		...operation,
+		balanceAfterMinor: precedingBalance + signedAmountMinor,
+		signedAmountMinor
+	};
+	const items = ledger.items.slice(0, targetIndex);
+
+	items.push(insertedRow);
+
+	for (let i = targetIndex; i < ledger.items.length; i += 1) {
+		items.push({
+			...ledger.items[i],
+			balanceAfterMinor: ledger.items[i].balanceAfterMinor + signedAmountMinor
+		});
+	}
+
+	return {
+		...ledger,
+		closingBalanceMinor: ledger.closingBalanceMinor + signedAmountMinor,
+		items
+	};
+}
 
 export function filterOperationRows(
 	rows: readonly OperationWithBalance[],

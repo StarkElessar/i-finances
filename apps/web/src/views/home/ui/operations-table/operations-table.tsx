@@ -4,6 +4,7 @@ import { cn, formatMinorUnitsCurrency } from '@/shared/lib';
 import type { GridColumn } from '@/shared/ui/grid';
 import { Grid } from '@/shared/ui/grid';
 
+import type { Account } from '@/entities/account';
 import { CategoryIcon } from '@/entities/category';
 import type {
 	OperationGroup,
@@ -12,13 +13,11 @@ import type {
 	OperationWithBalance
 } from '@/entities/operation';
 
-import type { Account } from '@/entities/account';
-
-import { OperationGroupRow } from '../operation-group-row/operation-group-row';
-
 import { Building2 } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { createMemo, Show } from 'solid-js';
+
+import { OperationGroupRow } from '../operation-group-row/operation-group-row';
 
 const SORT_FIELDS: OperationSortField[] = ['date', 'amount', 'balance', 'category', 'contact'];
 
@@ -26,6 +25,7 @@ export type OperationsTableProps = {
 	account: Account;
 	emptyContent: string;
 	groups: OperationGroup[];
+	highlightOperationId?: string;
 	resolveCategoryColor: (operation: OperationWithBalance) => string;
 	resolveCategoryIcon: (operation: OperationWithBalance) => string;
 	selectedOperationId?: string;
@@ -264,7 +264,12 @@ export function OperationsTable(props: OperationsTableProps) {
 					item.operation.currency
 				)}`
 				: item.group.label}
-			getRowClass={(item) => item.kind === 'group' ? css.groupHeaderRow : undefined}
+			getRowClass={(item) => cn(
+				item.kind === 'group' && css.groupHeaderRow,
+				item.kind === 'operation'
+					&& item.operation.id === props.highlightOperationId
+					&& css.justCreatedRow
+			)}
 			getRowKey={(item) => item.kind === 'group' ? item.group.id : item.operation.id}
 			isFullWidthRow={(item) => item.kind === 'group'}
 			isRowSelected={(item) => (
