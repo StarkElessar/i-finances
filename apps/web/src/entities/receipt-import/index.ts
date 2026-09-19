@@ -18,3 +18,8 @@ export {
 	RECEIPT_IMPORT_STATUSES,
 	RECEIPT_PROCESSING_JOB_STATUSES
 } from './model/types';
+export type { ReceiptsDisplayMode } from './model/use-receipts-display-mode';
+export {
+	RECEIPTS_DISPLAY_MODE_STORAGE_KEY,
+	useReceiptsDisplayMode
+} from './model/use-receipts-display-mode';

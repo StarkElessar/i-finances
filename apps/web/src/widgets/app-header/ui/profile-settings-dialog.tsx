@@ -1,21 +1,53 @@
 import css from './profile-settings-dialog.module.scss';
 
+import type { DisplayModePreference, DisplayModePreferenceControls } from '@/shared/lib';
 import { cn } from '@/shared/lib';
 import { Button, Dialog, TextField } from '@/shared/ui';
 
-import type { OperationsDisplayModePreference } from '@/entities/operation';
 import { useOperationsDisplayMode } from '@/entities/operation';
+import { useReceiptsDisplayMode } from '@/entities/receipt-import';
 import { useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 
 import { createEffect, createSignal, For } from 'solid-js';
 
-const DISPLAY_MODE_OPTIONS: Array<{ label: string; value: OperationsDisplayModePreference }> = [
+const DISPLAY_MODE_OPTIONS: Array<{ label: string; value: DisplayModePreference }> = [
 	{ label: 'Авто', value: 'auto' },
 	{ label: 'Таблица', value: 'table' },
 	{ label: 'Список', value: 'list' }
 ];
+
+function DisplayModeSection(props: {
+	ariaLabel: string;
+	controls: DisplayModePreferenceControls;
+	description: string;
+	title: string;
+}) {
+	return (
+		<section class={css.section}>
+			<h3 class={css.sectionTitle}>{props.title}</h3>
+			<p class={css.sectionDescription}>{props.description}</p>
+			<div aria-label={props.ariaLabel} class={css.segmentedControl} role='group'>
+				<For each={DISPLAY_MODE_OPTIONS}>
+					{(option) => (
+						<button
+							aria-pressed={props.controls.preference() === option.value}
+							class={cn(
+								css.segmentedOption,
+								props.controls.preference() === option.value && css.segmentedOptionActive
+							)}
+							type='button'
+							onClick={() => props.controls.setPreference(option.value)}
+						>
+							{option.label}
+						</button>
+					)}
+				</For>
+			</div>
+		</section>
+	);
+}
 
 export type ProfileSettingsDialogProps = {
 	authClient: AuthClient;
@@ -92,7 +124,8 @@ function DisplayNameSection(props: { authClient: AuthClient }) {
 }
 
 export function ProfileSettingsDialog(props: ProfileSettingsDialogProps) {
-	const displayMode = useOperationsDisplayMode();
+	const operationsDisplayMode = useOperationsDisplayMode();
+	const receiptsDisplayMode = useReceiptsDisplayMode();
 
 	return (
 		<Dialog.Root open={props.open} onOpenChange={props.onOpenChange}>
@@ -102,30 +135,20 @@ export function ProfileSettingsDialog(props: ProfileSettingsDialogProps) {
 					<Dialog.Title>Настройки</Dialog.Title>
 				</Dialog.Header>
 				<Dialog.Body class={css.sections}>
-					<section class={css.section}>
-						<h3 class={css.sectionTitle}>Отображение операций</h3>
-						<p class={css.sectionDescription}>
-							Как показывать список операций на счёте: таблицей, компактным
-							списком или автоматически в зависимости от ширины экрана.
-						</p>
-						<div aria-label='Отображение операций' class={css.segmentedControl} role='group'>
-							<For each={DISPLAY_MODE_OPTIONS}>
-								{(option) => (
-									<button
-										aria-pressed={displayMode.preference() === option.value}
-										class={cn(
-											css.segmentedOption,
-											displayMode.preference() === option.value && css.segmentedOptionActive
-										)}
-										type='button'
-										onClick={() => displayMode.setPreference(option.value)}
-									>
-										{option.label}
-									</button>
-								)}
-							</For>
-						</div>
-					</section>
+					<DisplayModeSection
+						ariaLabel='Отображение операций'
+						controls={operationsDisplayMode}
+						description='Как показывать список операций на счёте: таблицей, компактным
+							списком или автоматически в зависимости от ширины экрана.'
+						title='Отображение операций'
+					/>
+					<DisplayModeSection
+						ariaLabel='Отображение чеков'
+						controls={receiptsDisplayMode}
+						description='Как показывать список чеков: таблицей, компактным списком
+							или автоматически в зависимости от ширины экрана.'
+						title='Отображение чеков'
+					/>
 					<DisplayNameSection authClient={props.authClient}/>
 				</Dialog.Body>
 				<Dialog.Footer>

@@ -13,15 +13,14 @@ import type { PersistedAccount } from '@/entities/account';
 import { getAccounts } from '@/entities/account/api';
 import type {
 	ReceiptImport,
-	ReceiptImportStatus,
-	ReceiptProcessingJob,
 	ReceiptWorkerResult
 } from '@/entities/receipt-import';
 import {
 	approveReceipt as approveReceiptAction,
 	getReceiptImports,
 	requestReceiptRevision as requestReceiptRevisionAction,
-	retryReceiptImport as retryReceiptImportAction
+	retryReceiptImport as retryReceiptImportAction,
+	useReceiptsDisplayMode
 } from '@/entities/receipt-import';
 
 import { Title } from '@solidjs/meta';
@@ -52,44 +51,15 @@ import {
 	Show
 } from 'solid-js';
 
-type StatusPresentation = {
-	label: string;
-	tone: 'danger' | 'muted' | 'primary' | 'success' | 'warning';
-};
-
-const STATUS_PRESENTATION: Record<
-	ReceiptImportStatus,
-	StatusPresentation
-> = {
-	approved: { label: 'Операции созданы', tone: 'success' },
-	approving: { label: 'Создаём операции', tone: 'primary' },
-	cancelled: { label: 'Отменён', tone: 'muted' },
-	failed: { label: 'Ошибка обработки', tone: 'danger' },
-	needs_review: { label: 'Нужно проверить', tone: 'warning' },
-	processing: { label: 'Обрабатывается', tone: 'primary' },
-	queued: { label: 'В очереди', tone: 'muted' },
-	revision_requested: { label: 'Отправлен на доработку', tone: 'primary' }
-};
-
-const ACTIVE_STATUSES = new Set<ReceiptImportStatus>([
-	'approving',
-	'processing',
-	'queued',
-	'revision_requested'
-]);
-
-function formatDateTime(value: string): string {
-	return new Intl.DateTimeFormat('ru-RU', {
-		dateStyle: 'medium',
-		timeStyle: 'short'
-	}).format(new Date(value));
-}
-
-function formatFileSize(sizeBytes: number): string {
-	return sizeBytes >= 1024 * 1024
-		? `${(sizeBytes / 1024 / 1024).toFixed(1)} МБ`
-		: `${Math.ceil(sizeBytes / 1024)} КБ`;
-}
+import {
+	formatDateTime,
+	formatDuration,
+	formatFileSize,
+	formatProcessingDuration,
+	getProcessingDurationMs
+} from './lib/format-receipt';
+import { ReceiptsList } from './ui/receipts-list/receipts-list';
+import { ACTIVE_STATUSES, STATUS_PRESENTATION, StatusBadge } from './ui/status-badge/status-badge';
 
 function formatMinor(amountMinor: number): string {
 	return new Intl.NumberFormat('ru-RU', {
@@ -98,51 +68,10 @@ function formatMinor(amountMinor: number): string {
 	}).format(amountMinor / 100);
 }
 
-function formatDuration(durationMs: number): string {
-	const totalSeconds = Math.max(0, Math.round(durationMs / 1_000));
-	const minutes = Math.floor(totalSeconds / 60);
-	const seconds = totalSeconds % 60;
-
-	return minutes > 0 ? `${minutes} мин ${seconds} с` : `${seconds} с`;
-}
-
-// `completedAt` is set for both a successful and a failed attempt, so this is a
-// valid total for any terminal job; for one still running it falls back to "now".
-function getProcessingDurationMs(job: ReceiptProcessingJob): number {
-	const startedAt = new Date(job.createdAt).getTime();
-	const endedAt = job.completedAt === null ? Date.now() : new Date(job.completedAt).getTime();
-
-	return endedAt - startedAt;
-}
-
-function formatProcessingDuration(job: ReceiptProcessingJob): string {
-	const durationLabel = formatDuration(getProcessingDurationMs(job));
-
-	return job.completedAt === null ? `${durationLabel}…` : durationLabel;
-}
-
 function getMerchantName(result: ReceiptWorkerResult): string {
 	return result.receipt.merchant.displayName
 		?? result.receipt.merchant.legalName
 		?? 'Продавец не распознан';
-}
-
-function StatusBadge(props: { status: ReceiptImportStatus }) {
-	const presentation = () => STATUS_PRESENTATION[props.status];
-
-	return (
-		<span
-			class={cn(
-				css.status,
-				css[`status-${presentation().tone}`]
-			)}
-		>
-			<Show when={ACTIVE_STATUSES.has(props.status)}>
-				<span aria-hidden='true' class={css.statusSpinner}/>
-			</Show>
-			{presentation().label}
-		</span>
-	);
 }
 
 type UploadDialogProps = {
@@ -917,6 +846,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 function ReceiptsContent() {
 	const receiptImports = createAsync(() => getReceiptImports());
 	const accounts = createAsync(() => getAccounts(false));
+	const { resolvedMode } = useReceiptsDisplayMode();
 	const [isUploadOpen, setIsUploadOpen] = createSignal(false);
 	const [isReviewOpen, setIsReviewOpen] = createSignal(false);
 	const [isImageOpen, setIsImageOpen] = createSignal(false);
@@ -959,6 +889,16 @@ function ReceiptsContent() {
 		setSelectedReceiptId(receiptImport.id);
 		setIsImageOpen(true);
 	};
+
+	const emptyReceiptsContent = (
+		<div class={css.emptyState}>
+			<ReceiptText size={32}/>
+			<strong>Загруженных чеков пока нет</strong>
+			<span>
+				Нажмите «Создать из чека», чтобы добавить первый.
+			</span>
+		</div>
+	);
 
 	const columns: GridColumn<ReceiptImport>[] = [
 		{
@@ -1067,36 +1007,40 @@ function ReceiptsContent() {
 					</div>
 				</header>
 
-				<Grid
-					aria-label='Задачи по обработке чеков'
-					class={css.grid}
-					columns={columns}
-					data={receiptImports() ?? []}
-					emptyContent={(
-						<div class={css.emptyState}>
-							<ReceiptText size={32}/>
-							<strong>Загруженных чеков пока нет</strong>
-							<span>
-								Нажмите «Создать из чека», чтобы добавить первый.
-							</span>
-						</div>
+				<Show
+					fallback={(
+						<ReceiptsList
+							emptyContent={emptyReceiptsContent}
+							items={receiptImports() ?? []}
+							selectedReceiptId={isReviewOpen() ? selectedReceiptId() : undefined}
+							onSelect={handleOpenReceipt}
+						/>
 					)}
-					getRowAriaLabel={(row) => (
-						`Открыть чек ${row.id}, ${
-							STATUS_PRESENTATION[row.status].label
-						}`
-					)}
-					getRowClass={(row) => (
-						ACTIVE_STATUSES.has(row.status)
-							? css.processingRow
-							: undefined
-					)}
-					getRowKey={(row) => row.id}
-					isRowSelected={(row) => (
-						isReviewOpen() && row.id === selectedReceiptId()
-					)}
-					onRowClick={handleOpenReceipt}
-				/>
+					when={resolvedMode() === 'table'}
+				>
+					<Grid
+						aria-label='Задачи по обработке чеков'
+						class={css.grid}
+						columns={columns}
+						data={receiptImports() ?? []}
+						emptyContent={emptyReceiptsContent}
+						getRowAriaLabel={(row) => (
+							`Открыть чек ${row.id}, ${
+								STATUS_PRESENTATION[row.status].label
+							}`
+						)}
+						getRowClass={(row) => (
+							ACTIVE_STATUSES.has(row.status)
+								? css.processingRow
+								: undefined
+						)}
+						getRowKey={(row) => row.id}
+						isRowSelected={(row) => (
+							isReviewOpen() && row.id === selectedReceiptId()
+						)}
+						onRowClick={handleOpenReceipt}
+					/>
+				</Show>
 			</Container>
 
 			<UploadDialog

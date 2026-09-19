@@ -14,7 +14,12 @@ export type { CurrencyDisplay, FormatCurrencyOptions } from './currency-formatte
 export { BELARUSIAN_RUBLE_SYMBOL, CURRENCY_SYMBOLS, formatCurrency, getCurrencySymbol } from './currency-formatter';
 export type { FormatDateInput, FormatDateOptions } from './date-formatter';
 export { formatDate } from './date-formatter';
-export { useMediaQuery } from './use-media-query';
+export type { DisplayModePreference, ResolvedDisplayMode } from './display-mode-preference';
+export {
+	readStoredDisplayModePreference,
+	resolveDisplayMode,
+	writeStoredDisplayModePreference
+} from './display-mode-preference';
 export {
 	amountToMinorUnits,
 	convertMinorUnitsByExchangeRate,
@@ -52,3 +57,6 @@ export {
 	readFirstSearchParamValue,
 	serializeRouteSearchParams
 } from './search-params';
+export type { DisplayModePreferenceControls } from './use-display-mode-preference';
+export { useDisplayModePreference } from './use-display-mode-preference';
+export { useMediaQuery } from './use-media-query';
