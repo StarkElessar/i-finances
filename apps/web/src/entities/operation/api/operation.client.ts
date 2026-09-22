@@ -40,6 +40,13 @@ export const getMonthlyExpenseSummary = query(
 	'monthly-expense-summary'
 );
 
+export const getCategoryStats = query(
+	(input: GetMonthlyExpenseSummaryInput) => client.categoryStats(input),
+	'category-stats'
+);
+
+export const getMonthlyTrend = query(() => client.monthlyTrend(), 'monthly-trend');
+
 export const createOperationAction = action(
 	(input: CreateOperationInput) => resolveCommandResult(
 		() => client.create(input),

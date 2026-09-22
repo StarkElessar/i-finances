@@ -21,12 +21,14 @@ import {
 	changeOperationDeletionStateInputSchema,
 	createOperationInputSchema,
 	categoryOperationsSchema,
+	categoryStatsSchema,
 	contactOperationsSchema,
 	getAccountLedgerInputSchema,
 	getCategoryOperationsInputSchema,
 	getContactOperationsInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
 	monthlyExpenseSummarySchema,
+	monthlyTrendSchema,
 	operationCommandResultSchema,
 	recalculateOperationRateInputSchema,
 	updateOperationInputSchema
@@ -82,6 +84,20 @@ export class OperationClient {
 			`/api/operations/monthly-summary?${query.toString()}`,
 			monthlyExpenseSummarySchema
 		);
+	}
+
+	public categoryStats(input: GetMonthlyExpenseSummaryInput) {
+		const parsedInput = getMonthlyExpenseSummaryInputSchema.parse(input);
+		const query = new URLSearchParams(parsedInput);
+
+		return this.client.get(
+			`/api/operations/category-stats?${query.toString()}`,
+			categoryStatsSchema
+		);
+	}
+
+	public monthlyTrend() {
+		return this.client.get('/api/operations/monthly-trend', monthlyTrendSchema);
 	}
 
 	public create(input: CreateOperationInput): Promise<OperationCommandResult> {

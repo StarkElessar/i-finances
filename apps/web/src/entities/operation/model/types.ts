@@ -124,3 +124,28 @@ export type MonthlyExpenseSummary = {
 	contactExpensesMinor: Record<string, number>;
 	month: string;
 };
+
+export type CategoryStatItem = {
+	averageMinor: number | null;
+	categoryId: string;
+	currentMinor: number;
+	deltaPercent: number | null;
+	monthsIncludedCount: number;
+};
+
+export type CategoryStats = {
+	baseCurrency: CurrencyCodeValue;
+	items: CategoryStatItem[];
+	month: string;
+};
+
+export type MonthlyTrendPoint = {
+	expenseMinor: number;
+	incomeMinor: number;
+	month: string;
+};
+
+export type MonthlyTrend = {
+	baseCurrency: CurrencyCodeValue;
+	points: MonthlyTrendPoint[];
+};

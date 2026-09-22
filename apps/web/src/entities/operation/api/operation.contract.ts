@@ -9,8 +9,10 @@ import type {
 	AccountBalance,
 	AccountLedger,
 	CategoryOperations,
+	CategoryStats,
 	ContactOperations,
 	MonthlyExpenseSummary,
+	MonthlyTrend,
 	Operation
 } from '../model/types';
 
@@ -148,3 +150,5 @@ export type AccountBalancesResult = AccountBalance[];
 export type CategoryOperationsResult = CategoryOperations;
 export type ContactOperationsResult = ContactOperations;
 export type MonthlyExpenseSummaryResult = MonthlyExpenseSummary;
+export type CategoryStatsResult = CategoryStats;
+export type MonthlyTrendResult = MonthlyTrend;

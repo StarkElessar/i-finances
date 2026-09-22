@@ -54,4 +54,50 @@ describe('OperationClient', () => {
 			currency: 'BYN'
 		}]);
 	});
+
+	it('loads category stats through the feature API client', async () => {
+		const fetcher: typeof globalThis.fetch = async (input) => {
+			expect(input).toBe('/api/operations/category-stats?month=2026-09');
+
+			return new Response(JSON.stringify({
+				baseCurrency: 'BYN',
+				items: [{
+					averageMinor: 15_000,
+					categoryId: 'category-food',
+					currentMinor: 45_000,
+					deltaPercent: 200,
+					monthsIncludedCount: 2
+				}],
+				month: '2026-09'
+			}), {
+				headers: { 'content-type': 'application/json' },
+				status: 200
+			});
+		};
+		const client = new OperationClient({ fetcher });
+
+		await expect(client.categoryStats({ month: '2026-09' })).resolves.toMatchObject({
+			month: '2026-09'
+		});
+	});
+
+	it('loads the monthly trend through the feature API client', async () => {
+		const fetcher: typeof globalThis.fetch = async (input) => {
+			expect(input).toBe('/api/operations/monthly-trend');
+
+			return new Response(JSON.stringify({
+				baseCurrency: 'BYN',
+				points: [{ expenseMinor: 10_000, incomeMinor: 200_000, month: '2026-08' }]
+			}), {
+				headers: { 'content-type': 'application/json' },
+				status: 200
+			});
+		};
+		const client = new OperationClient({ fetcher });
+
+		await expect(client.monthlyTrend()).resolves.toEqual({
+			baseCurrency: 'BYN',
+			points: [{ expenseMinor: 10_000, incomeMinor: 200_000, month: '2026-08' }]
+		});
+	});
 });
