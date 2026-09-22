@@ -1,0 +1,10 @@
+@use "@/shared/styles/mixins" as mx;
+
+.canvas {
+    position: relative;
+    block-size: 280px;
+
+    @include mx.media-mn(960) {
+        block-size: 360px;
+    }
+}

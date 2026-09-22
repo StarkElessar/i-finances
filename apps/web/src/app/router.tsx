@@ -11,6 +11,7 @@ import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
 import { HomePage } from '@/views/home/page';
 import { ReceiptsPage } from '@/views/receipts/page';
+import { StatisticsPage } from '@/views/statistics/page';
 
 import type { CurrentSessionResponse } from '@i-finances/contracts';
 import { Navigate, Route, Router } from '@solidjs/router';
@@ -111,6 +112,7 @@ export function AppRouter(props: AppRouterProps) {
 			<Route path='/categories' component={() => protectedPage(<CategoriesPage/>)}/>
 			<Route path='/contacts' component={() => protectedPage(<ContactsPage/>)}/>
 			<Route path='/receipts' component={() => protectedPage(<ReceiptsPage/>)}/>
+			<Route path='/stats' component={() => protectedPage(<StatisticsPage/>)}/>
 			<Route path='*404' component={() => <Navigate href='/'/>}/>
 		</Router>
 	);

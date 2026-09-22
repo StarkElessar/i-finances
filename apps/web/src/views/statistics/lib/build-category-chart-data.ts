@@ -1,8 +1,8 @@
+import { minorUnitsToAmount } from '@/shared/lib';
+
 import { getCategoryBudgetSummary } from '@/entities/category/model/selectors';
 import type { Category } from '@/entities/category/model/types';
 import type { CategoryStats } from '@/entities/operation';
-
-import { minorUnitsToAmount } from '@/shared/lib';
 
 import type { ChartData } from 'chart.js';
 

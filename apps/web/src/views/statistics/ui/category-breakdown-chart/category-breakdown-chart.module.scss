@@ -1,0 +1,54 @@
+@use "@/shared/styles/mixins" as mx;
+
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.canvas {
+    position: relative;
+    block-size: 280px;
+
+    @include mx.media-mn(960) {
+        block-size: 360px;
+    }
+}
+
+.legend {
+    display: grid;
+    gap: var(--space-3);
+}
+
+.legend-row {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-secondary);
+}
+
+.swatch {
+    flex: none;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+    border-radius: var(--radius-round);
+}
+
+.name {
+    flex: 1 1 auto;
+    color: var(--color-text-primary);
+}
+
+.delta {
+    font-weight: var(--font-weight-medium);
+}
+
+.delta-up {
+    color: var(--color-danger);
+}
+
+.delta-down {
+    color: var(--color-success);
+}

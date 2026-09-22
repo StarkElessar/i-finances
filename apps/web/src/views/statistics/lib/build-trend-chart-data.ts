@@ -1,6 +1,6 @@
-import type { MonthlyTrend } from '@/entities/operation';
-
 import { minorUnitsToAmount } from '@/shared/lib';
+
+import type { MonthlyTrend } from '@/entities/operation';
 
 import type { ChartData } from 'chart.js';
 
