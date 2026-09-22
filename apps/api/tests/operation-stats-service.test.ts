@@ -1,3 +1,6 @@
+import { createApiApp } from '@/app';
+import { OperationHttpController } from '@/http/operation-controller';
+import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import {
@@ -8,6 +11,7 @@ import {
 	users
 } from '@/infrastructure/database/schema';
 import { AccountRepository } from '@/modules/account';
+import type { AuthenticatedSession } from '@/modules/auth';
 import { CategoryRepository } from '@/modules/category';
 import { ContactRepository } from '@/modules/contact';
 import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
@@ -23,6 +27,16 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'household-1';
 const FIXED_DATE = new Date('2026-09-08T10:00:00.000Z');
+
+const authenticatedSession: AuthenticatedSession = {
+	expiresAt: new Date('2026-10-08T10:00:00.000Z'),
+	id: 'session-1',
+	user: {
+		displayName: 'Sergei Test',
+		id: USER_ID,
+		username: 'sergei'
+	}
+};
 
 let connection: Database.Database;
 let database: AppDatabase;
@@ -183,6 +197,22 @@ describe('OperationService category stats', () => {
 			monthsIncludedCount: 0
 		}]);
 	});
+
+	it('exposes category-stats through the authenticated HTTP boundary and rejects a bad month', async () => {
+		const sessionResolver: RequestSessionResolver = { resolve: async () => authenticatedSession };
+		const app = createApiApp({
+			operationController: new OperationHttpController(createService(), sessionResolver)
+		});
+
+		const badMonth = await app.request('/api/operations/category-stats?month=not-a-month');
+
+		expect(badMonth.status).toBe(400);
+
+		const response = await app.request('/api/operations/category-stats?month=2026-09');
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ baseCurrency: 'BYN', items: [], month: '2026-09' });
+	});
 });
 
 describe('OperationService monthly trend', () => {
@@ -229,5 +259,23 @@ describe('OperationService monthly trend', () => {
 				{ expenseMinor: 15_000, incomeMinor: 0, month: '2026-09' }
 			]
 		});
+	});
+
+	it('exposes monthly-trend through the authenticated HTTP boundary', async () => {
+		const noSessionResolver: RequestSessionResolver = { resolve: async () => null };
+		const sessionResolver: RequestSessionResolver = { resolve: async () => authenticatedSession };
+		const unauthenticatedApp = createApiApp({
+			operationController: new OperationHttpController(createService(), noSessionResolver)
+		});
+		const authenticatedApp = createApiApp({
+			operationController: new OperationHttpController(createService(), sessionResolver)
+		});
+
+		expect((await unauthenticatedApp.request('/api/operations/monthly-trend')).status).toBe(401);
+
+		const response = await authenticatedApp.request('/api/operations/monthly-trend');
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toEqual({ baseCurrency: 'BYN', points: [] });
 	});
 });

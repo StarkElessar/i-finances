@@ -176,6 +176,54 @@ export class OperationHttpController {
 		};
 	}
 
+	public categoryStats() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			const parsedInput = getMonthlyExpenseSummaryInputSchema.safeParse({
+				month: context.req.query('month')
+			});
+
+			if (!parsedInput.success) {
+				return this.invalidInput(context, parsedInput.error);
+			}
+
+			try {
+				return context.json(
+					await this.operationService.getCategoryStats(session.user.id, parsedInput.data),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
+	public monthlyTrend() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			try {
+				return context.json(
+					await this.operationService.getMonthlyTrend(session.user.id),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
 	public create() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
 			return this.executeMutation(

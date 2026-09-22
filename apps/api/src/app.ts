@@ -94,6 +94,8 @@ export function createApiApp(
 		app.get('/api/operations/by-category', operationController.categoryOperations());
 		app.get('/api/operations/by-contact', operationController.contactOperations());
 		app.get('/api/operations/monthly-summary', operationController.monthlySummary());
+		app.get('/api/operations/category-stats', operationController.categoryStats());
+		app.get('/api/operations/monthly-trend', operationController.monthlyTrend());
 		app.post('/api/operations', operationController.create());
 		app.put('/api/operations/:id', operationController.update());
 		app.post('/api/operations/:id/archive', operationController.archive());
