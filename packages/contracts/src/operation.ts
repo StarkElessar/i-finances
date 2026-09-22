@@ -241,6 +241,39 @@ export const monthlyExpenseSummarySchema = z.object({
 
 export type MonthlyExpenseSummary = z.infer<typeof monthlyExpenseSummarySchema>;
 
+export const categoryStatItemSchema = z.object({
+	averageMinor: safeIntegerSchema.nullable(),
+	categoryId: operationIdSchema,
+	currentMinor: safeIntegerSchema,
+	deltaPercent: z.number().int().nullable(),
+	monthsIncludedCount: z.number().int().nonnegative()
+});
+
+export type CategoryStatItem = z.infer<typeof categoryStatItemSchema>;
+
+export const categoryStatsSchema = z.object({
+	baseCurrency: currencyCodeSchema,
+	items: z.array(categoryStatItemSchema),
+	month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/)
+});
+
+export type CategoryStats = z.infer<typeof categoryStatsSchema>;
+
+export const monthlyTrendPointSchema = z.object({
+	expenseMinor: safeIntegerSchema,
+	incomeMinor: safeIntegerSchema,
+	month: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/)
+});
+
+export type MonthlyTrendPoint = z.infer<typeof monthlyTrendPointSchema>;
+
+export const monthlyTrendSchema = z.object({
+	baseCurrency: currencyCodeSchema,
+	points: z.array(monthlyTrendPointSchema)
+});
+
+export type MonthlyTrend = z.infer<typeof monthlyTrendSchema>;
+
 export const operationCommandErrorCodeSchema = z.enum([
 	'conflict',
 	'forbidden',
