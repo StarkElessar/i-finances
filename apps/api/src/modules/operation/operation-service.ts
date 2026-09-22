@@ -10,6 +10,7 @@ import type {
 	AccountBalance,
 	AccountLedger,
 	CategoryOperations,
+	CategoryStats,
 	ChangeOperationDeletionStateInput,
 	ContactOperations,
 	CreateOperationInput,
@@ -18,6 +19,7 @@ import type {
 	GetContactOperationsInput,
 	GetMonthlyExpenseSummaryInput,
 	MonthlyExpenseSummary,
+	MonthlyTrend,
 	PersistedOperation,
 	RecalculateOperationRateInput,
 	UpdateOperationInput
@@ -354,6 +356,66 @@ export class OperationService {
 			categoryExpensesMinor: toExpenseRecord(categoryExpenses),
 			contactExpensesMinor: toExpenseRecord(contactExpenses),
 			month: input.month
+		};
+	}
+
+	public async getCategoryStats(
+		userId: string,
+		input: GetMonthlyExpenseSummaryInput
+	): Promise<CategoryStats> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const range = getMonthRange(input.month);
+		const [currentExpenses, history] = await Promise.all([
+			this.dependencies.operationRepository.listMonthlyCategoryExpenses(
+				household.id,
+				range.start,
+				range.end
+			),
+			this.dependencies.operationRepository.listCategoryExpenseHistory(household.id, range.start)
+		]);
+		const historyByCategory = new Map(history.map((row) => [row.categoryId, row]));
+		const categoryIds = new Set([
+			...currentExpenses.map((row) => row.referenceId),
+			...history.map((row) => row.categoryId)
+		]);
+
+		const items = [...categoryIds].map((categoryId) => {
+			const currentMinor = currentExpenses.find((row) => row.referenceId === categoryId)?.totalMinor ?? 0;
+			const historyRow = historyByCategory.get(categoryId);
+			const averageMinor = historyRow === undefined || historyRow.monthsIncludedCount === 0
+				? null
+				: Math.round(historyRow.totalMinor / historyRow.monthsIncludedCount);
+			const deltaPercent = averageMinor === null || averageMinor === 0
+				? null
+				: Math.round(((currentMinor - averageMinor) / averageMinor) * 100);
+
+			return {
+				averageMinor,
+				categoryId,
+				currentMinor,
+				deltaPercent,
+				monthsIncludedCount: historyRow?.monthsIncludedCount ?? 0
+			};
+		});
+
+		return {
+			baseCurrency: household.baseCurrency,
+			items,
+			month: input.month
+		};
+	}
+
+	public async getMonthlyTrend(userId: string): Promise<MonthlyTrend> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const rows = await this.dependencies.operationRepository.listMonthlyTotals(household.id);
+
+		return {
+			baseCurrency: household.baseCurrency,
+			points: rows.map((row) => ({
+				expenseMinor: row.expenseMinor,
+				incomeMinor: row.incomeMinor,
+				month: row.month
+			}))
 		};
 	}
 
