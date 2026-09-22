@@ -90,6 +90,18 @@ export type ReferenceExpenseTotal = {
 	totalMinor: number;
 };
 
+export type CategoryExpenseHistoryTotal = {
+	categoryId: string;
+	monthsIncludedCount: number;
+	totalMinor: number;
+};
+
+export type MonthlyTotalRow = {
+	expenseMinor: number;
+	incomeMinor: number;
+	month: string;
+};
+
 function toOperationRecord(record: typeof operations.$inferSelect): OperationRecord {
 	return {
 		accountId: record.accountId,
@@ -426,6 +438,49 @@ export class OperationRepository {
 				lte(operations.happenedOn, end)
 			))
 			.groupBy(referenceColumn) as unknown as ReferenceExpenseTotal[];
+	}
+
+	public async listCategoryExpenseHistory(
+		householdId: string,
+		beforeDate: string
+	): Promise<CategoryExpenseHistoryTotal[]> {
+		return this.database.select({
+			categoryId: operations.categoryId,
+			monthsIncludedCount: sql<number>`
+				count(distinct strftime('%Y-%m', ${operations.happenedOn}))
+			`.mapWith(Number),
+			totalMinor: sql<number>`sum(${operations.amountInHouseholdBaseCurrencyMinor})`.mapWith(Number)
+		})
+			.from(operations)
+			.where(and(
+				eq(operations.householdId, householdId),
+				eq(operations.type, 'expense'),
+				isNull(operations.deletedAt),
+				isNotNull(operations.categoryId),
+				lt(operations.happenedOn, beforeDate)
+			))
+			.groupBy(operations.categoryId) as unknown as CategoryExpenseHistoryTotal[];
+	}
+
+	public async listMonthlyTotals(householdId: string): Promise<MonthlyTotalRow[]> {
+		const monthExpression = sql`strftime('%Y-%m', ${operations.happenedOn})`;
+
+		return this.database.select({
+			expenseMinor: sql<number>`
+				coalesce(sum(case when ${operations.type} = 'expense' then ${operations.amountInHouseholdBaseCurrencyMinor} else 0 end), 0)
+			`.mapWith(Number),
+			incomeMinor: sql<number>`
+				coalesce(sum(case when ${operations.type} = 'income' then ${operations.amountInHouseholdBaseCurrencyMinor} else 0 end), 0)
+			`.mapWith(Number),
+			month: sql<string>`${monthExpression}`
+		})
+			.from(operations)
+			.where(and(
+				eq(operations.householdId, householdId),
+				isNull(operations.deletedAt)
+			))
+			.groupBy(monthExpression)
+			.orderBy(monthExpression) as unknown as MonthlyTotalRow[];
 	}
 
 	private getLeadingSourceOrder(

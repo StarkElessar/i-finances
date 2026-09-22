@@ -14,6 +14,8 @@ export {
 	type OperationRateSnapshot
 } from './operation-rate';
 export {
+	type CategoryExpenseHistoryTotal,
+	type MonthlyTotalRow,
 	type NewOperationRecord,
 	type OperationLedgerRow,
 	type OperationRecord,
