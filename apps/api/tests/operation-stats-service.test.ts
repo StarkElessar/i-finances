@@ -6,6 +6,7 @@ import * as schema from '@/infrastructure/database/schema';
 import {
 	accounts,
 	categories,
+	exchangeRates,
 	householdMembers,
 	households,
 	users
@@ -17,6 +18,8 @@ import { ContactRepository } from '@/modules/contact';
 import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 import { OperationRepository, OperationService } from '@/modules/operation';
+import type { TransferService } from '@/modules/transfer';
+import { createTransferRepository, createTransferService } from '@/modules/transfer';
 
 import { createOperationInputSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
@@ -123,6 +126,20 @@ function createService(): OperationService {
 	});
 }
 
+function createTransferServiceForTest(): TransferService {
+	let sequence = 0;
+
+	return createTransferService({
+		accountRepository: new AccountRepository(database),
+		contactRepository: new ContactRepository(database),
+		createId: () => `transfer-${++sequence}`,
+		exchangeRateResolver: new ExchangeRateService(new ExchangeRateRepository(database)),
+		householdResolver: new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE),
+		now: () => FIXED_DATE,
+		transferRepository: createTransferRepository(database)
+	});
+}
+
 describe('OperationService category stats', () => {
 	it('averages history before the selected month and flags the delta', async () => {
 		const service = createService();
@@ -213,6 +230,58 @@ describe('OperationService category stats', () => {
 		expect(response.status).toBe(200);
 		expect(await response.json()).toEqual({ baseCurrency: 'BYN', items: [], month: '2026-09' });
 	});
+
+	it('aggregates category stats in household base currency, not the account currency', async () => {
+		await database.insert(exchangeRates).values({
+			createdAt: FIXED_DATE,
+			effectiveOn: '2026-09-04',
+			fromCurrency: 'USD',
+			id: 'rate-usd-byn',
+			rate: '3',
+			source: 'test',
+			toCurrency: 'BYN',
+			updatedAt: FIXED_DATE
+		});
+		await database.insert(accounts).values({
+			archivedAt: null,
+			color: '#a06368',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'USD',
+			description: '',
+			householdId: HOUSEHOLD_ID,
+			id: 'account-usd',
+			initialBalanceMinor: 0,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'USD счёт',
+			type: 'card',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+		const service = createService();
+
+		await service.create(USER_ID, createOperationInputSchema.parse({
+			accountId: 'account-usd',
+			amountMinor: 1_000,
+			categoryId: 'category-food',
+			comment: '',
+			contactId: null,
+			happenedOn: '2026-09-05',
+			title: 'Покупка в валюте',
+			type: 'expense'
+		}));
+
+		const stats = await service.getCategoryStats(USER_ID, { month: '2026-09' });
+
+		expect(stats.items).toEqual([{
+			averageMinor: null,
+			categoryId: 'category-food',
+			currentMinor: 3_000,
+			deltaPercent: null,
+			monthsIncludedCount: 0
+		}]);
+	});
 });
 
 describe('OperationService monthly trend', () => {
@@ -259,6 +328,40 @@ describe('OperationService monthly trend', () => {
 				{ expenseMinor: 15_000, incomeMinor: 0, month: '2026-09' }
 			]
 		});
+	});
+
+	it('excludes transfer legs from the monthly trend', async () => {
+		await database.insert(accounts).values({
+			archivedAt: null,
+			color: '#8899aa',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'USD',
+			description: '',
+			householdId: HOUSEHOLD_ID,
+			id: 'account-savings',
+			initialBalanceMinor: 0,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'Сбережения',
+			type: 'savings',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		await createTransferServiceForTest().create(USER_ID, {
+			comment: '',
+			contactId: null,
+			exchangeRate: '3',
+			fromAccountId: 'account-savings',
+			fromAmountMinor: 50_000,
+			happenedOn: '2026-09-05',
+			toAccountId: 'account-main'
+		});
+
+		const trend = await createService().getMonthlyTrend(USER_ID);
+
+		expect(trend.points.find((point) => point.month === '2026-09')).toBeUndefined();
 	});
 
 	it('exposes monthly-trend through the authenticated HTTP boundary', async () => {

@@ -31,7 +31,7 @@ function StatisticsContent() {
 	const [monthAnchor, setMonthAnchor] = createSignal(startOfPeriod(now, 'month'));
 	const monthKey = createMemo(() => toMonthKey(monthAnchor()));
 
-	const categories = createAsync(() => getCategories({ status: 'active' }));
+	const categories = createAsync(() => getCategories({ status: 'all' }));
 	const categoryStats = createAsync(() => getCategoryStats({ month: monthKey() }));
 	const monthlyTrend = createAsync(() => getMonthlyTrend());
 

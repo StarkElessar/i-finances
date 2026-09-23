@@ -7,7 +7,6 @@ import {
 } from '@/infrastructure/database/schema';
 
 import type { CurrencyCode, OperationType } from '@i-finances/contracts';
-import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 import {
 	and,
 	asc,
@@ -21,6 +20,7 @@ import {
 	lte,
 	sql
 } from 'drizzle-orm';
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core';
 
 export type OperationRecord = {
 	accountId: string;
@@ -477,10 +477,11 @@ export class OperationRepository {
 			.from(operations)
 			.where(and(
 				eq(operations.householdId, householdId),
-				isNull(operations.deletedAt)
+				isNull(operations.deletedAt),
+				isNull(operations.transferId)
 			))
 			.groupBy(monthExpression)
-			.orderBy(monthExpression) as unknown as MonthlyTotalRow[];
+			.orderBy(monthExpression);
 	}
 
 	private getLeadingSourceOrder(
