@@ -29,7 +29,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	RefreshCw,
-	Trash2,
+	Trash,
 	UserRound,
 	X
 } from 'lucide-solid';
@@ -496,7 +496,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 							variant='ghost'
 							onClick={() => setIsDeleteDialogOpen(true)}
 						>
-							<Trash2 size={18}/>
+							<Trash size={18}/>
 						</Button>
 					</Show>
 					<span class={css.footerSpacer}/>

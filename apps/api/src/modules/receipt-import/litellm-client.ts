@@ -78,9 +78,9 @@ function buildReceiptPrompt(input: ProcessReceiptImageInput): string {
 	const revisionNote = input.reviewComment.trim().length > 0
 		? `Пользователь уже отправлял этот чек на доработку с замечанием: "${input.reviewComment.trim()}". Обязательно учти его.`
 		: 'Это первая попытка обработки данного чека.';
-	const previousResultNote = input.previousResult !== null
-		? `Прошлый (отклонённый) результат для сравнения:\n${JSON.stringify(input.previousResult)}`
-		: '';
+	const previousResultNote = input.previousResult === null
+		? ''
+		: `Прошлый (отклонённый) результат для сравнения:\n${JSON.stringify(input.previousResult)}`;
 
 	return [
 		'Ты обрабатываешь фотографию чека для семейного бюджетного приложения. Изображение приложено к этому сообщению.',

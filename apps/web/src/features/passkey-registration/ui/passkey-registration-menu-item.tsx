@@ -81,7 +81,7 @@ export function PasskeyRegistrationMenuItem() {
 			}
 
 			if (!parsedResult.data.ok) {
-				setFailure(parsedResult.data.message ?? 'Не удалось сохранить ключ доступа.');
+				setFailure(parsedResult.data.message);
 				return;
 			}
 

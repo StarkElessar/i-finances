@@ -28,7 +28,7 @@ import {
 	toDisplayTransferRate
 } from '@/entities/transfer';
 
-import { Building2, Trash2, UserRound } from 'lucide-solid';
+import { Building2, Trash, UserRound } from 'lucide-solid';
 import {
 	createEffect,
 	createMemo,
@@ -448,7 +448,7 @@ export function TransferDialog(props: TransferDialogProps) {
 						<Show when={props.mode === 'edit' && props.onDelete}>
 							<Button
 								disabled={props.loading}
-								startIcon={<Trash2 size={16}/>}
+								startIcon={<Trash size={16}/>}
 								type='button'
 								variant='danger'
 								onClick={() => void props.onDelete?.()}

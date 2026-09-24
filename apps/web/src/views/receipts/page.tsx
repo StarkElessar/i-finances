@@ -367,11 +367,7 @@ function ReviewDialog(props: ReviewDialogProps) {
 		const targetGroupKey = categoryId ?? 'uncategorized';
 		const existingTarget = remaining.find((operation) => operation.categoryId === categoryId);
 
-		if (existingTarget !== undefined) {
-			existingTarget.itemIndexes.push(itemIndex);
-			existingTarget.amountMinor += amountMinor;
-		}
-		else {
+		if (existingTarget === undefined) {
 			const categoriesById = new Map(receiptImport.categories.map((category) => [category.id, category]));
 
 			remaining.push({
@@ -380,6 +376,10 @@ function ReviewDialog(props: ReviewDialogProps) {
 				itemIndexes: [itemIndex],
 				title: categoryId === null ? 'Без категории' : categoriesById.get(categoryId)?.name ?? targetGroupKey
 			});
+		}
+		else {
+			existingTarget.itemIndexes.push(itemIndex);
+			existingTarget.amountMinor += amountMinor;
 		}
 
 		setEditableOperations(remaining.map((operation) => ({
@@ -678,7 +678,9 @@ function ReviewDialog(props: ReviewDialogProps) {
 																					<option value=''>Без категории</option>
 																					<For each={categoryOptions()}>
 																						{(category) => (
-																							<option value={category.id}>{category.name}</option>
+																							<option value={category.id}>
+																								{category.name}
+																							</option>
 																						)}
 																					</For>
 																				</select>

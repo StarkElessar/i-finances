@@ -251,7 +251,7 @@ describe('update display name API', () => {
 			.from(users)
 			.where(eq(users.id, USER_ID));
 
-		expect(persisted?.displayName).toBe('Новый Сергей');
+		expect(persisted.displayName).toBe('Новый Сергей');
 
 		const currentResponse = await app.request('/api/auth/session', {
 			headers: { cookie }
@@ -351,6 +351,6 @@ describe('update display name API', () => {
 			.from(users)
 			.where(eq(users.id, USER_ID));
 
-		expect(persisted?.displayName).toBe('Sergei Test');
+		expect(persisted.displayName).toBe('Sergei Test');
 	});
 });
