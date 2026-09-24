@@ -19,7 +19,12 @@ export default defineConfig([
 		files: ['apps/**/*.{ts,tsx}', 'packages/**/*.{ts,tsx}'],
 		languageOptions: {
 			parserOptions: {
-				projectService: true,
+				projectService: {
+					// Contracts' tsconfig covers only `src`, so its tests and vitest config
+					// are linted through the default project with the shared strict options.
+					allowDefaultProject: ['packages/contracts/tests/*.ts', 'packages/contracts/vitest.config.ts'],
+					defaultProject: 'tsconfig.base.json'
+				},
 				tsconfigRootDir: import.meta.dirname
 			}
 		},

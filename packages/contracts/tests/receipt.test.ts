@@ -1,5 +1,6 @@
-import { approveReceiptInputSchema, receiptWorkerResultSchema } from '../src/receipt';
 import { describe, expect, it } from 'vitest';
+
+import { approveReceiptInputSchema, receiptWorkerResultSchema } from '../src/receipt';
 
 function createWorkerResultInput(receiptOverrides: Record<string, unknown> = {}) {
 	return {

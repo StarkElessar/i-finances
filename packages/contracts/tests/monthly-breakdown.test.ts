@@ -1,5 +1,6 @@
-import { getMonthlyBreakdownInputSchema, monthlyBreakdownSchema } from '../src/operation';
 import { describe, expect, it } from 'vitest';
+
+import { getMonthlyBreakdownInputSchema, monthlyBreakdownSchema } from '../src/operation';
 
 describe('getMonthlyBreakdownInputSchema', () => {
 	it('accepts a valid range for both dimensions', () => {
