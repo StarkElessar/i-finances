@@ -110,7 +110,7 @@ start, end, referenceColumn)` по образцу `listMonthlyReferenceExpenses`
 отдельные ступени для светлой и тёмной темы — как токены в
 `shared/styles/tokens.scss`). «Остальные» — нейтральный токен.
 
-Цвет следует за сущностью, а не за рангом: `assignSlots(chartedIds, prevMap)`
+Цвет следует за сущностью, а не за рангом: `assignSeriesSlots(chartedIds, prevMap)`
 сохраняет слот за строкой, пока она на графике; новая строка занимает
 наименьший свободный слот. Карта слотов хранится в localStorage вместе с
 выбором. Точка цвета в чипе, легенде, таблице и тултипе — одна и та же.
@@ -139,7 +139,7 @@ start, end, referenceColumn)` по образцу `listMonthlyReferenceExpenses`
   падение — `--color-success`), «Текущий месяц» (с пометкой, что месяц идёт).
 - Легенда + stacked bar chart (`solid-chartjs` / `chart.js`, уже в зависимостях):
   - тултип на столбец: все ненулевые серии месяца с точными суммами и «Итого»;
-  - текущий месяц — пунктирная обводка;
+  - текущий месяц — вторая строка подписи оси «неполный» (в макете была пунктирная обводка; в chart.js подпись проще и так же заметна);
   - ось Y с круглым шагом.
 - Таблица-матрица:
   - первая колонка sticky, на узком экране горизонтальный скролл;
@@ -207,7 +207,7 @@ views/statistics/
   page.tsx                          ← табы, роутинг по tab
   model/statistics-search-params.ts ← схема URL
   lib/build-breakdown-matrix.ts     ← чистая матрица + fold в «Остальные»
-  lib/series-slots.ts               ← assignSlots
+  lib/series-slots.ts               ← assignSeriesSlots
   lib/period-presets.ts             ← resolvePeriodPreset, isPresetActive
   lib/selection.ts                  ← toggleAll, isAllSelected, restore/sanitize
   ui/compare-tab/                   ← композиция вкладки
