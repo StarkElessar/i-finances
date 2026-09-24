@@ -8,7 +8,7 @@ import { getContacts } from '@/entities/contact';
 import { type BreakdownDimension, getMonthlyBreakdown, getMonthlyTrend } from '@/entities/operation';
 
 import { type BreakdownReference, buildBreakdownMatrix, OTHER_SERIES_ID } from '@/views/statistics/lib/build-breakdown-matrix';
-import { addMonths } from '@/views/statistics/lib/month-keys';
+import { addMonths, countMonths } from '@/views/statistics/lib/month-keys';
 import { type MonthRange, resolvePeriodPreset } from '@/views/statistics/lib/period-presets';
 import { resolveThemeColor } from '@/views/statistics/lib/resolve-theme-color';
 import { decodeSelectionParam, encodeSelectionParam, sanitizeSelection } from '@/views/statistics/lib/selection';
@@ -22,13 +22,16 @@ import { toMonthKey } from '@/views/statistics/ui/month-navigator/month-navigato
 import { PeriodRangePicker } from '@/views/statistics/ui/period-range-picker/period-range-picker';
 import { ReferenceMultiselect, type ReferenceOption } from '@/views/statistics/ui/reference-multiselect/reference-multiselect';
 
+import { MONTHLY_BREAKDOWN_MAX_MONTHS } from '@i-finances/contracts';
 import { createAsync } from '@solidjs/router';
-import { createEffect, createMemo, For, type JSX, Show } from 'solid-js';
+import { createEffect, createMemo, createSignal, For, type JSX, Show, untrack } from 'solid-js';
 
 const DIMENSIONS: readonly { id: BreakdownDimension; label: string }[] = [
 	{ id: 'category', label: 'Категории' },
 	{ id: 'contact', label: 'Контакты' }
 ];
+
+const PLAIN_AMOUNT_FORMATTER = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
 
 const SERIES_FALLBACKS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
 
@@ -52,11 +55,22 @@ export function CompareTab(): JSX.Element {
 	const range = createMemo<MonthRange>(() => {
 		const params = search.params();
 
-		return params.from !== undefined && params.to !== undefined && params.from <= params.to
+		const isValid = params.from !== undefined && params.to !== undefined
+			&& params.from <= params.to
+			&& countMonths(params.from, params.to) <= MONTHLY_BREAKDOWN_MAX_MONTHS;
+
+		return isValid && params.from !== undefined && params.to !== undefined
 			? { from: params.from, to: params.to }
 			: resolvePeriodPreset('ytd', currentMonth, earliestMonth());
 	});
 	const breakdown = createAsync(() => getMonthlyBreakdown({ by: by(), from: range().from, to: range().to }));
+	// While a refetch for another dimension is in flight, the previous response
+	// belongs to the other entity list and must not be combined with it.
+	const currentBreakdown = createMemo(() => {
+		const data = breakdown();
+
+		return data?.by === by() ? data : undefined;
+	});
 	const references = createMemo<BreakdownReference[] | undefined>(() => {
 		if (by() === 'category') {
 			return categories()?.items.map((item) => ({
@@ -71,49 +85,46 @@ export function CompareTab(): JSX.Element {
 	});
 	const baseCurrency = createMemo(() => breakdown()?.baseCurrency ?? categories()?.baseCurrency ?? 'BYN');
 	const allIds = createMemo(() => references()?.map((reference) => reference.id) ?? []);
-	const selectedIds = createMemo(() => {
-		const fromUrl = decodeSelectionParam(search.params().ids, allIds());
-
-		if (fromUrl !== undefined) {
-			return fromUrl;
-		}
-
-		const storage = browserStorage();
-
-		return storage === undefined ? [] : sanitizeSelection(readStoredComparison(storage, by()).ids, allIds());
-	});
-	// Previous slot maps live outside reactivity on purpose: feeding the memo's
-	// own output back through a signal would re-trigger it forever.
-	const previousSlots: Partial<Record<BreakdownDimension, SeriesSlotMap>> = {};
+	// The selection is owned here, per dimension. URL and localStorage only seed
+	// it once (when the entity list arrives) and then mirror it.
+	const [selections, setSelections] = createSignal<Partial<Record<BreakdownDimension, string[]>>>({});
+	const selectedIds = createMemo(() => selections()[by()] ?? []);
+	const isSelectionReady = createMemo(() => selections()[by()] !== undefined);
+	const [slotMaps, setSlotMaps] = createSignal<Partial<Record<BreakdownDimension, SeriesSlotMap>>>({});
 	const matrix = createMemo(() => {
-		const data = breakdown();
+		const data = currentBreakdown();
 		const refs = references();
 
-		return data === undefined || refs === undefined
+		return data === undefined || refs === undefined || !isSelectionReady()
 			? undefined
 			: buildBreakdownMatrix({
 				cells: data.cells,
 				currentMonth,
-				from: range().from,
+				from: data.from,
 				references: refs,
 				selectedIds: selectedIds(),
-				to: range().to
+				to: data.to
 			});
 	});
 	const chartedSlots = createMemo(() => {
-		const dimension = by();
-		const charted = matrix()?.series.filter((series) => series.id !== OTHER_SERIES_ID).map((series) => series.id) ?? [];
-		const storage = browserStorage();
-		const previous = previousSlots[dimension]
-			?? (storage === undefined ? {} : readStoredComparison(storage, dimension).slots);
-		const next = assignSeriesSlots(charted, previous);
+		const previous = slotMaps()[by()] ?? {};
+		const current = matrix();
 
-		previousSlots[dimension] = next;
+		if (current === undefined) {
+			return previous;
+		}
 
-		return next;
+		return assignSeriesSlots(
+			current.series.filter((series) => series.id !== OTHER_SERIES_ID).map((series) => series.id),
+			previous
+		);
 	});
+	const palette = createMemo(() => ({
+		other: resolveThemeColor('--color-series-other', '#a3adbd'),
+		series: SERIES_FALLBACKS.map((fallback, slot) => resolveThemeColor(`--color-series-${slot + 1}`, fallback))
+	}));
 	const options = createMemo<ReferenceOption[]>(() => {
-		const data = breakdown();
+		const data = currentBreakdown();
 		const totals = new Map<string, number>();
 
 		for (const cell of data?.cells ?? []) {
@@ -132,14 +143,14 @@ export function CompareTab(): JSX.Element {
 	const colorOf = (id: string) => {
 		const slots = chartedSlots();
 
-		return Object.hasOwn(slots, id)
-			? resolveThemeColor(`--color-series-${slots[id] + 1}`, SERIES_FALLBACKS[slots[id]])
-			: resolveThemeColor('--color-series-other', '#a3adbd');
+		return Object.hasOwn(slots, id) ? palette().series[slots[id]] : palette().other;
 	};
 	const formatAmount = (minor: number) => formatMinorUnitsCurrency(minor, baseCurrency(), { maximumFractionDigits: 0 });
 	const formatExact = (minor: number) => formatMinorUnitsCurrency(minor, baseCurrency());
+	const formatPlain = (minor: number) => PLAIN_AMOUNT_FORMATTER.format(minor / 100);
 
 	const handleSelection = (ids: string[]) => {
+		setSelections((previous) => ({ ...previous, [by()]: ids }));
 		search.setParams({ ids: encodeSelectionParam(ids, allIds()) }, { history: 'replace' });
 	};
 	const handleDimension = (next: BreakdownDimension) => {
@@ -150,9 +161,34 @@ export function CompareTab(): JSX.Element {
 	};
 
 	createEffect(() => {
+		const dimension = by();
+		const ids = allIds();
+
+		if (references() === undefined || untrack(selections)[dimension] !== undefined) {
+			return;
+		}
+
+		const storage = browserStorage();
+		const stored = storage === undefined ? undefined : readStoredComparison(storage, dimension);
+		const fromUrl = decodeSelectionParam(untrack(() => search.params().ids), ids);
+
+		setSelections((previous) => ({ ...previous, [dimension]: fromUrl ?? sanitizeSelection(stored?.ids ?? [], ids) }));
+		setSlotMaps((previous) => ({ ...previous, [dimension]: stored?.slots ?? {} }));
+	});
+	createEffect(() => {
+		const dimension = by();
+		const next = chartedSlots();
+
+		if (matrix() === undefined || JSON.stringify(next) === JSON.stringify(untrack(slotMaps)[dimension])) {
+			return;
+		}
+
+		setSlotMaps((previous) => ({ ...previous, [dimension]: next }));
+	});
+	createEffect(() => {
 		const storage = browserStorage();
 
-		if (storage !== undefined && references() !== undefined) {
+		if (storage !== undefined && isSelectionReady()) {
 			writeStoredComparison(storage, by(), { ids: selectedIds(), slots: chartedSlots() });
 		}
 	});
@@ -217,8 +253,9 @@ export function CompareTab(): JSX.Element {
 							/>
 							<BreakdownTable
 								colorOf={colorOf}
+								currency={baseCurrency()}
 								currentMonth={currentMonth}
-								formatAmount={formatAmount}
+								formatAmount={formatPlain}
 								matrix={current()}
 								noun={by()}
 							/>

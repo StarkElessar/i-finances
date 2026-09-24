@@ -35,7 +35,7 @@ export function ReferenceMultiselect(props: ReferenceMultiselectProps): JSX.Elem
 	let rootElement: HTMLDivElement | undefined;
 	let chipsElement: HTMLDivElement | undefined;
 	let searchInput: HTMLInputElement | undefined;
-	let allCheckbox: HTMLInputElement | undefined;
+	const [allCheckbox, setAllCheckbox] = createSignal<HTMLInputElement>();
 	const [isOpen, setIsOpen] = createSignal(false);
 	const [query, setQuery] = createSignal('');
 	const allIds = createMemo(() => props.options.map((option) => option.id));
@@ -72,8 +72,12 @@ export function ReferenceMultiselect(props: ReferenceMultiselectProps): JSX.Elem
 	};
 
 	createEffect(() => {
-		if (allCheckbox !== undefined) {
-			allCheckbox.indeterminate = props.selectedIds.length > 0 && !allSelected();
+		const checkbox = allCheckbox();
+
+		if (checkbox !== undefined) {
+			// `indeterminate` is a DOM property, not an attribute; the checkbox is
+			// recreated whenever the popover opens or search is cleared.
+			checkbox.indeterminate = props.selectedIds.length > 0 && !allSelected();
 		}
 	});
 	createEffect(() => {
@@ -122,7 +126,7 @@ export function ReferenceMultiselect(props: ReferenceMultiselectProps): JSX.Elem
 									<input
 										checked={allSelected()}
 										onChange={() => props.onChange(toggleAll(props.selectedIds, allIds()))}
-										ref={allCheckbox}
+										ref={setAllCheckbox}
 										type='checkbox'
 									/>
 									<span>Все</span>

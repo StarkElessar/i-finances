@@ -17,6 +17,7 @@ export function formatShortMonth(monthKey: string, isFirst: boolean): string {
 
 export type BreakdownTableProps = {
 	colorOf: (id: string) => string;
+	currency: string;
 	currentMonth: string;
 	formatAmount: (minor: number) => string;
 	matrix: BreakdownMatrix;
@@ -105,7 +106,7 @@ export function BreakdownTable(props: BreakdownTableProps): JSX.Element {
 			</div>
 			<div class={css.notes}>
 				<span>
-					Суммы округлены до рубля. «Ср./мес» — среднее по закрытым месяцам периода,
+					Суммы в {props.currency}, округлены до рубля. «Ср./мес» — среднее по закрытым месяцам периода,
 					текущий неполный месяц не учитывается.
 				</span>
 				<Show when={props.matrix.hiddenZeroCount > 0}>

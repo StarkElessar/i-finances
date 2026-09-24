@@ -20,6 +20,7 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
 
+    font-size: var(--font-size-body-md);
     white-space: nowrap;
 
     background-color: var(--color-surface);
@@ -42,5 +43,8 @@
     padding: var(--space-1) var(--space-2);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
+
+    font-size: var(--font-size-body-md);
+
     background-color: var(--color-surface);
 }

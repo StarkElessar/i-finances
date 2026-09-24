@@ -49,7 +49,7 @@ export function BreakdownChart(props: BreakdownChartProps): JSX.Element {
 		},
 		responsive: true,
 		scales: {
-			x: { grid: { display: false }, stacked: true },
+			x: { grid: { display: false }, stacked: true, ticks: { autoSkipPadding: 8, maxRotation: 0 } },
 			y: { beginAtZero: true, stacked: true, ticks: { maxTicksLimit: 6 } }
 		}
 	}));
