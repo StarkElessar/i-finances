@@ -7,6 +7,7 @@ export {
 	getCategoryOperations,
 	getCategoryStats,
 	getContactOperations,
+	getMonthlyBreakdown,
 	getMonthlyExpenseSummary,
 	getMonthlyTrend,
 	recalculateOperationRateAction,

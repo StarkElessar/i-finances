@@ -10,6 +10,7 @@ import type {
 	GetAccountLedgerInput,
 	GetCategoryOperationsInput,
 	GetContactOperationsInput,
+	GetMonthlyBreakdownInput,
 	GetMonthlyExpenseSummaryInput,
 	OperationCommandResult,
 	RecalculateOperationRateInput,
@@ -18,15 +19,17 @@ import type {
 import {
 	accountBalancesSchema,
 	accountLedgerSchema,
-	changeOperationDeletionStateInputSchema,
-	createOperationInputSchema,
 	categoryOperationsSchema,
 	categoryStatsSchema,
+	changeOperationDeletionStateInputSchema,
 	contactOperationsSchema,
+	createOperationInputSchema,
 	getAccountLedgerInputSchema,
 	getCategoryOperationsInputSchema,
 	getContactOperationsInputSchema,
+	getMonthlyBreakdownInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
+	monthlyBreakdownSchema,
 	monthlyExpenseSummarySchema,
 	monthlyTrendSchema,
 	operationCommandResultSchema,
@@ -98,6 +101,16 @@ export class OperationClient {
 
 	public monthlyTrend() {
 		return this.client.get('/api/operations/monthly-trend', monthlyTrendSchema);
+	}
+
+	public monthlyBreakdown(input: GetMonthlyBreakdownInput) {
+		const parsedInput = getMonthlyBreakdownInputSchema.parse(input);
+		const query = new URLSearchParams({ by: parsedInput.by, from: parsedInput.from, to: parsedInput.to });
+
+		return this.client.get(
+			`/api/operations/monthly-breakdown?${query.toString()}`,
+			monthlyBreakdownSchema
+		);
 	}
 
 	public create(input: CreateOperationInput): Promise<OperationCommandResult> {

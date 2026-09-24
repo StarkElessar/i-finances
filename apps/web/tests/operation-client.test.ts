@@ -100,4 +100,30 @@ describe('OperationClient', () => {
 			points: [{ expenseMinor: 10_000, incomeMinor: 200_000, month: '2026-08' }]
 		});
 	});
+
+	it('loads the monthly breakdown through the feature API client', async () => {
+		const fetcher: typeof globalThis.fetch = async (input) => {
+			expect(input).toBe('/api/operations/monthly-breakdown?by=contact&from=2026-01&to=2026-09');
+
+			return new Response(JSON.stringify({
+				baseCurrency: 'BYN',
+				by: 'contact',
+				cells: [{ month: '2026-08', referenceId: 'contact-evroopt', totalMinor: 20_360 }],
+				from: '2026-01',
+				to: '2026-09'
+			}), {
+				headers: { 'content-type': 'application/json' },
+				status: 200
+			});
+		};
+		const client = new OperationClient({ fetcher });
+
+		await expect(client.monthlyBreakdown({ by: 'contact', from: '2026-01', to: '2026-09' })).resolves.toEqual({
+			baseCurrency: 'BYN',
+			by: 'contact',
+			cells: [{ month: '2026-08', referenceId: 'contact-evroopt', totalMinor: 20_360 }],
+			from: '2026-01',
+			to: '2026-09'
+		});
+	});
 });

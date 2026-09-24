@@ -149,3 +149,19 @@ export type MonthlyTrend = {
 	baseCurrency: CurrencyCodeValue;
 	points: MonthlyTrendPoint[];
 };
+
+export type BreakdownDimension = 'category' | 'contact';
+
+export type MonthlyBreakdownCell = {
+	month: string;
+	referenceId: string;
+	totalMinor: number;
+};
+
+export type MonthlyBreakdown = {
+	baseCurrency: CurrencyCodeValue;
+	by: BreakdownDimension;
+	cells: MonthlyBreakdownCell[];
+	from: string;
+	to: string;
+};

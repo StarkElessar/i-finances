@@ -8,6 +8,7 @@ import type {
 	GetAccountLedgerInput,
 	GetCategoryOperationsInput,
 	GetContactOperationsInput,
+	GetMonthlyBreakdownInput,
 	GetMonthlyExpenseSummaryInput,
 	OperationCommandResult,
 	RecalculateOperationRateInput,
@@ -46,6 +47,11 @@ export const getCategoryStats = query(
 );
 
 export const getMonthlyTrend = query(() => client.monthlyTrend(), 'monthly-trend');
+
+export const getMonthlyBreakdown = query(
+	(input: GetMonthlyBreakdownInput) => client.monthlyBreakdown(input),
+	'monthly-breakdown'
+);
 
 export const createOperationAction = action(
 	(input: CreateOperationInput) => resolveCommandResult(
