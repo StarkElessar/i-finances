@@ -1,6 +1,6 @@
+import type { AccountRecord, TransferRecord } from '@/infrastructure/database/schema';
 import type { AccountRepository } from '@/modules/account';
 import type { ContactRepository } from '@/modules/contact';
-import type { AccountRecord, TransferRecord } from '@/infrastructure/database/schema';
 
 import {
 	TransferAccountsInvalidError,

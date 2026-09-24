@@ -1,5 +1,3 @@
-import { ContactClient } from '@/features/contacts/api';
-
 import { resolveCommandResult } from '@/shared/api';
 
 import type {
@@ -10,6 +8,8 @@ import type {
 	UpdateContactInput
 } from '@/entities/contact/api/contact.contract';
 import type { ContactCollection } from '@/entities/contact/model/types';
+
+import { ContactClient } from '@/features/contacts/api';
 
 import { contactCommandResultSchema } from '@i-finances/contracts';
 import { action, query } from '@solidjs/router';

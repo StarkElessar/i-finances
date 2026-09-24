@@ -1,8 +1,8 @@
+import type { Transfer } from '@i-finances/contracts';
 import {
 	type ChangeTransferDeletionStateInput,
 	changeTransferDeletionStateInputSchema
 } from '@i-finances/contracts';
-import type { Transfer } from '@i-finances/contracts';
 
 import { TransferVersionConflictError } from '../transfer-errors';
 import {

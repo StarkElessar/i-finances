@@ -1,3 +1,10 @@
+export {
+	archiveContact,
+	createContact,
+	getContacts,
+	restoreContact,
+	updateContact
+} from './contact.client';
 export type {
 	ChangeContactArchiveStateInput,
 	ContactCommandErrorCode,
@@ -15,10 +22,3 @@ export {
 	EDITABLE_CONTACT_TYPES,
 	updateContactInputSchema
 } from './contact.contract';
-export {
-	archiveContact,
-	createContact,
-	getContacts,
-	restoreContact,
-	updateContact
-} from './contact.client';

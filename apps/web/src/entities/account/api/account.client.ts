@@ -1,6 +1,6 @@
-import { AccountClient } from '@/features/accounts/api';
-
 import { resolveCommandResult } from '@/shared/api';
+
+import { AccountClient } from '@/features/accounts/api';
 
 import type {
 	ChangeAccountArchiveStateInput,

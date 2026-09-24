@@ -1,6 +1,6 @@
-import { TransferClient } from '@/features/transfers/api';
-
 import { resolveCommandResult } from '@/shared/api';
+
+import { TransferClient } from '@/features/transfers/api';
 
 import type {
 	ChangeTransferDeletionStateInput,

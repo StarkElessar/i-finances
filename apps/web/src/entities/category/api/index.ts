@@ -1,3 +1,10 @@
+export {
+	archiveCategory,
+	createCategory,
+	getCategories,
+	restoreCategory,
+	updateCategory
+} from './category.client';
 export type {
 	CategoryCommandErrorCode,
 	CategoryCommandResult,
@@ -14,10 +21,3 @@ export {
 	createCategoryInputSchema,
 	updateCategoryInputSchema
 } from './category.contract';
-export {
-	archiveCategory,
-	createCategory,
-	getCategories,
-	restoreCategory,
-	updateCategory
-} from './category.client';

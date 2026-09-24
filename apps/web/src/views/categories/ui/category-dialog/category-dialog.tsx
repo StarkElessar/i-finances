@@ -6,13 +6,13 @@ import { ColorPicker } from '@/shared/ui/color-picker';
 
 import {
 	CategoryIcon,
+	type CategoryIconId,
 	CategoryIconPicker,
 	DEFAULT_CATEGORY_ICON_ID,
 	formatMinorUnitsAsInput,
 	formatMinorUnitsCurrency,
 	parseOptionalMoneyInputToMinorUnits,
-	resolveCategoryIconId,
-	type CategoryIconId
+	resolveCategoryIconId
 } from '@/entities/category';
 
 import { ArchiveRestore } from 'lucide-solid';

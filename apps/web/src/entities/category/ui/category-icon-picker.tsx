@@ -2,13 +2,13 @@ import css from './category-icon-picker.module.scss';
 
 import { cn } from '@/shared/lib';
 
+import { For, Show } from 'solid-js';
+
 import {
 	CATEGORY_ICON_IDS,
-	resolveCategoryIconId,
-	type CategoryIconId
+	type CategoryIconId,
+	resolveCategoryIconId
 } from '../model/icons';
-
-import { For, Show } from 'solid-js';
 
 import { CategoryIcon } from './category-icon';
 

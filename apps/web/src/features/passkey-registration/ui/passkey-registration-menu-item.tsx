@@ -4,7 +4,6 @@ import { cn } from '@/shared/lib';
 import { ContextMenu } from '@/shared/ui';
 
 import { passkeyRegistrationResultSchema } from '@i-finances/contracts';
-
 import {
 	browserSupportsWebAuthn,
 	startRegistration

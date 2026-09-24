@@ -1,3 +1,8 @@
+import type { AccountRepository } from '@/modules/account';
+import type { ContactRepository } from '@/modules/contact';
+import type { ExchangeRateResolver } from '@/modules/exchange-rate';
+import type { HouseholdResolver } from '@/modules/household';
+
 import type {
 	ChangeTransferDeletionStateInput,
 	CreateTransferInput,
@@ -5,11 +10,6 @@ import type {
 	UpdateTransferInput
 } from '@i-finances/contracts';
 import type { Transfer } from '@i-finances/contracts';
-
-import type { AccountRepository } from '@/modules/account';
-import type { ContactRepository } from '@/modules/contact';
-import type { ExchangeRateResolver } from '@/modules/exchange-rate';
-import type { HouseholdResolver } from '@/modules/household';
 
 import type { TransferRepository } from './transfer-repository';
 import type { TransferRules } from './transfer-rules';

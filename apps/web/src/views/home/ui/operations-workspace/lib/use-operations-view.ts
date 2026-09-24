@@ -1,3 +1,4 @@
+import type { Account } from '@/entities/account';
 import type { Category } from '@/entities/category';
 import { DEFAULT_CATEGORY_ICON_ID, resolveCategoryIconId } from '@/entities/category';
 import type {
@@ -14,8 +15,6 @@ import {
 	getOperationPeriodRange,
 	parseLocalDateKey
 } from '@/entities/operation';
-
-import type { Account } from '@/entities/account';
 
 import { createAsync } from '@solidjs/router';
 import type { Accessor } from 'solid-js';

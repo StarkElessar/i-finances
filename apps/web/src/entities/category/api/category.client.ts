@@ -1,6 +1,6 @@
-import { CategoryClient } from '@/features/categories/api';
-
 import { resolveCommandResult } from '@/shared/api';
+
+import { CategoryClient } from '@/features/categories/api';
 
 import type {
 	CategoryListInput,

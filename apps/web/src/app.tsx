@@ -1,6 +1,6 @@
-import { AppRouter } from '@/app/router';
-
 import type { AuthClient } from '@/features/auth';
+
+import { AppRouter } from '@/app/router';
 
 import { MetaProvider } from '@solidjs/meta';
 

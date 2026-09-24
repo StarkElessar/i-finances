@@ -1,5 +1,5 @@
-import { sqlite } from '@/infrastructure/database/client';
 import { createApiDependencies } from '@/composition-root';
+import { sqlite } from '@/infrastructure/database/client';
 
 /**
  * Deletes stored receipt photos whose retention period has passed.

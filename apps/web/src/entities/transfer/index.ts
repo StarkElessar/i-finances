@@ -1,3 +1,9 @@
+export {
+	createTransferAction,
+	deleteTransferAction,
+	getTransfer,
+	updateTransferAction
+} from './api/transfer.client';
 export type {
 	ChangeTransferDeletionStateInput,
 	CreateTransferInput,
@@ -12,12 +18,6 @@ export {
 	getTransferInputSchema,
 	updateTransferInputSchema
 } from './api/transfer.contract';
-export {
-	createTransferAction,
-	deleteTransferAction,
-	getTransfer,
-	updateTransferAction
-} from './api/transfer.client';
 export { normalizeTransferComment } from './model/normalization';
 export type { TransferRateQuoteMode } from './model/rate-quote';
 export {

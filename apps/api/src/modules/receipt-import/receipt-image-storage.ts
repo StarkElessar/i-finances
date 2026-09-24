@@ -2,8 +2,8 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, resolve } from 'node:path';
 
-import { ReceiptImageValidationError } from './receipt-import-errors';
 import { convertReceiptImageToJpeg } from './receipt-image-normalizer';
+import { ReceiptImageValidationError } from './receipt-import-errors';
 
 const DEFAULT_MAX_IMAGE_BYTES = 15 * 1024 * 1024;
 // Every accepted upload is re-encoded to JPEG before it touches disk (see

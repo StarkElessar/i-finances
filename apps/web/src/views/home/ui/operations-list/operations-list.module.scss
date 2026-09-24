@@ -3,6 +3,7 @@
 .root {
     overflow-y: auto;
     display: grid;
+
     // Without an explicit max-content, grid rows lose their content-based
     // minimum size once a descendant (.group) has overflow: hidden and the
     // container itself gets a bounded height — every row silently shrinks

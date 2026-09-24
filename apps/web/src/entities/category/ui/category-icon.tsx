@@ -2,16 +2,14 @@ import css from './category-icon.module.scss';
 
 import { cn } from '@/shared/lib';
 
-import { resolveCategoryIconId, type CategoryIconId } from '../model/icons';
-
 import type { LucideIcon } from 'lucide-solid';
 import {
 	ArrowLeftRight,
 	Baby,
 	Banknote,
 	Bike,
-	BookOpen,
 	Bookmark,
+	BookOpen,
 	Briefcase,
 	Building2,
 	Bus,
@@ -64,6 +62,8 @@ import {
 } from 'lucide-solid';
 import type { JSX } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
+
+import { type CategoryIconId, resolveCategoryIconId } from '../model/icons';
 
 const CATEGORY_ICON_COMPONENTS = {
 	'tag': Tag,

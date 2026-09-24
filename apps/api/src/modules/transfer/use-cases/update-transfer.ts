@@ -1,8 +1,8 @@
+import type { Transfer } from '@i-finances/contracts';
 import {
 	type UpdateTransferInput,
 	updateTransferInputSchema
 } from '@i-finances/contracts';
-import type { Transfer } from '@i-finances/contracts';
 
 import {
 	resolveTransferLegIds,

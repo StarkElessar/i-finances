@@ -1,11 +1,11 @@
 export { AccountIcon } from './account-icon';
 export { AppLogo } from './app-logo';
+export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
+export { Button } from './button';
 export type { ColorPickerOption, ColorPickerProps } from './color-picker';
 export { ColorPicker } from './color-picker';
 export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
 export { Combobox } from './combobox';
-export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
-export { Button } from './button';
 export { Container } from './container';
 export type {
 	ContextMenuAlign,

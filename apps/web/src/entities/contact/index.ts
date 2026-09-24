@@ -1,3 +1,10 @@
+export {
+	archiveContact,
+	createContact,
+	getContacts,
+	restoreContact,
+	updateContact
+} from './api/contact.client';
 export type {
 	ChangeContactArchiveStateInput,
 	ContactCommandErrorCode,
@@ -32,10 +39,3 @@ export type {
 	ContactType,
 	PersistedContact
 } from './model/types';
-export {
-	archiveContact,
-	createContact,
-	getContacts,
-	restoreContact,
-	updateContact
-} from './api/contact.client';

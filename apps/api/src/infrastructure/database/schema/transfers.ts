@@ -1,5 +1,3 @@
-import type { CurrencyCodeValue } from './column-types';
-
 import { sql } from 'drizzle-orm';
 import {
 	check,
@@ -10,6 +8,7 @@ import {
 } from 'drizzle-orm/sqlite-core';
 
 import { accounts } from './accounts';
+import type { CurrencyCodeValue } from './column-types';
 import { contacts } from './contacts';
 import { households } from './households';
 import { users } from './users';

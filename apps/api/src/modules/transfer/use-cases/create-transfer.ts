@@ -1,12 +1,11 @@
-import type { CurrencyCode } from '@i-finances/contracts';
+import type { AccountRecord } from '@/infrastructure/database/schema';
 
+import type { CurrencyCode } from '@i-finances/contracts';
+import type { Transfer } from '@i-finances/contracts';
 import {
 	type CreateTransferInput,
 	createTransferInputSchema
 } from '@i-finances/contracts';
-import type { Transfer } from '@i-finances/contracts';
-
-import type { AccountRecord } from '@/infrastructure/database/schema';
 
 import {
 	resolveTransferLegIds,

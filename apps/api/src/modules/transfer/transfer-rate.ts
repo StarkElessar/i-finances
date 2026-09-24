@@ -1,10 +1,10 @@
+import type { ExchangeRateQuote } from '@/modules/exchange-rate';
+
 import {
 	convertMinorUnitsByExchangeRate,
 	type CurrencyCode,
 	invertExchangeRate
 } from '@i-finances/contracts';
-
-import type { ExchangeRateQuote } from '@/modules/exchange-rate';
 
 import { TransferConversionAmountError } from './transfer-errors';
 

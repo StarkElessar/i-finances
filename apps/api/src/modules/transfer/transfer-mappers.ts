@@ -1,9 +1,9 @@
-import type { Transfer } from '@i-finances/contracts';
-
 import type {
 	OperationRecord,
 	TransferRecord
 } from '@/infrastructure/database/schema';
+
+import type { Transfer } from '@i-finances/contracts';
 
 /**
  * Maps persisted transfer and linked operation ids to the public DTO.
