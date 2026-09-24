@@ -274,6 +274,53 @@ export const monthlyTrendSchema = z.object({
 
 export type MonthlyTrend = z.infer<typeof monthlyTrendSchema>;
 
+export const monthKeySchema = z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/, 'Укажите месяц в формате ГГГГ-ММ.');
+
+export const MONTHLY_BREAKDOWN_MAX_MONTHS = 24;
+
+export const breakdownDimensionSchema = z.enum(['category', 'contact']);
+
+export type BreakdownDimension = z.infer<typeof breakdownDimensionSchema>;
+
+function countMonthKeys(from: string, to: string): number {
+	const [fromYear, fromMonth] = from.split('-').map(Number);
+	const [toYear, toMonth] = to.split('-').map(Number);
+
+	return (toYear - fromYear) * 12 + (toMonth - fromMonth) + 1;
+}
+
+export const getMonthlyBreakdownInputSchema = z.object({
+	by: breakdownDimensionSchema,
+	from: monthKeySchema,
+	to: monthKeySchema
+}).refine(
+	(input) => input.from <= input.to,
+	{ message: 'Начальный месяц должен быть не позже конечного.', path: ['to'] }
+).refine(
+	(input) => input.from > input.to || countMonthKeys(input.from, input.to) <= MONTHLY_BREAKDOWN_MAX_MONTHS,
+	{ message: `Период не может быть длиннее ${MONTHLY_BREAKDOWN_MAX_MONTHS} месяцев.`, path: ['to'] }
+);
+
+export type GetMonthlyBreakdownInput = z.infer<typeof getMonthlyBreakdownInputSchema>;
+
+export const monthlyBreakdownCellSchema = z.object({
+	month: monthKeySchema,
+	referenceId: operationIdSchema,
+	totalMinor: safeIntegerSchema
+});
+
+export type MonthlyBreakdownCell = z.infer<typeof monthlyBreakdownCellSchema>;
+
+export const monthlyBreakdownSchema = z.object({
+	baseCurrency: currencyCodeSchema,
+	by: breakdownDimensionSchema,
+	cells: z.array(monthlyBreakdownCellSchema),
+	from: monthKeySchema,
+	to: monthKeySchema
+});
+
+export type MonthlyBreakdown = z.infer<typeof monthlyBreakdownSchema>;
+
 export const operationCommandErrorCodeSchema = z.enum([
 	'conflict',
 	'forbidden',
