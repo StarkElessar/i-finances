@@ -96,6 +96,7 @@ export function createApiApp(
 		app.get('/api/operations/monthly-summary', operationController.monthlySummary());
 		app.get('/api/operations/category-stats', operationController.categoryStats());
 		app.get('/api/operations/monthly-trend', operationController.monthlyTrend());
+		app.get('/api/operations/monthly-breakdown', operationController.monthlyBreakdown());
 		app.post('/api/operations', operationController.create());
 		app.put('/api/operations/:id', operationController.update());
 		app.post('/api/operations/:id/archive', operationController.archive());

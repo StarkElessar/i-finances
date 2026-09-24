@@ -6,7 +6,7 @@ import {
 	operations
 } from '@/infrastructure/database/schema';
 
-import type { CurrencyCode, OperationType } from '@i-finances/contracts';
+import type { BreakdownDimension, CurrencyCode, OperationType } from '@i-finances/contracts';
 import {
 	and,
 	asc,
@@ -100,6 +100,12 @@ export type MonthlyTotalRow = {
 	expenseMinor: number;
 	incomeMinor: number;
 	month: string;
+};
+
+export type MonthlyReferenceTotalRow = {
+	month: string;
+	referenceId: string;
+	totalMinor: number;
 };
 
 function toOperationRecord(record: typeof operations.$inferSelect): OperationRecord {
@@ -482,6 +488,33 @@ export class OperationRepository {
 			))
 			.groupBy(monthExpression)
 			.orderBy(monthExpression);
+	}
+
+	public async listMonthlyReferenceBreakdown(
+		householdId: string,
+		start: string,
+		end: string,
+		by: BreakdownDimension
+	): Promise<MonthlyReferenceTotalRow[]> {
+		const referenceColumn = by === 'category' ? operations.categoryId : operations.contactId;
+		const monthExpression = sql<string>`strftime('%Y-%m', ${operations.happenedOn})`;
+
+		return this.database.select({
+			month: monthExpression,
+			referenceId: referenceColumn,
+			totalMinor: sql<number>`sum(${operations.amountInHouseholdBaseCurrencyMinor})`.mapWith(Number)
+		})
+			.from(operations)
+			.where(and(
+				eq(operations.householdId, householdId),
+				eq(operations.type, 'expense'),
+				isNull(operations.deletedAt),
+				isNull(operations.transferId),
+				isNotNull(referenceColumn),
+				gte(operations.happenedOn, start),
+				lte(operations.happenedOn, end)
+			))
+			.groupBy(referenceColumn, monthExpression) as unknown as MonthlyReferenceTotalRow[];
 	}
 
 	private getLeadingSourceOrder(

@@ -17,7 +17,9 @@ import type {
 	GetAccountLedgerInput,
 	GetCategoryOperationsInput,
 	GetContactOperationsInput,
+	GetMonthlyBreakdownInput,
 	GetMonthlyExpenseSummaryInput,
+	MonthlyBreakdown,
 	MonthlyExpenseSummary,
 	MonthlyTrend,
 	PersistedOperation,
@@ -416,6 +418,31 @@ export class OperationService {
 				incomeMinor: row.incomeMinor,
 				month: row.month
 			}))
+		};
+	}
+
+	public async getMonthlyBreakdown(
+		userId: string,
+		input: GetMonthlyBreakdownInput
+	): Promise<MonthlyBreakdown> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const rows = await this.dependencies.operationRepository.listMonthlyReferenceBreakdown(
+			household.id,
+			getMonthRange(input.from).start,
+			getMonthRange(input.to).end,
+			input.by
+		);
+
+		return {
+			baseCurrency: household.baseCurrency,
+			by: input.by,
+			cells: rows.map((row) => ({
+				month: row.month,
+				referenceId: row.referenceId,
+				totalMinor: row.totalMinor
+			})),
+			from: input.from,
+			to: input.to
 		};
 	}
 

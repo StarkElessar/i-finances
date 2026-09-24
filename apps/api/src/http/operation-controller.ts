@@ -22,6 +22,7 @@ import {
 	getAccountLedgerInputSchema,
 	getCategoryOperationsInputSchema,
 	getContactOperationsInputSchema,
+	getMonthlyBreakdownInputSchema,
 	getMonthlyExpenseSummaryInputSchema,
 	type PersistedOperation,
 	recalculateOperationRateInputSchema,
@@ -215,6 +216,36 @@ export class OperationHttpController {
 			try {
 				return context.json(
 					await this.operationService.getMonthlyTrend(session.user.id),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
+	public monthlyBreakdown() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			const parsedInput = getMonthlyBreakdownInputSchema.safeParse({
+				by: context.req.query('by'),
+				from: context.req.query('from'),
+				to: context.req.query('to')
+			});
+
+			if (!parsedInput.success) {
+				return this.invalidInput(context, parsedInput.error);
+			}
+
+			try {
+				return context.json(
+					await this.operationService.getMonthlyBreakdown(session.user.id, parsedInput.data),
 					200
 				);
 			}
