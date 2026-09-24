@@ -25,9 +25,10 @@
 
 .title-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-4);
     align-items: center;
-    color: var(--color-primary);
+    justify-content: space-between;
 
     h1 {
         margin: 0;
@@ -58,5 +59,42 @@
     h2 {
         margin: 0;
         font-size: var(--font-size-heading-3);
+    }
+}
+
+.title-main {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    color: var(--color-primary);
+}
+
+.tabs {
+    display: inline-flex;
+    gap: 2px;
+
+    padding: 3px;
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-strong);
+}
+
+.tab {
+    cursor: pointer;
+
+    padding: var(--space-1) var(--space-4);
+    border: 0;
+    border-radius: var(--radius-sm);
+
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+
+    background: transparent;
+
+    &[aria-selected="true"] {
+        font-weight: 600;
+        color: var(--color-text-primary);
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-sm);
     }
 }

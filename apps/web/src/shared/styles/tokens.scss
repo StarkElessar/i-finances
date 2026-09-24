@@ -80,6 +80,17 @@
     --color-warning-soft: #fff5df;
     --color-focus-ring: rgb(37 99 235 / 22%);
 
+    // Categorical series palette (dataviz reference instance, CVD-validated order)
+    --color-series-1: #2a78d6;
+    --color-series-2: #eb6834;
+    --color-series-3: #1baf7a;
+    --color-series-4: #eda100;
+    --color-series-5: #e87ba4;
+    --color-series-6: #008300;
+    --color-series-7: #4a3aa7;
+    --color-series-8: #e34948;
+    --color-series-other: #a3adbd;
+
     // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
     --shadow-md: 0 12px 32px rgb(23 32 51 / 10%);
@@ -113,6 +124,17 @@
     --color-warning: #efb45f;
     --color-warning-soft: #42331c;
     --color-focus-ring: rgb(110 168 255 / 28%);
+
+    // Categorical series palette, dark steps
+    --color-series-1: #3987e5;
+    --color-series-2: #d95926;
+    --color-series-3: #199e70;
+    --color-series-4: #c98500;
+    --color-series-5: #d55181;
+    --color-series-6: #008300;
+    --color-series-7: #9085e9;
+    --color-series-8: #e66767;
+    --color-series-other: #5d6879;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
     --shadow-md: 0 12px 32px rgb(0 0 0 / 28%);
 

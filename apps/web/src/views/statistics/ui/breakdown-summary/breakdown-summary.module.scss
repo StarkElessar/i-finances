@@ -1,0 +1,50 @@
+@use "@/shared/styles/mixins" as mx;
+
+.root {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: var(--space-3);
+
+    @include mx.media-mn(720) {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+.tile {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+
+    min-inline-size: 0;
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.label {
+    font-size: var(--font-size-label);
+    font-weight: 600;
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.value {
+    font-size: var(--font-size-heading-3);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.hint {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-tertiary);
+}
+
+.up {
+    color: var(--color-danger);
+}
+
+.down {
+    color: var(--color-success);
+}
