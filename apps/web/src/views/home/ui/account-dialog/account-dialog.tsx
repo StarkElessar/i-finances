@@ -15,17 +15,23 @@ import { Dialog } from '@/shared/ui/dialog';
 import { Switch } from '@/shared/ui/switch';
 import { TextField } from '@/shared/ui/text-field';
 
+import { ACCOUNT_DETAILS_REGISTRY, type AccountDetailsDraft } from '@/features/account-details';
+
 import { createEffect, createSignal, For, Show } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 const DEFAULT_ACCOUNT_COLOR = AccountColor.BLUE;
 
 export type AccountDialogMode = 'create' | 'edit';
 
+export type AccountDetailsStatus = 'failed' | 'loading' | 'ready';
+
 export type AccountDialogValue = {
 	balance: number;
 	color: string;
 	currency: CurrencyCodeValue;
+	details?: Record<string, string | null>;
 	isColorAccentEnabled: boolean;
 	isIncludedInFamilyTotal: boolean;
 	name: string;
@@ -38,8 +44,10 @@ export type AccountDialogProps = {
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (account: AccountDialogValue) => Promise<void> | void;
 	currencyLocked?: boolean;
+	detailsStatus?: AccountDetailsStatus;
 	error?: string;
 	fieldErrors?: Record<string, string>;
+	initialDetails?: unknown;
 	initialValue?: AccountDialogValue;
 	loading?: boolean;
 	mode?: AccountDialogMode;
@@ -90,6 +98,7 @@ export function AccountDialog(props: AccountDialogProps) {
 	const [accountType, setAccountType] = createSignal<AccountTypeValue>(AccountType.CARD);
 	const [isColorAccentEnabled, setIsColorAccentEnabled] = createSignal(false);
 	const [isIncludedInFamilyTotal, setIsIncludedInFamilyTotal] = createSignal(true);
+	const [detailsDrafts, setDetailsDrafts] = createSignal<Partial<Record<AccountTypeValue, AccountDetailsDraft>>>({});
 
 	const mode = () => props.mode ?? 'create';
 	const isEditMode = () => mode() === 'edit';
@@ -98,6 +107,22 @@ export function AccountDialog(props: AccountDialogProps) {
 		? 'Измените параметры счета и сохраните результат'
 		: 'Добавьте карту, наличные или накопления семьи';
 	const submitLabel = () => isEditMode() ? 'Сохранить' : 'Создать';
+	const detailsDescriptor = () => ACCOUNT_DETAILS_REGISTRY[accountType()];
+	const isDetailsLoading = () => props.detailsStatus === 'loading';
+	const isFormDisabled = () => Boolean(props.loading) || isDetailsLoading();
+	const currentDraft = (): AccountDetailsDraft => (
+		detailsDrafts()[accountType()] ?? detailsDescriptor()?.createDraft(undefined) ?? {}
+	);
+	const hasInitialDetailsToLose = () => {
+		const initial = props.initialValue;
+		const descriptor = initial ? ACCOUNT_DETAILS_REGISTRY[initial.type] : null;
+
+		return isEditMode()
+			&& initial !== undefined
+			&& initial.type !== accountType()
+			&& descriptor !== null
+			&& descriptor.hasData(descriptor.createDraft(props.initialDetails));
+	};
 
 	createEffect(() => {
 		if (props.open) {
@@ -111,6 +136,12 @@ export function AccountDialog(props: AccountDialogProps) {
 			setAccountType(value.type);
 			setIsColorAccentEnabled(value.isColorAccentEnabled);
 			setIsIncludedInFamilyTotal(value.isIncludedInFamilyTotal);
+
+			const initialDescriptor = ACCOUNT_DETAILS_REGISTRY[value.type];
+
+			setDetailsDrafts(
+				initialDescriptor ? { [value.type]: initialDescriptor.createDraft(props.initialDetails) } : {}
+			);
 		}
 	});
 
@@ -120,6 +151,10 @@ export function AccountDialog(props: AccountDialogProps) {
 
 	const handleOwnerInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
 		setAccountOwner(event.currentTarget.value);
+	};
+
+	const handleDraftChange = (draft: AccountDetailsDraft) => {
+		setDetailsDrafts((drafts) => ({ ...drafts, [accountType()]: draft }));
 	};
 
 	const handleBalanceInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
@@ -152,6 +187,7 @@ export function AccountDialog(props: AccountDialogProps) {
 				balance: parseBalanceInput(accountBalance()),
 				color: accountColor(),
 				currency: accountCurrency(),
+				details: detailsDescriptor()?.toInput(currentDraft()),
 				isColorAccentEnabled: isColorAccentEnabled(),
 				isIncludedInFamilyTotal: isIncludedInFamilyTotal(),
 				name,
@@ -178,7 +214,7 @@ export function AccountDialog(props: AccountDialogProps) {
 				</Dialog.Header>
 
 				<Dialog.Body>
-					<fieldset class={css.formGrid} disabled={props.loading}>
+					<fieldset class={css.formGrid} disabled={isFormDisabled()}>
 						<div class={css.formFieldFull}>
 							<div class={css.formLabel}>Тип счета</div>
 							<div class={css.typeOptions}>
@@ -237,6 +273,29 @@ export function AccountDialog(props: AccountDialogProps) {
 							value={accountOwner()}
 							onInput={handleOwnerInput}
 						/>
+
+						<Show when={hasInitialDetailsToLose()}>
+							<p class={cn(css.formFieldFull, css.detailsWarning)} role='status'>
+								Реквизиты карты будут удалены при сохранении.
+							</p>
+						</Show>
+
+						<Show keyed when={detailsDescriptor()}>
+							{(descriptor) => (
+								<div class={css.formFieldFull}>
+									<Dynamic
+										accentColor={accountColor()}
+										component={descriptor.FormSection}
+										disabled={isFormDisabled()}
+										draft={currentDraft()}
+										errors={props.fieldErrors}
+										holder={accountOwner().trim()}
+										title={accountName().trim()}
+										onChange={handleDraftChange}
+									/>
+								</div>
+							)}
+						</Show>
 
 						<TextField
 							error={props.fieldErrors?.initialBalanceMinor}
@@ -307,6 +366,12 @@ export function AccountDialog(props: AccountDialogProps) {
 					<Show when={props.error}>
 						<p class={css.error} role='alert'>{props.error}</p>
 					</Show>
+
+					<Show when={props.detailsStatus === 'failed'}>
+						<p class={css.error} role='alert'>
+							Не удалось загрузить реквизиты счёта. Закройте окно и повторите попытку.
+						</p>
+					</Show>
 				</Dialog.Body>
 
 				<Dialog.Footer>
@@ -318,8 +383,8 @@ export function AccountDialog(props: AccountDialogProps) {
 						Отмена
 					</Dialog.Action>
 					<Dialog.Action
-						disabled={!accountName().trim()}
-						loading={props.loading}
+						disabled={!accountName().trim() || props.detailsStatus === 'failed'}
+						loading={props.loading || isDetailsLoading()}
 						type='submit'
 					>
 						{submitLabel()}

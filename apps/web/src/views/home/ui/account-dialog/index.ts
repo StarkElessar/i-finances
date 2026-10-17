@@ -1,4 +1,5 @@
 export type {
+	AccountDetailsStatus,
 	AccountDialogMode,
 	AccountDialogProps,
 	AccountDialogValue

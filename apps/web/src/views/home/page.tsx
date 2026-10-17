@@ -16,6 +16,7 @@ import { AccountIcon, Button, Container } from '@/shared/ui';
 import type { Account, PersistedAccount } from '@/entities/account';
 import {
 	createAccount as createAccountAction,
+	getAccountFull,
 	getAccounts,
 	updateAccount as updateAccountAction
 } from '@/entities/account/api';
@@ -59,6 +60,8 @@ import {
 	updateTransferAction
 } from '@/entities/transfer';
 
+import { ACCOUNT_DETAILS_REGISTRY } from '@/features/account-details';
+
 import {
 	type AccountCommandResult,
 	collectFieldErrors,
@@ -91,10 +94,11 @@ import {
 	onMount,
 	Show
 } from 'solid-js';
+import { Dynamic } from 'solid-js/web';
 import type { z } from 'zod';
 
 import { homeSearchParamsSchema } from './model/home-search-params';
-import type { AccountDialogValue } from './ui/account-dialog';
+import type { AccountDetailsStatus, AccountDialogValue } from './ui/account-dialog';
 import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
 import { OperationDetailsPanel } from './ui/operation-details-panel';
@@ -237,6 +241,8 @@ function HomeContent(props: HomeContentProps) {
 
 	onCleanup(() => clearTimeout(justCreatedHighlightTimeout));
 	const [editingAccount, setEditingAccount] = createSignal<PersistedAccount>();
+	const [editingAccountDetails, setEditingAccountDetails] = createSignal<unknown>();
+	const [accountDetailsStatus, setAccountDetailsStatus] = createSignal<AccountDetailsStatus>('ready');
 	const [isAccountDialogOpen, setIsAccountDialogOpen] = createSignal(false);
 	const [accountDialogError, setAccountDialogError] = createSignal<string>();
 	const [accountDialogFieldErrors, setAccountDialogFieldErrors]
@@ -486,9 +492,38 @@ function HomeContent(props: HomeContentProps) {
 		}
 	};
 
+	const loadAccountDetails = async (account: PersistedAccount) => {
+		if (ACCOUNT_DETAILS_REGISTRY[account.type] === null) {
+			setAccountDetailsStatus('ready');
+			return;
+		}
+
+		setAccountDetailsStatus('loading');
+
+		try {
+			const fullAccount = await getAccountFull(account.id);
+
+			if (editingAccount()?.id !== account.id || !isAccountDialogOpen()) {
+				return;
+			}
+
+			// The full response carries the current version; the form must send that one.
+			setEditingAccount(fullAccount);
+			setEditingAccountDetails(fullAccount.details);
+			setAccountDetailsStatus('ready');
+		}
+		catch {
+			if (editingAccount()?.id === account.id) {
+				setAccountDetailsStatus('failed');
+			}
+		}
+	};
+
 	const handleOpenCreateAccountDialog = () => {
 		setIsSidebarOpen(false);
 		setEditingAccount(undefined);
+		setEditingAccountDetails(undefined);
+		setAccountDetailsStatus('ready');
 		setAccountDialogError(undefined);
 		setAccountDialogFieldErrors(undefined);
 		setIsAccountDialogOpen(true);
@@ -497,9 +532,11 @@ function HomeContent(props: HomeContentProps) {
 	const handleOpenEditAccountDialog = (account: PersistedAccount) => {
 		setIsSidebarOpen(false);
 		setEditingAccount(account);
+		setEditingAccountDetails(undefined);
 		setAccountDialogError(undefined);
 		setAccountDialogFieldErrors(undefined);
 		setIsAccountDialogOpen(true);
+		void loadAccountDetails(account);
 	};
 
 	const handleOpenSidebar = () => {
@@ -552,6 +589,11 @@ function HomeContent(props: HomeContentProps) {
 		}
 
 		setIsAccountDialogOpen(open);
+
+		if (!open) {
+			setEditingAccountDetails(undefined);
+			setAccountDetailsStatus('ready');
+		}
 	};
 
 	const handleAccountSubmit = async (accountValue: AccountDialogValue): Promise<void> => {
@@ -559,6 +601,7 @@ function HomeContent(props: HomeContentProps) {
 		const editableFields = {
 			color: accountValue.color,
 			currency: accountValue.currency,
+			details: accountValue.details,
 			description: currentAccount?.description ?? '',
 			initialBalanceMinor: amountToMinorUnits(accountValue.balance),
 			isColorAccentEnabled: accountValue.isColorAccentEnabled,
@@ -1120,14 +1163,31 @@ function HomeContent(props: HomeContentProps) {
 											<section class={css.accountWorkspace}>
 												<header class={css.accountHeader}>
 													<div class={css.accountHeading}>
-														<AccountIcon
-															accountType={account.type}
-															class={css.previewAccountIcon}
-															style={getAccountItemStyle(account)}
-														/>
+														{(() => {
+															const accountIcon = (
+																<AccountIcon
+																	accountType={account.type}
+																	class={css.previewAccountIcon}
+																	style={getAccountItemStyle(account)}
+																/>
+															);
+															const descriptor = ACCOUNT_DETAILS_REGISTRY[account.type];
+
+															return descriptor
+																? (
+																	<Dynamic
+																		account={account}
+																		component={descriptor.HeaderVisual}
+																		fallback={accountIcon}
+																	/>
+																)
+																: accountIcon;
+														})()}
 														<div>
 															<div class={css.previewKicker}>
-																{accountTypeMeta.label}
+																{account.owner
+																	? `${accountTypeMeta.label} · ${account.owner}`
+																	: accountTypeMeta.label}
 															</div>
 															<h1 class={css.previewTitle}>
 																{account.name}
@@ -1209,8 +1269,10 @@ function HomeContent(props: HomeContentProps) {
 
 			<AccountDialog
 				currencyLocked={editingAccount()?.hasOperations ?? false}
+				detailsStatus={accountDetailsStatus()}
 				error={accountDialogError()}
 				fieldErrors={accountDialogFieldErrors()}
+				initialDetails={editingAccountDetails()}
 				initialValue={accountDialogInitialValue()}
 				loading={isAccountMutationPending()}
 				mode={editingAccount() ? 'edit' : 'create'}
