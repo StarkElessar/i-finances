@@ -50,7 +50,7 @@
     position: absolute;
     inset: 0;
 
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: var(--color-border-strong);
 

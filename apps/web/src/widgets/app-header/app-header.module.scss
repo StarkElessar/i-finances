@@ -63,7 +63,7 @@
     inline-size: min(calc(100vw - var(--space-8)), fn.rem(640));
     padding: fn.rem(5);
     border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: color-mix(in srgb, var(--color-surface) 88%, transparent);
     backdrop-filter: blur(18px) saturate(1.35);

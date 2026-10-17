@@ -139,7 +139,7 @@
     grid-column: 1 / -1;
 
     block-size: fn.rem(4);
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: var(--color-surface-strong);
 }

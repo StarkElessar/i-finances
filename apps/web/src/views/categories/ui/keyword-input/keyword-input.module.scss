@@ -47,7 +47,7 @@
     max-inline-size: 100%;
     min-block-size: fn.rem(28);
     padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4);
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     color: var(--color-text-secondary);
 

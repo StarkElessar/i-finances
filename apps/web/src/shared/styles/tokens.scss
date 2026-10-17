@@ -25,8 +25,9 @@
     --font-size-heading-3: #{fn.rem(18)};
     --font-size-body-lg: #{fn.rem(16)};
     --font-size-body-md: #{fn.rem(14)};
+    --font-size-caption: #{fn.rem(13)}; // mockup --fs-sm: compact secondary text, buttons sm
     --font-size-body-sm: #{fn.rem(12)};
-    --font-size-label: #{fn.rem(11)};
+    --font-size-label: #{fn.rem(12)}; // mockup --fs-label (was 11): field label, hint, table head
     --line-height-display: 1.2;
     --line-height-heading: 1.3;
     --line-height-body-lg: 1.5;
@@ -58,10 +59,20 @@
     --radius-md: #{fn.rem(8)};
     --radius-lg: #{fn.rem(12)};
     --radius-xl: #{fn.rem(16)};
+    --radius-pill: #{fn.rem(999)};
     --radius-round: 50%;
     --control-size-sm: #{fn.rem(32)};
     --control-size-md: #{fn.rem(40)};
     --control-size-lg: #{fn.rem(48)};
+
+    // Data rows (mockup `.i-tr` and `.i-row`); the fixed heights virtual scroll needs (IF-13)
+    --row-height-compact: #{fn.rem(44)};
+    --row-height-comfortable: #{fn.rem(64)};
+
+    // Side panel. One width over the content (owner and Opus decision
+    // 2026-10-18), another when docked next to the content.
+    --panel-overlay-inline-size: #{fn.rem(420)};
+    --panel-docked-inline-size: #{fn.rem(340)};
 
     // Surfaces and text
     --color-canvas: #f6f8fb;
@@ -70,10 +81,12 @@
     --color-surface-strong: #e8edf4;
     --color-text-primary: #172033;
     --color-text-secondary: #526078;
-    --color-text-tertiary: #778398;
+    --color-text-tertiary: #627089;
     --color-text-inverse: #fff;
     --color-border: #dce3ed;
     --color-border-strong: #c5cfdd;
+    --color-scrim: rgb(23 32 51 / 45%);
+    --color-ink-card: #1b2333;
 
     // Brand and semantic states
     --color-primary: rgb(63 119 168);
@@ -103,6 +116,7 @@
     // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
     --shadow-md: 0 12px 32px rgb(23 32 51 / 10%);
+    --shadow-lg: 0 24px 64px rgb(23 32 51 / 22%);
     --duration-fast: 120ms;
     --duration-normal: 180ms;
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -117,10 +131,12 @@
     --color-surface-strong: #27303e;
     --color-text-primary: #f3f6fb;
     --color-text-secondary: #b4bfd0;
-    --color-text-tertiary: #8995a8;
+    --color-text-tertiary: #93a0b5;
     --color-text-inverse: #fff;
     --color-border: #2d3746;
     --color-border-strong: #3c485a;
+    --color-scrim: rgb(0 0 0 / 60%);
+    --color-ink-card: #0d1118;
     --color-primary: #6ea8ff;
     --color-primary-hover: #8ab8ff;
     --color-primary-active: #a7c9ff;
@@ -146,6 +162,7 @@
     --color-series-other: #5d6879;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
     --shadow-md: 0 12px 32px rgb(0 0 0 / 28%);
+    --shadow-lg: 0 24px 64px rgb(0 0 0 / 55%);
 
     color-scheme: dark;
 }
