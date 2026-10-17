@@ -25,7 +25,11 @@ export function CardExpiryField(props: CardExpiryFieldProps) {
 			return;
 		}
 
-		if (/\D/.test(event.data) || props.value.replace(/\D/g, '').length >= 4) {
+		// A non-empty selection is replaced by the typed text, so the length cap only applies without one.
+		const hasSelection = event.currentTarget.selectionStart !== event.currentTarget.selectionEnd;
+		const isFull = props.value.replace(/\D/g, '').length >= 4;
+
+		if (/\D/.test(event.data) || (isFull && !hasSelection)) {
 			event.preventDefault();
 		}
 	};

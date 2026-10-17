@@ -27,7 +27,12 @@ export function CardNumberField(props: CardNumberFieldProps) {
 			return;
 		}
 
-		if (/\D/.test(event.data) || extractCardDigits(props.value).length >= CARD_NUMBER_DIGITS) {
+		// A non-empty selection is replaced by the typed text, so the length cap only applies without one;
+		// onInput trims whatever still overflows.
+		const hasSelection = event.currentTarget.selectionStart !== event.currentTarget.selectionEnd;
+		const isFull = extractCardDigits(props.value).length >= CARD_NUMBER_DIGITS;
+
+		if (/\D/.test(event.data) || (isFull && !hasSelection)) {
 			event.preventDefault();
 		}
 	};

@@ -18,7 +18,7 @@
 .size-full {
     aspect-ratio: 1.586 / 1;
     inline-size: 100%;
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-5);
     border-radius: var(--radius-lg);
 
     .title {
@@ -33,9 +33,10 @@
     }
 
     .number {
-        font-size: var(--font-size-body-lg);
+        font-size: fn.rem(13);
         font-weight: var(--font-weight-semibold);
-        letter-spacing: 0.06em;
+        letter-spacing: 0.05em;
+        white-space: nowrap;
     }
 
     .footer {
