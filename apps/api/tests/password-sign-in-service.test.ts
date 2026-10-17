@@ -160,6 +160,10 @@ describe('hasUsablePassword', () => {
 		expect(hasUsablePassword('stored-hash')).toBe(false);
 		expect(hasUsablePassword('$2b$10$abcdefghijklmnopqrstuv')).toBe(false);
 		expect(hasUsablePassword('x$argon2id$')).toBe(false);
+		expect(hasUsablePassword('$argon2x$v=19$m=16,t=2,p=1$c2FsdA$aGFzaA')).toBe(false);
+		expect(hasUsablePassword('$argon2id$garbage')).toBe(false);
+		expect(hasUsablePassword('$argon2id$v=19$m=16,t=2,p=1$c2FsdA')).toBe(false);
+		expect(hasUsablePassword('$argon2id$v=19$m=16,t=2,p=1$c2FsdA$aGFzaA extra')).toBe(false);
 		expect(hasUsablePassword(null)).toBe(false);
 		expect(hasUsablePassword(undefined)).toBe(false);
 	});
