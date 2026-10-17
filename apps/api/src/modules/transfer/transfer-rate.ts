@@ -6,7 +6,7 @@ import {
 	invertExchangeRate
 } from '@i-finances/contracts';
 
-import { TransferConversionAmountError } from './transfer-errors';
+import { TransferConversionAmountError } from './transfer-conversion-amount-error';
 
 export const TRANSFER_EXCHANGE_RATE_SOURCE = 'transfer';
 

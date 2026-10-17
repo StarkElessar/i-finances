@@ -1,8 +1,5 @@
 export { AccountCurrencyLockedError } from './account-currency-locked-error';
-export {
-	AccountNotFoundError,
-	AccountVersionConflictError
-} from './account-errors';
+export { AccountNotFoundError } from './account-not-found-error';
 export {
 	type AccountRecord,
 	AccountRepository,
@@ -14,3 +11,4 @@ export {
 	AccountService,
 	type AccountServiceDependencies
 } from './account-service';
+export { AccountVersionConflictError } from './account-version-conflict-error';

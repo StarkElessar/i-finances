@@ -1,3 +1,5 @@
+import { ApiRequestError } from './api-request-error';
+
 /**
  * Thin HTTP client authenticating as a machine user against `apps/api`,
  * exactly like `apps/web` does over a cookie session — except this one
@@ -9,16 +11,6 @@ export type ApiClientConfig = {
 	apiKey: string;
 	baseUrl: string;
 };
-
-export class ApiRequestError extends Error {
-	public constructor(
-		public readonly status: number,
-		public readonly body: unknown
-	) {
-		super(`API request failed with status ${status}`);
-		this.name = 'ApiRequestError';
-	}
-}
 
 export class ApiClient {
 	private readonly baseUrl: string;

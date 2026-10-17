@@ -1,6 +1,6 @@
 import { toAccountSummary } from '@/account-summary';
 import type { ApiClient } from '@/api-client';
-import { ApiRequestError } from '@/api-client';
+import { ApiRequestError } from '@/api-request-error';
 import { parseAmountToMinor } from '@/parse-amount';
 
 import type {

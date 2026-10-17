@@ -2,8 +2,9 @@ import type { HouseholdResolver } from '@/modules/household';
 
 import type { CurrencyCode } from '@i-finances/contracts';
 
-import { AccountNotFoundError, AccountVersionConflictError } from './account-errors';
+import { AccountNotFoundError } from './account-not-found-error';
 import type { AccountRecord, AccountRepository } from './account-repository';
+import { AccountVersionConflictError } from './account-version-conflict-error';
 
 export type CurrentAccount = {
 	householdBaseCurrency: CurrencyCode;

@@ -14,10 +14,11 @@ import {
 	type UpdateContactInput
 } from '@i-finances/contracts';
 
-import { ContactNameConflictError, ContactVersionConflictError } from './contact-errors';
 import { toPersistedContact } from './contact-mappers';
+import { ContactNameConflictError } from './contact-name-conflict-error';
 import type { ContactRepository } from './contact-repository';
 import { ContactRules } from './contact-rules';
+import { ContactVersionConflictError } from './contact-version-conflict-error';
 
 export type ContactServiceDependencies = {
 	contactRepository: ContactRepository;

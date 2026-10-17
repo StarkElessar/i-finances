@@ -1,9 +1,6 @@
-export {
-	ContactNameConflictError,
-	ContactNotFoundError,
-	ContactVersionConflictError
-} from './contact-errors';
 export { toPersistedContact } from './contact-mappers';
+export { ContactNameConflictError } from './contact-name-conflict-error';
+export { ContactNotFoundError } from './contact-not-found-error';
 export {
 	type ContactRecord,
 	ContactRepository,
@@ -15,3 +12,4 @@ export {
 	ContactService,
 	type ContactServiceDependencies
 } from './contact-service';
+export { ContactVersionConflictError } from './contact-version-conflict-error';

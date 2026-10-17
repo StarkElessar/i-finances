@@ -3,15 +3,13 @@ import type { CategoryRepository } from '@/modules/category';
 import type { ContactRepository } from '@/modules/contact';
 import type { HouseholdResolver } from '@/modules/household';
 
-import {
-	OperationAccountUnavailableError,
-	OperationDeletedError,
-	OperationNotFoundError,
-	OperationReferenceUnavailableError,
-	OperationTransferLinkedError,
-	OperationVersionConflictError
-} from './operation-errors';
+import { OperationAccountUnavailableError } from './operation-account-unavailable-error';
+import { OperationDeletedError } from './operation-deleted-error';
+import { OperationNotFoundError } from './operation-not-found-error';
+import { OperationReferenceUnavailableError } from './operation-reference-unavailable-error';
 import type { OperationRecord, OperationRepository } from './operation-repository';
+import { OperationTransferLinkedError } from './operation-transfer-linked-error';
+import { OperationVersionConflictError } from './operation-version-conflict-error';
 
 export type OperationReferenceSelection = {
 	category: { id: string; name: string } | null;

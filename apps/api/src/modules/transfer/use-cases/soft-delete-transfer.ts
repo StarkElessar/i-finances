@@ -4,12 +4,12 @@ import {
 	changeTransferDeletionStateInputSchema
 } from '@i-finances/contracts';
 
-import { TransferVersionConflictError } from '../transfer-errors';
 import {
 	resolveTransferLegIds,
 	toTransfer
 } from '../transfer-mappers';
 import type { TransferUseCaseContext } from '../transfer-service.types';
+import { TransferVersionConflictError } from '../transfer-version-conflict-error';
 
 /**
  * Creates the use case that soft-deletes a transfer together with both ledger legs.

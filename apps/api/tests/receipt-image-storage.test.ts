@@ -8,9 +8,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createReceiptImageStorage } from '@/modules/receipt-import/receipt-image-storage';
-import {
-	ReceiptImageValidationError
-} from '@/modules/receipt-import/receipt-import-errors';
+import { ReceiptImageValidationError } from '@/modules/receipt-import/receipt-image-validation-error';
 
 import sharp from 'sharp';
 import {

@@ -5,7 +5,7 @@ import {
 
 import type { CurrencyCode, OperationExchangeRate } from '@i-finances/contracts';
 
-import { OperationConversionAmountError } from './operation-errors';
+import { OperationConversionAmountError } from './operation-conversion-amount-error';
 import type { OperationRecord } from './operation-repository';
 
 export type OperationRateSnapshot = {
