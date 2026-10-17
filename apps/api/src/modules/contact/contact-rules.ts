@@ -2,12 +2,10 @@ import type { HouseholdResolver } from '@/modules/household';
 
 import { normalizeContactIdentity } from '@i-finances/contracts';
 
-import {
-	ContactNameConflictError,
-	ContactNotFoundError,
-	ContactVersionConflictError
-} from './contact-errors';
+import { ContactNameConflictError } from './contact-name-conflict-error';
+import { ContactNotFoundError } from './contact-not-found-error';
 import type { ContactRecord, ContactRepository } from './contact-repository';
+import { ContactVersionConflictError } from './contact-version-conflict-error';
 
 export type CurrentContact = {
 	householdId: string;
