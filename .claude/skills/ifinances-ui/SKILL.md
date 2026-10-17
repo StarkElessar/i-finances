@@ -84,15 +84,36 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `--c-primary`, `-h`, `-soft` | `--color-primary`, `-hover`, `-soft` |
 | `--c-danger`, `--c-success`, `--c-warning` (+ `-soft`) | `--color-danger`, `--color-success`, `--color-warning` (+ `-soft`) |
 | `--c-focus` | `--color-focus-ring` |
+| `--c-on-primary` | `--color-on-primary` (светлая `#fff`, тёмная `#0b1424`) |
+| `--c-scrim` | `--color-scrim` |
+| `--c-ink-card` | `--color-ink-card` |
 | `--s-1…12` | `--space-1…12` (значения совпадают) |
 | `--r-xs…xl` | `--radius-xs…xl` |
+| `--r-pill` | `--radius-pill` |
 | `--ctl-sm`, `--ctl`, `--ctl-lg` | `--control-size-sm`, `-md`, `-lg` |
 | `--fs-display`, `-h1`, `-h2`, `-h3`, `-lg`, `-md` | `--font-size-display`, `-heading-1`, `-2`, `-3`, `-body-lg`, `-body-md` |
-| `--sh-sm`, `--sh-md` | `--shadow-sm`, `--shadow-md` |
+| `--fs-sm` (13 px) | `--font-size-caption` |
+| `--fs-label` (12 px) | `--font-size-label` |
+| `--sh-sm`, `--sh-md`, `--sh-lg` | `--shadow-sm`, `--shadow-md`, `--shadow-lg` |
 | `--dur-fast`, `--dur`, `--ease` | `--duration-fast`, `--duration-normal`, `--ease-standard` |
-| `--k-1…10`, `--k-other` (палитра категорий) | `--color-series-1…8`, `--color-series-other` |
+| `--k-1…10`, `--k-other` (палитра категорий) | `--color-series-1…10`, `--color-series-other` (графики берут первые 8, остальное в «прочее») |
+| `--z-sticky`, `--z-nav`, `--z-drawer`, `--z-modal`, `--z-popover`, `--z-toast` (10, 20, 30, 40, 50, 60) | то же имя: `--z-sticky`, `--z-nav`, `--z-drawer`, `--z-modal`, `--z-popover`, `--z-toast` |
+| нет, локальный слой внутри компонента | `--z-raised` (1) |
+| `--s-focus-gutter` (4 px) | `--space-focus-gutter` (4 px) и миксин `mx.scroll-gutter` (класс макета `i-gutter`) |
+| нет переменной, значение 420 px (`development/ui-mockup.md`) | `--panel-overlay-inline-size` (420 px) |
+| нет переменной, значение 340 px (`development/ui-mockup.md`) | `--panel-docked-inline-size` (340 px) |
+| нет переменной, 44 px (`.i-tr`), на телефоне 64 px (`development/ui-mockup.md`) | `--row-height-compact` (44 px), `--row-height-comfortable` (64 px) |
 
-**Расхождения, которых в коде пока нет** (закрывает IF-14, до тех пор не выдумывай значения, бери из макета и отмечай в задаче): шкала `--z-*` (10…60); `--s-focus-gutter` 4 px (гуттер фокуса); `--c-scrim`, `--c-ink-card`, `--r-pill`, `--sh-lg`; размер 13 px (`--fs-sm`); подпись 12 px вместо 11 px (`--font-size-label`); более тёмные `--color-text-secondary` и `-tertiary`; категории 9–10; три брейкпоинта 640/960/1280.
+**Расхождения, закрытые IF-14** (проверено по `tokens.scss`; решения ревью в `development/decisions/ui-breakpoints.md`): шкала `--z-*` (10…60) и `--z-raised`; `--space-focus-gutter` 4 px и `mx.scroll-gutter`; `--color-scrim`, `--color-ink-card`, `--radius-pill`, `--shadow-lg` заведены; размер 13 px (`--font-size-caption`) и подпись 12 px (`--font-size-label`); `--color-text-secondary` светлая тема приведена к макету, `--color-text-tertiary` совпадает с макетом; категории 9–10 (`--color-series-9`, `-10`); панели 420 и 340 px, высоты строк 44 и 64 px; шрифт IBM Plex Sans.
+
+**Расхождения, которые IF-14 не закрыл** (до их закрытия не выдумывай значения, бери из макета и отмечай в задаче):
+- `--color-primary-hover` и `-active`: в коде `color-mix` 6 % и 10 %, в макете hover `#386a97`, active нет. IF-20.
+- Затемнения литералами 32…42 % вместо `--color-scrim` (макет 45 %). IF-21.
+- Поле 16 px при `(pointer: coarse)`: нужен будущий миксин, его пока нет. Этап 2 или IF-20.
+- Мобильные значения `--font-size-display` 28, `--font-size-heading-1` 24, `--space-12` 48 ниже 640 (в макете 32, 28, 64). Экранные задачи.
+- Пока не используются: `--panel-docked-inline-size` (IF-16), `--row-height-*` (IF-13), `--color-series-9`, `-10` (IF-19). `--font-size-body-sm` (12 px) устаревший: экраны уходят с него в своих задачах.
+
+**Брейкпоинты.** Три значения и больше ничего: `sm` 640 px (телефон кончается, планшет), `md` 960 px, `lg` 1280 px. В SCSS только `@include mx.media-mn(sm)` (или `md`, `lg`), mobile-first: база под телефон, выше `min-width`. В TS `minWidthQuery('md')` из `apps/web/src/shared/lib/breakpoints.ts`. Сырых `@media` в компонентах нет. Линта, который это запрещает, пока нет (этап 2), проверяй в ревью. Четвёртое значение не вводи без обсуждения в задаче.
 
 ## Деньги
 
