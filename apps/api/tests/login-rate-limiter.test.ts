@@ -47,6 +47,19 @@ describe('LoginRateLimiter', () => {
 		expect(limiter.tryReserve({ ...attempt, now: 1000 + WINDOW_MILLISECONDS + 1 }).allowed).toBe(true);
 	});
 
+	it('keeps other sources and the username counter untouched while one source is blocked', () => {
+		for (let index = 0; index < 50; index += 1) {
+			limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: 'sergei' });
+		}
+
+		// Only the five allowed attempts were counted for the username, not all fifty.
+		for (let index = 0; index < 15; index += 1) {
+			expect(limiter.tryReserve({ ipAddress: `198.51.100.${index + 1}`, now: 1000, username: 'sergei' }).allowed).toBe(true);
+		}
+
+		expect(limiter.tryReserve({ ipAddress: '198.51.100.99', now: 1000, username: 'sergei' }).allowed).toBe(false);
+	});
+
 	it('resets after the window expires', () => {
 		const attempt = {
 			ipAddress: '127.0.0.1',

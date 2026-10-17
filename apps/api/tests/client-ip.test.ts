@@ -1,8 +1,11 @@
+import { request as httpRequest } from 'node:http';
+
 import { readClientIp, resolveClientIp } from '@/http/client-ip';
 import type { ApiEnvironment } from '@/http/types';
 
+import { serve, type ServerType } from '@hono/node-server';
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 const CLIENT_ADDRESS = '203.0.113.7';
 const PROXY_ADDRESS = '172.18.0.2';
@@ -104,5 +107,66 @@ describe('readClientIp', () => {
 		});
 
 		expect(await response.json()).toEqual({ ip: null });
+	});
+});
+
+describe('readClientIp behind a real node server', () => {
+	let server: ServerType;
+	let port: number;
+
+	beforeAll(async () => {
+		const app = new Hono<ApiEnvironment>();
+
+		app.get('/ip', (context) => context.json({
+			ip: readClientIp(context, Number(context.req.query('trusted'))) ?? null
+		}));
+
+		await new Promise<void>((resolve) => {
+			server = serve({ fetch: app.fetch, hostname: '127.0.0.1', port: 0 }, (info) => {
+				port = info.port;
+				resolve();
+			});
+		});
+	});
+
+	afterAll(async () => {
+		await new Promise<void>((resolve) => {
+			server.close(() => resolve());
+		});
+	});
+
+	// `node:http` lets us send the header as several lines, like a client that repeats `X-Forwarded-For`.
+	function requestIp(trusted: number, forwardedFor?: string[]): Promise<string | null> {
+		return new Promise((resolve, reject) => {
+			const request = httpRequest({
+				headers: forwardedFor === undefined ? {} : { 'x-forwarded-for': forwardedFor },
+				host: '127.0.0.1',
+				path: `/ip?trusted=${trusted}`,
+				port
+			}, (response) => {
+				const chunks: Buffer[] = [];
+
+				response.on('data', (chunk: Buffer) => chunks.push(chunk));
+				response.on('end', () => {
+					resolve((JSON.parse(Buffer.concat(chunks).toString()) as { ip: string | null }).ip);
+				});
+			});
+
+			request.on('error', reject);
+			request.end();
+		});
+	}
+
+	it('reads the TCP peer through getConnInfo', async () => {
+		expect(await requestIp(0)).toBe('127.0.0.1');
+		expect(await requestIp(0, ['6.6.6.6'])).toBe('127.0.0.1');
+	});
+
+	it('takes the last element when the client repeats the header and one proxy is trusted', async () => {
+		expect(await requestIp(1, ['6.6.6.6', CLIENT_ADDRESS])).toBe(CLIENT_ADDRESS);
+	});
+
+	it('falls back to the TCP peer when the rightmost element is not an address', async () => {
+		expect(await requestIp(1, ['6.6.6.6, 1.1.1.1%'])).toBe('127.0.0.1');
 	});
 });

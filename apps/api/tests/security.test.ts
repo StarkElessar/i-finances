@@ -33,7 +33,7 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const AUTH_CONFIG: AuthConfig = {
@@ -423,6 +423,7 @@ describe('change password', () => {
 	it('limits parallel guesses: attempts are reserved before the slow verification', async () => {
 		const { app, sessionService } = createContext({ rateLimiter: new LoginRateLimiter({ maxAttempts: 3 }) });
 		const alice = await signIn(sessionService, app, 'alice');
+		const verify = vi.spyOn(passwordService, 'verify');
 		const results = await Promise.all(Array.from({ length: 12 }, (_, index) => alice.request('/api/security/password', {
 			body: { currentPassword: `wrong-password-${index}`, newPassword: NEW_PASSWORD },
 			method: 'POST'
@@ -431,6 +432,10 @@ describe('change password', () => {
 
 		expect(statuses.filter((status) => status === 400)).toHaveLength(3);
 		expect(statuses.filter((status) => status === 429)).toHaveLength(9);
+		// Rejected requests must not reach the slow Argon2 verification at all.
+		expect(verify).toHaveBeenCalledTimes(3);
+
+		verify.mockRestore();
 
 		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
 
