@@ -1,8 +1,5 @@
-import {
-	NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
-	NationalBankExchangeRateClient,
-	NationalBankExchangeRateClientError
-} from '@/modules/exchange-rate/national-bank-client';
+import { NATIONAL_BANK_EXCHANGE_RATE_SOURCE, NationalBankExchangeRateClient } from '@/modules/exchange-rate/national-bank-client';
+import { NationalBankExchangeRateClientError } from '@/modules/exchange-rate/national-bank-exchange-rate-client-error';
 
 import { describe, expect, it } from 'vitest';
 

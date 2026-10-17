@@ -18,8 +18,5 @@ export type {
 	RefreshDailyExchangeRatesInput,
 	UpsertExchangeRateInput
 } from './exchange-rate-service.types';
-export {
-	NATIONAL_BANK_EXCHANGE_RATE_SOURCE,
-	NationalBankExchangeRateClient,
-	NationalBankExchangeRateClientError
-} from './national-bank-client';
+export { NATIONAL_BANK_EXCHANGE_RATE_SOURCE, NationalBankExchangeRateClient } from './national-bank-client';
+export { NationalBankExchangeRateClientError } from './national-bank-exchange-rate-client-error';

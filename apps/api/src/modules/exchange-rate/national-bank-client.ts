@@ -4,6 +4,7 @@ import { z } from 'zod';
 
 import { normalizeExchangeRate } from './decimal-money';
 import type { UpsertExchangeRateInput } from './exchange-rate-service.types';
+import { NationalBankExchangeRateClientError } from './national-bank-exchange-rate-client-error';
 
 export const NATIONAL_BANK_EXCHANGE_RATE_SOURCE = 'nbrb';
 
@@ -30,13 +31,6 @@ export type NationalBankExchangeRateClientDependencies = {
 	endpoint?: string;
 	fetch?: typeof globalThis.fetch;
 };
-
-export class NationalBankExchangeRateClientError extends Error {
-	public constructor(message: string) {
-		super(message);
-		this.name = 'NationalBankExchangeRateClientError';
-	}
-}
 
 function isCurrencyCode(value: string): value is CurrencyCode {
 	return currencyCodeSchema.safeParse(value).success;
