@@ -22,6 +22,7 @@ import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
 
 import { isSameOriginMutation } from './mutation-origin';
+import { createSessionCookie } from './session-cookie';
 import type { RequestSessionResolver } from './session-resolver';
 import type { ApiEnvironment } from './types';
 
@@ -101,7 +102,20 @@ export class SecurityHttpController {
 				context,
 				true,
 				changePasswordResultSchema,
-				async (actor) => this.service.changePassword(actor, await this.readBody(context))
+				async (actor) => {
+					const outcome = await this.service.changePassword(actor, await this.readBody(context));
+
+					// The caller's session got a new token and the old one is already dead: hand the new one over,
+					// with the same attributes as at sign-in.
+					if (outcome.rotatedSession !== undefined) {
+						context.header(
+							'set-cookie',
+							createSessionCookie(this.config, outcome.rotatedSession.token, outcome.rotatedSession.expiresAt)
+						);
+					}
+
+					return outcome.result;
+				}
 			);
 		};
 	}
