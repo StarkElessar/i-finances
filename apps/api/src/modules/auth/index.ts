@@ -2,6 +2,7 @@ export {
 	type AuthConfig,
 	getAuthConfig
 } from './auth-config';
+export { hasUsablePassword } from './has-usable-password';
 export {
 	LoginRateLimiter,
 	type LoginRateLimiterOptions,
@@ -9,6 +10,10 @@ export {
 	type LoginRateLimitResult
 } from './login-rate-limiter';
 export { normalizeUsername } from './normalize-username';
+export {
+	type ParsedUserAgent,
+	parseUserAgent
+} from './parse-user-agent';
 export {
 	base64UrlToUint8Array,
 	uint8ArrayToBase64Url
@@ -26,11 +31,18 @@ export {
 } from './password-sign-in-service';
 export {
 	type PasswordAuthUserRecord,
-	PasswordUserRepository
+	PasswordUserRepository,
+	type ReplacePasswordInput
 } from './password-user-repository';
+export {
+	type SecurityActor,
+	SecurityService,
+	type SecurityServiceDependencies
+} from './security-service';
 export {
 	type SessionInsertRecord,
 	SessionRepository,
+	type SessionSummaryRecord,
 	type SessionWithUserRecord
 } from './session-repository';
 export {

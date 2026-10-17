@@ -8,6 +8,7 @@ import { ExchangeRateHttpController } from './http/exchange-rate-controller';
 import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
+import { SecurityHttpController } from './http/security-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { TransferHttpController } from './http/transfer-controller';
 import { db } from './infrastructure/database/client';
@@ -21,6 +22,7 @@ import {
 	PasswordService,
 	PasswordSignInService,
 	PasswordUserRepository,
+	SecurityService,
 	SessionRepository,
 	SessionService,
 	WebAuthnChallengeRepository,
@@ -74,29 +76,44 @@ export function createApiDependencies(): {
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
 	receiptImportService: ReceiptImportService;
+	securityController: SecurityHttpController;
 	startReceiptProcessing: () => Promise<ReceiptProcessingLoop | undefined>;
 	transferController: TransferHttpController;
 } {
 	const authConfig = getAuthConfig();
-	const sessionService = new SessionService(new SessionRepository(db), {
+	const sessionRepository = new SessionRepository(db);
+	const sessionService = new SessionService(sessionRepository, {
 		config: authConfig
 	});
 	const passwordUserRepository = new PasswordUserRepository(db);
+	// Browser cookie only. Controllers that manage credentials (passkeys, password, sessions)
+	// must use this resolver: the MCP bearer key must not be able to mint a cookie session
+	// for the key owner by registering its own passkey.
+	const cookieSessionResolver = new CookieSessionResolver(sessionService, authConfig.sessionCookieName);
 	const sessionResolver = new CompositeSessionResolver([
-		new CookieSessionResolver(sessionService, authConfig.sessionCookieName),
+		cookieSessionResolver,
 		new ApiKeySessionResolver(passwordUserRepository)
 	]);
+	const passwordService = new PasswordService();
 	const passwordSignInService = new PasswordSignInService({
-		passwordService: new PasswordService(),
+		passwordService,
 		rateLimiter: new LoginRateLimiter(),
 		sessionService,
 		userRepository: passwordUserRepository
 	});
+	const webAuthnCredentialRepository = new WebAuthnCredentialRepository(db);
 	const webAuthnService = new WebAuthnService({
 		challengeRepository: new WebAuthnChallengeRepository(db),
 		config: authConfig,
-		credentialRepository: new WebAuthnCredentialRepository(db),
+		credentialRepository: webAuthnCredentialRepository,
 		sessionService
+	});
+	const securityService = new SecurityService({
+		credentialRepository: webAuthnCredentialRepository,
+		passwordService,
+		rateLimiter: new LoginRateLimiter(),
+		sessionRepository,
+		userRepository: passwordUserRepository
 	});
 	const householdResolver = new HouseholdResolver(new HouseholdRepository(db));
 	const categoryService = new CategoryService({
@@ -210,6 +227,11 @@ export function createApiDependencies(): {
 			authConfig
 		),
 		receiptImportService,
+		securityController: new SecurityHttpController(
+			securityService,
+			cookieSessionResolver,
+			authConfig
+		),
 		startReceiptProcessing,
 		transferController: new TransferHttpController(
 			transferService,
@@ -217,7 +239,7 @@ export function createApiDependencies(): {
 		),
 		passkeyController: new PasskeyHttpController(
 			webAuthnService,
-			sessionResolver,
+			cookieSessionResolver,
 			authConfig
 		)
 	};
