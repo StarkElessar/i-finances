@@ -134,14 +134,12 @@ export class SecurityService {
 
 		const rateLimitInput = { username: user.id };
 
-		if (!this.dependencies.rateLimiter.check(rateLimitInput).allowed) {
-			return failure('rate-limited');
-		}
-
 		// The attempt is reserved BEFORE the (slow, async) verification and released
 		// on success. Check and reservation run in the same tick, so parallel requests
 		// cannot all pass the check and guess the password at once.
-		this.dependencies.rateLimiter.recordFailure(rateLimitInput);
+		if (!this.dependencies.rateLimiter.tryReserve(rateLimitInput).allowed) {
+			return failure('rate-limited');
+		}
 
 		const { currentPassword, newPassword } = parsedInput.data;
 		const isCurrentPasswordValid = await this.dependencies.passwordService.verify(user.passwordHash, currentPassword);
@@ -152,7 +150,7 @@ export class SecurityService {
 			});
 		}
 
-		this.dependencies.rateLimiter.clear(rateLimitInput);
+		this.dependencies.rateLimiter.recordSuccess(rateLimitInput);
 
 		if (newPassword === currentPassword) {
 			return failure('password-unchanged', {

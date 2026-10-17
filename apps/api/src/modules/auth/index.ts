@@ -2,6 +2,7 @@ export {
 	type AuthConfig,
 	getAuthConfig
 } from './auth-config';
+export { DUMMY_PASSWORD_HASH } from './dummy-password-hash';
 export { hasUsablePassword } from './has-usable-password';
 export {
 	LoginRateLimiter,

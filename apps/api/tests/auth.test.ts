@@ -3,7 +3,7 @@ import { AuthHttpController } from '@/http/auth-controller';
 import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { users } from '@/infrastructure/database/schema';
+import { sessions, users } from '@/infrastructure/database/schema';
 import type { AuthConfig } from '@/modules/auth';
 import {
 	LoginRateLimiter,
@@ -24,11 +24,14 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const USER_ID = 'user-1';
+// Shaped like an Argon2 hash so it counts as a usable password; the verifier is a stub in these tests.
+const STORED_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const AUTH_CONFIG: AuthConfig = {
 	origin: 'http://localhost:5173',
 	sessionCookieName: 'test_session',
 	sessionTtlMilliseconds: 30 * 24 * 60 * 60 * 1000,
+	trustedProxyCount: 0,
 	webauthnRpId: 'localhost',
 	webauthnRpName: 'iFinances'
 };
@@ -57,7 +60,7 @@ afterEach(() => {
 	connection.close();
 });
 
-function createAuthApp(options: { passwordValid?: boolean } = {}) {
+function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; rateLimiter?: LoginRateLimiter } = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => 'session-1',
@@ -68,14 +71,14 @@ function createAuthApp(options: { passwordValid?: boolean } = {}) {
 		passwordService: {
 			verify: async () => options.passwordValid ?? true
 		},
-		rateLimiter: new LoginRateLimiter(),
+		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionService,
 		userRepository: {
 			findByUsername: async () => ({
 				displayName: 'Sergei Test',
 				id: USER_ID,
 				isActive: true,
-				passwordHash: 'stored-hash',
+				passwordHash: STORED_HASH,
 				username: 'sergei'
 			})
 		}
@@ -89,7 +92,7 @@ function createAuthApp(options: { passwordValid?: boolean } = {}) {
 		sessionService,
 		sessionResolver,
 		new PasswordUserRepository(database),
-		AUTH_CONFIG
+		options.config ?? AUTH_CONFIG
 	);
 
 	return createApiApp({ authController: controller });
@@ -134,6 +137,48 @@ describe('password session API', () => {
 				username: 'sergei'
 			}
 		});
+	});
+
+	it('stores the address the trusted proxy appended, not the one the client forged', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 } });
+		const response = await app.request('/api/auth/sign-in', {
+			body: JSON.stringify({
+				password: 'correct-password',
+				username: 'sergei'
+			}),
+			headers: {
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin,
+				'user-agent': 'x'.repeat(2_000),
+				'x-forwarded-for': '6.6.6.6, 203.0.113.7'
+			},
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(200);
+
+		const [session] = await database.select().from(sessions);
+
+		expect(session.ipAddress).toBe('203.0.113.7');
+		expect(session.userAgent).toBe('x'.repeat(512));
+	});
+
+	it('caps the stored address and user agent length at the session service', async () => {
+		const sessionService = new SessionService(new SessionRepository(database), {
+			config: AUTH_CONFIG,
+			createId: () => 'session-long',
+			now: () => FIXED_DATE
+		});
+
+		await sessionService.createSession(USER_ID, {
+			ipAddress: 'a'.repeat(200),
+			userAgent: 'b'.repeat(2_000)
+		});
+
+		const [session] = await database.select().from(sessions);
+
+		expect(session.ipAddress).toHaveLength(64);
+		expect(session.userAgent).toHaveLength(512);
 	});
 
 	it('rejects mutations without a valid origin hint', async () => {
@@ -207,6 +252,71 @@ describe('password session API', () => {
 			ok: false
 		});
 		expect(response.headers.get('set-cookie')).toBeNull();
+		expect(response.headers.get('retry-after')).toBeNull();
+	});
+});
+
+function requestWrongPassword(
+	app: ReturnType<typeof createAuthApp>,
+	forwardedFor: string,
+	username = 'sergei'
+): Promise<Response> {
+	return Promise.resolve(app.request('/api/auth/sign-in', {
+		body: JSON.stringify({
+			password: 'wrong-password',
+			username
+		}),
+		headers: {
+			'content-type': 'application/json',
+			origin: AUTH_CONFIG.origin,
+			'x-forwarded-for': forwardedFor
+		},
+		method: 'POST'
+	}));
+}
+
+describe('password sign-in rate limit', () => {
+	it('is not bypassed by forging the left side of X-Forwarded-For', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 5; index += 1) {
+			const response = await requestWrongPassword(app, `10.0.0.${index + 1}, 203.0.113.7`);
+
+			expect(response.status).toBe(401);
+		}
+
+		const blocked = await requestWrongPassword(app, '10.0.0.99, 203.0.113.7');
+
+		expect(blocked.status).toBe(429);
+		expect(blocked.headers.get('retry-after')).toBe('900');
+		expect(await blocked.json()).not.toHaveProperty('retryAfterSeconds');
+	});
+
+	it('stops one address that tries many usernames, and still serves other addresses', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 30; index += 1) {
+			const response = await requestWrongPassword(app, '10.0.0.1, 203.0.113.7', `victim-${index}`);
+
+			expect(response.status).toBe(401);
+		}
+
+		expect((await requestWrongPassword(app, '203.0.113.7', 'victim-new')).status).toBe(429);
+		expect((await requestWrongPassword(app, '203.0.113.8', 'victim-new')).status).toBe(401);
+	});
+
+	it('is not bypassed by rotating real addresses either', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 20; index += 1) {
+			const response = await requestWrongPassword(app, `203.0.113.${index + 1}`);
+
+			expect(response.status).toBe(401);
+		}
+
+		const blocked = await requestWrongPassword(app, '203.0.113.200');
+
+		expect(blocked.status).toBe(429);
 	});
 });
 

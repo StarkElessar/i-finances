@@ -4,6 +4,8 @@ import { type AuthConfig, getAuthConfig } from './auth-config';
 import type { SessionRepository } from './session-repository';
 import type { SessionInsertRecord } from './session-repository';
 
+const MAX_IP_ADDRESS_LENGTH = 64;
+const MAX_USER_AGENT_LENGTH = 512;
 const SESSION_TOUCH_INTERVAL_MILLISECONDS = 24 * 60 * 60 * 1000;
 
 export type SessionUser = {
@@ -66,10 +68,10 @@ export class SessionService {
 			createdAt: now,
 			expiresAt,
 			id: this.createId(),
-			ipAddress: metadata.ipAddress,
+			ipAddress: metadata.ipAddress?.slice(0, MAX_IP_ADDRESS_LENGTH),
 			lastSeenAt: now,
 			tokenHash: hashSessionToken(token),
-			userAgent: metadata.userAgent,
+			userAgent: metadata.userAgent?.slice(0, MAX_USER_AGENT_LENGTH),
 			userId
 		};
 

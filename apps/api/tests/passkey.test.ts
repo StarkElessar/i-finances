@@ -22,7 +22,7 @@ import {
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-1';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
@@ -30,6 +30,7 @@ const AUTH_CONFIG: AuthConfig = {
 	origin: 'http://localhost:5173',
 	sessionCookieName: 'test_session',
 	sessionTtlMilliseconds: 30 * 24 * 60 * 60 * 1000,
+	trustedProxyCount: 0,
 	webauthnRpId: 'localhost',
 	webauthnRpName: 'iFinances'
 };
@@ -58,7 +59,7 @@ afterEach(() => {
 	connection.close();
 });
 
-function createPasskeyApp() {
+function createPasskeyApp(config: AuthConfig = AUTH_CONFIG) {
 	let nextChallengeId = 0;
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
@@ -77,11 +78,12 @@ function createPasskeyApp() {
 	const controller = new PasskeyHttpController(
 		service,
 		new CookieSessionResolver(sessionService, AUTH_CONFIG.sessionCookieName),
-		AUTH_CONFIG
+		config
 	);
 
 	return {
 		app: createApiApp({ passkeyController: controller }),
+		service,
 		sessionService
 	};
 }
@@ -195,5 +197,39 @@ describe('passkey API', () => {
 			errorCode: 'invalid-input',
 			ok: false
 		});
+	});
+
+	it('passes the address appended by the trusted proxy to passkey sign-in, not the forged one', async () => {
+		const { app, service } = createPasskeyApp({ ...AUTH_CONFIG, trustedProxyCount: 1 });
+		const finishAuthentication = vi.spyOn(service, 'finishAuthentication').mockResolvedValue({
+			errorCode: 'invalid-credentials',
+			message: 'unused',
+			ok: false
+		});
+		const response = await app.request('/api/auth/passkey/sign-in/verification', {
+			body: JSON.stringify({
+				response: {
+					id: 'credential',
+					rawId: 'credential',
+					response: {
+						authenticatorData: 'data',
+						clientDataJSON: 'client',
+						signature: 'signature'
+					},
+					type: 'public-key'
+				}
+			}),
+			headers: {
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin,
+				'x-forwarded-for': '6.6.6.6, 203.0.113.7'
+			},
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(401);
+		expect(finishAuthentication).toHaveBeenCalledWith(expect.objectContaining({
+			metadata: expect.objectContaining({ ipAddress: '203.0.113.7' })
+		}));
 	});
 });

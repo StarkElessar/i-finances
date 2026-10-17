@@ -35,7 +35,7 @@
 - Проверка подписи: `secret = SHA256(bot_token)`, `hash = HMAC_SHA256(secret, data_check_string)` в hex, где `data_check_string` — все поля кроме `hash`, отсортированные по ключу, `key=value` через `\n`. Сравнение `timingSafeEqual`. `auth_date` не старше **24 часов**.
 - Первый вход = регистрация: upsert `users` по `telegram_id UNIQUE`, сеанс — случайный токен, в БД хеш. Пароль удалён целиком.
 - Приглашение — **постоянный** `invite_token` на списке, перевыпуск инвалидирует старую ссылку; токен приглашения сохраняется в `sessionStorage` до входа и забирается после (`pending-invite.ts`).
-- Rate-limit в памяти, фиксированное окно, ключ `X-Real-IP` (10 входов за 5 минут), только на открытых точках (вход и присоединение).
+- Rate-limit в памяти, фиксированное окно, ключ — адрес клиента из `readClientIp` (`http/client-ip.ts`, см. `client-ip.md`; 10 входов за 5 минут), только на открытых точках (вход и присоединение).
 
 **Грабли ShopperTodo:**
 
@@ -193,7 +193,7 @@
 | `POST /api/household/invitations` | окружение | 10 в сутки и не больше 3 активных |
 | `POST /api/telegram/webhook` | — | без лимита, только секрет |
 
-- **IP клиента:** сейчас `createMetadata` берёт **первый** элемент `X-Forwarded-For`, а nginx в homelab ставит `$proxy_add_x_forwarded_for`, то есть первый элемент присылает сам клиент. Лимит входа по паролю (ключ `ip:username`) этим обходится. Исправление (задача A1): брать `X-Real-IP` (nginx ставит `$remote_addr`). Делается до новых лимитов.
+- **IP клиента:** сейчас `createMetadata` берёт **первый** элемент `X-Forwarded-For`, а nginx в homelab ставит `$proxy_add_x_forwarded_for`, то есть первый элемент присылает сам клиент. Лимит входа по паролю (ключ `ip:username`) этим обходится. Исправлено в IF-45: адрес берётся функцией `readClientIp` из `http/client-ip.ts` (N-й элемент `X-Forwarded-For` справа при `TRUSTED_PROXY_COUNT=N`, иначе адрес TCP-соседа), а не из `X-Real-IP`; причины и отвергнутые варианты в `client-ip.md`. Новые контроллеры берут адрес только через `readClientIp`.
 
 ### Р12. Конфигурация
 
@@ -325,7 +325,7 @@ Owner: `POST /api/household/invitations` → `{ id, link, expiresAt }` (ссыл
 1. Лимит входа по паролю обходится подменой `X-Forwarded-For` (Р11, задача A1).
 2. `GET /api/public/categories` без входа отдаёт категории семьи всему интернету (Р8, задача A8).
 3. Автосоздание в резолвере делает **owner** каждого пользователя без членства, включая второго члена семьи на проде. Миграция DB-3 вставляет недостающих как `member`.
-4. `AGENTS.md` (раздел Auth) обещает заголовки `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`, но в `apps/api/src` их нет. Для страницы приглашения нужен `Referrer-Policy: no-referrer` хотя бы в nginx для `/invite` (задача A11), остальное — отдельная задача вне IF-10.
+4. **Закрыто в IF-45 для API** (middleware `http/security-headers.ts`). Остаётся nginx: `AGENTS.md` (раздел Auth) обещал заголовки `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`; заголовки API не защищают HTML SPA, который отдаёт nginx. Для страницы приглашения нужен `Referrer-Policy: no-referrer` хотя бы в nginx для `/invite` (задача A11), остальное — отдельная задача вне IF-10.
 
 ## 8. Разбивка IF-10
 
@@ -346,7 +346,7 @@ Owner: `POST /api/household/invitations` → `{ id, link, expiresAt }` (ссыл
 | ID | Что | Размер | Кто | Opus обязательно | Зависит от |
 |---|---|---|---|---|---|
 | A0 | Разнести `household-resolver.ts` по файлам (резолвер и каждый класс ошибки отдельно), без смены поведения | S | Haiku | нет | — |
-| A1 | IP клиента из `X-Real-IP` (одна функция `http/client-ip.ts` для всех контроллеров); общий класс фиксированного окна для новых лимитов (`LoginRateLimiter` не ломать) | S | Sonnet | да (безопасность) | — |
+| A1 | IP клиента через `readClientIp` (одна функция `http/client-ip.ts` для всех контроллеров, см. `client-ip.md`; сделано в IF-45); общий класс фиксированного окна для новых лимитов (`LoginRateLimiter` не ломать) | S | Sonnet | да (безопасность) | — |
 | A2 | Модуль `modules/telegram`: конфиг, клиент Bot API на `fetch` (`sendMessage`, `editMessageText`, `answerCallbackQuery`, `setWebhook`, `deleteWebhook`, `getUpdates`), запуск обновлений `webhook`/`polling`/`off`, `http/telegram-webhook-controller.ts` с секретом и `bodyLimit`, фальшивый клиент для тестов, тексты бота в JSON | M | Sonnet | да | — |
 | A3 | Вход и регистрация через Telegram: репозитории заявок и Telegram-аккаунтов, `telegram-sign-in-service.ts` (`start`, обработка `/start` и `callback_query`, `complete`), cookie заявки, флаг регистрации, dev-подтверждение с запретом в проде, контракты, HTTP-тесты (гонка двух `complete`, чужой браузер, истечение, `rejected`, повтор обновления, флаг выключен) | L | Sonnet | да | DB-1, DB-2, A1, A2 |
 | A4 | Привязка Telegram и вливание пустого дубля (Р9), 409-ветки, тесты | M | Sonnet | да | A3 |

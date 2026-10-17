@@ -111,7 +111,12 @@ export function createApiDependencies(): {
 	const securityService = new SecurityService({
 		credentialRepository: webAuthnCredentialRepository,
 		passwordService,
-		rateLimiter: new LoginRateLimiter(),
+		// This limiter is keyed by `unknown:<userId>` (no address) and must stay a plain per-user attempt counter. The
+		// per-username and per-address ceilings of the sign-in form would add counters with different behavior.
+		rateLimiter: new LoginRateLimiter({
+			maxAttemptsPerIp: Number.POSITIVE_INFINITY,
+			maxAttemptsPerUsername: Number.POSITIVE_INFINITY
+		}),
 		sessionRepository,
 		userRepository: passwordUserRepository
 	});
