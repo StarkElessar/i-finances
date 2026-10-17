@@ -11,11 +11,11 @@ import {
 	type UpdateAccountInput
 } from '@i-finances/contracts';
 
+import { ACCOUNT_DETAILS_HANDLERS } from './details/account-details-handlers';
 import { AccountCurrencyLockedError } from './account-currency-locked-error';
 import { AccountVersionConflictError } from './account-errors';
 import type { AccountRecord, AccountRepository } from './account-repository';
 import { AccountRules } from './account-rules';
-import { ACCOUNT_DETAILS_HANDLERS } from './details/account-details-handlers';
 
 export type AccountServiceDependencies = {
 	accountRepository: AccountRepository;

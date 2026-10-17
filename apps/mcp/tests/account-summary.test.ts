@@ -12,6 +12,7 @@ describe('toAccountSummary', () => {
 			currency: 'BYN',
 			description: '',
 			details: { cardNumberLast4: '1111', expiry: '08/27' },
+			hasOperations: false,
 			id: 'a1',
 			initialBalanceMinor: 0,
 			isColorAccentEnabled: false,

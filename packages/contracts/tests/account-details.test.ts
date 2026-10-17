@@ -147,6 +147,7 @@ describe('account input contracts', () => {
 			archivedAt: null,
 			createdAt: '2026-10-17T00:00:00.000Z',
 			details: { cardNumberLast4: '1111', expiry: '08/27' },
+			hasOperations: false,
 			id: 'a',
 			owner: 'Сергей',
 			type: 'card',
