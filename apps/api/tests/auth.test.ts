@@ -58,7 +58,7 @@ afterEach(() => {
 	connection.close();
 });
 
-function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean } = {}) {
+function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; rateLimiter?: LoginRateLimiter } = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => 'session-1',
@@ -69,7 +69,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean }
 		passwordService: {
 			verify: async () => options.passwordValid ?? true
 		},
-		rateLimiter: new LoginRateLimiter(),
+		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionService,
 		userRepository: {
 			findByUsername: async () => ({
@@ -250,6 +250,51 @@ describe('password session API', () => {
 			ok: false
 		});
 		expect(response.headers.get('set-cookie')).toBeNull();
+	});
+});
+
+function requestWrongPassword(app: ReturnType<typeof createAuthApp>, forwardedFor: string): Promise<Response> {
+	return Promise.resolve(app.request('/api/auth/sign-in', {
+		body: JSON.stringify({
+			password: 'wrong-password',
+			username: 'sergei'
+		}),
+		headers: {
+			'content-type': 'application/json',
+			origin: AUTH_CONFIG.origin,
+			'x-forwarded-for': forwardedFor
+		},
+		method: 'POST'
+	}));
+}
+
+describe('password sign-in rate limit', () => {
+	it('is not bypassed by forging the left side of X-Forwarded-For', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 5; index += 1) {
+			const response = await requestWrongPassword(app, `10.0.0.${index + 1}, 203.0.113.7`);
+
+			expect(response.status).toBe(401);
+		}
+
+		const blocked = await requestWrongPassword(app, '10.0.0.99, 203.0.113.7');
+
+		expect(blocked.status).toBe(429);
+	});
+
+	it('is not bypassed by rotating real addresses either', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 20; index += 1) {
+			const response = await requestWrongPassword(app, `203.0.113.${index + 1}`);
+
+			expect(response.status).toBe(401);
+		}
+
+		const blocked = await requestWrongPassword(app, '203.0.113.200');
+
+		expect(blocked.status).toBe(429);
 	});
 });
 
