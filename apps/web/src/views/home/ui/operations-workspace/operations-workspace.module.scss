@@ -130,7 +130,7 @@
     flex: 1 1 0;
 }
 
-@include mx.media-mn(sm) {
+@include mx.media-mn(md) {
     .toolbar {
         grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     }
