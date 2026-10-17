@@ -12,7 +12,9 @@ export default defineConfig({
 	plugins: [solid()],
 	resolve: {
 		alias: {
-			'@': fileURLToPath(new URL('./src', import.meta.url))
+			'@': fileURLToPath(new URL('./src', import.meta.url)),
+			// Font files for url() in shared/styles/fonts.scss: Vite does not resolve a bare package name there.
+			'@ibm-plex-sans': fileURLToPath(new URL('./node_modules/@fontsource/ibm-plex-sans/files', import.meta.url))
 		}
 	},
 	server: {

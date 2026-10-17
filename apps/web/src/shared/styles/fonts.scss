@@ -1,0 +1,53 @@
+// IBM Plex Sans, self-hosted (@fontsource/ibm-plex-sans), woff2 only.
+// Two subsets per weight; `unicode-range` makes the browser download a file
+// only when the page uses a character from it. `font-display: swap` keeps
+// text visible in the fallback font while the file loads.
+// The `@ibm-plex-sans` alias (vite.config.ts) points at the package's files.
+
+// `u+XXXX` is the unquoted unicode-range token, not an addition.
+// stylelint-disable scss/operator-no-unspaced
+$weights: 400, 500, 600, 700;
+$latin-range:
+    u+0000-00ff,
+    u+0131,
+    u+0152-0153,
+    u+02bb-02bc,
+    u+02c6,
+    u+02da,
+    u+02dc,
+    u+0304,
+    u+0308,
+    u+0329,
+    u+2000-206f,
+    u+20ac,
+    u+2122,
+    u+2191,
+    u+2193,
+    u+2212,
+    u+2215,
+    u+feff,
+    u+fffd;
+$cyrillic-range: u+0301, u+0400-045f, u+0490-0491, u+04b0-04b1, u+2116;
+// stylelint-enable scss/operator-no-unspaced
+
+@each $weight in $weights {
+    @font-face {
+        font-family: "IBM Plex Sans";
+        font-weight: $weight;
+        font-style: normal;
+
+        font-display: swap;
+        src: url("@ibm-plex-sans/ibm-plex-sans-cyrillic-#{$weight}-normal.woff2") format("woff2");
+        unicode-range: $cyrillic-range;
+    }
+
+    @font-face {
+        font-family: "IBM Plex Sans";
+        font-weight: $weight;
+        font-style: normal;
+
+        font-display: swap;
+        src: url("@ibm-plex-sans/ibm-plex-sans-latin-#{$weight}-normal.woff2") format("woff2");
+        unicode-range: $latin-range;
+    }
+}

@@ -17,7 +17,7 @@
 :root,
 [data-theme="light"] {
     // Typography
-    --font-family-sans: -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
+    --font-family-sans: "IBM Plex Sans", -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
     --font-family-mono: "SFMono-Regular", consolas, "Liberation Mono", monospace;
     --font-size-display: #{fn.rem(28)};
     --font-size-heading-1: #{fn.rem(24)};
