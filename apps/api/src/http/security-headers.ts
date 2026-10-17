@@ -13,12 +13,27 @@ export const SECURITY_HEADERS: Readonly<Record<string, string>> = {
  * Adds the baseline security headers to every response of the API, including 404s, handled errors and
  * responses built by hand as `new Response(...)`. No Content-Security-Policy on purpose: the API serves no documents.
  */
+function applyHeaders(headers: Headers): void {
+	for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
+		headers.set(name, value);
+	}
+}
+
 export function securityHeaders(): MiddlewareHandler<ApiEnvironment> {
 	return async (context, next) => {
 		await next();
 
-		for (const [name, value] of Object.entries(SECURITY_HEADERS)) {
-			context.res.headers.set(name, value);
+		try {
+			applyHeaders(context.res.headers);
+		}
+		catch (error: unknown) {
+			// `Response.redirect()` and responses proxied from `fetch()` have immutable headers: copy into a mutable one.
+			if (!(error instanceof TypeError)) {
+				throw error;
+			}
+
+			context.res = new Response(context.res.body, context.res);
+			applyHeaders(context.res.headers);
 		}
 	};
 }

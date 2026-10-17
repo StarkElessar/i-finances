@@ -55,6 +55,19 @@ describe('security headers', () => {
 		expectSecurityHeaders(response);
 	});
 
+	it('are set on responses whose headers are immutable, such as Response.redirect', async () => {
+		const app = new Hono<ApiEnvironment>();
+
+		app.use('*', securityHeaders());
+		app.get('/redirect', () => Response.redirect('https://example.test/next', 302));
+
+		const response = await app.request('/redirect');
+
+		expect(response.status).toBe(302);
+		expect(response.headers.get('location')).toBe('https://example.test/next');
+		expectSecurityHeaders(response);
+	});
+
 	it('do not add a Content-Security-Policy', async () => {
 		const response = await createApiApp().request('/api/health');
 
