@@ -19,6 +19,7 @@ export type TransferLegRateSnapshot = {
 
 export type TransferAmountPlan = {
 	baseAmountMinor: number;
+	exchangeRate: string;
 	fromLeg: TransferLegRateSnapshot;
 	toAmountMinor: number;
 	toLeg: TransferLegRateSnapshot;
@@ -36,6 +37,10 @@ export function createTransferAmountPlan(input: {
 	toCurrency: CurrencyCode;
 	transferRate: string;
 }): Promise<TransferAmountPlan> {
+	if (input.fromCurrency === input.toCurrency) {
+		return createSameCurrencyPlan(input);
+	}
+
 	const toAmountMinor = convertMinorUnitsByExchangeRate(
 		input.fromAmountMinor,
 		input.transferRate
@@ -70,6 +75,7 @@ async function resolveBaseAmountPlan(input: {
 	if (input.toCurrency === input.householdBaseCurrency) {
 		return {
 			baseAmountMinor: input.toAmountMinor,
+			exchangeRate: input.transferRate,
 			fromLeg: {
 				amountInHouseholdBaseCurrencyMinor: input.toAmountMinor,
 				effectiveOn: input.happenedOn,
@@ -84,6 +90,7 @@ async function resolveBaseAmountPlan(input: {
 	if (input.fromCurrency === input.householdBaseCurrency) {
 		return {
 			baseAmountMinor: input.fromAmountMinor,
+			exchangeRate: input.transferRate,
 			fromLeg: createIdentityLeg(input.fromAmountMinor, input.happenedOn),
 			toAmountMinor: input.toAmountMinor,
 			toLeg: {
@@ -115,6 +122,7 @@ async function resolveBaseAmountPlan(input: {
 
 	return {
 		baseAmountMinor,
+		exchangeRate: input.transferRate,
 		fromLeg: {
 			amountInHouseholdBaseCurrencyMinor: baseAmountMinor,
 			effectiveOn: quote.effectiveOn,
@@ -128,6 +136,63 @@ async function resolveBaseAmountPlan(input: {
 			rate: rateMappingAmountToTarget(input.toAmountMinor, baseAmountMinor),
 			source: TRANSFER_EXCHANGE_RATE_SOURCE
 		}
+	};
+}
+
+/**
+ * Plans a transfer between accounts of one currency: the rate is always 1 and
+ * the credit equals the debit, whatever rate the client sent.
+ */
+async function createSameCurrencyPlan(input: {
+	fromAmountMinor: number;
+	fromCurrency: CurrencyCode;
+	happenedOn: string;
+	householdBaseCurrency: CurrencyCode;
+	resolveForeignBaseQuote: () => Promise<ExchangeRateQuote>;
+}): Promise<TransferAmountPlan> {
+	if (input.fromCurrency === input.householdBaseCurrency) {
+		const leg = createIdentityLeg(input.fromAmountMinor, input.happenedOn);
+
+		return {
+			baseAmountMinor: input.fromAmountMinor,
+			exchangeRate: '1',
+			fromLeg: leg,
+			toAmountMinor: input.fromAmountMinor,
+			toLeg: { ...leg }
+		};
+	}
+
+	const quote = await input.resolveForeignBaseQuote();
+
+	if (
+		quote.fromCurrency !== input.fromCurrency
+		|| quote.toCurrency !== input.householdBaseCurrency
+	) {
+		throw new Error('Exchange-rate resolver returned an unexpected pair.');
+	}
+
+	const baseAmountMinor = convertMinorUnitsByExchangeRate(
+		input.fromAmountMinor,
+		quote.rate
+	);
+
+	if (baseAmountMinor <= 0) {
+		throw new TransferConversionAmountError();
+	}
+
+	const leg = {
+		amountInHouseholdBaseCurrencyMinor: baseAmountMinor,
+		effectiveOn: quote.effectiveOn,
+		rate: quote.rate,
+		source: quote.source
+	};
+
+	return {
+		baseAmountMinor,
+		exchangeRate: '1',
+		fromLeg: leg,
+		toAmountMinor: input.fromAmountMinor,
+		toLeg: { ...leg }
 	};
 }
 

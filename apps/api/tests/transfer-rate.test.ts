@@ -92,4 +92,96 @@ describe('createTransferAmountPlan', () => {
 			transferRate: '0.000000000001'
 		})).toThrow(TransferConversionAmountError);
 	});
+
+	it('returns the entered rate as the effective rate for different currencies', async () => {
+		const plan = await createTransferAmountPlan({
+			fromAmountMinor: 10_000,
+			fromCurrency: 'USD',
+			happenedOn: HAPPENED_ON,
+			householdBaseCurrency: 'BYN',
+			resolveForeignBaseQuote: unusedResolver,
+			toCurrency: 'BYN',
+			transferRate: '3'
+		});
+
+		expect(plan.exchangeRate).toBe('3');
+	});
+
+	describe('same currency', () => {
+		it('uses identity legs and equal amounts when the currency is the base one', async () => {
+			const plan = await createTransferAmountPlan({
+				fromAmountMinor: 12_345,
+				fromCurrency: 'BYN',
+				happenedOn: HAPPENED_ON,
+				householdBaseCurrency: 'BYN',
+				resolveForeignBaseQuote: unusedResolver,
+				toCurrency: 'BYN',
+				transferRate: '1'
+			});
+
+			expect(plan.exchangeRate).toBe('1');
+			expect(plan.toAmountMinor).toBe(12_345);
+			expect(plan.baseAmountMinor).toBe(12_345);
+			expect(plan.fromLeg).toMatchObject({
+				amountInHouseholdBaseCurrencyMinor: 12_345,
+				rate: '1',
+				source: 'identity'
+			});
+			expect(plan.toLeg).toMatchObject({
+				amountInHouseholdBaseCurrencyMinor: 12_345,
+				rate: '1',
+				source: 'identity'
+			});
+		});
+
+		it('ignores the entered rate and keeps the credit equal to the debit', async () => {
+			const plan = await createTransferAmountPlan({
+				fromAmountMinor: 10_000,
+				fromCurrency: 'BYN',
+				happenedOn: HAPPENED_ON,
+				householdBaseCurrency: 'BYN',
+				resolveForeignBaseQuote: unusedResolver,
+				toCurrency: 'BYN',
+				transferRate: '3'
+			});
+
+			expect(plan.exchangeRate).toBe('1');
+			expect(plan.toAmountMinor).toBe(10_000);
+		});
+
+		it('shares one foreign-to-base quote between both legs', async () => {
+			let calls = 0;
+			const plan = await createTransferAmountPlan({
+				fromAmountMinor: 10_000,
+				fromCurrency: 'USD',
+				happenedOn: HAPPENED_ON,
+				householdBaseCurrency: 'BYN',
+				resolveForeignBaseQuote: () => {
+					calls += 1;
+
+					return Promise.resolve({
+						effectiveOn: '2026-09-05',
+						fromCurrency: 'USD',
+						rate: '3',
+						source: 'nbrb',
+						toCurrency: 'BYN'
+					});
+				},
+				toCurrency: 'USD',
+				transferRate: '1'
+			});
+
+			expect(calls).toBe(1);
+			expect(plan.exchangeRate).toBe('1');
+			expect(plan.toAmountMinor).toBe(10_000);
+			expect(plan.baseAmountMinor).toBe(30_000);
+			expect(plan.fromLeg).toEqual(plan.toLeg);
+			expect(plan.fromLeg).toEqual({
+				amountInHouseholdBaseCurrencyMinor: 30_000,
+				effectiveOn: '2026-09-05',
+				rate: '3',
+				source: 'nbrb'
+			});
+		});
+	});
 });
