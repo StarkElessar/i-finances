@@ -111,9 +111,12 @@ export function createApiDependencies(): {
 	const securityService = new SecurityService({
 		credentialRepository: webAuthnCredentialRepository,
 		passwordService,
-		// Keyed by user id already, so the per-username ceiling of the sign-in form would only add a second,
-		// differently behaving counter. Keep this limiter a plain per-user attempt counter.
-		rateLimiter: new LoginRateLimiter({ maxAttemptsPerUsername: Number.POSITIVE_INFINITY }),
+		// This limiter is keyed by `unknown:<userId>` (no address) and must stay a plain per-user attempt counter. The
+		// per-username and per-address ceilings of the sign-in form would add counters with different behavior.
+		rateLimiter: new LoginRateLimiter({
+			maxAttemptsPerIp: Number.POSITIVE_INFINITY,
+			maxAttemptsPerUsername: Number.POSITIVE_INFINITY
+		}),
 		sessionRepository,
 		userRepository: passwordUserRepository
 	});

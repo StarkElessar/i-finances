@@ -161,6 +161,82 @@ describe('LoginRateLimiter', () => {
 	});
 });
 
+describe('LoginRateLimiter per-address limit', () => {
+	let limiter: LoginRateLimiter;
+
+	beforeEach(() => {
+		limiter = new LoginRateLimiter();
+	});
+
+	function spray(count: number, ipAddress = '203.0.113.7', now = 1000): void {
+		for (let index = 0; index < count; index += 1) {
+			limiter.tryReserve({ ipAddress, now, username: `victim-${index}` });
+		}
+	}
+
+	it('stops one address that walks through many usernames', () => {
+		spray(30);
+
+		expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: 'victim-new' })).toEqual({
+			allowed: false,
+			retryAfterSeconds: 900
+		});
+	});
+
+	it('allows the thirtieth attempt and does not touch other addresses', () => {
+		spray(29);
+
+		expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: 'victim-29' }).allowed).toBe(true);
+		expect(limiter.tryReserve({ ipAddress: '198.51.100.1', now: 1000, username: 'victim-0' }).allowed).toBe(true);
+	});
+
+	it('is temporary and ends with the window of the first attempt', () => {
+		spray(30);
+
+		expect(limiter.tryReserve({
+			ipAddress: '203.0.113.7',
+			now: 1000 + WINDOW_MILLISECONDS + 1,
+			username: 'victim-new'
+		}).allowed).toBe(true);
+	});
+
+	it('gives back one attempt after a successful sign-in, so shared addresses are not starved by valid logins', () => {
+		for (let index = 0; index < 100; index += 1) {
+			expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: `user-${index}` }).allowed).toBe(true);
+			limiter.recordSuccess({ ipAddress: '203.0.113.7', now: 1000, username: `user-${index}` });
+		}
+	});
+
+	it('does not count a blocked attempt', () => {
+		spray(30);
+		spray(100, '203.0.113.7', 500_000);
+
+		expect(limiter.tryReserve({
+			ipAddress: '203.0.113.7',
+			now: 1000 + WINDOW_MILLISECONDS + 1,
+			username: 'victim-new'
+		}).allowed).toBe(true);
+	});
+
+	it('is configurable and can be switched off', () => {
+		limiter = new LoginRateLimiter({ maxAttemptsPerIp: 2 });
+		spray(2);
+
+		expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: 'other' }).allowed).toBe(false);
+
+		limiter = new LoginRateLimiter({ maxAttemptsPerIp: Number.POSITIVE_INFINITY });
+		spray(200);
+
+		expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 1000, username: 'other' }).allowed).toBe(true);
+	});
+
+	it('does not pool attempts with an unknown address', () => {
+		for (let index = 0; index < 100; index += 1) {
+			expect(limiter.tryReserve({ now: 1000, username: `user-${index}` }).allowed).toBe(true);
+		}
+	});
+});
+
 describe('FixedWindowCounter', () => {
 	it('sweeps expired keys so that random usernames cannot grow memory forever', () => {
 		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS);

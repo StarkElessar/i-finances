@@ -255,11 +255,15 @@ describe('password session API', () => {
 	});
 });
 
-function requestWrongPassword(app: ReturnType<typeof createAuthApp>, forwardedFor: string): Promise<Response> {
+function requestWrongPassword(
+	app: ReturnType<typeof createAuthApp>,
+	forwardedFor: string,
+	username = 'sergei'
+): Promise<Response> {
 	return Promise.resolve(app.request('/api/auth/sign-in', {
 		body: JSON.stringify({
 			password: 'wrong-password',
-			username: 'sergei'
+			username
 		}),
 		headers: {
 			'content-type': 'application/json',
@@ -283,6 +287,19 @@ describe('password sign-in rate limit', () => {
 		const blocked = await requestWrongPassword(app, '10.0.0.99, 203.0.113.7');
 
 		expect(blocked.status).toBe(429);
+	});
+
+	it('stops one address that tries many usernames, and still serves other addresses', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
+
+		for (let index = 0; index < 30; index += 1) {
+			const response = await requestWrongPassword(app, '10.0.0.1, 203.0.113.7', `victim-${index}`);
+
+			expect(response.status).toBe(401);
+		}
+
+		expect((await requestWrongPassword(app, '203.0.113.7', 'victim-new')).status).toBe(429);
+		expect((await requestWrongPassword(app, '203.0.113.8', 'victim-new')).status).toBe(401);
 	});
 
 	it('is not bypassed by rotating real addresses either', async () => {
