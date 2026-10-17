@@ -15,4 +15,13 @@ describe('getAuthConfig trustedProxyCount', () => {
 	it.each(['-1', '11', 'abc', '1.5'])('rejects TRUSTED_PROXY_COUNT=%s', (value) => {
 		expect(() => getAuthConfig({ TRUSTED_PROXY_COUNT: value })).toThrow();
 	});
+
+	it.each([undefined, '', '  '])('refuses to start in production when TRUSTED_PROXY_COUNT is %j', (value) => {
+		expect(() => getAuthConfig({ NODE_ENV: 'production', TRUSTED_PROXY_COUNT: value })).toThrow(/TRUSTED_PROXY_COUNT/);
+	});
+
+	it('accepts an explicit value in production, including 0 for an API without a proxy', () => {
+		expect(getAuthConfig({ NODE_ENV: 'production', TRUSTED_PROXY_COUNT: '1' }).trustedProxyCount).toBe(1);
+		expect(getAuthConfig({ NODE_ENV: 'production', TRUSTED_PROXY_COUNT: '0' }).trustedProxyCount).toBe(0);
+	});
 });

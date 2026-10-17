@@ -18,9 +18,24 @@ export type AuthConfig = {
 	webauthnRpName: string;
 };
 
+/**
+ * Behind a proxy the safe default 0 makes every client look like the proxy, so a stranger can lock password sign-in
+ * for everyone. Production must therefore state the number of proxies itself; the API refuses to start otherwise.
+ */
+function assertTrustedProxyCountIsExplicit(environment: NodeJS.ProcessEnv): void {
+	if (environment.NODE_ENV === 'production' && (environment.TRUSTED_PROXY_COUNT ?? '').trim() === '') {
+		throw new Error(
+			'TRUSTED_PROXY_COUNT must be set explicitly in production: 1 behind the homelab nginx, 0 only when clients '
+			+ 'connect to the API directly. See development/decisions/client-ip.md.'
+		);
+	}
+}
+
 export function getAuthConfig(
 	environment: NodeJS.ProcessEnv = process.env
 ): AuthConfig {
+	assertTrustedProxyCountIsExplicit(environment);
+
 	const parsedEnvironment = authEnvironmentSchema.parse(environment);
 
 	return {
