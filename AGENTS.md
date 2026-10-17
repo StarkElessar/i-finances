@@ -172,7 +172,7 @@ Active elements should keep their active visual treatment on hover and focus.
 
 - Session-based auth with Argon2 password hashing + WebAuthn support
 - API middleware guards authenticated routes and sets security headers: `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`
-- Environment: `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `SESSION_COOKIE_NAME`, `SESSION_TTL_DAYS`
+- Environment: `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `SESSION_COOKIE_NAME`, `SESSION_TTL_DAYS`, `TRUSTED_PROXY_COUNT` (reverse proxies in front of the API, default 0; see `development/decisions/client-ip.md`)
 - `apps/mcp` authenticates with `MCP_API_KEY` as a bearer token instead of a browser session
 
 ## Deployment
