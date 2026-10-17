@@ -134,8 +134,8 @@ export class WebAuthnCredentialRepository {
 		userId: string;
 	}): Promise<boolean> {
 		const hasAnotherCredential = sql`(
-			select count(*) from ${webauthnCredentials} as other_credentials
-			where other_credentials.user_id = ${input.userId}
+			select count(*) from ${webauthnCredentials} as user_credentials
+			where user_credentials.user_id = ${input.userId}
 		) > 1`;
 		const deleted = await this.database.delete(webauthnCredentials)
 			.where(and(
