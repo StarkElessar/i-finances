@@ -1,3 +1,5 @@
+import { ApiHttpError } from './api-http-error';
+
 export type ApiResponseSchema<TResponse> = {
 	parse(value: unknown): TResponse;
 };
@@ -10,17 +12,6 @@ export type ApiClientOptions = {
 	baseUrl?: string;
 	fetcher?: typeof globalThis.fetch;
 };
-
-export class ApiHttpError extends Error {
-	public constructor(
-		public readonly status: number,
-		public readonly body: unknown,
-		public readonly url: string
-	) {
-		super(`API request failed with status ${status}.`);
-		this.name = 'ApiHttpError';
-	}
-}
 
 /**
  * Owns browser HTTP concerns while leaving feature clients focused on APIs.

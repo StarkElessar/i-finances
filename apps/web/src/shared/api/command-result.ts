@@ -1,4 +1,4 @@
-import { ApiHttpError } from './api-client';
+import { ApiHttpError } from './api-http-error';
 
 export type CommandResultSchema<TResult> = {
 	safeParse(value: unknown): { data: TResult; success: true } | { success: false };
