@@ -86,8 +86,12 @@ export function createApiDependencies(): {
 		config: authConfig
 	});
 	const passwordUserRepository = new PasswordUserRepository(db);
+	// Browser cookie only. Controllers that manage credentials (passkeys, password, sessions)
+	// must use this resolver: the MCP bearer key must not be able to mint a cookie session
+	// for the key owner by registering its own passkey.
+	const cookieSessionResolver = new CookieSessionResolver(sessionService, authConfig.sessionCookieName);
 	const sessionResolver = new CompositeSessionResolver([
-		new CookieSessionResolver(sessionService, authConfig.sessionCookieName),
+		cookieSessionResolver,
 		new ApiKeySessionResolver(passwordUserRepository)
 	]);
 	const passwordService = new PasswordService();
@@ -223,10 +227,9 @@ export function createApiDependencies(): {
 			authConfig
 		),
 		receiptImportService,
-		// Cookie sessions only: the MCP bearer key must not manage passwords, keys or sessions.
 		securityController: new SecurityHttpController(
 			securityService,
-			new CookieSessionResolver(sessionService, authConfig.sessionCookieName),
+			cookieSessionResolver,
 			authConfig
 		),
 		startReceiptProcessing,
@@ -236,7 +239,7 @@ export function createApiDependencies(): {
 		),
 		passkeyController: new PasskeyHttpController(
 			webAuthnService,
-			sessionResolver,
+			cookieSessionResolver,
 			authConfig
 		)
 	};
