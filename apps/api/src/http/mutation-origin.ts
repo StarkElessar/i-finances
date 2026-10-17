@@ -1,10 +1,6 @@
 import { type AuthConfig, getAuthConfig } from '@/modules/auth';
 
-function readHeaderOrigin(value: string | null): string | undefined {
-	if (value === null || value.length === 0) {
-		return undefined;
-	}
-
+function readHeaderOrigin(value: string): string | undefined {
 	try {
 		return new URL(value).origin;
 	}
@@ -24,13 +20,18 @@ export function isSameOriginMutation(
 		new URL(request.url).origin,
 		new URL(config.origin).origin
 	]);
-	const origin = readHeaderOrigin(request.headers.get('origin'));
+	const originHeader = request.headers.get('origin');
 
-	if (origin !== undefined) {
-		return allowedOrigins.has(origin);
+	// A present Origin header is authoritative. One that cannot be parsed (`null` from sandboxed frames, redirects
+	// across origins, privacy modes) must not fall through to Referer, which an attacker page can often steer.
+	if (originHeader !== null) {
+		const origin = readHeaderOrigin(originHeader);
+
+		return origin !== undefined && allowedOrigins.has(origin);
 	}
 
-	const refererOrigin = readHeaderOrigin(request.headers.get('referer'));
+	const refererHeader = request.headers.get('referer');
+	const refererOrigin = refererHeader === null ? undefined : readHeaderOrigin(refererHeader);
 
 	return refererOrigin !== undefined && allowedOrigins.has(refererOrigin);
 }
