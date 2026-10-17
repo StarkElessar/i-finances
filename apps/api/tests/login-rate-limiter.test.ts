@@ -29,6 +29,25 @@ describe('LoginRateLimiter', () => {
 		});
 	});
 
+	it('does not count a blocked attempt towards the address counter', () => {
+		const attempt = {
+			ipAddress: '127.0.0.1',
+			now: 1000,
+			username: 'sergei'
+		};
+
+		for (let index = 0; index < 5; index += 1) {
+			expect(limiter.tryReserve(attempt).allowed).toBe(true);
+		}
+
+		// Thirty blocked attempts would push the address counter (limit 30) over its limit if they were counted.
+		for (let index = 0; index < 30; index += 1) {
+			expect(limiter.tryReserve(attempt).allowed).toBe(false);
+		}
+
+		expect(limiter.tryReserve({ ...attempt, username: 'anna' }).allowed).toBe(true);
+	});
+
 	it('does not count a blocked attempt, so the block still ends with the first window', () => {
 		const attempt = {
 			ipAddress: '127.0.0.1',
@@ -45,6 +64,20 @@ describe('LoginRateLimiter', () => {
 		}
 
 		expect(limiter.tryReserve({ ...attempt, now: 1000 + WINDOW_MILLISECONDS + 1 }).allowed).toBe(true);
+	});
+
+	it('reports the longest of the windows that triggered the block', () => {
+		limiter = new LoginRateLimiter({ maxAttempts: 1, maxAttemptsPerIp: 2 });
+
+		// The address window starts at 0, the window of the (address, 'b') pair 100 seconds later.
+		limiter.tryReserve({ ipAddress: '203.0.113.7', now: 0, username: 'a' });
+		limiter.tryReserve({ ipAddress: '203.0.113.7', now: 100_000, username: 'b' });
+
+		// Both counters block now: the address ends at 900 s, the pair at 1000 s. 200 s have passed.
+		expect(limiter.tryReserve({ ipAddress: '203.0.113.7', now: 200_000, username: 'b' })).toEqual({
+			allowed: false,
+			retryAfterSeconds: 800
+		});
 	});
 
 	it('keeps other sources and the username counter untouched while one source is blocked', () => {
