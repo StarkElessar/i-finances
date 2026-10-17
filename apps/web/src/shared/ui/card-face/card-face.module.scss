@@ -1,0 +1,78 @@
+@use "@/shared/styles/functions" as fn;
+
+.root {
+    --card-face-color: var(--account-color, var(--color-primary));
+
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    box-sizing: border-box;
+
+    font-variant-numeric: tabular-nums;
+    color: var(--card-face-text, var(--color-text-inverse));
+
+    background-color: var(--card-face-color);
+}
+
+.size-full {
+    aspect-ratio: 1.586 / 1;
+    inline-size: 100%;
+    padding: var(--space-5) var(--space-6);
+    border-radius: var(--radius-lg);
+
+    .title {
+        overflow: hidden;
+
+        font-size: var(--font-size-label);
+        font-weight: var(--font-weight-semibold);
+        text-overflow: ellipsis;
+        white-space: nowrap;
+
+        opacity: 0.9;
+    }
+
+    .number {
+        font-size: var(--font-size-body-lg);
+        font-weight: var(--font-weight-semibold);
+        letter-spacing: 0.06em;
+    }
+
+    .footer {
+        display: flex;
+        gap: var(--space-4);
+        justify-content: space-between;
+
+        font-size: var(--font-size-label);
+        font-weight: var(--font-weight-semibold);
+    }
+}
+
+.size-mini {
+    flex: none;
+
+    inline-size: fn.rem(92);
+    block-size: fn.rem(58);
+    padding: var(--space-3) var(--space-4);
+    border-radius: var(--radius-md);
+
+    box-shadow: var(--shadow-sm);
+
+    .number,
+    .footer {
+        font-size: fn.rem(8.5);
+        font-weight: var(--font-weight-semibold);
+    }
+
+    .footer {
+        display: flex;
+        justify-content: flex-end;
+    }
+}
+
+.expiry-expired {
+    padding-inline: var(--space-3);
+    border-radius: var(--radius-round);
+    color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+}
