@@ -1,5 +1,6 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import { accounts, operations } from '@/infrastructure/database/schema';
+import type { StoredAccountDetails } from '@/infrastructure/database/schema/column-types';
 
 import type { AccountType, CurrencyCode } from '@i-finances/contracts';
 import {
@@ -17,12 +18,14 @@ export type AccountRecord = {
 	createdByUserId: string;
 	currency: CurrencyCode;
 	description: string;
+	details: StoredAccountDetails;
 	householdId: string;
 	id: string;
 	initialBalanceMinor: number;
 	isColorAccentEnabled: boolean;
 	isIncludedInFamilyTotal: boolean;
 	name: string;
+	owner: string;
 	type: AccountType;
 	updatedAt: Date;
 	version: number;
@@ -36,10 +39,12 @@ export type AccountUpdateValues = {
 	color: string;
 	currency: CurrencyCode;
 	description: string;
+	details: StoredAccountDetails;
 	initialBalanceMinor: number;
 	isColorAccentEnabled: boolean;
 	isIncludedInFamilyTotal: boolean;
 	name: string;
+	owner: string;
 	type: AccountType;
 	updatedAt: Date;
 };
@@ -52,12 +57,14 @@ function mapAccount(record: typeof accounts.$inferSelect): AccountRecord {
 		createdByUserId: record.createdByUserId,
 		currency: record.currency,
 		description: record.description,
+		details: record.details,
 		householdId: record.householdId,
 		id: record.id,
 		initialBalanceMinor: record.initialBalanceMinor,
 		isColorAccentEnabled: record.isColorAccentEnabled,
 		isIncludedInFamilyTotal: record.isIncludedInFamilyTotal,
 		name: record.name,
+		owner: record.owner,
 		type: record.type,
 		updatedAt: record.updatedAt,
 		version: record.version

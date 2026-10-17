@@ -9,6 +9,7 @@ import {
 } from '@/infrastructure/database/schema';
 import {
 	AccountCurrencyLockedError,
+	AccountNotFoundError,
 	AccountRepository,
 	AccountService,
 	AccountVersionConflictError
@@ -34,6 +35,7 @@ const USER_ID = 'user-1';
 const HOUSEHOLD_ID = 'household-1';
 const OTHER_HOUSEHOLD_ID = 'household-2';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
+const CARD = '4111111111111111';
 
 let connection: Database.Database;
 let database: AppDatabase;
@@ -92,7 +94,7 @@ function createService(): AccountService {
 	});
 }
 
-function accountInput(currency: 'BYN' | 'EUR' | 'USD' = 'BYN') {
+function accountInput(currency: 'BYN' | 'EUR' | 'USD' = 'BYN', overrides: Record<string, unknown> = {}) {
 	return createAccountInputSchema.parse({
 		color: '#3f77a8',
 		currency,
@@ -101,7 +103,8 @@ function accountInput(currency: 'BYN' | 'EUR' | 'USD' = 'BYN') {
 		isColorAccentEnabled: false,
 		isIncludedInFamilyTotal: true,
 		name: 'Основной счёт',
-		type: 'card'
+		type: 'card',
+		...overrides
 	});
 }
 
@@ -172,17 +175,26 @@ describe('AccountService', () => {
 
 	it('lets an account without operations change its currency', async () => {
 		const service = createService();
-		const created = await service.create(USER_ID, accountInput('USD'));
+		const created = await service.create(USER_ID, accountInput('USD', {
+			details: { cardNumber: '4111111111111111', expiry: '08/27' },
+			owner: 'Сергей'
+		}));
 
 		expect(created.hasOperations).toBe(false);
 
 		const updated = await service.update(USER_ID, updateAccountInputSchema.parse({
-			...accountInput('EUR'),
+			...accountInput('EUR', { owner: 'Сергей' }),
 			id: created.id,
 			version: created.version
 		}));
 
-		expect(updated).toMatchObject({ currency: 'EUR', hasOperations: false, version: 2 });
+		expect(updated).toMatchObject({
+			currency: 'EUR',
+			details: { cardNumberLast4: '1111', expiry: '08/27' },
+			hasOperations: false,
+			owner: 'Сергей',
+			version: 2
+		});
 	});
 
 	describe('with operations', () => {
@@ -260,5 +272,104 @@ describe('AccountService', () => {
 				name: 'Переименован'
 			});
 		});
+	});
+
+	it('stores owner and card details; list exposes only last4', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, accountInput('BYN', {
+			details: { cardNumber: CARD, expiry: '08/27' },
+			owner: 'Сергей'
+		}));
+
+		expect(created.owner).toBe('Сергей');
+		expect(created.details).toEqual({ cardNumberLast4: '1111', expiry: '08/27' });
+		expect(JSON.stringify(await service.list(USER_ID, false))).not.toContain(CARD);
+	});
+
+	it('get returns the full number', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, accountInput('BYN', {
+			details: { cardNumber: CARD, expiry: null }
+		}));
+		const full = await service.get(USER_ID, created.id);
+
+		expect(full.details).toMatchObject({ cardNumber: CARD, cardNumberLast4: '1111' });
+	});
+
+	it('update without details keeps them; with details replaces them', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, accountInput('BYN', {
+			details: { cardNumber: CARD, expiry: '08/27' }
+		}));
+		const kept = await service.update(USER_ID, updateAccountInputSchema.parse({
+			...accountInput(),
+			id: created.id,
+			name: 'Переименован',
+			version: created.version
+		}));
+
+		expect(kept.details).toEqual({ cardNumberLast4: '1111', expiry: '08/27' });
+
+		const replaced = await service.update(USER_ID, updateAccountInputSchema.parse({
+			...accountInput(),
+			details: { cardNumber: null, expiry: '01/30' },
+			id: created.id,
+			version: kept.version
+		}));
+
+		expect(replaced.details).toEqual({ cardNumberLast4: null, expiry: '01/30' });
+	});
+
+	it('changing type from card to cash drops the details', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, accountInput('BYN', {
+			details: { cardNumber: CARD, expiry: '08/27' }
+		}));
+		const changed = await service.update(USER_ID, updateAccountInputSchema.parse({
+			...accountInput(),
+			id: created.id,
+			type: 'cash',
+			version: created.version
+		}));
+
+		expect(changed.type).toBe('cash');
+		expect(changed.details).toEqual({});
+	});
+
+	it('archive and restore keep owner and details', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, accountInput('BYN', {
+			details: { cardNumber: CARD, expiry: '08/27' },
+			owner: 'Жена'
+		}));
+		const archived = await service.archive(USER_ID, { id: created.id, version: created.version });
+		const restored = await service.restore(USER_ID, { id: created.id, version: archived.version });
+
+		expect(restored.owner).toBe('Жена');
+		expect(restored.details).toEqual({ cardNumberLast4: '1111', expiry: '08/27' });
+	});
+
+	it('get does not leak across households', async () => {
+		const service = createService();
+
+		await database.insert(accounts).values({
+			archivedAt: null,
+			color: '#d95959',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'USD',
+			description: '',
+			householdId: OTHER_HOUSEHOLD_ID,
+			id: 'account-other',
+			initialBalanceMinor: 1,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'Чужой',
+			type: 'card',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		await expect(service.get(USER_ID, 'account-other')).rejects.toBeInstanceOf(AccountNotFoundError);
 	});
 });

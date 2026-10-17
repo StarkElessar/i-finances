@@ -7,6 +7,7 @@ import {
 	type ChangeAccountArchiveStateInput,
 	type CreateAccountInput,
 	type PersistedAccount,
+	type PersistedAccountFull,
 	type UpdateAccountInput
 } from '@i-finances/contracts';
 
@@ -14,6 +15,7 @@ import { AccountCurrencyLockedError } from './account-currency-locked-error';
 import { AccountVersionConflictError } from './account-errors';
 import type { AccountRecord, AccountRepository } from './account-repository';
 import { AccountRules } from './account-rules';
+import { ACCOUNT_DETAILS_HANDLERS } from './details/account-details-handlers';
 
 export type AccountServiceDependencies = {
 	accountRepository: AccountRepository;
@@ -22,7 +24,7 @@ export type AccountServiceDependencies = {
 	now?: () => Date;
 };
 
-function toPersistedAccount(record: AccountRecord, hasOperations: boolean): PersistedAccount {
+function toBasePersistedFields(record: AccountRecord, hasOperations: boolean) {
 	return {
 		archivedAt: record.archivedAt?.toISOString() ?? null,
 		color: record.color,
@@ -35,9 +37,40 @@ function toPersistedAccount(record: AccountRecord, hasOperations: boolean): Pers
 		isColorAccentEnabled: record.isColorAccentEnabled,
 		isIncludedInFamilyTotal: record.isIncludedInFamilyTotal,
 		name: record.name,
+		owner: record.owner,
 		type: record.type,
 		updatedAt: record.updatedAt.toISOString(),
 		version: record.version
+	};
+}
+
+// The handler registry is the single place that correlates `type` with the shape of `details`,
+// so the contract union cannot be narrowed statically here.
+function toPersistedAccount(record: AccountRecord, hasOperations: boolean): PersistedAccount {
+	return {
+		...toBasePersistedFields(record, hasOperations),
+		details: ACCOUNT_DETAILS_HANDLERS[record.type].toView(record.details)
+	} as PersistedAccount;
+}
+
+function toPersistedAccountFull(record: AccountRecord, hasOperations: boolean): PersistedAccountFull {
+	return {
+		...toBasePersistedFields(record, hasOperations),
+		details: ACCOUNT_DETAILS_HANDLERS[record.type].toFull(record.details)
+	} as PersistedAccountFull;
+}
+
+function toEditableValues(input: CreateAccountInput | UpdateAccountInput) {
+	return {
+		color: input.color,
+		currency: input.currency,
+		description: input.description,
+		initialBalanceMinor: input.initialBalanceMinor,
+		isColorAccentEnabled: input.isColorAccentEnabled,
+		isIncludedInFamilyTotal: input.isIncludedInFamilyTotal,
+		name: input.name,
+		owner: input.owner,
+		type: input.type
 	};
 }
 
@@ -77,14 +110,25 @@ export class AccountService {
 		};
 	}
 
+	public async get(userId: string, accountId: string): Promise<PersistedAccountFull> {
+		const current = await this.rules.requireCurrent(userId, accountId);
+		const hasOperations = await this.dependencies.accountRepository.hasOperations(
+			current.householdId,
+			current.record.id
+		);
+
+		return toPersistedAccountFull(current.record, hasOperations);
+	}
+
 	public async create(userId: string, input: CreateAccountInput): Promise<PersistedAccount> {
 		const household = await this.dependencies.householdResolver.requireForUser(userId);
 		const timestamp = this.now();
 		const record = await this.dependencies.accountRepository.insert({
-			...input,
+			...toEditableValues(input),
 			archivedAt: null,
 			createdAt: timestamp,
 			createdByUserId: userId,
+			details: ACCOUNT_DETAILS_HANDLERS[input.type].toStored(input.details, undefined),
 			householdId: household.id,
 			id: this.createId(),
 			updatedAt: timestamp,
@@ -98,15 +142,13 @@ export class AccountService {
 		const current = await this.rules.requireCurrent(userId, input.id);
 		this.rules.assertVersion(current.record, input.version);
 
+		const sameType = current.record.type === input.type;
 		const accountValues = {
-			color: input.color,
-			currency: input.currency,
-			description: input.description,
-			initialBalanceMinor: input.initialBalanceMinor,
-			isColorAccentEnabled: input.isColorAccentEnabled,
-			isIncludedInFamilyTotal: input.isIncludedInFamilyTotal,
-			name: input.name,
-			type: input.type,
+			...toEditableValues(input),
+			details: ACCOUNT_DETAILS_HANDLERS[input.type].toStored(
+				input.details,
+				sameType ? current.record.details : undefined
+			),
 			updatedAt: this.now()
 		};
 
