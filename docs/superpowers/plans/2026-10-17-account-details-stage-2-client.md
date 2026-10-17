@@ -10,7 +10,7 @@
 
 **Spec:** `docs/superpowers/specs/2026-10-17-account-type-details-design.md`
 **Prerequisite:** Stage 1 (`docs/superpowers/plans/2026-10-17-account-details-stage-1-backend.md`) выполнен и смёржен: в контрактах есть `owner`, union-схемы, `cardAccountDetailsViewSchema`, `extractCardDigits`, `collectFieldErrors`; API отдаёт `GET /api/accounts/:id`; `views/home/page.tsx` прогоняет payload через `safeParse` и передаёт `owner`.
-**Mockups:** https://claude.ai/artifact/8Svu3VZxWAfGqVuzrpPvzb — утверждены: **B1** (мини-карта 92×58 вместо плитки-иконки в шапке) и форма «B · редактирование» (превью слева, поля справа; на мобильном превью над полями).
+**Mockups:** доска «Кит: карточка счёта» (`project/Kit-AccountCard.dc.html`) в макете https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 (прежний артефакт «Счета: детали карты» удалён 2026-10-17, утверждённые варианты перенесены сюда) — утверждены: **B1** (мини-карта 92×58 вместо плитки-иконки в шапке) и форма «B · редактирование» (превью слева, поля справа; на мобильном превью над полями).
 
 ## Global Constraints
 

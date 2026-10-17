@@ -94,6 +94,12 @@ Additional SCSS rules:
 - `declaration-no-important` enabled
 - PostCSS sorts media queries `desktop-first` at build time
 
+## UI design and kit
+
+Any UI work starts from the mockup and the UI kit, not from the code: design on paper first, then the component, then its Storybook story. The code follows the mockup.
+
+Before changing or adding UI, load the `ifinances-ui` skill (`.claude/skills/ifinances-ui/SKILL.md`). It holds the mockup link, the registry "kit board → code", and the token name mapping. Decisions and the canvas contents are in `development/ui-mockup.md`.
+
 ## Interactive Styles
 
 Do not apply hover effects, focus effects, or `cursor: pointer` to elements that are already active, selected, current, or checked.
