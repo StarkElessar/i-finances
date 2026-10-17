@@ -8,6 +8,7 @@ const account = {
 	createdAt: '2026-07-24T10:00:00.000Z',
 	currency: 'BYN',
 	description: '',
+	hasOperations: false,
 	id: 'account/main',
 	initialBalanceMinor: 10_000,
 	isColorAccentEnabled: false,
@@ -50,12 +51,11 @@ describe('AccountClient', () => {
 		})).resolves.toEqual({ account, ok: true });
 	});
 
-	it('encodes account IDs and preserves explicit correction confirmation', async () => {
+	it('encodes account IDs in update requests', async () => {
 		const fetcher: typeof globalThis.fetch = async (input, init) => {
 			expect(input).toBe('/api/accounts/account%2Fmain');
 			expect(init?.method).toBe('PUT');
 			expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toMatchObject({
-				confirmCurrencyCorrection: true,
 				id: 'account/main',
 				version: 1
 			});
@@ -67,9 +67,6 @@ describe('AccountClient', () => {
 		};
 		const client = new AccountClient({ fetcher });
 
-		await client.update({
-			...account,
-			confirmCurrencyCorrection: true
-		});
+		await client.update(account);
 	});
 });

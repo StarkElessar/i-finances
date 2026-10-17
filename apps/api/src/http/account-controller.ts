@@ -1,15 +1,12 @@
 import type { AccountService } from '@/modules/account';
 import {
-	AccountConversionAmountError,
-	AccountCurrencyCorrectionConflictError,
-	AccountCurrencyCorrectionRequiredError,
+	AccountCurrencyLockedError,
 	AccountNotFoundError,
 	AccountVersionConflictError
 } from '@/modules/account';
 import type { AuthenticatedSession } from '@/modules/auth';
 import type { AuthConfig } from '@/modules/auth';
 import { getAuthConfig } from '@/modules/auth';
-import { ExchangeRateNotFoundError } from '@/modules/exchange-rate';
 import {
 	HouseholdAccessRequiredError,
 	HouseholdSelectionRequiredError
@@ -222,17 +219,17 @@ export class AccountHttpController {
 		context: Context<ApiEnvironment>,
 		error: unknown
 	): Response {
-		if (error instanceof AccountCurrencyCorrectionRequiredError) {
+		if (error instanceof AccountCurrencyLockedError) {
 			return context.json<AccountCommandResult>({
-				errorCode: 'confirmation-required',
-				message: 'Смена валюты перепишет исторические суммы операций. Подтвердите действие.',
+				errorCode: 'currency-locked',
+				fieldErrors: { currency: 'Валюту нельзя изменить, пока по счёту есть операции.' },
+				message: 'Валюту нельзя изменить, пока по счёту есть операции.',
 				ok: false
 			}, 409);
 		}
 
 		if (
 			error instanceof AccountVersionConflictError
-			|| error instanceof AccountCurrencyCorrectionConflictError
 			|| error instanceof HouseholdSelectionRequiredError
 		) {
 			return context.json<AccountCommandResult>({
@@ -248,14 +245,6 @@ export class AccountHttpController {
 				message: 'Счёт не найден.',
 				ok: false
 			}, 404);
-		}
-
-		if (error instanceof AccountConversionAmountError || error instanceof ExchangeRateNotFoundError) {
-			return context.json<AccountCommandResult>({
-				errorCode: 'rate-unavailable',
-				message: 'Не удалось подобрать исторический курс для операций счёта.',
-				ok: false
-			}, 409);
 		}
 
 		if (error instanceof HouseholdAccessRequiredError) {

@@ -12,7 +12,6 @@ import {
 } from '@/shared/lib';
 import { createRouteSearchParams } from '@/shared/routing';
 import { AccountIcon, Button, Container } from '@/shared/ui';
-import { Dialog } from '@/shared/ui/dialog';
 
 import type { Account, PersistedAccount } from '@/entities/account';
 import {
@@ -234,8 +233,6 @@ function HomeContent(props: HomeContentProps) {
 	const [accountDialogError, setAccountDialogError] = createSignal<string>();
 	const [accountDialogFieldErrors, setAccountDialogFieldErrors]
 		= createSignal<Record<string, string>>();
-	const [pendingCurrencyCorrection, setPendingCurrencyCorrection]
-		= createSignal<AccountDialogValue>();
 	const [isSidebarOpen, setIsSidebarOpen] = createSignal(false);
 	const [detailsPanelMode, setDetailsPanelMode] = createSignal<OperationDetailsPanelMode>();
 	const [isDetailsPanelOpen, setIsDetailsPanelOpen] = createSignal(false);
@@ -484,7 +481,6 @@ function HomeContent(props: HomeContentProps) {
 	const handleOpenCreateAccountDialog = () => {
 		setIsSidebarOpen(false);
 		setEditingAccount(undefined);
-		setPendingCurrencyCorrection(undefined);
 		setAccountDialogError(undefined);
 		setAccountDialogFieldErrors(undefined);
 		setIsAccountDialogOpen(true);
@@ -493,7 +489,6 @@ function HomeContent(props: HomeContentProps) {
 	const handleOpenEditAccountDialog = (account: PersistedAccount) => {
 		setIsSidebarOpen(false);
 		setEditingAccount(account);
-		setPendingCurrencyCorrection(undefined);
 		setAccountDialogError(undefined);
 		setAccountDialogFieldErrors(undefined);
 		setIsAccountDialogOpen(true);
@@ -549,16 +544,9 @@ function HomeContent(props: HomeContentProps) {
 		}
 
 		setIsAccountDialogOpen(open);
-
-		if (!open) {
-			setPendingCurrencyCorrection(undefined);
-		}
 	};
 
-	const submitAccount = async (
-		accountValue: AccountDialogValue,
-		confirmCurrencyCorrection: boolean
-	) => {
+	const handleAccountSubmit = async (accountValue: AccountDialogValue): Promise<void> => {
 		const currentAccount = editingAccount();
 		const editableFields = {
 			color: accountValue.color,
@@ -578,21 +566,14 @@ function HomeContent(props: HomeContentProps) {
 			const result = currentAccount
 				? await runUpdateAccount({
 					...editableFields,
-					confirmCurrencyCorrection,
 					id: currentAccount.id,
 					version: currentAccount.version
 				})
 				: await runCreateAccount(editableFields);
 
 			if (result.ok) {
-				setPendingCurrencyCorrection(undefined);
 				homeSearch.setParams({ account: result.account.id }, { history: 'push' });
 				setIsAccountDialogOpen(false);
-				return;
-			}
-
-			if (result.errorCode === 'confirmation-required') {
-				setPendingCurrencyCorrection(accountValue);
 				return;
 			}
 
@@ -603,20 +584,6 @@ function HomeContent(props: HomeContentProps) {
 			setAccountDialogError(
 				'Не удалось сохранить счет. Проверьте подключение и повторите попытку.'
 			);
-		}
-	};
-
-	const handleAccountSubmit = (
-		accountValue: AccountDialogValue
-	): Promise<void> => {
-		return submitAccount(accountValue, false);
-	};
-
-	const handleConfirmCurrencyCorrection = (): void => {
-		const accountValue = pendingCurrencyCorrection();
-
-		if (accountValue) {
-			void submitAccount(accountValue, true);
 		}
 	};
 
@@ -1207,6 +1174,7 @@ function HomeContent(props: HomeContentProps) {
 			</div>
 
 			<AccountDialog
+				currencyLocked={editingAccount()?.hasOperations ?? false}
 				error={accountDialogError()}
 				fieldErrors={accountDialogFieldErrors()}
 				initialValue={accountDialogInitialValue()}
@@ -1231,42 +1199,6 @@ function HomeContent(props: HomeContentProps) {
 				onOpenChange={handleTransferDialogOpenChange}
 				onSubmit={handleTransferSubmit}
 			/>
-
-			<Dialog.Root
-				open={pendingCurrencyCorrection() !== undefined}
-				onOpenChange={(open) => {
-					if (!open && !isAccountMutationPending()) {
-						setPendingCurrencyCorrection(undefined);
-					}
-				}}
-			>
-				<Dialog.Content>
-					<Dialog.Header closeLabel='Закрыть подтверждение смены валюты'>
-						<Dialog.Title>Изменить валюту счета?</Dialog.Title>
-						<Dialog.Description>
-							Суммы операций останутся прежними, но будут считаться
-							указанными в новой валюте.
-						</Dialog.Description>
-					</Dialog.Header>
-					<Dialog.Body>
-						Исторические суммы в валюте семьи и снимки курсов будут
-						пересчитаны по датам операций. Если для любой даты нет
-						курса, изменения не сохранятся.
-					</Dialog.Body>
-					<Dialog.Footer>
-						<Dialog.Action closeOnClick intent='cancel'>
-							Отмена
-						</Dialog.Action>
-						<Button
-							loading={isAccountMutationPending()}
-							type='button'
-							onClick={handleConfirmCurrencyCorrection}
-						>
-							Пересчитать и сохранить
-						</Button>
-					</Dialog.Footer>
-				</Dialog.Content>
-			</Dialog.Root>
 		</>
 	);
 }

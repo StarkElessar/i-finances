@@ -3,15 +3,17 @@ import { AccountHttpController } from '@/http/account-controller';
 import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { householdMembers, households, users } from '@/infrastructure/database/schema';
 import {
-	AccountCurrencyCorrectionRepository,
-	AccountCurrencyCorrector,
+	householdMembers,
+	households,
+	operations,
+	users
+} from '@/infrastructure/database/schema';
+import {
 	AccountRepository,
 	AccountService
 } from '@/modules/account';
 import type { AuthenticatedSession } from '@/modules/auth';
-import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 
 import Database from 'better-sqlite3';
@@ -61,12 +63,7 @@ afterEach(() => {
 
 function createController(sessionResolver: RequestSessionResolver): AccountHttpController {
 	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
-	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
 	const accountService = new AccountService({
-		accountCurrencyCorrector: new AccountCurrencyCorrector(
-			new AccountCurrencyCorrectionRepository(database),
-			exchangeRateService
-		),
 		accountRepository: new AccountRepository(database),
 		createId: () => 'account-http',
 		householdResolver,
@@ -151,6 +148,70 @@ describe('Accounts HTTP controller', () => {
 				version: 1
 			},
 			ok: true
+		});
+	});
+
+	it('answers 409 currency-locked when an account with operations changes currency', async () => {
+		const app = createApiApp({ accountController: createController(sessionResolver) });
+		const input = {
+			color: '#3f77a8',
+			currency: 'BYN',
+			description: '',
+			initialBalanceMinor: 10_000,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'Основной счёт',
+			type: 'card'
+		};
+		const headers = {
+			'content-type': 'application/json',
+			origin: 'http://localhost:5173'
+		};
+
+		await app.request('/api/accounts', {
+			body: JSON.stringify(input),
+			headers,
+			method: 'POST'
+		});
+		await database.insert(operations).values({
+			accountId: 'account-http',
+			amountInHouseholdBaseCurrencyMinor: 100,
+			amountMinor: 100,
+			categoryId: null,
+			categoryNameSnapshot: null,
+			comment: '',
+			contactId: null,
+			contactNameSnapshot: null,
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'BYN',
+			deletedAt: null,
+			deletedByUserId: null,
+			exchangeRate: '1',
+			exchangeRateEffectiveOn: '2026-07-20',
+			exchangeRateSource: 'identity',
+			happenedOn: '2026-07-20',
+			householdBaseCurrency: 'BYN',
+			householdId: HOUSEHOLD_ID,
+			id: 'operation-1',
+			sourceOrder: 0,
+			title: 'Тестовая операция',
+			type: 'expense',
+			updatedAt: FIXED_DATE,
+			updatedByUserId: USER_ID,
+			version: 1
+		});
+
+		const response = await app.request('/api/accounts/account-http', {
+			body: JSON.stringify({ ...input, currency: 'USD', id: 'account-http', version: 1 }),
+			headers,
+			method: 'PUT'
+		});
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({
+			errorCode: 'currency-locked',
+			ok: false
 		});
 	});
 });

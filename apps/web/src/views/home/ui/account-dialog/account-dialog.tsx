@@ -36,6 +36,7 @@ export type AccountDialogProps = {
 	open: boolean;
 	onOpenChange: (open: boolean) => void;
 	onSubmit: (account: AccountDialogValue) => Promise<void> | void;
+	currencyLocked?: boolean;
 	error?: string;
 	fieldErrors?: Record<string, string>;
 	initialValue?: AccountDialogValue;
@@ -233,6 +234,7 @@ export function AccountDialog(props: AccountDialogProps) {
 							<span class={css.formLabel}>Валюта счета</span>
 							<select
 								class={css.select}
+								disabled={props.currencyLocked}
 								value={accountCurrency()}
 								onChange={handleCurrencyChange}
 							>
@@ -244,6 +246,16 @@ export function AccountDialog(props: AccountDialogProps) {
 									)}
 								</For>
 							</select>
+							<Show when={props.currencyLocked}>
+								<span class={css.hint}>
+									Валюту нельзя изменить, пока по счёту есть операции.
+								</span>
+							</Show>
+							<Show when={props.fieldErrors?.currency}>
+								<span class={css.fieldError} role='alert'>
+									{props.fieldErrors?.currency}
+								</span>
+							</Show>
 						</label>
 
 						<ColorPicker

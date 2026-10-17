@@ -45,7 +45,6 @@ export type CreateAccountInput = z.infer<typeof createAccountInputSchema>;
 
 export const updateAccountInputSchema = z.object({
 	...editableAccountFields,
-	confirmCurrencyCorrection: z.boolean().default(false),
 	id: accountIdSchema,
 	version: accountVersionSchema
 });
@@ -69,6 +68,7 @@ export const persistedAccountSchema = z.object({
 	createdAt: accountDateSchema,
 	currency: currencyCodeSchema,
 	description: z.string(),
+	hasOperations: z.boolean(),
 	id: z.string().min(1),
 	initialBalanceMinor: safeIntegerSchema,
 	isColorAccentEnabled: z.boolean(),
@@ -90,11 +90,10 @@ export type AccountCollection = z.infer<typeof accountCollectionSchema>;
 
 export const accountCommandErrorCodeSchema = z.enum([
 	'conflict',
-	'confirmation-required',
+	'currency-locked',
 	'forbidden',
 	'invalid-input',
 	'not-found',
-	'rate-unavailable',
 	'unauthenticated'
 ]);
 

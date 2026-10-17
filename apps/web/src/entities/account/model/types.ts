@@ -18,6 +18,7 @@ export type Account = {
 export type PersistedAccount = Account & {
 	archivedAt: string | null;
 	createdAt: string;
+	hasOperations: boolean;
 	updatedAt: string;
 	version: number;
 };

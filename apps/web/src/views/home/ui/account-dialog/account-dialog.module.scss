@@ -134,6 +134,16 @@
     background-color: var(--color-surface);
 }
 
+.hint {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-text-secondary);
+}
+
+.field-error {
+    font-size: var(--font-size-body-sm);
+    color: var(--color-danger);
+}
+
 .error {
     margin: var(--space-5) 0 0;
     font-size: var(--font-size-body-sm);

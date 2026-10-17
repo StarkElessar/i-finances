@@ -10,26 +10,26 @@ import {
 	type UpdateAccountInput
 } from '@i-finances/contracts';
 
-import type { AccountCurrencyCorrector } from './account-currency-corrector';
-import { AccountCurrencyCorrectionRequiredError, AccountVersionConflictError } from './account-errors';
+import { AccountCurrencyLockedError } from './account-currency-locked-error';
+import { AccountVersionConflictError } from './account-errors';
 import type { AccountRecord, AccountRepository } from './account-repository';
 import { AccountRules } from './account-rules';
 
 export type AccountServiceDependencies = {
-	accountCurrencyCorrector: Pick<AccountCurrencyCorrector, 'correct' | 'hasOperations'>;
 	accountRepository: AccountRepository;
 	createId?: () => string;
 	householdResolver: HouseholdResolver;
 	now?: () => Date;
 };
 
-function toPersistedAccount(record: AccountRecord): PersistedAccount {
+function toPersistedAccount(record: AccountRecord, hasOperations: boolean): PersistedAccount {
 	return {
 		archivedAt: record.archivedAt?.toISOString() ?? null,
 		color: record.color,
 		createdAt: record.createdAt.toISOString(),
 		currency: record.currency,
 		description: record.description,
+		hasOperations,
 		id: record.id,
 		initialBalanceMinor: record.initialBalanceMinor,
 		isColorAccentEnabled: record.isColorAccentEnabled,
@@ -63,11 +63,17 @@ export class AccountService {
 
 	public async list(userId: string, includeArchived: boolean): Promise<AccountCollection> {
 		const household = await this.dependencies.householdResolver.requireForUser(userId);
-		const records = await this.dependencies.accountRepository.list(household.id, includeArchived);
+		const [records, accountIdsWithOperations] = await Promise.all([
+			this.dependencies.accountRepository.list(household.id, includeArchived),
+			this.dependencies.accountRepository.listAccountIdsWithOperations(household.id)
+		]);
 
 		return {
 			baseCurrency: household.baseCurrency,
-			items: records.map(toPersistedAccount)
+			items: records.map((record) => toPersistedAccount(
+				record,
+				accountIdsWithOperations.has(record.id)
+			))
 		};
 	}
 
@@ -85,7 +91,7 @@ export class AccountService {
 			version: 1
 		});
 
-		return toPersistedAccount(record);
+		return toPersistedAccount(record, false);
 	}
 
 	public async update(userId: string, input: UpdateAccountInput): Promise<PersistedAccount> {
@@ -104,29 +110,14 @@ export class AccountService {
 			updatedAt: this.now()
 		};
 
-		if (
-			current.record.currency !== input.currency
-			&& await this.dependencies.accountCurrencyCorrector.hasOperations(
-				current.householdId,
-				current.record.id
-			)
-		) {
-			if (!input.confirmCurrencyCorrection) {
-				throw new AccountCurrencyCorrectionRequiredError();
-			}
+		const hasOperations = await this.dependencies.accountRepository.hasOperations(
+			current.householdId,
+			current.record.id
+		);
 
-			const correctedRecord = await this.dependencies.accountCurrencyCorrector.correct({
-				accountId: current.record.id,
-				accountValues,
-				expectedVersion: input.version,
-				householdBaseCurrency: current.householdBaseCurrency,
-				householdId: current.householdId,
-				updatedByUserId: userId
-			});
-
-			if (correctedRecord !== undefined) {
-				return toPersistedAccount(correctedRecord);
-			}
+		// Operations keep the currency they were recorded in, so it cannot change under them.
+		if (current.record.currency !== input.currency && hasOperations) {
+			throw new AccountCurrencyLockedError();
 		}
 
 		const updatedRecord = await this.dependencies.accountRepository.update(
@@ -140,7 +131,7 @@ export class AccountService {
 			throw new AccountVersionConflictError();
 		}
 
-		return toPersistedAccount(updatedRecord);
+		return toPersistedAccount(updatedRecord, hasOperations);
 	}
 
 	public archive(userId: string, input: ChangeAccountArchiveStateInput): Promise<PersistedAccount> {
@@ -158,12 +149,16 @@ export class AccountService {
 	): Promise<PersistedAccount> {
 		const current = await this.rules.requireCurrent(userId, input.id);
 		this.rules.assertVersion(current.record, input.version);
+		const hasOperations = await this.dependencies.accountRepository.hasOperations(
+			current.householdId,
+			current.record.id
+		);
 		const alreadyInTargetState = archived
 			? current.record.archivedAt !== null
 			: current.record.archivedAt === null;
 
 		if (alreadyInTargetState) {
-			return toPersistedAccount(current.record);
+			return toPersistedAccount(current.record, hasOperations);
 		}
 
 		const timestamp = this.now();
@@ -179,6 +174,6 @@ export class AccountService {
 			throw new AccountVersionConflictError();
 		}
 
-		return toPersistedAccount(updatedRecord);
+		return toPersistedAccount(updatedRecord, hasOperations);
 	}
 }

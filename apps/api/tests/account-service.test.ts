@@ -2,21 +2,17 @@ import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import {
 	accounts,
-	exchangeRates,
 	householdMembers,
 	households,
 	operations,
 	users
 } from '@/infrastructure/database/schema';
 import {
-	AccountCurrencyCorrectionRepository,
-	AccountCurrencyCorrectionRequiredError,
-	AccountCurrencyCorrector,
+	AccountCurrencyLockedError,
 	AccountRepository,
 	AccountService,
 	AccountVersionConflictError
 } from '@/modules/account';
-import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 
 import {
@@ -87,13 +83,8 @@ afterEach(() => {
 
 function createService(): AccountService {
 	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
-	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
 
 	return new AccountService({
-		accountCurrencyCorrector: new AccountCurrencyCorrector(
-			new AccountCurrencyCorrectionRepository(database),
-			exchangeRateService
-		),
 		accountRepository: new AccountRepository(database),
 		createId: () => 'account-main',
 		householdResolver,
@@ -140,6 +131,7 @@ describe('AccountService', () => {
 		const collection = await service.list(USER_ID, false);
 
 		expect(collection.items).toEqual([created]);
+		expect(created.hasOperations).toBe(false);
 		expect(collection.baseCurrency).toBe('BYN');
 
 		const updated = await service.update(USER_ID, updateAccountInputSchema.parse({
@@ -178,70 +170,95 @@ describe('AccountService', () => {
 		expect(restored).toMatchObject({ archivedAt: null, version: 3 });
 	});
 
-	it('requires explicit confirmation and atomically rewrites operation snapshots', async () => {
+	it('lets an account without operations change its currency', async () => {
 		const service = createService();
 		const created = await service.create(USER_ID, accountInput('USD'));
 
-		await database.insert(exchangeRates).values({
-			createdAt: FIXED_DATE,
-			effectiveOn: '2026-07-20',
-			fromCurrency: 'EUR',
-			id: 'rate-eur-byn',
-			rate: '3.2',
-			source: 'test',
-			toCurrency: 'BYN',
-			updatedAt: FIXED_DATE
-		});
-		await database.insert(operations).values({
-			accountId: created.id,
-			amountInHouseholdBaseCurrencyMinor: 300,
-			amountMinor: 100,
-			categoryId: null,
-			categoryNameSnapshot: null,
-			comment: '',
-			contactId: null,
-			contactNameSnapshot: null,
-			createdAt: FIXED_DATE,
-			createdByUserId: USER_ID,
-			currency: 'USD',
-			deletedAt: null,
-			deletedByUserId: null,
-			exchangeRate: '3',
-			exchangeRateEffectiveOn: '2026-07-20',
-			exchangeRateSource: 'test',
-			happenedOn: '2026-07-20',
-			householdBaseCurrency: 'BYN',
-			householdId: HOUSEHOLD_ID,
-			id: 'operation-1',
-			sourceOrder: 0,
-			title: 'Тестовая операция',
-			type: 'expense',
-			updatedAt: FIXED_DATE,
-			updatedByUserId: USER_ID,
-			version: 1
-		});
+		expect(created.hasOperations).toBe(false);
 
-		await expect(service.update(USER_ID, updateAccountInputSchema.parse({
+		const updated = await service.update(USER_ID, updateAccountInputSchema.parse({
 			...accountInput('EUR'),
-			id: created.id,
-			version: created.version
-		}))).rejects.toBeInstanceOf(AccountCurrencyCorrectionRequiredError);
-
-		const corrected = await service.update(USER_ID, updateAccountInputSchema.parse({
-			...accountInput('EUR'),
-			confirmCurrencyCorrection: true,
 			id: created.id,
 			version: created.version
 		}));
-		const [operation] = await database.select().from(operations);
 
-		expect(corrected).toMatchObject({ currency: 'EUR', version: 2 });
-		expect(operation).toMatchObject({
-			amountInHouseholdBaseCurrencyMinor: 320,
-			currency: 'EUR',
-			exchangeRate: '3.2',
-			householdBaseCurrency: 'BYN',
-			version: 2
+		expect(updated).toMatchObject({ currency: 'EUR', hasOperations: false, version: 2 });
+	});
+
+	describe('with operations', () => {
+		async function createAccountWithOperation() {
+			const service = createService();
+			const created = await service.create(USER_ID, accountInput('USD'));
+
+			await database.insert(operations).values({
+				accountId: created.id,
+				amountInHouseholdBaseCurrencyMinor: 300,
+				amountMinor: 100,
+				categoryId: null,
+				categoryNameSnapshot: null,
+				comment: '',
+				contactId: null,
+				contactNameSnapshot: null,
+				createdAt: FIXED_DATE,
+				createdByUserId: USER_ID,
+				currency: 'USD',
+				deletedAt: null,
+				deletedByUserId: null,
+				exchangeRate: '3',
+				exchangeRateEffectiveOn: '2026-07-20',
+				exchangeRateSource: 'test',
+				happenedOn: '2026-07-20',
+				householdBaseCurrency: 'BYN',
+				householdId: HOUSEHOLD_ID,
+				id: 'operation-1',
+				sourceOrder: 0,
+				title: 'Тестовая операция',
+				type: 'expense',
+				updatedAt: FIXED_DATE,
+				updatedByUserId: USER_ID,
+				version: 1
+			});
+
+			return { created, service };
+		}
+
+		it('reports hasOperations in the account list', async () => {
+			const { created, service } = await createAccountWithOperation();
+			const { items } = await service.list(USER_ID, false);
+
+			expect(items).toEqual([{ ...created, hasOperations: true }]);
+		});
+
+		it('refuses a currency change and leaves the account and operations untouched', async () => {
+			const { created, service } = await createAccountWithOperation();
+
+			await expect(service.update(USER_ID, updateAccountInputSchema.parse({
+				...accountInput('EUR'),
+				id: created.id,
+				version: created.version
+			}))).rejects.toBeInstanceOf(AccountCurrencyLockedError);
+
+			const [account] = await database.select().from(accounts);
+			const [operation] = await database.select().from(operations);
+
+			expect(account).toMatchObject({ currency: 'USD', version: 1 });
+			expect(operation).toMatchObject({ currency: 'USD', version: 1 });
+		});
+
+		it('still lets other fields change while the currency stays the same', async () => {
+			const { created, service } = await createAccountWithOperation();
+			const updated = await service.update(USER_ID, updateAccountInputSchema.parse({
+				...accountInput('USD'),
+				id: created.id,
+				name: 'Переименован',
+				version: created.version
+			}));
+
+			expect(updated).toMatchObject({
+				currency: 'USD',
+				hasOperations: true,
+				name: 'Переименован'
+			});
 		});
 	});
 });

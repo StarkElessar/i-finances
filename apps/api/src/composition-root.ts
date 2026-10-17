@@ -12,8 +12,6 @@ import { CookieSessionResolver } from './http/session-resolver';
 import { TransferHttpController } from './http/transfer-controller';
 import { db } from './infrastructure/database/client';
 import {
-	AccountCurrencyCorrectionRepository,
-	AccountCurrencyCorrector,
 	AccountRepository,
 	AccountService
 } from './modules/account';
@@ -113,10 +111,6 @@ export function createApiDependencies(): {
 		dailyRateProvider: new NationalBankExchangeRateClient()
 	});
 	const accountService = new AccountService({
-		accountCurrencyCorrector: new AccountCurrencyCorrector(
-			new AccountCurrencyCorrectionRepository(db),
-			exchangeRateService
-		),
 		accountRepository: new AccountRepository(db),
 		householdResolver
 	});

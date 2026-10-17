@@ -1,5 +1,5 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
-import { accounts } from '@/infrastructure/database/schema';
+import { accounts, operations } from '@/infrastructure/database/schema';
 
 import type { AccountType, CurrencyCode } from '@i-finances/contracts';
 import {
@@ -69,6 +69,34 @@ function mapAccount(record: typeof accounts.$inferSelect): AccountRecord {
  */
 export class AccountRepository {
 	public constructor(private readonly database: AppDatabase) {}
+
+	/**
+	 * Tells whether any operation, deleted ones included, references the account.
+	 */
+	public async hasOperations(householdId: string, accountId: string): Promise<boolean> {
+		const record = this.database.select({ id: operations.id })
+			.from(operations)
+			.where(and(
+				eq(operations.householdId, householdId),
+				eq(operations.accountId, accountId)
+			))
+			.limit(1)
+			.get();
+
+		return record !== undefined;
+	}
+
+	/**
+	 * Returns ids of the household accounts that have at least one operation.
+	 */
+	public async listAccountIdsWithOperations(householdId: string): Promise<Set<string>> {
+		const rows = this.database.selectDistinct({ accountId: operations.accountId })
+			.from(operations)
+			.where(eq(operations.householdId, householdId))
+			.all();
+
+		return new Set(rows.map((row) => row.accountId));
+	}
 
 	public async findById(
 		householdId: string,
