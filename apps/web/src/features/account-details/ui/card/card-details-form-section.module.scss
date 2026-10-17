@@ -1,0 +1,39 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+.section {
+    display: grid;
+    gap: var(--space-5);
+
+    padding: var(--space-5);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-canvas);
+
+    @include mx.media-mn(600) {
+        grid-template-columns: fn.rem(190) minmax(0, 1fr);
+        gap: var(--space-7);
+        align-items: center;
+    }
+}
+
+.preview {
+    justify-self: center;
+    max-inline-size: fn.rem(240);
+
+    @include mx.media-mn(600) {
+        justify-self: stretch;
+        max-inline-size: none;
+    }
+}
+
+.fields {
+    display: grid;
+    gap: var(--space-4);
+    min-inline-size: 0;
+}
+
+.expiry-field {
+    max-inline-size: fn.rem(140);
+}
