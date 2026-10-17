@@ -24,6 +24,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const USER_ID = 'user-1';
+// Shaped like an Argon2 hash so it counts as a usable password; the verifier is a stub in these tests.
+const STORED_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const AUTH_CONFIG: AuthConfig = {
 	origin: 'http://localhost:5173',
@@ -76,7 +78,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 				displayName: 'Sergei Test',
 				id: USER_ID,
 				isActive: true,
-				passwordHash: 'stored-hash',
+				passwordHash: STORED_HASH,
 				username: 'sergei'
 			})
 		}

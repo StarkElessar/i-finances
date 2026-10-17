@@ -6,6 +6,8 @@ import {
 } from '@i-finances/contracts';
 import type { z } from 'zod';
 
+import { DUMMY_PASSWORD_HASH } from './dummy-password-hash';
+import { hasUsablePassword } from './has-usable-password';
 import type { LoginRateLimiter } from './login-rate-limiter';
 import { normalizeUsername } from './normalize-username';
 import type { PasswordService } from './password-service';
@@ -73,11 +75,12 @@ export class PasswordSignInService {
 		}
 
 		const user = await this.userRepository.findByUsername(username);
-		const isPasswordValid = user?.isActive === true
-			? await this.passwordService.verify(user.passwordHash, parsedInput.data.password)
-			: false;
+		// Every attempt costs one Argon2 verification, also for unknown, inactive and password-less accounts,
+		// so neither the response time nor the status tells which usernames exist or have a password.
+		const storedHash = user?.isActive === true && hasUsablePassword(user.passwordHash) ? user.passwordHash : undefined;
+		const isHashMatch = await this.verifyPassword(storedHash ?? DUMMY_PASSWORD_HASH, parsedInput.data.password);
 
-		if (user === undefined || !user.isActive || !isPasswordValid) {
+		if (user === undefined || storedHash === undefined || !isHashMatch) {
 			return this.failure('invalid-credentials');
 		}
 
@@ -88,6 +91,17 @@ export class PasswordSignInService {
 			redirectTo: validateReturnPath(parsedInput.data.returnTo),
 			session: await this.sessionService.createSession(user.id, metadata)
 		};
+	}
+
+	private async verifyPassword(passwordHash: string, password: string): Promise<boolean> {
+		try {
+			return await this.passwordService.verify(passwordHash, password);
+		}
+		catch (error: unknown) {
+			console.error('Password verification failed.', error instanceof Error ? error.message : error);
+
+			return false;
+		}
 	}
 
 	private failure(
