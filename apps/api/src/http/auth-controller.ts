@@ -19,6 +19,7 @@ import {
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
 
+import { readClientIp } from './client-ip';
 import {
 	assertSameOriginMutation,
 	InvalidMutationOriginError,
@@ -72,7 +73,7 @@ export class AuthHttpController {
 			try {
 				const outcome = await this.passwordSignInService.signIn(
 					input,
-					this.createMetadata(context.req.raw)
+					this.createMetadata(context)
 				);
 
 				if (!outcome.ok) {
@@ -171,12 +172,10 @@ export class AuthHttpController {
 		}
 	}
 
-	private createMetadata(request: Request) {
-		const forwardedFor = request.headers.get('x-forwarded-for');
-
+	private createMetadata(context: Context<ApiEnvironment>) {
 		return {
-			ipAddress: forwardedFor?.split(',')[0]?.trim(),
-			userAgent: request.headers.get('user-agent') ?? undefined
+			ipAddress: readClientIp(context, this.config.trustedProxyCount),
+			userAgent: context.req.header('user-agent')
 		};
 	}
 

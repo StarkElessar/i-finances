@@ -4,6 +4,7 @@ const authEnvironmentSchema = z.object({
 	SESSION_COOKIE_NAME: z.string().regex(/^[a-zA-Z0-9_-]+$/).default('i_finances_session'),
 	SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 	AUTH_ORIGIN: z.url().default('http://localhost:5173'),
+	TRUSTED_PROXY_COUNT: z.coerce.number().int().min(0).max(10).default(0),
 	WEBAUTHN_RP_ID: z.string().trim().min(1).default('localhost'),
 	WEBAUTHN_RP_NAME: z.string().trim().min(1).default('iFinances')
 });
@@ -12,6 +13,7 @@ export type AuthConfig = {
 	origin: string;
 	sessionCookieName: string;
 	sessionTtlMilliseconds: number;
+	trustedProxyCount: number;
 	webauthnRpId: string;
 	webauthnRpName: string;
 };
@@ -25,6 +27,7 @@ export function getAuthConfig(
 		origin: parsedEnvironment.AUTH_ORIGIN,
 		sessionCookieName: parsedEnvironment.SESSION_COOKIE_NAME,
 		sessionTtlMilliseconds: parsedEnvironment.SESSION_TTL_DAYS * 24 * 60 * 60 * 1000,
+		trustedProxyCount: parsedEnvironment.TRUSTED_PROXY_COUNT,
 		webauthnRpId: parsedEnvironment.WEBAUTHN_RP_ID,
 		webauthnRpName: parsedEnvironment.WEBAUTHN_RP_NAME
 	};

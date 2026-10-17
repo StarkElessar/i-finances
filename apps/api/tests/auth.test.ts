@@ -3,7 +3,7 @@ import { AuthHttpController } from '@/http/auth-controller';
 import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { users } from '@/infrastructure/database/schema';
+import { sessions, users } from '@/infrastructure/database/schema';
 import type { AuthConfig } from '@/modules/auth';
 import {
 	LoginRateLimiter,
@@ -29,6 +29,7 @@ const AUTH_CONFIG: AuthConfig = {
 	origin: 'http://localhost:5173',
 	sessionCookieName: 'test_session',
 	sessionTtlMilliseconds: 30 * 24 * 60 * 60 * 1000,
+	trustedProxyCount: 0,
 	webauthnRpId: 'localhost',
 	webauthnRpName: 'iFinances'
 };
@@ -57,7 +58,7 @@ afterEach(() => {
 	connection.close();
 });
 
-function createAuthApp(options: { passwordValid?: boolean } = {}) {
+function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean } = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => 'session-1',
@@ -89,7 +90,7 @@ function createAuthApp(options: { passwordValid?: boolean } = {}) {
 		sessionService,
 		sessionResolver,
 		new PasswordUserRepository(database),
-		AUTH_CONFIG
+		options.config ?? AUTH_CONFIG
 	);
 
 	return createApiApp({ authController: controller });
@@ -134,6 +135,48 @@ describe('password session API', () => {
 				username: 'sergei'
 			}
 		});
+	});
+
+	it('stores the address the trusted proxy appended, not the one the client forged', async () => {
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 } });
+		const response = await app.request('/api/auth/sign-in', {
+			body: JSON.stringify({
+				password: 'correct-password',
+				username: 'sergei'
+			}),
+			headers: {
+				'content-type': 'application/json',
+				origin: AUTH_CONFIG.origin,
+				'user-agent': 'x'.repeat(2_000),
+				'x-forwarded-for': '6.6.6.6, 203.0.113.7'
+			},
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(200);
+
+		const [session] = await database.select().from(sessions);
+
+		expect(session.ipAddress).toBe('203.0.113.7');
+		expect(session.userAgent).toBe('x'.repeat(512));
+	});
+
+	it('caps the stored address and user agent length at the session service', async () => {
+		const sessionService = new SessionService(new SessionRepository(database), {
+			config: AUTH_CONFIG,
+			createId: () => 'session-long',
+			now: () => FIXED_DATE
+		});
+
+		await sessionService.createSession(USER_ID, {
+			ipAddress: 'a'.repeat(200),
+			userAgent: 'b'.repeat(2_000)
+		});
+
+		const [session] = await database.select().from(sessions);
+
+		expect(session.ipAddress).toHaveLength(64);
+		expect(session.userAgent).toHaveLength(512);
 	});
 
 	it('rejects mutations without a valid origin hint', async () => {

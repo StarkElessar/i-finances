@@ -19,3 +19,11 @@ by the API origin checks.
 The migration does not require CORS or cross-origin cookies. Browser smoke and
 the full authenticated flow are intentionally left for manual verification
 after the source split and cleanup are complete.
+
+## Client IP behind the proxy
+
+The API derives the client address (sign-in rate limits, `sessions.ip_address`) in
+`apps/api/src/http/client-ip.ts`. Set `TRUSTED_PROXY_COUNT=1` for the API when exactly one
+reverse proxy (the homelab nginx, which appends `$remote_addr` to `X-Forwarded-For`) sits in
+front of it. With the default `0` no forwarding header is trusted and the TCP peer is used.
+Rationale and caveats: `development/decisions/client-ip.md`.

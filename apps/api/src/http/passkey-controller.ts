@@ -22,6 +22,7 @@ import {
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { Context } from 'hono';
 
+import { readClientIp } from './client-ip';
 import { isSameOriginMutation } from './mutation-origin';
 import { createSessionCookie } from './session-cookie';
 import type { RequestSessionResolver } from './session-resolver';
@@ -68,7 +69,7 @@ export class PasskeyHttpController {
 			}
 
 			const outcome = await this.service.finishAuthentication({
-				metadata: this.createMetadata(context.req.raw),
+				metadata: this.createMetadata(context),
 				response: parsedInput.data.response as AuthenticationResponseJSON,
 				returnTo: parsedInput.data.returnTo
 			});
@@ -127,7 +128,7 @@ export class PasskeyHttpController {
 
 			const result = await this.service.finishRegistration({
 				deviceName: parsedInput.data.deviceName,
-				metadata: this.createMetadata(context.req.raw),
+				metadata: this.createMetadata(context),
 				response: parsedInput.data.response as RegistrationResponseJSON,
 				session
 			});
@@ -148,13 +149,11 @@ export class PasskeyHttpController {
 		}
 	}
 
-	private createMetadata(request: Request): PasskeyRequestMetadata {
-		const forwardedFor = request.headers.get('x-forwarded-for');
-
+	private createMetadata(context: Context<ApiEnvironment>): PasskeyRequestMetadata {
 		return {
-			ipAddress: forwardedFor?.split(',')[0]?.trim(),
-			requestOrigin: new URL(request.url).origin,
-			userAgent: request.headers.get('user-agent') ?? undefined
+			ipAddress: readClientIp(context, this.config.trustedProxyCount),
+			requestOrigin: new URL(context.req.url).origin,
+			userAgent: context.req.header('user-agent')
 		};
 	}
 
