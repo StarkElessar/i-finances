@@ -10,7 +10,7 @@
 
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-4);
         background-color: var(--color-surface);
     }

@@ -4,7 +4,7 @@
 .dialog {
     --dialog-inline-size: 100%;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         --dialog-inline-size: #{fn.rem(520)};
     }
 }
@@ -198,7 +198,7 @@
 .footer-spacer {
     display: none;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         display: block;
         flex-grow: 1;
     }
@@ -210,7 +210,7 @@
     flex-grow: 1;
     gap: var(--space-4);
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         display: flex;
         flex-grow: 0;
     }

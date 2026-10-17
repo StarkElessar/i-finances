@@ -10,12 +10,12 @@
 
     text-align: center;
 
-    @include mx.media-mn(768) {
+    @include mx.media-mn(sm) {
         padding-inline: var(--space-10);
         background-color: var(--color-surface);
     }
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         padding: var(--space-12);
     }
 }
@@ -74,7 +74,7 @@
 
         background-color: var(--color-canvas);
 
-        @include mx.media-mn(768) {
+        @include mx.media-mn(sm) {
             background-color: var(--color-surface);
         }
     }

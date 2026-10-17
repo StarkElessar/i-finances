@@ -32,7 +32,7 @@
         transform var(--duration-fast) var(--ease-standard);
     animation: zone-enter var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         inset-block-end: var(--space-9);
     }
 }

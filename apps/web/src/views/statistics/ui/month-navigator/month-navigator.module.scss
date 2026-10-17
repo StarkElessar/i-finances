@@ -6,7 +6,7 @@
     align-items: center;
     justify-content: center;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         justify-content: flex-start;
     }
 }

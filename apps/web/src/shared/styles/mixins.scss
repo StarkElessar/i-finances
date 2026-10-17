@@ -1,19 +1,49 @@
+@use "sass:map";
+@use "sass:meta";
 @use "./functions" as fn;
 
-@mixin media-mn($width, $base: 16px) {
-    @media (min-width: fn.em($width, $base)) {
+// Named breakpoints (mockup Foundations: 640 / 960 / 1280). CSS variables do
+// not work inside @media, so the values live here as a Sass map and the
+// mixins take the name, never a number.
+//   sm: phone ends, tablet begins
+//   md: small desktop
+//   lg: desktop
+$breakpoints: (
+    "sm": 640px,
+    "md": 960px,
+    "lg": 1280px
+);
+
+// Upper bound of a "below breakpoint" query: one pixel fraction under the
+// breakpoint so that min-width and max-width queries never overlap.
+$max-offset: 0.02px;
+
+@function breakpoint($name) {
+    @if meta.type-of($name) == "number" {
+        @error "Breakpoint must be a name (#{map.keys($breakpoints)}), got the number #{$name}.";
+    }
+
+    @if not map.has-key($breakpoints, $name) {
+        @error "Unknown breakpoint \"#{$name}\". Use one of: #{map.keys($breakpoints)}.";
+    }
+
+    @return map.get($breakpoints, $name);
+}
+
+@mixin media-mn($name, $base: 16px) {
+    @media (min-width: fn.em(breakpoint($name), $base)) {
         @content;
     }
 }
 
-@mixin media-mx($width, $base: 16px) {
-    @media (max-width: fn.em($width, $base)) {
+@mixin media-mx($name, $base: 16px) {
+    @media (max-width: fn.em(breakpoint($name) - $max-offset, $base)) {
         @content;
     }
 }
 
-@mixin media-mn-mx($min-width, $max-width, $base: 16px) {
-    @media (min-width: fn.em($min-width, $base)) and (max-width: fn.em($max-width, $base)) {
+@mixin media-mn-mx($min-name, $max-name, $base: 16px) {
+    @media (min-width: fn.em(breakpoint($min-name), $base)) and (max-width: fn.em(breakpoint($max-name) - $max-offset, $base)) {
         @content;
     }
 }

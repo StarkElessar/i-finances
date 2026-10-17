@@ -36,7 +36,7 @@
 }
 
 .content {
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         inline-size: min(#{fn.rem(292)}, calc(100vw - var(--space-8)));
     }
 }

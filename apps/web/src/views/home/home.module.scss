@@ -15,7 +15,7 @@
 
     background-color: var(--color-surface);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         grid-template-columns: var(--left-sidebar) minmax(0, 1fr);
         gap: fn.rem(1);
         background-color: var(--color-border);
@@ -23,7 +23,7 @@
 }
 
 .details-open {
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         grid-template-columns: var(--left-sidebar) minmax(0, 1fr) var(--left-sidebar);
     }
 }
@@ -48,7 +48,7 @@
         opacity var(--duration-normal) var(--ease-standard),
         visibility var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         display: none;
     }
 }
@@ -83,7 +83,7 @@
         transform var(--duration-normal) var(--ease-standard),
         visibility var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         pointer-events: auto;
 
         position: static;
@@ -129,7 +129,7 @@
     min-block-size: 0;
     padding-block: var(--space-5) calc(var(--space-5) + fn.rem(78));
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-6);
     }
 }
@@ -138,7 +138,7 @@
     display: flex;
     flex: none;
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         display: none;
     }
 }

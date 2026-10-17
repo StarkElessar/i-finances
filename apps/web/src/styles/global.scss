@@ -74,7 +74,7 @@ textarea {
     font-size: fn.rem(16);
 }
 
-@include mx.media-mn(768) {
+@include mx.media-mn(sm) {
     input,
     select,
     textarea {

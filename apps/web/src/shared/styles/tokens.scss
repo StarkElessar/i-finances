@@ -10,8 +10,8 @@
     // Typography
     --font-family-sans: -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
     --font-family-mono: "SFMono-Regular", consolas, "Liberation Mono", monospace;
-    --font-size-display: #{fn.rem(32)};
-    --font-size-heading-1: #{fn.rem(28)};
+    --font-size-display: #{fn.rem(28)};
+    --font-size-heading-1: #{fn.rem(24)};
     --font-size-heading-2: #{fn.rem(22)};
     --font-size-heading-3: #{fn.rem(18)};
     --font-size-body-lg: #{fn.rem(16)};
@@ -41,7 +41,7 @@
     --space-9: #{fn.rem(32)};
     --space-10: #{fn.rem(40)};
     --space-11: #{fn.rem(48)};
-    --space-12: #{fn.rem(64)};
+    --space-12: #{fn.rem(48)};
 
     // Shape and control dimensions
     --radius-xs: #{fn.rem(4)};
@@ -141,10 +141,10 @@
     color-scheme: dark;
 }
 
-@include mx.media-mx(767.984) {
+@include mx.media-mn(sm) {
     :root {
-        --font-size-display: #{fn.rem(28)};
-        --font-size-heading-1: #{fn.rem(24)};
-        --space-12: #{fn.rem(48)};
+        --font-size-display: #{fn.rem(32)};
+        --font-size-heading-1: #{fn.rem(28)};
+        --space-12: #{fn.rem(64)};
     }
 }

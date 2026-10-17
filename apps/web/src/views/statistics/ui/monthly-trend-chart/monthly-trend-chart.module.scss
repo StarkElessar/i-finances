@@ -4,7 +4,7 @@
     position: relative;
     block-size: 280px;
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         block-size: 360px;
     }
 }

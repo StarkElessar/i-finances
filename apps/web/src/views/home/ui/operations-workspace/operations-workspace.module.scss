@@ -41,7 +41,7 @@
 }
 
 .period-button {
-    padding: var(--space-3) var(--space-5);
+    padding: var(--space-3) var(--space-4);
     border: 0;
     border-radius: var(--radius-sm);
 
@@ -50,6 +50,10 @@
     color: var(--color-text-secondary);
 
     background-color: transparent;
+
+    @include mx.media-mn(sm) {
+        padding-inline: var(--space-5);
+    }
 
     &:not(.period-button-active) {
         cursor: pointer;
@@ -73,7 +77,11 @@
 }
 
 .sort-field {
-    inline-size: fn.rem(140);
+    flex: 1 1 auto;
+
+    inline-size: auto;
+    min-inline-size: 0;
+    max-inline-size: fn.rem(110);
     padding: var(--space-2) var(--space-3);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
@@ -81,6 +89,13 @@
     color: var(--color-text-primary);
 
     background-color: var(--color-surface);
+
+    @include mx.media-mn(sm) {
+        flex: 0 1 auto;
+        inline-size: fn.rem(140);
+        min-inline-size: auto;
+        max-inline-size: none;
+    }
 }
 
 .period-navigation {
@@ -115,7 +130,7 @@
     flex: 1 1 0;
 }
 
-@include mx.media-mn(720) {
+@include mx.media-mn(sm) {
     .toolbar {
         grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     }
@@ -123,18 +138,5 @@
     .period-navigation {
         grid-column: auto;
         grid-row: auto;
-    }
-}
-
-@include mx.media-mx(520) {
-    .period-button {
-        padding-inline: var(--space-4);
-    }
-
-    .sort-field {
-        flex: 1 1 auto;
-        inline-size: auto;
-        min-inline-size: 0;
-        max-inline-size: fn.rem(110);
     }
 }
