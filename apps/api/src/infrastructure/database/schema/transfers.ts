@@ -69,10 +69,6 @@ export const transfers = sqliteTable(
 			'transfers_different_accounts_check',
 			sql`${table.fromAccountId} <> ${table.toAccountId}`
 		),
-		check(
-			'transfers_different_currencies_check',
-			sql`${table.exchangeFromCurrency} <> ${table.exchangeToCurrency}`
-		),
 		index('transfers_household_deleted_idx').on(
 			table.householdId,
 			table.deletedAt

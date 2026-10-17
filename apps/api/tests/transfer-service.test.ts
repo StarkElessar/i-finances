@@ -137,12 +137,84 @@ describe('TransferService', () => {
 		);
 	});
 
-	it('refuses a transfer between accounts sharing one currency', async () => {
+	it('records a transfer between accounts sharing one currency', async () => {
+		const transfer = await createService().create(USER_ID, {
+			...validInput,
+			exchangeRate: '1',
+			fromAccountId: 'account-byn',
+			toAccountId: 'account-byn-2'
+		});
+
+		expect(transfer).toMatchObject({
+			exchangeFromCurrency: 'BYN',
+			exchangeRate: '1',
+			exchangeToCurrency: 'BYN',
+			fromAmountMinor: 10_000,
+			toAmountMinor: 10_000
+		});
+
+		const legs = await database.select()
+			.from(operations)
+			.where(eq(operations.transferId, transfer.id));
+
+		expect(legs).toHaveLength(2);
+		expect(legs.every((leg) => leg.amountInHouseholdBaseCurrencyMinor === 10_000)).toBe(true);
+		expect(legs.every((leg) => leg.exchangeRateSource === 'identity')).toBe(true);
+	});
+
+	it('ignores a client rate for a same-currency transfer', async () => {
+		const transfer = await createService().create(USER_ID, {
+			...validInput,
+			exchangeRate: '3',
+			fromAccountId: 'account-byn',
+			toAccountId: 'account-byn-2'
+		});
+
+		expect(transfer.exchangeRate).toBe('1');
+		expect(transfer.toAmountMinor).toBe(transfer.fromAmountMinor);
+	});
+
+	it('refuses a transfer to the same account', async () => {
 		await expect(createService().create(USER_ID, {
 			...validInput,
 			fromAccountId: 'account-byn',
-			toAccountId: 'account-byn-2'
+			toAccountId: 'account-byn'
 		})).rejects.toThrow();
+	});
+
+	it('moves an existing transfer between cross-currency and same-currency pairs', async () => {
+		const service = createService();
+		const created = await service.create(USER_ID, validInput);
+
+		const toSame = await service.update(USER_ID, {
+			...validInput,
+			exchangeRate: '1',
+			fromAccountId: 'account-byn',
+			id: created.id,
+			toAccountId: 'account-byn-2',
+			version: created.version
+		});
+
+		expect(toSame).toMatchObject({
+			exchangeFromCurrency: 'BYN',
+			exchangeRate: '1',
+			exchangeToCurrency: 'BYN',
+			toAmountMinor: 10_000,
+			version: created.version + 1
+		});
+
+		const back = await service.update(USER_ID, {
+			...validInput,
+			id: created.id,
+			version: toSame.version
+		});
+
+		expect(back).toMatchObject({
+			exchangeFromCurrency: 'USD',
+			exchangeRate: '3',
+			exchangeToCurrency: 'BYN',
+			toAmountMinor: 30_000
+		});
 	});
 
 	it('soft-deletes both legs together and then refuses to delete twice', async () => {

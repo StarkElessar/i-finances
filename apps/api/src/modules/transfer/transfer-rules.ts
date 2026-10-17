@@ -76,13 +76,6 @@ export function createTransferRules(
 			throw new TransferAccountUnavailableError();
 		}
 
-		if (fromAccount.currency === toAccount.currency) {
-			throw new TransferAccountsInvalidError(
-				'toAccountId',
-				'В первой версии перевод доступен только между разными валютами.'
-			);
-		}
-
 		return {
 			fromAccount,
 			toAccount

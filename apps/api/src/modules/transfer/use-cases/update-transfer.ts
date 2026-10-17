@@ -73,7 +73,7 @@ export function createUpdateTransferUseCase(
 				contactId: contact?.id ?? null,
 				contactNameSnapshot: contact?.name ?? null,
 				exchangeFromCurrency: fromAccount.currency,
-				exchangeRate: input.exchangeRate,
+				exchangeRate: amountPlan.exchangeRate,
 				exchangeToCurrency: toAccount.currency,
 				fromAccountId: fromAccount.id,
 				fromAmountMinor: input.fromAmountMinor,

@@ -1,12 +1,11 @@
+import { applyMigrations } from '@/infrastructure/database/apply-migrations';
 import { db, sqlite } from '@/infrastructure/database/client';
-
-import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 
 /**
  * Applies committed Drizzle migrations to the configured SQLite database.
  */
 function migrateDatabase(): void {
-	migrate(db, { migrationsFolder: './drizzle' });
+	applyMigrations(db, sqlite, './drizzle');
 	sqlite.close();
 	console.warn('Database migrations applied.');
 }

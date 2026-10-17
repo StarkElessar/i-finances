@@ -15,7 +15,7 @@ import { createTransferAmountPlan } from '../transfer-rate';
 import type { TransferUseCaseContext } from '../transfer-service.types';
 
 /**
- * Creates the use case that records a cross-currency transfer and both ledger legs.
+ * Creates the use case that records an account transfer and both ledger legs.
  */
 export function createCreateTransferUseCase(
 	context: TransferUseCaseContext
@@ -62,7 +62,7 @@ export function createCreateTransferUseCase(
 				deletedAt: null,
 				deletedByUserId: null,
 				exchangeFromCurrency: fromAccount.currency,
-				exchangeRate: input.exchangeRate,
+				exchangeRate: amountPlan.exchangeRate,
 				exchangeToCurrency: toAccount.currency,
 				fromAccountId: fromAccount.id,
 				fromAmountMinor: input.fromAmountMinor,
