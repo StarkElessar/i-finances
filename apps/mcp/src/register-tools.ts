@@ -1,3 +1,4 @@
+import { toAccountSummary } from '@/account-summary';
 import type { ApiClient } from '@/api-client';
 import { ApiRequestError } from '@/api-client';
 import { parseAmountToMinor } from '@/parse-amount';
@@ -107,7 +108,8 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
 		'list_accounts',
 		{
 			description:
-				'Lists household accounts with their ids, names, currencies and types. '
+				'Lists household accounts with their ids, names, owners, currencies and types. '
+				+ 'The owner (e.g. "Сергей", "Жена") helps to pick the right card. '
 				+ 'Use it to resolve an account for recording an operation.',
 			inputSchema: {},
 			title: 'List accounts'
@@ -119,12 +121,7 @@ export function registerTools(server: McpServer, apiClient: ApiClient): void {
 				return toolText({
 					accounts: collection.items
 						.filter((account) => account.archivedAt === null)
-						.map((account) => ({
-							currency: account.currency,
-							id: account.id,
-							name: account.name,
-							type: account.type
-						})),
+						.map(toAccountSummary),
 					baseCurrency: collection.baseCurrency,
 					count: collection.items.length
 				});
