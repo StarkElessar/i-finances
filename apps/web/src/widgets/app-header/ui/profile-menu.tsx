@@ -80,7 +80,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 
 	return (
 		<>
-			<ContextMenu.Root class={css.root} mobileBreakpoint={640} triggerMode='click'>
+			<ContextMenu.Root class={css.root} triggerMode='click'>
 				<ContextMenu.Trigger aria-label={triggerLabel()} class={css.trigger}>
 					{createViewerInitials(viewer())}
 				</ContextMenu.Trigger>

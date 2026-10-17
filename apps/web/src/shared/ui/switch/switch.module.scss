@@ -16,7 +16,7 @@
     cursor: pointer;
 
     position: absolute;
-    z-index: 1;
+    z-index: var(--z-raised);
     inset: 0;
 
     inline-size: 100%;
@@ -50,7 +50,7 @@
     position: absolute;
     inset: 0;
 
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: var(--color-border-strong);
 

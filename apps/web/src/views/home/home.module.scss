@@ -15,7 +15,7 @@
 
     background-color: var(--color-surface);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         grid-template-columns: var(--left-sidebar) minmax(0, 1fr);
         gap: fn.rem(1);
         background-color: var(--color-border);
@@ -23,7 +23,7 @@
 }
 
 .details-open {
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         grid-template-columns: var(--left-sidebar) minmax(0, 1fr) var(--left-sidebar);
     }
 }
@@ -33,7 +33,7 @@
     cursor: default;
 
     position: absolute;
-    z-index: 40;
+    z-index: var(--z-drawer);
     inset: 0;
 
     padding: 0;
@@ -48,7 +48,7 @@
         opacity var(--duration-normal) var(--ease-standard),
         visibility var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         display: none;
     }
 }
@@ -64,7 +64,7 @@
     pointer-events: none;
 
     position: absolute;
-    z-index: 50;
+    z-index: var(--z-drawer);
     inset-block: 0;
     inset-inline-start: 0;
     transform: translateX(calc(-100% - var(--space-3)));
@@ -83,7 +83,7 @@
         transform var(--duration-normal) var(--ease-standard),
         visibility var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         pointer-events: auto;
 
         position: static;
@@ -129,7 +129,7 @@
     min-block-size: 0;
     padding-block: var(--space-5) calc(var(--space-5) + fn.rem(78));
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-6);
     }
 }
@@ -138,7 +138,7 @@
     display: flex;
     flex: none;
 
-    @include mx.media-mn(961) {
+    @include mx.media-mn(md) {
         display: none;
     }
 }
@@ -247,7 +247,7 @@
 
 .account-edit-button {
     position: absolute;
-    z-index: 1;
+    z-index: var(--z-raised);
     inset-block-start: var(--space-5);
     inset-inline-end: var(--space-3);
 
@@ -329,13 +329,13 @@
     padding: var(--space-6);
     border-radius: var(--radius-lg);
 
-    color: var(--color-text-inverse);
+    color: var(--color-on-ink-card);
 
-    background-color: var(--color-text-primary);
+    background-color: var(--color-ink-card);
 }
 
 .footer-title {
-    color: var(--color-surface-strong);
+    color: var(--color-on-ink-card-secondary);
 }
 
 .footer-sum {
@@ -347,7 +347,7 @@
 .footer-meta {
     margin-block-start: var(--space-3);
     font-size: var(--font-size-body-sm);
-    color: var(--color-surface-strong);
+    color: var(--color-on-ink-card-secondary);
 }
 
 .exchange-rates {
@@ -358,7 +358,7 @@
     margin-block-start: var(--space-4);
 
     font-size: var(--font-size-body-sm);
-    color: var(--color-surface-strong);
+    color: var(--color-on-ink-card-secondary);
 }
 
 .account-list-skeleton {

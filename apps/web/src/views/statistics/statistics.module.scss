@@ -11,7 +11,7 @@
 
     background-color: var(--color-canvas);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-9);
     }
 }

@@ -72,7 +72,7 @@
 
 .head {
     position: sticky;
-    z-index: 3;
+    z-index: var(--z-sticky);
     inset-block-start: 0;
     box-shadow: 0 1px 0 var(--color-border);
 }
@@ -136,7 +136,7 @@
     cursor: col-resize;
 
     position: absolute;
-    z-index: 4;
+    z-index: var(--z-raised);
     inset-block: 0;
     inset-inline-end: 0;
 

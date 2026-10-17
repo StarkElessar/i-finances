@@ -1,6 +1,9 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 .root {
+    @include mx.scroll-gutter;
+
     overflow-y: auto;
     display: grid;
 

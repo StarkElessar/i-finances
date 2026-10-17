@@ -6,7 +6,7 @@
     will-change: transform, opacity;
 
     position: fixed;
-    z-index: 45;
+    z-index: var(--z-popover);
     inset-block-end: calc(env(safe-area-inset-bottom) + fn.rem(92));
     inset-inline-start: 50%;
     transform: translate(-50%, 0) scale(1);
@@ -32,7 +32,7 @@
         transform var(--duration-fast) var(--ease-standard);
     animation: zone-enter var(--duration-normal) var(--ease-standard);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         inset-block-end: var(--space-9);
     }
 }
@@ -117,7 +117,7 @@
     will-change: transform;
 
     position: fixed;
-    z-index: 46;
+    z-index: var(--z-toast);
     inset-block-start: 0;
     inset-inline-start: 0;
     transform: translate3d(-50%, -50%, 0) rotate(-1deg);

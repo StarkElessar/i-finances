@@ -81,7 +81,7 @@
 
 .edit-button {
     position: absolute;
-    z-index: 1;
+    z-index: var(--z-raised);
     inset-block-start: var(--space-5);
     inset-inline-end: var(--space-3);
 

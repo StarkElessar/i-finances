@@ -2,15 +2,15 @@
 @use "@/shared/styles/mixins" as mx;
 
 .root {
+    // No z-index on purpose: a stacking context here would trap the profile
+    // menu (popover and mobile sheet, --z-popover) at the header's level, and
+    // the portaled bottom navigation (--z-nav) would cover the sheet.
     position: relative;
-    z-index: calc(var(--menu-navigation-z-index) + 1);
-
     padding-block: var(--space-3);
     border-block-end: 1px solid var(--color-border);
-
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-4);
         background-color: var(--color-surface);
     }
@@ -53,7 +53,7 @@
 
 .mobile-navigation-shell {
     position: fixed;
-    z-index: 30;
+    z-index: var(--z-nav);
     inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
     inset-inline-start: 50%;
     transform: translateX(-50%);
@@ -63,7 +63,7 @@
     inline-size: min(calc(100vw - var(--space-8)), fn.rem(640));
     padding: fn.rem(5);
     border: 1px solid color-mix(in srgb, var(--color-border) 72%, transparent);
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: color-mix(in srgb, var(--color-surface) 88%, transparent);
     backdrop-filter: blur(18px) saturate(1.35);

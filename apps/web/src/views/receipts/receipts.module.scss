@@ -12,7 +12,7 @@
 
     background-color: var(--color-canvas);
 
-    @include mx.media-mn(960) {
+    @include mx.media-mn(md) {
         padding-block: var(--space-9);
     }
 }
@@ -33,7 +33,7 @@
     gap: var(--space-5);
     align-items: start;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         grid-template-columns: minmax(0, 1fr) auto;
     }
 }
@@ -210,7 +210,7 @@
     display: grid;
     gap: var(--space-6);
 
-    @include mx.media-mn(760) {
+    @include mx.media-mn(sm) {
         grid-template-columns: minmax(fn.rem(260), 0.7fr) minmax(0, 1.3fr);
     }
 }
@@ -262,7 +262,7 @@
         color: var(--color-text-tertiary);
     }
 
-    @include mx.media-mn(520) {
+    @include mx.media-mn(sm) {
         grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 }
@@ -468,7 +468,7 @@
     display: grid;
     grid-template-columns: 1fr;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         display: flex;
     }
 }

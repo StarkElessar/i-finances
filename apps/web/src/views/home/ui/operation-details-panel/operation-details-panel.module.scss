@@ -1,4 +1,5 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 .panel {
     overflow: hidden;
@@ -21,13 +22,17 @@
 
 .panel-mobile {
     position: fixed;
-    z-index: 81;
+    z-index: var(--z-drawer);
     inset-block: 0;
     inset-inline-end: 0;
 
-    inline-size: min(fn.rem(420), calc(100vw - var(--space-5)));
+    inline-size: 100%;
 
     box-shadow: var(--shadow-lg);
+
+    @include mx.media-mn(sm) {
+        inline-size: min(var(--panel-overlay-inline-size), calc(100vw - var(--space-5)));
+    }
 }
 
 .panel-desktop {
@@ -38,7 +43,7 @@
     cursor: pointer;
 
     position: fixed;
-    z-index: 80;
+    z-index: var(--z-drawer);
     inset: 0;
 
     padding: 0;
@@ -70,8 +75,12 @@
     align-items: start;
     justify-content: space-between;
 
-    padding: var(--space-6);
+    padding: var(--space-5);
     border-block-end: 1px solid var(--color-border);
+
+    @include mx.media-mn(sm) {
+        padding: var(--space-6);
+    }
 }
 
 .header-content {
@@ -104,7 +113,11 @@
     align-content: start;
 
     min-block-size: 0;
-    padding: var(--space-6);
+    padding: var(--space-5);
+
+    @include mx.media-mn(sm) {
+        padding: var(--space-6);
+    }
 }
 
 .amount-preview {
@@ -286,10 +299,14 @@
     gap: var(--space-3);
     align-items: center;
 
-    padding: var(--space-5) var(--space-6);
+    padding: var(--space-4) var(--space-5);
     border-block-start: 1px solid var(--color-border);
 
     background-color: var(--color-surface);
+
+    @include mx.media-mn(sm) {
+        padding: var(--space-5) var(--space-6);
+    }
 }
 
 .footer-spacer {
@@ -356,7 +373,7 @@
 }
 
 .delete-dialog {
-    z-index: 100;
+    z-index: var(--z-modal);
 }
 
 .delete-dialog-content {
@@ -411,21 +428,6 @@
 @keyframes backdrop-exit {
     to {
         opacity: 0;
-    }
-}
-
-@media (width <= 520px) {
-    .panel-mobile {
-        inline-size: 100%;
-    }
-
-    .header,
-    .body {
-        padding: var(--space-5);
-    }
-
-    .footer {
-        padding: var(--space-4) var(--space-5);
     }
 }
 

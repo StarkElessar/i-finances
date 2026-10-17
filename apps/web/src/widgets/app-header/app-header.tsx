@@ -1,5 +1,6 @@
 import css from './app-header.module.scss';
 
+import { minWidthQuery } from '@/shared/lib';
 import { AppLogo } from '@/shared/ui/app-logo';
 import { Container } from '@/shared/ui/container';
 
@@ -18,7 +19,7 @@ type NavigationLink = {
 	label: string;
 };
 
-const DESKTOP_NAVIGATION_QUERY = '(min-width: 60em)';
+const DESKTOP_NAVIGATION_QUERY = minWidthQuery('md');
 
 const NAV_LINKS: NavigationLink[] = [
 	{ href: '/', label: 'Главная' },

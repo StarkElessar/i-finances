@@ -33,7 +33,7 @@
     }
 
     .number {
-        font-size: fn.rem(13);
+        font-size: var(--font-size-caption);
         font-weight: var(--font-weight-semibold);
         letter-spacing: 0.05em;
         white-space: nowrap;

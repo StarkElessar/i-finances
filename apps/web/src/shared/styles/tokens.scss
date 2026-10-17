@@ -2,22 +2,35 @@
 @use "./mixins" as mx;
 
 :root {
-    --menu-navigation-z-index: 30;
+    // Layer scale (mockup Foundations). Always use the token, never a number.
+    // `--z-raised` is local layering inside a component (a button above the
+    // card link, a sticky header's resizer); it is not part of the page scale.
+    --z-raised: 1;
+    --z-sticky: 10; // table and group headers
+    --z-nav: 20; // top and bottom navigation
+    --z-drawer: 30; // drawer, scrim and side panel
+    --z-modal: 40; // dialog, bottom sheet
+    --z-popover: 50; // popover, menu, drop-down list, drag preview zone
+    --z-toast: 60; // toast, drag ghost
 }
 
 :root,
 [data-theme="light"] {
     // Typography
-    --font-family-sans: -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
+    --font-family-sans: "IBM Plex Sans", -apple-system, blinkmacsystemfont, "Segoe UI", sans-serif;
     --font-family-mono: "SFMono-Regular", consolas, "Liberation Mono", monospace;
-    --font-size-display: #{fn.rem(32)};
-    --font-size-heading-1: #{fn.rem(28)};
+    --font-size-display: #{fn.rem(28)};
+    --font-size-heading-1: #{fn.rem(24)};
     --font-size-heading-2: #{fn.rem(22)};
     --font-size-heading-3: #{fn.rem(18)};
     --font-size-body-lg: #{fn.rem(16)};
     --font-size-body-md: #{fn.rem(14)};
+    --font-size-caption: #{fn.rem(13)}; // mockup --fs-sm: compact secondary text, buttons sm
+    // Legacy 12 px with no mockup counterpart (same value as --font-size-label).
+    // New code uses --font-size-caption (13) or --font-size-label (12); screens
+    // migrate in IF-15…IF-19 and IF-39, then the token goes.
     --font-size-body-sm: #{fn.rem(12)};
-    --font-size-label: #{fn.rem(11)};
+    --font-size-label: #{fn.rem(12)}; // mockup --fs-label (was 11): field label, hint, table head
     --line-height-display: 1.2;
     --line-height-heading: 1.3;
     --line-height-body-lg: 1.5;
@@ -41,7 +54,8 @@
     --space-9: #{fn.rem(32)};
     --space-10: #{fn.rem(40)};
     --space-11: #{fn.rem(48)};
-    --space-12: #{fn.rem(64)};
+    --space-12: #{fn.rem(48)};
+    --space-focus-gutter: #{fn.rem(4)}; // safety padding inside scroll containers (mx.scroll-gutter)
 
     // Shape and control dimensions
     --radius-xs: #{fn.rem(4)};
@@ -49,10 +63,20 @@
     --radius-md: #{fn.rem(8)};
     --radius-lg: #{fn.rem(12)};
     --radius-xl: #{fn.rem(16)};
+    --radius-pill: #{fn.rem(999)};
     --radius-round: 50%;
     --control-size-sm: #{fn.rem(32)};
     --control-size-md: #{fn.rem(40)};
     --control-size-lg: #{fn.rem(48)};
+
+    // Data rows (mockup `.i-tr` and `.i-row`); the fixed heights virtual scroll needs (IF-13)
+    --row-height-compact: #{fn.rem(44)};
+    --row-height-comfortable: #{fn.rem(64)};
+
+    // Side panel. One width over the content (owner and Opus decision
+    // 2026-10-18), another when docked next to the content.
+    --panel-overlay-inline-size: #{fn.rem(420)};
+    --panel-docked-inline-size: #{fn.rem(340)};
 
     // Surfaces and text
     --color-canvas: #f6f8fb;
@@ -60,40 +84,50 @@
     --color-surface-subtle: #f1f5f9;
     --color-surface-strong: #e8edf4;
     --color-text-primary: #172033;
-    --color-text-secondary: #526078;
-    --color-text-tertiary: #778398;
+    --color-text-secondary: #4a586f;
+    --color-text-tertiary: #627089;
     --color-text-inverse: #fff;
     --color-border: #dce3ed;
     --color-border-strong: #c5cfdd;
+    --color-scrim: rgb(23 32 51 / 45%);
+    --color-ink-card: #1b2333;
+    --color-on-ink-card: #f3f6fb; // same in both themes: the card is dark in both
+    --color-on-ink-card-secondary: #aab6c9;
 
     // Brand and semantic states
     --color-primary: rgb(63 119 168);
     --color-primary-hover: color-mix(in srgb, var(--color-primary), #000 6%);
     --color-primary-active: color-mix(in srgb, var(--color-primary), #000 10%);
-    --color-primary-soft: #eaf1ff;
+    --color-on-primary: #fff; // text and icons on --color-primary
+    --color-primary-soft: #e6eff8;
     --color-danger: #c82d4d;
     --color-danger-hover: #a9203d;
-    --color-danger-soft: #fff0f3;
+    --color-danger-soft: #fdecef;
     --color-success: #147a50;
-    --color-success-soft: #eaf8f1;
-    --color-warning: #a15c00;
-    --color-warning-soft: #fff5df;
-    --color-focus-ring: rgb(37 99 235 / 22%);
+    --color-success-soft: #e6f6ee;
+    --color-warning: #8f5200;
+    --color-warning-soft: #fff3d9;
+    --color-focus-ring: rgb(63 119 168 / 35%);
 
-    // Categorical series palette (dataviz reference instance, CVD-validated order)
+    // Category palette: 10 hues, lightness varies so they stay apart without
+    // relying on hue alone (mockup --k-1..10, --k-other). Charts show the top
+    // 8 and fold the rest into "other".
     --color-series-1: #2a78d6;
-    --color-series-2: #eb6834;
-    --color-series-3: #1baf7a;
-    --color-series-4: #eda100;
-    --color-series-5: #e87ba4;
-    --color-series-6: #008300;
-    --color-series-7: #4a3aa7;
-    --color-series-8: #e34948;
-    --color-series-other: #a3adbd;
+    --color-series-2: #e0632c;
+    --color-series-3: #14946a;
+    --color-series-4: #d99a00;
+    --color-series-5: #d8588a;
+    --color-series-6: #6a4fc9;
+    --color-series-7: #0c7f94;
+    --color-series-8: #c93c40;
+    --color-series-9: #8c6a2f;
+    --color-series-10: #56647c;
+    --color-series-other: #9aa5b8;
 
     // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
-    --shadow-md: 0 12px 32px rgb(23 32 51 / 10%);
+    --shadow-md: 0 12px 32px rgb(23 32 51 / 12%);
+    --shadow-lg: 0 24px 64px rgb(23 32 51 / 22%);
     --duration-fast: 120ms;
     --duration-normal: 180ms;
     --ease-standard: cubic-bezier(0.2, 0, 0, 1);
@@ -108,13 +142,16 @@
     --color-surface-strong: #27303e;
     --color-text-primary: #f3f6fb;
     --color-text-secondary: #b4bfd0;
-    --color-text-tertiary: #8995a8;
+    --color-text-tertiary: #93a0b5;
     --color-text-inverse: #fff;
     --color-border: #2d3746;
     --color-border-strong: #3c485a;
+    --color-scrim: rgb(0 0 0 / 60%);
+    --color-ink-card: #0d1118;
     --color-primary: #6ea8ff;
     --color-primary-hover: #8ab8ff;
     --color-primary-active: #a7c9ff;
+    --color-on-primary: #0b1424; // white on #6ea8ff is 2.4:1, this is 7.6:1
     --color-primary-soft: #1c3154;
     --color-danger: #ff7891;
     --color-danger-hover: #ff93a7;
@@ -123,28 +160,31 @@
     --color-success-soft: #17392d;
     --color-warning: #efb45f;
     --color-warning-soft: #42331c;
-    --color-focus-ring: rgb(110 168 255 / 28%);
+    --color-focus-ring: rgb(110 168 255 / 40%);
 
-    // Categorical series palette, dark steps
-    --color-series-1: #3987e5;
-    --color-series-2: #d95926;
-    --color-series-3: #199e70;
-    --color-series-4: #c98500;
-    --color-series-5: #d55181;
-    --color-series-6: #008300;
-    --color-series-7: #9085e9;
-    --color-series-8: #e66767;
-    --color-series-other: #5d6879;
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
-    --shadow-md: 0 12px 32px rgb(0 0 0 / 28%);
+    // Category palette, dark steps
+    --color-series-1: #5b9cf0;
+    --color-series-2: #f0825a;
+    --color-series-3: #3cc196;
+    --color-series-4: #f0b94a;
+    --color-series-5: #ef86ae;
+    --color-series-6: #9b86ee;
+    --color-series-7: #3bb5cb;
+    --color-series-8: #f06a6e;
+    --color-series-9: #c9a45f;
+    --color-series-10: #8e9bb2;
+    --color-series-other: #6b778c;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 12px 32px rgb(0 0 0 / 40%);
+    --shadow-lg: 0 24px 64px rgb(0 0 0 / 55%);
 
     color-scheme: dark;
 }
 
-@include mx.media-mx(767.984) {
+@include mx.media-mn(sm) {
     :root {
-        --font-size-display: #{fn.rem(28)};
-        --font-size-heading-1: #{fn.rem(24)};
-        --space-12: #{fn.rem(48)};
+        --font-size-display: #{fn.rem(32)};
+        --font-size-heading-1: #{fn.rem(28)};
+        --space-12: #{fn.rem(64)};
     }
 }

@@ -1,6 +1,7 @@
 import type { Accessor, Signal } from 'solid-js';
 import { createMemo, createSignal } from 'solid-js';
 
+import { minWidthQuery } from './breakpoints';
 import type { DisplayModePreference, ResolvedDisplayMode } from './display-mode-preference';
 import {
 	readStoredDisplayModePreference,
@@ -9,8 +10,8 @@ import {
 } from './display-mode-preference';
 import { useMediaQuery } from './use-media-query';
 
-/** Matches the `768px` breakpoint token used elsewhere in `apps/web`'s SCSS. */
-const WIDE_VIEWPORT_QUERY = '(min-width: 768px)';
+/** From the `sm` breakpoint (640 px) up, the same threshold as `mx.media-mn(sm)` in SCSS. */
+const WIDE_VIEWPORT_QUERY = minWidthQuery('sm');
 
 /**
  * One shared signal per storage key: every caller with the same key sees the

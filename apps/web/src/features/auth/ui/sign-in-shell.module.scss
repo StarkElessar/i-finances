@@ -8,7 +8,7 @@
 
     min-block-size: 0;
 
-    @include mx.media-mn(768) {
+    @include mx.media-mn(sm) {
         place-items: center;
         padding-block: var(--space-9);
     }
@@ -22,7 +22,7 @@
 
     min-block-size: 100dvh;
 
-    @include mx.media-mn(768) {
+    @include mx.media-mn(sm) {
         grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
 
         min-block-size: 39.875rem;
@@ -36,7 +36,7 @@
 .welcome {
     display: none;
 
-    @include mx.media-mn(768) {
+    @include mx.media-mn(sm) {
         display: flex;
     }
 }

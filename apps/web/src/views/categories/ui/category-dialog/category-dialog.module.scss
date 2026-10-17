@@ -2,11 +2,7 @@
 @use "@/shared/styles/mixins" as mx;
 
 .dialog {
-    --dialog-inline-size: 100%;
-
-    @include mx.media-mn(640) {
-        --dialog-inline-size: #{fn.rem(520)};
-    }
+    --dialog-inline-size: #{fn.rem(520)};
 }
 
 .form {
@@ -156,7 +152,7 @@
     grid-column: 1 / -1;
 
     block-size: fn.rem(4);
-    border-radius: fn.rem(999);
+    border-radius: var(--radius-pill);
 
     background-color: var(--color-surface-strong);
 
@@ -198,7 +194,7 @@
 .footer-spacer {
     display: none;
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         display: block;
         flex-grow: 1;
     }
@@ -210,7 +206,7 @@
     flex-grow: 1;
     gap: var(--space-4);
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         display: flex;
         flex-grow: 0;
     }

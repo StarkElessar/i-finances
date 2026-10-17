@@ -1,7 +1,7 @@
 @use "@/shared/styles/functions" as fn;
 
 .root {
-    z-index: 60;
+    z-index: var(--z-modal);
 }
 
 .content {

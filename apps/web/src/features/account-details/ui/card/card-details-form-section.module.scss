@@ -11,7 +11,7 @@
 
     background-color: var(--color-canvas);
 
-    @include mx.media-mn(600) {
+    @include mx.media-mn(sm) {
         grid-template-columns: fn.rem(190) minmax(0, 1fr);
         gap: var(--space-7);
         align-items: center;
@@ -22,7 +22,7 @@
     justify-self: center;
     max-inline-size: fn.rem(240);
 
-    @include mx.media-mn(600) {
+    @include mx.media-mn(sm) {
         justify-self: stretch;
         max-inline-size: none;
     }

@@ -1,5 +1,6 @@
 @use "@/shared/styles/functions" as fn;
 @use "@/shared/styles/mixins" as mx;
+@use "@/shared/styles/fonts";
 @use "@/shared/styles/tokens";
 
 :where(*, *::before, *::after) {
@@ -17,6 +18,7 @@ body {
 
     font-family: var(--font-family-sans);
     font-size: var(--font-size-body-md);
+    font-variant-numeric: tabular-nums;
     line-height: var(--line-height-body-md);
     color: var(--color-text-primary);
     text-rendering: optimizelegibility;
@@ -74,7 +76,7 @@ textarea {
     font-size: fn.rem(16);
 }
 
-@include mx.media-mn(768) {
+@include mx.media-mn(sm) {
     input,
     select,
     textarea {

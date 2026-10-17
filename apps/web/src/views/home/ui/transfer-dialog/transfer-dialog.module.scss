@@ -14,13 +14,13 @@
     grid-template-columns: 1fr;
     gap: var(--space-4);
 
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         grid-template-columns: 1fr 1fr;
     }
 }
 
 .row-single {
-    @include mx.media-mn(640) {
+    @include mx.media-mn(sm) {
         grid-template-columns: 1fr;
     }
 }

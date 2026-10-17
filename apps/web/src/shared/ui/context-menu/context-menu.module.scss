@@ -20,7 +20,7 @@
     cursor: default;
 
     position: fixed;
-    z-index: 40;
+    z-index: var(--z-popover);
     inset: 0;
 
     border: 0;
@@ -30,7 +30,7 @@
 }
 
 .content {
-    z-index: 50;
+    z-index: var(--z-popover);
 
     min-inline-size: fn.rem(224);
     padding: var(--space-2);

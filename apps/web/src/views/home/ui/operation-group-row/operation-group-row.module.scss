@@ -5,7 +5,7 @@
     --group-color: var(--color-text-tertiary);
 
     display: grid;
-    grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+    grid-template-columns: minmax(0, 1fr) auto;
     gap: var(--space-5);
     align-items: center;
 
@@ -16,6 +16,10 @@
 
     background-color: color-mix(in srgb, var(--color-surface-subtle) 82%, var(--color-surface));
     box-shadow: inset 3px 0 0 color-mix(in srgb, var(--group-color) 72%, transparent);
+
+    @include mx.media-mn(sm) {
+        grid-template-columns: minmax(0, auto) minmax(0, 1fr) auto;
+    }
 }
 
 .group-heading,
@@ -51,10 +55,23 @@
 }
 
 .group-balance {
+    overflow-x: auto;
+    grid-column: 1 / -1;
+    grid-row: 2;
     justify-self: start;
+
+    max-inline-size: 100%;
+
     font-variant-numeric: tabular-nums;
     color: var(--color-text-secondary);
     white-space: nowrap;
+
+    @include mx.media-mn(sm) {
+        overflow-x: visible;
+        grid-column: auto;
+        grid-row: auto;
+        max-inline-size: none;
+    }
 }
 
 .group-difference {
@@ -90,17 +107,4 @@
     text-align: center;
 
     background-color: var(--color-surface);
-}
-
-@include mx.media-mx(520) {
-    .group-row {
-        grid-template-columns: minmax(0, 1fr) auto;
-    }
-
-    .group-balance {
-        overflow-x: auto;
-        grid-column: 1 / -1;
-        grid-row: 2;
-        max-inline-size: 100%;
-    }
 }
