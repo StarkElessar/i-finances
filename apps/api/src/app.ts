@@ -45,6 +45,7 @@ export function createApiApp(
 		const accountController = dependencies.accountController;
 
 		app.get('/api/accounts', accountController.list());
+		app.get('/api/accounts/:id', accountController.get());
 		app.post('/api/accounts', accountController.create());
 		app.put('/api/accounts/:id', accountController.update());
 		app.post('/api/accounts/:id/archive', accountController.archive());

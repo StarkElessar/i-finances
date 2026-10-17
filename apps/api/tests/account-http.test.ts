@@ -4,6 +4,7 @@ import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import {
+	accounts,
 	householdMembers,
 	households,
 	operations,
@@ -89,6 +90,19 @@ const authenticatedSession: AuthenticatedSession = {
 
 const sessionResolver: RequestSessionResolver = {
 	resolve: async () => authenticatedSession
+};
+
+const CARD = '4111111111111111';
+
+const cardInput = {
+	color: '#3f77a8',
+	currency: 'BYN',
+	description: '',
+	initialBalanceMinor: 10_000,
+	isColorAccentEnabled: false,
+	isIncludedInFamilyTotal: true,
+	name: 'Основной счёт',
+	type: 'card'
 };
 
 describe('Accounts HTTP controller', () => {
@@ -213,5 +227,90 @@ describe('Accounts HTTP controller', () => {
 			errorCode: 'currency-locked',
 			ok: false
 		});
+	});
+
+	it('list never serialises the full card number; GET /:id does', async () => {
+		const app = createApiApp({ accountController: createController(sessionResolver) });
+		const createResponse = await app.request('/api/accounts', {
+			body: JSON.stringify({ ...cardInput, details: { cardNumber: CARD, expiry: '08/27' }, owner: 'Сергей' }),
+			headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
+			method: 'POST'
+		});
+
+		expect(createResponse.status).toBe(200);
+
+		const listBody = await (await app.request('/api/accounts')).text();
+
+		expect(listBody).not.toContain(CARD);
+		expect(JSON.parse(listBody).items[0]).toMatchObject({
+			details: { cardNumberLast4: '1111', expiry: '08/27' },
+			owner: 'Сергей'
+		});
+
+		const detailResponse = await app.request('/api/accounts/account-http');
+
+		expect(detailResponse.status).toBe(200);
+		expect((await detailResponse.json()).details).toEqual({
+			cardNumber: CARD,
+			cardNumberLast4: '1111',
+			expiry: '08/27'
+		});
+	});
+
+	it('returns 404 for GET /:id of an unknown id and of another household', async () => {
+		const app = createApiApp({ accountController: createController(sessionResolver) });
+
+		await database.insert(households).values({
+			baseCurrency: 'USD',
+			createdAt: FIXED_DATE,
+			id: 'other-household',
+			name: 'Другая семья',
+			updatedAt: FIXED_DATE
+		});
+		await database.insert(accounts).values({
+			archivedAt: null,
+			color: '#d95959',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'USD',
+			description: '',
+			householdId: 'other-household',
+			id: 'account-other',
+			initialBalanceMinor: 1,
+			isColorAccentEnabled: false,
+			isIncludedInFamilyTotal: true,
+			name: 'Чужой',
+			type: 'card',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+
+		const missing = await app.request('/api/accounts/missing');
+		const foreign = await app.request('/api/accounts/account-other');
+
+		expect(missing.status).toBe(404);
+		expect(foreign.status).toBe(404);
+		expect(await foreign.json()).toMatchObject({ errorCode: 'not-found', ok: false });
+	});
+
+	it('reports nested field errors with dotted keys', async () => {
+		const app = createApiApp({ accountController: createController(sessionResolver) });
+		const response = await app.request('/api/accounts', {
+			body: JSON.stringify({ ...cardInput, details: { cardNumber: '4111111111111112', expiry: null } }),
+			headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
+			method: 'POST'
+		});
+		const body = await response.json();
+
+		expect(response.status).toBe(400);
+		expect(body.fieldErrors['details.cardNumber']).toBe('Проверьте номер карты: похоже на опечатку.');
+		expect(body.fieldErrors).not.toHaveProperty('details');
+	});
+
+	it('GET /:id requires a session', async () => {
+		const app = createApiApp({ accountController: createController(noSessionResolver) });
+		const response = await app.request('/api/accounts/account-http');
+
+		expect(response.status).toBe(401);
 	});
 });

@@ -16,6 +16,7 @@ import {
 	type AccountCommandResult,
 	accountListInputSchema,
 	changeAccountArchiveStateInputSchema,
+	collectFieldErrors,
 	type CreateAccountInput,
 	createAccountInputSchema,
 	type PersistedAccount,
@@ -59,6 +60,26 @@ export class AccountHttpController {
 			try {
 				return context.json(
 					await this.accountService.list(session.user.id, parsedInput.data.includeArchived),
+					200
+				);
+			}
+			catch (error: unknown) {
+				return this.domainFailure(context, error);
+			}
+		};
+	}
+
+	public get() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			const session = await this.requireSession(context);
+
+			if (session === undefined) {
+				return this.unauthenticated(context);
+			}
+
+			try {
+				return context.json(
+					await this.accountService.get(session.user.id, context.req.param('id') ?? ''),
 					200
 				);
 			}
@@ -189,19 +210,9 @@ export class AccountHttpController {
 		context: Context<ApiEnvironment>,
 		error: z.ZodError
 	): Response {
-		const fieldErrors: Record<string, string> = {};
-
-		error.issues.forEach((issue) => {
-			const field = issue.path[0];
-
-			if (typeof field === 'string') {
-				fieldErrors[field] = issue.message;
-			}
-		});
-
 		return context.json<AccountCommandResult>({
 			errorCode: 'invalid-input',
-			fieldErrors,
+			fieldErrors: collectFieldErrors(error),
 			message: 'Проверьте поля счёта.',
 			ok: false
 		}, 400);
