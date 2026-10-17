@@ -252,6 +252,7 @@ describe('password session API', () => {
 			ok: false
 		});
 		expect(response.headers.get('set-cookie')).toBeNull();
+		expect(response.headers.get('retry-after')).toBeNull();
 	});
 });
 
@@ -287,6 +288,8 @@ describe('password sign-in rate limit', () => {
 		const blocked = await requestWrongPassword(app, '10.0.0.99, 203.0.113.7');
 
 		expect(blocked.status).toBe(429);
+		expect(blocked.headers.get('retry-after')).toBe('900');
+		expect(await blocked.json()).not.toHaveProperty('retryAfterSeconds');
 	});
 
 	it('stops one address that tries many usernames, and still serves other addresses', async () => {

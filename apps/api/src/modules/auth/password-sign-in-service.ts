@@ -23,7 +23,7 @@ export type PasswordSignInMetadata = {
 
 export type PasswordSignInOutcome =
 	| Extract<PasswordSignInResult, { ok: true }> & { session: CreatedSession }
-	| Extract<PasswordSignInResult, { ok: false }>;
+	| Extract<PasswordSignInResult, { ok: false }> & { retryAfterSeconds?: number };
 
 export type PasswordVerificationPort = Pick<PasswordService, 'verify'>;
 export type PasswordUserPort = Pick<PasswordUserRepository, 'findByUsername'>;
@@ -70,8 +70,13 @@ export class PasswordSignInService {
 		};
 
 		// The attempt is counted here, before the slow verification, so parallel requests cannot outrun the limit.
-		if (!this.rateLimiter.tryReserve(rateLimitInput).allowed) {
-			return this.failure('rate-limited');
+		const reservation = this.rateLimiter.tryReserve(rateLimitInput);
+
+		if (!reservation.allowed) {
+			return {
+				...this.failure('rate-limited'),
+				retryAfterSeconds: reservation.retryAfterSeconds
+			};
 		}
 
 		const user = await this.userRepository.findByUsername(username);

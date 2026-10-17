@@ -77,6 +77,10 @@ export class AuthHttpController {
 				);
 
 				if (!outcome.ok) {
+					if (outcome.retryAfterSeconds !== undefined) {
+						context.header('retry-after', String(outcome.retryAfterSeconds));
+					}
+
 					return this.failure(context, outcome.errorCode, this.getFailureStatus(outcome.errorCode), outcome.fieldErrors);
 				}
 
