@@ -7,6 +7,11 @@
  */
 export type AccountTypeValue = 'card' | 'cash' | 'other' | 'savings';
 
+/**
+ * Type-specific account fields stored as JSON; validated by the account details handlers.
+ */
+export type StoredAccountDetails = Record<string, unknown>;
+
 export type ContactType = 'company' | 'person' | 'unknown';
 
 export type CurrencyCodeValue = 'BYN' | 'EUR' | 'USD';

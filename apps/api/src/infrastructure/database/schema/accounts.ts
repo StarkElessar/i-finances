@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
-import type { AccountTypeValue, CurrencyCodeValue } from './column-types';
+import type { AccountTypeValue, CurrencyCodeValue, StoredAccountDetails } from './column-types';
 import { households } from './households';
 import { users } from './users';
 
@@ -16,6 +16,11 @@ export const accounts = sqliteTable(
 			.references(() => households.id, { onDelete: 'cascade' }),
 		name: text('name').notNull(),
 		description: text('description').notNull().default(''),
+		owner: text('owner').notNull().default(''),
+		details: text('details', { mode: 'json' })
+			.$type<StoredAccountDetails>()
+			.notNull()
+			.default({}),
 		type: text('type').$type<AccountTypeValue>().notNull(),
 		currency: text('currency').$type<CurrencyCodeValue>().notNull(),
 		color: text('color').notNull(),
