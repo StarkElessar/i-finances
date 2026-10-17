@@ -281,6 +281,31 @@ export {
 	updateReceiptReviewInputSchema
 } from './receipt';
 export {
+	type ChangePasswordInput,
+	changePasswordInputSchema,
+	type ChangePasswordResult,
+	changePasswordResultSchema,
+	type DeleteSecurityPasskeyResult,
+	deleteSecurityPasskeyResultSchema,
+	type RevokeOtherSecuritySessionsResult,
+	revokeOtherSecuritySessionsResultSchema,
+	type RevokeSecuritySessionResult,
+	revokeSecuritySessionResultSchema,
+	type SecurityErrorCode,
+	securityErrorCodes,
+	securityErrorMessageByCode,
+	type SecurityFailure,
+	securityFailureSchema,
+	type SecurityPasskey,
+	securityPasskeySchema,
+	type SecurityPasskeysResult,
+	securityPasskeysResultSchema,
+	type SecuritySession,
+	securitySessionSchema,
+	type SecuritySessionsResult,
+	securitySessionsResultSchema
+} from './security';
+export {
 	type ChangeTransferDeletionStateInput,
 	changeTransferDeletionStateInputSchema,
 	type CreateTransferInput,
