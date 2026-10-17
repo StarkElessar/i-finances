@@ -34,7 +34,7 @@ export function writeStoredOperationsDisplayModePreference(
 }
 
 /**
- * `auto` follows the current viewport (768px breakpoint); an explicit
+ * `auto` follows the current viewport (`sm` breakpoint, 640px); an explicit
  * `table`/`list` choice always wins regardless of viewport width.
  */
 export const resolveOperationsDisplayMode = resolveDisplayMode;

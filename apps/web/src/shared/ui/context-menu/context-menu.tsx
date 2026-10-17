@@ -1,6 +1,7 @@
 import css from './context-menu.module.scss';
 
-import { cn } from '@/shared/lib';
+import type { BreakpointName } from '@/shared/lib';
+import { cn, maxWidthQuery } from '@/shared/lib';
 
 import type { Accessor, JSX } from 'solid-js';
 import {
@@ -15,7 +16,9 @@ import {
 	useContext
 } from 'solid-js';
 
-const DEFAULT_MOBILE_BREAKPOINT = 640;
+// Below this breakpoint the menu is a bottom sheet; from it up, a popover. Same edge as `mx.media-mn(sm)` in the
+// menu's SCSS, so JS and CSS never disagree at exactly 640 px.
+const DEFAULT_MOBILE_BREAKPOINT: BreakpointName = 'sm';
 const SHEET_CLOSE_OFFSET = 80;
 const SHEET_CLOSE_VELOCITY = 0.6;
 
@@ -53,7 +56,7 @@ export type ContextMenuRootProps = {
 	children: JSX.Element;
 	class?: string;
 	defaultOpen?: boolean;
-	mobileBreakpoint?: number;
+	mobileBreakpoint?: BreakpointName;
 	onOpenChange?: (open: boolean) => void;
 	open?: boolean;
 	triggerMode?: ContextMenuTriggerMode;
@@ -225,7 +228,7 @@ function ContextMenuRoot(props: ContextMenuRootProps) {
 
 	onMount(() => {
 		const breakpoint = props.mobileBreakpoint ?? DEFAULT_MOBILE_BREAKPOINT;
-		const mediaQuery = window.matchMedia(`(max-width: ${breakpoint / 16}em)`);
+		const mediaQuery = window.matchMedia(maxWidthQuery(breakpoint));
 		const syncMobileState = () => setIsMobile(mediaQuery.matches);
 
 		syncMobileState();

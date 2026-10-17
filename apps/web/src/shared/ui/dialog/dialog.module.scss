@@ -1,4 +1,5 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 .root {
     position: fixed;
@@ -30,11 +31,16 @@
     overflow: auto;
     overscroll-behavior: contain;
     display: grid;
-    place-items: center;
+    place-items: end center;
 
     inline-size: 100%;
     block-size: 100%;
-    padding: var(--space-8);
+    padding: 0;
+
+    @include mx.media-mn(sm) {
+        place-items: center;
+        padding: var(--space-8);
+    }
 }
 
 .content {
@@ -45,10 +51,12 @@
     flex-direction: column;
     gap: var(--space-6);
 
-    inline-size: min(100%, var(--dialog-inline-size, #{fn.rem(640)}));
-    max-block-size: calc(100dvh - var(--space-10));
+    inline-size: 100%;
+    max-block-size: 92dvh;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-xl);
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
 
     background-color: var(--color-surface);
     box-shadow: var(--shadow-md);
@@ -57,6 +65,12 @@
 
     &:focus {
         outline: none;
+    }
+
+    @include mx.media-mn(sm) {
+        inline-size: min(100%, var(--dialog-inline-size, #{fn.rem(640)}));
+        max-block-size: calc(100dvh - var(--space-10));
+        border-radius: var(--radius-xl);
     }
 }
 
@@ -68,7 +82,11 @@
     justify-content: space-between;
 
     min-inline-size: 0;
-    padding: var(--space-7) var(--space-7) 0;
+    padding: var(--space-6) var(--space-6) 0;
+
+    @include mx.media-mn(sm) {
+        padding: var(--space-7) var(--space-7) 0;
+    }
 }
 
 .header-content {
@@ -99,17 +117,27 @@
     flex: 1 1 auto;
 
     min-block-size: 0;
-    padding-inline: var(--space-7);
+    padding-inline: var(--space-6);
+
+    @include mx.media-mn(sm) {
+        padding-inline: var(--space-7);
+    }
 }
 
 .footer {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     flex: none;
-    flex-wrap: wrap;
     gap: var(--space-4);
-    justify-content: flex-end;
 
-    padding: 0 var(--space-7) var(--space-7);
+    padding: 0 var(--space-6) var(--space-6);
+
+    @include mx.media-mn(sm) {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: flex-end;
+        padding: 0 var(--space-7) var(--space-7);
+    }
 }
 
 .root[data-state="closing"] {
@@ -145,35 +173,6 @@
     to {
         transform: translateY(fn.rem(10)) scale(0.98);
         opacity: 0;
-    }
-}
-
-@media (width <= 640px) {
-    .viewport {
-        align-items: end;
-        padding: 0;
-    }
-
-    .content {
-        --dialog-inline-size: 100%;
-
-        max-block-size: 92dvh;
-        border-end-start-radius: 0;
-        border-end-end-radius: 0;
-    }
-
-    .header {
-        padding: var(--space-6) var(--space-6) 0;
-    }
-
-    .body {
-        padding-inline: var(--space-6);
-    }
-
-    .footer {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        padding: 0 var(--space-6) var(--space-6);
     }
 }
 

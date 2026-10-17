@@ -1,10 +1,15 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 .form-grid {
     display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--space-5);
     align-items: start;
+
+    @include mx.media-mn(sm) {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
 }
 
 .form-field-full,
@@ -149,16 +154,6 @@
     margin: var(--space-5) 0 0;
     font-size: var(--font-size-body-sm);
     color: var(--color-danger);
-}
-
-@media (width <= 640px) {
-    .form-grid {
-        grid-template-columns: minmax(0, 1fr);
-    }
-
-    .type-options {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-    }
 }
 
 .details-warning {

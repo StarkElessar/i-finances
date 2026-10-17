@@ -8,6 +8,7 @@ import {
 	formatDate,
 	getAccountTypeMeta,
 	minorUnitsToAmount,
+	minWidthQuery,
 	sumMoney
 } from '@/shared/lib';
 import { createRouteSearchParams } from '@/shared/routing';
@@ -111,7 +112,7 @@ import { TransferDialog } from './ui/transfer-dialog';
 
 const FALLBACK_FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
 // Same as mx.media-mn(md) in home.module.scss (960 px), so the docked column and the docked panel switch together.
-const DESKTOP_DETAILS_QUERY = '(min-width: 60em)';
+const DESKTOP_DETAILS_QUERY = minWidthQuery('md');
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 
