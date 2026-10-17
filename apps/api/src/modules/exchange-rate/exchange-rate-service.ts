@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import type { CurrencyCode, CurrentExchangeRates } from '@i-finances/contracts';
 
 import { invertExchangeRate } from './decimal-money';
-import { ExchangeRateNotFoundError } from './exchange-rate-errors';
+import { ExchangeRateNotFoundError } from './exchange-rate-not-found-error';
 import type { ExchangeRateRepository } from './exchange-rate-repository';
 import type {
 	DailyExchangeRateProvider,

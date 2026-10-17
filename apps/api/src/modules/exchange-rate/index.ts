@@ -1,6 +1,6 @@
 export { convertMinorUnitsByExchangeRate, invertExchangeRate, normalizeExchangeRate } from './decimal-money';
 export { formatBelarusLocalDateKey } from './exchange-rate-date';
-export { ExchangeRateNotFoundError } from './exchange-rate-errors';
+export { ExchangeRateNotFoundError } from './exchange-rate-not-found-error';
 export {
 	ExchangeRateRepository,
 	type FindExchangeRateInput

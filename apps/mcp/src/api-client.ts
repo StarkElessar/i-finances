@@ -1,4 +1,4 @@
-import { ApiRequestError } from './api-request-error';
+import { ApiRequestError } from '@/api-request-error';
 
 /**
  * Thin HTTP client authenticating as a machine user against `apps/api`,
