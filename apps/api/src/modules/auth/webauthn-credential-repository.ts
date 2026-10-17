@@ -5,7 +5,7 @@ import {
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
 
-import { eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 
 export type WebAuthnCredential = {
 	backedUp: boolean;
@@ -118,5 +118,33 @@ export class WebAuthnCredentialRepository {
 				lastUsedAt: input.lastUsedAt
 			})
 			.where(eq(webauthnCredentials.id, input.id));
+	}
+
+	/**
+	 * Deletes one credential only when it belongs to the given user.
+	 *
+	 * Unless `allowLast` is set, the delete is a single statement that also
+	 * requires the user to keep at least one other credential, so two parallel
+	 * requests can never remove the last passkey between them.
+	 * Returns `false` when nothing was deleted.
+	 */
+	public async deleteForUser(input: {
+		allowLast: boolean;
+		id: string;
+		userId: string;
+	}): Promise<boolean> {
+		const hasAnotherCredential = sql`(
+			select count(*) from ${webauthnCredentials} as other_credentials
+			where other_credentials.user_id = ${input.userId}
+		) > 1`;
+		const deleted = await this.database.delete(webauthnCredentials)
+			.where(and(
+				eq(webauthnCredentials.id, input.id),
+				eq(webauthnCredentials.userId, input.userId),
+				input.allowLast ? undefined : hasAnotherCredential
+			))
+			.returning({ id: webauthnCredentials.id });
+
+		return deleted.length > 0;
 	}
 }
