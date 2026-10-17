@@ -439,6 +439,7 @@ export class OperationRepository {
 				eq(operations.householdId, householdId),
 				eq(operations.type, 'expense'),
 				isNull(operations.deletedAt),
+				isNull(operations.transferId),
 				isNotNull(referenceColumn),
 				gte(operations.happenedOn, start),
 				lte(operations.happenedOn, end)

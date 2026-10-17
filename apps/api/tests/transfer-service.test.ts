@@ -2,6 +2,7 @@ import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import {
 	accounts,
+	contacts,
 	householdMembers,
 	households,
 	operations,
@@ -11,6 +12,7 @@ import { AccountRepository } from '@/modules/account';
 import { ContactRepository } from '@/modules/contact';
 import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+import { OperationRepository } from '@/modules/operation';
 import type { TransferService } from '@/modules/transfer';
 import {
 	createTransferRepository,
@@ -215,6 +217,66 @@ describe('TransferService', () => {
 			exchangeToCurrency: 'BYN',
 			toAmountMinor: 30_000
 		});
+	});
+
+	it('keeps transfer legs out of per-contact expense totals', async () => {
+		await database.insert(contacts).values({
+			archivedAt: null,
+			color: '#3f77a8',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			householdId: HOUSEHOLD_ID,
+			id: 'contact-1',
+			legalName: null,
+			name: 'Евроопт',
+			normalizedLegalName: null,
+			normalizedName: 'евроопт',
+			phone: null,
+			type: 'company',
+			updatedAt: FIXED_DATE,
+			version: 1
+		});
+		await database.insert(operations).values({
+			accountId: 'account-byn',
+			amountInHouseholdBaseCurrencyMinor: 700,
+			amountMinor: 700,
+			categoryId: null,
+			categoryNameSnapshot: null,
+			comment: '',
+			contactId: 'contact-1',
+			contactNameSnapshot: 'Евроопт',
+			createdAt: FIXED_DATE,
+			createdByUserId: USER_ID,
+			currency: 'BYN',
+			deletedAt: null,
+			deletedByUserId: null,
+			exchangeRate: '1',
+			exchangeRateEffectiveOn: '2026-09-06',
+			exchangeRateSource: 'identity',
+			happenedOn: '2026-09-06',
+			householdBaseCurrency: 'BYN',
+			householdId: HOUSEHOLD_ID,
+			id: 'expense-1',
+			sourceOrder: 1,
+			title: 'Покупка',
+			transferId: null,
+			type: 'expense',
+			updatedAt: FIXED_DATE,
+			updatedByUserId: USER_ID,
+			version: 1
+		});
+		await createService().create(USER_ID, {
+			...validInput,
+			contactId: 'contact-1'
+		});
+
+		const totals = await new OperationRepository(database).listMonthlyContactExpenses(
+			HOUSEHOLD_ID,
+			'2026-09-01',
+			'2026-09-30'
+		);
+
+		expect(totals).toEqual([{ referenceId: 'contact-1', totalMinor: 700 }]);
 	});
 
 	it('soft-deletes both legs together and then refuses to delete twice', async () => {
