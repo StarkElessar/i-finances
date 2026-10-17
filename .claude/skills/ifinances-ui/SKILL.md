@@ -19,7 +19,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Что | Где |
 |---|---|
-| **Макет и кит** (Claude Design, 33 доски, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
+| **Макет и кит** (Claude Design, 34 доски, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
 | Решения владельца, состав холста | `development/ui-mockup.md` |
 | Аудит дефектов (A1…C6) | `development/ui-audit.md` |
 | Токены в коде (эталон) | `apps/web/src/shared/styles/tokens.scss` |
@@ -49,6 +49,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Toast, Skeleton, Empty state | нет | нет, IF-20 |
+| `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код» | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть |
 | | поля номера и срока карты | `shared/ui/card-number-field`, `card-expiry-field` | есть |
 | | выбор типа счёта, блок реквизитов в форме | `features/account-details` (`ui/card`, `model`) | есть |
@@ -79,11 +80,13 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `--dur-fast`, `--dur`, `--ease` | `--duration-fast`, `--duration-normal`, `--ease-standard` |
 | `--k-1…10`, `--k-other` (палитра категорий) | `--color-series-1…8`, `--color-series-other` |
 
-**Расхождения, которых в коде пока нет** (закрывает IF-14, до тех пор не выдумывай значения, бери из макета и отмечай в задаче): шкала `--z-*` (10…60); `--c-scrim`, `--c-ink-card`, `--r-pill`, `--sh-lg`; размер 13 px (`--fs-sm`); подпись 12 px вместо 11 px (`--font-size-label`); более тёмные `--color-text-secondary` и `-tertiary`; категории 9–10; три брейкпоинта 640/960/1280.
+**Расхождения, которых в коде пока нет** (закрывает IF-14, до тех пор не выдумывай значения, бери из макета и отмечай в задаче): шкала `--z-*` (10…60); `--s-focus-gutter` 4 px (гуттер фокуса); `--c-scrim`, `--c-ink-card`, `--r-pill`, `--sh-lg`; размер 13 px (`--fs-sm`); подпись 12 px вместо 11 px (`--font-size-label`); более тёмные `--color-text-secondary` и `-tertiary`; категории 9–10; три брейкпоинта 640/960/1280.
 
 ## Деньги
 
-Знак белорусского рубля: официальный знак 2026 года (постановление Нацбанка № 25), это **SVG, не символ шрифта** (Unicode U+20C5 ещё не вышел). В макете класс `i-byn` (маска, наследует цвет текста). В коде: единый компонент формата денег (IF-32), не вставлять «Б», «Br» или «BYN» в подписи сумм вручную. Код `BYN` остаётся в формах и API.
+Знак белорусского рубля: официальный знак 2026 года (постановление Нацбанка № 25), это **SVG, не символ шрифта** (Unicode U+20C5 ещё не вышел). Остальные знаки (₴ ₽ ¥ € $ zł) нарисованы в одном стиле на доске `Kit-Currency`: в макете классы `i-cur-*` (`i-byn` = `i-cur-byn`), маски, наследуют цвет текста, высота 0,7 em на базовой линии. В коде: компонент `currency-sign` и формат денег `money` (IF-32), не вставлять «Б», «Br» или «BYN» в подписи сумм вручную. **Правило:** на экранах знак; в графиках Chart.js суммы без знака, код в заголовке оси; в атрибутах (`title`, `aria-label`), нативном `<option>`, формах, API и MCP код (`BYN`).
+
+Размеры панелей: поверх контента **420 px** (одно значение везде), docked **340 px**, шторка счетов 340 px, диалог 560 px. Ниже 960 px счета в шторке, ленты счетов только на 960–1279 px (`development/ui-mockup.md`, решения 2026-10-18).
 
 ## Частые ошибки
 
@@ -92,6 +95,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 - Добавляешь второй вариант того же компонента (второй сегмент, второй бейдж): расширяй существующий.
 - Меняешь макет и забываешь `development/ui-mockup.md` и таблицу выше.
 - Пишешь в `Kit-*` доску значения, которых нет в `Foundations`.
+- Контейнер с `overflow` auto, scroll или hidden без внутреннего отступа `--s-focus-gutter` (4 px): обрезаются обводка фокуса, кольцо выбранного элемента и тени. Добавь отступ и погаси его отрицательным margin (класс `i-gutter` в макете), чтобы раскладка не сдвинулась. У полноширинных строк таблицы в карточке с `overflow: hidden` фокус рисуется внутрь.
 
 ## Что сделать после изменения
 
