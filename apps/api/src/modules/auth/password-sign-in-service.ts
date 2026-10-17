@@ -26,10 +26,7 @@ export type PasswordSignInOutcome =
 export type PasswordVerificationPort = Pick<PasswordService, 'verify'>;
 export type PasswordUserPort = Pick<PasswordUserRepository, 'findByUsername'>;
 export type SessionCreationPort = Pick<SessionService, 'createSession'>;
-export type LoginRateLimitPort = Pick<
-	LoginRateLimiter,
-	'check' | 'clear' | 'recordFailure'
->;
+export type LoginRateLimitPort = Pick<LoginRateLimiter, 'recordSuccess' | 'tryReserve'>;
 
 export type PasswordSignInServiceDependencies = {
 	passwordService: PasswordVerificationPort;
@@ -70,7 +67,8 @@ export class PasswordSignInService {
 			username
 		};
 
-		if (!this.rateLimiter.check(rateLimitInput).allowed) {
+		// The attempt is counted here, before the slow verification, so parallel requests cannot outrun the limit.
+		if (!this.rateLimiter.tryReserve(rateLimitInput).allowed) {
 			return this.failure('rate-limited');
 		}
 
@@ -80,12 +78,10 @@ export class PasswordSignInService {
 			: false;
 
 		if (user === undefined || !user.isActive || !isPasswordValid) {
-			this.rateLimiter.recordFailure(rateLimitInput);
-
 			return this.failure('invalid-credentials');
 		}
 
-		this.rateLimiter.clear(rateLimitInput);
+		this.rateLimiter.recordSuccess(rateLimitInput);
 
 		return {
 			ok: true,

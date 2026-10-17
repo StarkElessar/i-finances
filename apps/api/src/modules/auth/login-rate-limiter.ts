@@ -43,38 +43,42 @@ export class LoginRateLimiter {
 		this.usernames = new FixedWindowCounter(windowMilliseconds);
 	}
 
-	public check(input: LoginRateLimitInput): LoginRateLimitResult {
+	/**
+	 * Counts the attempt up front and tells whether it may proceed. Check and count happen in one synchronous step, so
+	 * concurrent requests cannot all pass the check before any of them has been counted. Callers must not verify the
+	 * password when this returns `allowed: false`, and call `recordSuccess` if the attempt turns out to be valid.
+	 */
+	public tryReserve(input: LoginRateLimitInput): LoginRateLimitResult {
 		const now = input.now ?? Date.now();
-		const pair = this.pairs.get(this.createPairKey(input), now);
+		const pairKey = this.createPairKey(input);
+		const pair = this.pairs.get(pairKey, now);
 		const username = this.usernames.get(input.username, now);
 		const blockedUntil = [
 			pair !== undefined && pair.count >= this.maxAttempts ? pair.resetAt : undefined,
 			username !== undefined && username.count >= this.maxAttemptsPerUsername ? username.resetAt : undefined
 		].filter((resetAt) => resetAt !== undefined);
 
-		if (blockedUntil.length === 0) {
-			return { allowed: true };
+		if (blockedUntil.length > 0) {
+			return {
+				allowed: false,
+				retryAfterSeconds: Math.max(1, Math.ceil((Math.max(...blockedUntil) - now) / 1000))
+			};
 		}
 
-		return {
-			allowed: false,
-			retryAfterSeconds: Math.max(1, Math.ceil((Math.max(...blockedUntil) - now) / 1000))
-		};
-	}
-
-	public recordFailure(input: LoginRateLimitInput): void {
-		const now = input.now ?? Date.now();
-
-		this.pairs.increment(this.createPairKey(input), now);
+		this.pairs.increment(pairKey, now);
 		this.usernames.increment(input.username, now);
+
+		return { allowed: true };
 	}
 
 	/**
-	 * Forgives the pair after a successful sign-in. The username counter is left alone on purpose: otherwise the
-	 * owner's own login would give a guessing attacker a fresh budget.
+	 * Gives back a reserved attempt that turned out to be a valid sign-in and forgives the pair. The username counter
+	 * only gets this one attempt back, not a reset: otherwise the owner's own login would hand a guessing attacker
+	 * a fresh budget.
 	 */
-	public clear(input: LoginRateLimitInput): void {
+	public recordSuccess(input: LoginRateLimitInput): void {
 		this.pairs.delete(this.createPairKey(input));
+		this.usernames.decrement(input.username, input.now ?? Date.now());
 	}
 
 	public reset(): void {
