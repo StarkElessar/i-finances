@@ -14,14 +14,15 @@ import {
 	type UpdateCategoryInput
 } from '@i-finances/contracts';
 
-import { CategoryNameConflictError, CategoryVersionConflictError } from './category-errors';
 import {
 	createCategoryKeywordRecords,
 	toPersistedCategory,
 	toPublicCategory
 } from './category-mappers';
+import { CategoryNameConflictError } from './category-name-conflict-error';
 import type { CategoryRepository } from './category-repository';
 import { CategoryRules } from './category-rules';
+import { CategoryVersionConflictError } from './category-version-conflict-error';
 
 export type CategoryServiceDependencies = {
 	categoryRepository: CategoryRepository;

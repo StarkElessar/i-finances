@@ -1,13 +1,10 @@
 export {
-	CategoryNameConflictError,
-	CategoryNotFoundError,
-	CategoryVersionConflictError
-} from './category-errors';
-export {
 	createCategoryKeywordRecords,
 	toPersistedCategory,
 	toPublicCategory
 } from './category-mappers';
+export { CategoryNameConflictError } from './category-name-conflict-error';
+export { CategoryNotFoundError } from './category-not-found-error';
 export {
 	type CategoryAggregateRecord,
 	type CategoryKeywordRecord,
@@ -22,3 +19,4 @@ export {
 	CategoryService,
 	type CategoryServiceDependencies
 } from './category-service';
+export { CategoryVersionConflictError } from './category-version-conflict-error';

@@ -2,13 +2,11 @@ import type { HouseholdResolver } from '@/modules/household';
 
 import { normalizeCategoryIdentity } from '@i-finances/contracts';
 
-import {
-	CategoryNameConflictError,
-	CategoryNotFoundError,
-	CategoryVersionConflictError
-} from './category-errors';
+import { CategoryNameConflictError } from './category-name-conflict-error';
+import { CategoryNotFoundError } from './category-not-found-error';
 import type { CategoryRepository } from './category-repository';
 import { type CategoryAggregateRecord } from './category-repository';
+import { CategoryVersionConflictError } from './category-version-conflict-error';
 
 export type CurrentCategory = {
 	householdId: string;
