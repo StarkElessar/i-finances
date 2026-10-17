@@ -11,7 +11,7 @@
 
 .popover {
     position: absolute;
-    z-index: 20;
+    z-index: var(--z-popover);
     inset-block-start: calc(100% + var(--space-2));
     inset-inline-start: 0;
 

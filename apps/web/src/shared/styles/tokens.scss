@@ -2,7 +2,16 @@
 @use "./mixins" as mx;
 
 :root {
-    --menu-navigation-z-index: 30;
+    // Layer scale (mockup Foundations). Always use the token, never a number.
+    // `--z-raised` is local layering inside a component (a button above the
+    // card link, a sticky header's resizer); it is not part of the page scale.
+    --z-raised: 1;
+    --z-sticky: 10; // table and group headers
+    --z-nav: 20; // top and bottom navigation
+    --z-drawer: 30; // drawer, scrim and side panel
+    --z-modal: 40; // dialog, bottom sheet
+    --z-popover: 50; // popover, menu, drop-down list, drag preview zone
+    --z-toast: 60; // toast, drag ghost
 }
 
 :root,

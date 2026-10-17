@@ -3,7 +3,7 @@
 
 .root {
     position: relative;
-    z-index: calc(var(--menu-navigation-z-index) + 1);
+    z-index: var(--z-nav);
 
     padding-block: var(--space-3);
     border-block-end: 1px solid var(--color-border);
@@ -53,7 +53,7 @@
 
 .mobile-navigation-shell {
     position: fixed;
-    z-index: 30;
+    z-index: var(--z-nav);
     inset-block-end: max(var(--space-4), env(safe-area-inset-bottom));
     inset-inline-start: 50%;
     transform: translateX(-50%);

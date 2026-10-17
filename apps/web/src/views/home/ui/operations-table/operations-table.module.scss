@@ -81,7 +81,7 @@
 
 .group-header-row {
     position: sticky;
-    z-index: 2;
+    z-index: var(--z-raised);
     inset-block-start: var(--grid-header-block-size);
 }
 
