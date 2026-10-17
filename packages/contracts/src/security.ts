@@ -14,7 +14,9 @@ export const securityErrorCodes = [
 	'last-passkey',
 	'current-session',
 	'invalid-current-password',
+	'password-not-set',
 	'password-unchanged',
+	'payload-too-large',
 	'rate-limited',
 	'unexpected'
 ] as const;
@@ -29,7 +31,9 @@ export const securityErrorMessageByCode: Record<SecurityErrorCode, string> = {
 	'last-passkey': 'Это последний способ входа. Сначала добавьте другой ключ доступа.',
 	'current-session': 'Это текущий сеанс. Чтобы завершить его, выйдите из приложения.',
 	'invalid-current-password': 'Текущий пароль указан неверно.',
+	'password-not-set': 'У аккаунта нет пароля, поэтому его нельзя сменить.',
 	'password-unchanged': 'Новый пароль совпадает с текущим.',
+	'payload-too-large': 'Слишком большой запрос.',
 	'rate-limited': 'Слишком много попыток. Попробуйте позже.',
 	unexpected: 'Не удалось выполнить действие. Попробуйте ещё раз.'
 };

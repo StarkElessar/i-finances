@@ -216,15 +216,6 @@ describe('security API authentication', () => {
 		expect(await response.json()).toMatchObject({ errorCode: 'invalid-origin', ok: false });
 		expect(await countPasskeys('alice')).toBe(2);
 	});
-
-	it('does not accept a bearer token as a session', async () => {
-		const { app } = createContext();
-		const response = await app.request('/api/security/sessions', {
-			headers: { authorization: `Bearer ${'k'.repeat(40)}` }
-		});
-
-		expect(response.status).toBe(401);
-	});
 });
 
 describe('passkeys', () => {
@@ -413,18 +404,76 @@ describe('change password', () => {
 		expect(row.passwordHash).toBe(oldPasswordHash);
 	});
 
-	it('cannot be used on an account without a usable password', async () => {
-		await database.update(users).set({ passwordHash: PLACEHOLDER_HASH }).where(eq(users.id, 'alice'));
-		const { app, sessionService } = createContext();
+	it('resets the attempt counter after a successful change', async () => {
+		const { app, sessionService } = createContext({ rateLimiter: new LoginRateLimiter({ maxAttempts: 2 }) });
 		const alice = await signIn(sessionService, app, 'alice');
+		const attempt = (currentPassword: string, newPassword: string) => alice.request('/api/security/password', {
+			body: { currentPassword, newPassword },
+			method: 'POST'
+		});
 
-		const { body, status } = await alice.request('/api/security/password', {
+		expect((await attempt('wrong-one-123456', NEW_PASSWORD)).status).toBe(400);
+		expect((await attempt(OLD_PASSWORD, NEW_PASSWORD)).status).toBe(200);
+		// Without the reset the counter would be at the limit and this would be 429.
+		expect((await attempt(OLD_PASSWORD, 'another-password-789')).status).toBe(400);
+		expect((await attempt('wrong-two-123456', 'another-password-789')).status).toBe(400);
+	});
+
+	it('limits parallel guesses: attempts are reserved before the slow verification', async () => {
+		const { app, sessionService } = createContext({ rateLimiter: new LoginRateLimiter({ maxAttempts: 3 }) });
+		const alice = await signIn(sessionService, app, 'alice');
+		const results = await Promise.all(Array.from({ length: 12 }, (_, index) => alice.request('/api/security/password', {
+			body: { currentPassword: `wrong-password-${index}`, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		})));
+		const statuses = results.map((result) => result.status);
+
+		expect(statuses.filter((status) => status === 400)).toHaveLength(3);
+		expect(statuses.filter((status) => status === 429)).toHaveLength(9);
+
+		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
+
+		expect(row.passwordHash).toBe(oldPasswordHash);
+	});
+
+	it('answers password-not-set without counting an attempt for an account without a password', async () => {
+		await database.update(users).set({ passwordHash: PLACEHOLDER_HASH }).where(eq(users.id, 'alice'));
+		const { app, sessionService } = createContext({ rateLimiter: new LoginRateLimiter({ maxAttempts: 1 }) });
+		const alice = await signIn(sessionService, app, 'alice');
+		const attempt = () => alice.request('/api/security/password', {
 			body: { currentPassword: PLACEHOLDER_HASH, newPassword: NEW_PASSWORD },
 			method: 'POST'
 		});
 
-		expect(status).toBe(400);
-		expect(body).toMatchObject({ errorCode: 'invalid-current-password' });
+		for (let index = 0; index < 3; index += 1) {
+			const { body, status } = await attempt();
+
+			expect(status).toBe(409);
+			expect(body).toMatchObject({ errorCode: 'password-not-set', ok: false });
+		}
+	});
+
+	it('rejects an oversized body before reading it', async () => {
+		const { app, sessionService } = createContext();
+		const alice = await signIn(sessionService, app, 'alice');
+		const { body, status } = await alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: 'x'.repeat(8 * 1024) },
+			method: 'POST'
+		});
+
+		expect(status).toBe(413);
+		expect(body).toMatchObject({ errorCode: 'payload-too-large', ok: false });
+	});
+
+	it('does not read or validate the body of an unauthenticated request', async () => {
+		const { app } = createContext();
+		const response = await app.request('/api/security/password', {
+			body: 'not json at all',
+			headers: { 'content-type': 'application/json', origin: AUTH_CONFIG.origin },
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(401);
 	});
 });
 

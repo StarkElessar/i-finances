@@ -126,21 +126,27 @@ export class SecurityService {
 			return failure('unauthenticated');
 		}
 
+		// No password to change: this is not a failed guess, so it is neither counted
+		// nor reported as a wrong password. Argon2 would throw on a placeholder hash.
+		if (!hasUsablePassword(user.passwordHash)) {
+			return failure('password-not-set');
+		}
+
 		const rateLimitInput = { username: user.id };
 
 		if (!this.dependencies.rateLimiter.check(rateLimitInput).allowed) {
 			return failure('rate-limited');
 		}
 
+		// The attempt is reserved BEFORE the (slow, async) verification and released
+		// on success. Check and reservation run in the same tick, so parallel requests
+		// cannot all pass the check and guess the password at once.
+		this.dependencies.rateLimiter.recordFailure(rateLimitInput);
+
 		const { currentPassword, newPassword } = parsedInput.data;
-		// A placeholder hash cannot be verified (and Argon2 would throw on it),
-		// so it is treated the same as a wrong password.
-		const isCurrentPasswordValid = hasUsablePassword(user.passwordHash)
-			&& await this.dependencies.passwordService.verify(user.passwordHash, currentPassword);
+		const isCurrentPasswordValid = await this.dependencies.passwordService.verify(user.passwordHash, currentPassword);
 
 		if (!isCurrentPasswordValid) {
-			this.dependencies.rateLimiter.recordFailure(rateLimitInput);
-
 			return failure('invalid-current-password', {
 				currentPassword: securityErrorMessageByCode['invalid-current-password']
 			});

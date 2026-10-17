@@ -68,7 +68,7 @@ export function createApiApp(
 
 		app.get('/api/security/passkeys', securityController.listPasskeys());
 		app.delete('/api/security/passkeys/:id', securityController.deletePasskey());
-		app.post('/api/security/password', securityController.changePassword());
+		app.post('/api/security/password', securityController.changePasswordBodyLimit(), securityController.changePassword());
 		app.get('/api/security/sessions', securityController.listSessions());
 		// Registered before `:id` so that `others` is never read as a session id.
 		app.delete('/api/security/sessions/others', securityController.revokeOtherSessions());

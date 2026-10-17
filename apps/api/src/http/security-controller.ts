@@ -17,12 +17,15 @@ import {
 	securitySessionsResultSchema
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import type { z } from 'zod';
 
 import { isSameOriginMutation } from './mutation-origin';
 import type { RequestSessionResolver } from './session-resolver';
 import type { ApiEnvironment } from './types';
+
+const CHANGE_PASSWORD_BODY_LIMIT_BYTES = 4 * 1024;
 
 type SecurityResult = { ok: boolean } & Partial<Pick<SecurityFailure, 'errorCode'>>;
 
@@ -37,6 +40,8 @@ const STATUS_BY_ERROR_CODE: Record<SecurityErrorCode, ContentfulStatusCode> = {
 	'invalid-origin': 403,
 	'last-passkey': 409,
 	'not-found': 404,
+	'password-not-set': 409,
+	'payload-too-large': 413,
 	'password-unchanged': 400,
 	'rate-limited': 429,
 	unauthenticated: 401,
@@ -78,15 +83,25 @@ export class SecurityHttpController {
 		};
 	}
 
+	/**
+	 * Caps the password request body: two passwords of at most 256 characters fit
+	 * easily, anything bigger is rejected before it is buffered and parsed.
+	 */
+	public changePasswordBodyLimit() {
+		return bodyLimit({
+			maxSize: CHANGE_PASSWORD_BODY_LIMIT_BYTES,
+			onError: (context: Context<ApiEnvironment>) => this.failure(context, 'payload-too-large')
+		});
+	}
+
 	public changePassword() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			const body = await this.readBody(context);
-
+			// The body is read only after the origin and session checks passed.
 			return this.handle(
 				context,
 				true,
 				changePasswordResultSchema,
-				(actor) => this.service.changePassword(actor, body)
+				async (actor) => this.service.changePassword(actor, await this.readBody(context))
 			);
 		};
 	}
