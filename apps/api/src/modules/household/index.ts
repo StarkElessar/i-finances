@@ -1,3 +1,4 @@
+export { HouseholdAccessRequiredError } from './household-access-required-error';
 export {
 	type EnsureHouseholdMembershipInput,
 	type HouseholdAccessRecord,
@@ -7,7 +8,6 @@ export {
 	DEFAULT_HOUSEHOLD_BASE_CURRENCY,
 	DEFAULT_HOUSEHOLD_ID,
 	DEFAULT_HOUSEHOLD_NAME,
-	HouseholdAccessRequiredError,
-	HouseholdResolver,
-	HouseholdSelectionRequiredError
+	HouseholdResolver
 } from './household-resolver';
+export { HouseholdSelectionRequiredError } from './household-selection-required-error';
