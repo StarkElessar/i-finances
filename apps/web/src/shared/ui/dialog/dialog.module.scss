@@ -43,6 +43,8 @@
     }
 }
 
+// Below `sm` the dialog is a full-width bottom sheet. `--dialog-inline-size`
+// (set by the caller) only takes effect from `sm` up.
 .content {
     pointer-events: auto;
 
