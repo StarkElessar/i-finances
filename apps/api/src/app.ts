@@ -7,6 +7,7 @@ import { HealthController } from '@/http/health-controller';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
+import { securityHeaders } from '@/http/security-headers';
 import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
 
@@ -29,6 +30,8 @@ export function createApiApp(
 ): Hono<ApiEnvironment> {
 	const app = new Hono<ApiEnvironment>();
 	const healthController = new HealthController();
+
+	app.use('*', securityHeaders());
 
 	app.get('/api/health', healthController.get());
 
