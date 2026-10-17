@@ -15,9 +15,18 @@ Add first-class **transfers between accounts of different currencies** so that:
 - a transfer can be **edited and soft-deleted as one unit** (both legs always together);
 - family total continues to use **current NB rates** on account balances (unchanged).
 
+## Same-currency transfers (added 2026-10-17)
+
+Transfers between two accounts of one currency (e.g. BYN → BYN) are allowed:
+
+- the server is the source of truth: the effective rate is always `1` and `toAmountMinor = fromAmountMinor`; a rate sent by the client is ignored
+- base currency account: both legs are `identity` snapshots (`rate 1`)
+- foreign currency account (e.g. USD → USD): one NBRB quote is resolved and both legs share the same snapshot and base amount
+- the web dialog hides the rate field for such a pair
+- migration `0012` drops `transfers_different_currencies_check` (table rebuild); `db:migrate` now suspends foreign keys around it
+
 ## Non-goals (v1)
 
-- Same-currency transfers
 - Autofill of NB rate in the transfer form
 - Category on transfers
 - Migrating historical fake expense/income pairs into transfers
@@ -37,7 +46,7 @@ Add first-class **transfers between accounts of different currencies** so that:
 |---|---|
 | `id` | PK |
 | `householdId` | FK |
-| `fromAccountId`, `toAccountId` | FKs; must be same household; currencies **must differ** in v1 |
+| `fromAccountId`, `toAccountId` | FKs; must be same household; currencies may match (see Same-currency transfers) |
 | `fromAmountMinor` | Debit amount in from-account currency |
 | `toAmountMinor` | Credit amount = `convertMinorUnitsByExchangeRate(fromAmountMinor, exchangeRate)` |
 | `exchangeRate` | Manual normalized decimal string; contract `toAmount = fromAmount × rate` |

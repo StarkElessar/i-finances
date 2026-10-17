@@ -16,7 +16,7 @@
 - Kebab-case file and directory names
 - Mobile-first SCSS via `~/shared/styles/mixins` only
 - Never mutate production `data/i-finances.sqlite` for manual checks — use a copy
-- v1: different currencies only; manual rate only; no category on transfers
+- v1: different currencies only (lifted 2026-10-17, see the spec); manual rate only; no category on transfers
 - Spec: `docs/superpowers/specs/2026-08-28-account-transfer-design.md`
 
 ## File map
