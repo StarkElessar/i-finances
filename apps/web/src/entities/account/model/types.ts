@@ -1,24 +1,13 @@
-import type { AccountTypeValue, CurrencyCodeValue } from '@/shared/lib';
+import type { PersistedAccount as ContractPersistedAccount } from '@i-finances/contracts';
 
-export type Account = {
-	color: string;
-	currency: CurrencyCodeValue;
-	description: string;
-	id: string;
-	initialBalanceMinor: number;
-	isColorAccentEnabled: boolean;
-	isIncludedInFamilyTotal: boolean;
-	name: string;
-	type: AccountTypeValue;
-};
+type DistributiveOmit<TValue, TKey extends PropertyKey> = TValue extends unknown ? Omit<TValue, TKey> : never;
 
 /**
- * Canonical account DTO returned by the server persistence layer.
+ * Canonical account DTO returned by the server (list representation).
  */
-export type PersistedAccount = Account & {
-	archivedAt: string | null;
-	createdAt: string;
-	hasOperations: boolean;
-	updatedAt: string;
-	version: number;
-};
+export type PersistedAccount = ContractPersistedAccount;
+
+/**
+ * Account without persistence metadata, used by presentational code.
+ */
+export type Account = DistributiveOmit<PersistedAccount, 'archivedAt' | 'createdAt' | 'hasOperations' | 'updatedAt' | 'version'>;

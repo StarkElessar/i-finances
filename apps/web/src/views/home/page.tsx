@@ -59,6 +59,12 @@ import {
 	updateTransferAction
 } from '@/entities/transfer';
 
+import {
+	type AccountCommandResult,
+	collectFieldErrors,
+	createAccountInputSchema,
+	updateAccountInputSchema
+} from '@i-finances/contracts';
 import { Title } from '@solidjs/meta';
 import {
 	createAsync,
@@ -85,6 +91,7 @@ import {
 	onMount,
 	Show
 } from 'solid-js';
+import type { z } from 'zod';
 
 import { homeSearchParamsSchema } from './model/home-search-params';
 import type { AccountDialogValue } from './ui/account-dialog';
@@ -124,6 +131,7 @@ function toAccountDialogValue(account: PersistedAccount): AccountDialogValue {
 		isColorAccentEnabled: account.isColorAccentEnabled,
 		isIncludedInFamilyTotal: account.isIncludedInFamilyTotal,
 		name: account.name,
+		owner: account.owner,
 		type: account.type
 	};
 }
@@ -556,20 +564,45 @@ function HomeContent(props: HomeContentProps) {
 			isColorAccentEnabled: accountValue.isColorAccentEnabled,
 			isIncludedInFamilyTotal: accountValue.isIncludedInFamilyTotal,
 			name: accountValue.name,
+			owner: accountValue.owner,
 			type: accountValue.type
+		};
+		const reportInvalidInput = (error: z.ZodError) => {
+			setAccountDialogFieldErrors(collectFieldErrors(error));
+			setAccountDialogError('Проверьте поля счёта.');
 		};
 
 		setAccountDialogError(undefined);
 		setAccountDialogFieldErrors(undefined);
 
 		try {
-			const result = currentAccount
-				? await runUpdateAccount({
+			let result: AccountCommandResult;
+
+			// Parsing here narrows the payload to the contract union, so no casts are needed.
+			if (currentAccount) {
+				const parsedInput = updateAccountInputSchema.safeParse({
 					...editableFields,
 					id: currentAccount.id,
 					version: currentAccount.version
-				})
-				: await runCreateAccount(editableFields);
+				});
+
+				if (!parsedInput.success) {
+					reportInvalidInput(parsedInput.error);
+					return;
+				}
+
+				result = await runUpdateAccount(parsedInput.data);
+			}
+			else {
+				const parsedInput = createAccountInputSchema.safeParse(editableFields);
+
+				if (!parsedInput.success) {
+					reportInvalidInput(parsedInput.error);
+					return;
+				}
+
+				result = await runCreateAccount(parsedInput.data);
+			}
 
 			if (result.ok) {
 				homeSearch.setParams({ account: result.account.id }, { history: 'push' });
@@ -968,7 +1001,8 @@ function HomeContent(props: HomeContentProps) {
 																		{accountTypeMeta.label}
 																	</span>
 																	<span>
-																		{item.description
+																		{item.owner
+																			|| item.description
 																			|| 'Без группы'}
 																	</span>
 																</span>

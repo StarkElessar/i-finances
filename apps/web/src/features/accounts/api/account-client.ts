@@ -12,6 +12,7 @@ import {
 	changeAccountArchiveStateInputSchema,
 	type CreateAccountInput,
 	createAccountInputSchema,
+	persistedAccountFullSchema,
 	type UpdateAccountInput,
 	updateAccountInputSchema
 } from '@i-finances/contracts';
@@ -36,6 +37,13 @@ export class AccountClient {
 		return this.client.get(
 			`/api/accounts?${query.toString()}`,
 			accountCollectionSchema
+		);
+	}
+
+	public getFull(id: string) {
+		return this.client.get(
+			`/api/accounts/${encodeURIComponent(id)}`,
+			persistedAccountFullSchema
 		);
 	}
 

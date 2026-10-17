@@ -17,6 +17,14 @@ export const getAccounts = query(
 	'accounts'
 );
 
+/**
+ * Not a router `query`: the response carries the full card number, which must
+ * not be cached next to the account list.
+ */
+export function getAccountFull(id: string) {
+	return client.getFull(id);
+}
+
 export const createAccount = action(
 	(input: CreateAccountInput) => resolveCommandResult(
 		() => client.create(input),

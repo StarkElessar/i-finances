@@ -29,6 +29,7 @@ export type AccountDialogValue = {
 	isColorAccentEnabled: boolean;
 	isIncludedInFamilyTotal: boolean;
 	name: string;
+	owner: string;
 	type: AccountTypeValue;
 };
 
@@ -68,6 +69,7 @@ function createDefaultDialogValue(): AccountDialogValue {
 		isColorAccentEnabled: false,
 		isIncludedInFamilyTotal: true,
 		name: '',
+		owner: '',
 		type: AccountType.CARD
 	};
 }
@@ -81,6 +83,7 @@ function formatBalanceInput(value: number): string {
  */
 export function AccountDialog(props: AccountDialogProps) {
 	const [accountName, setAccountName] = createSignal('');
+	const [accountOwner, setAccountOwner] = createSignal('');
 	const [accountBalance, setAccountBalance] = createSignal('');
 	const [accountCurrency, setAccountCurrency] = createSignal<CurrencyCodeValue>(CurrencyCode.BYN);
 	const [accountColor, setAccountColor] = createSignal<string>(DEFAULT_ACCOUNT_COLOR);
@@ -101,6 +104,7 @@ export function AccountDialog(props: AccountDialogProps) {
 			const value = props.initialValue ?? createDefaultDialogValue();
 
 			setAccountName(value.name);
+			setAccountOwner(value.owner);
 			setAccountBalance(formatBalanceInput(value.balance));
 			setAccountCurrency(value.currency);
 			setAccountColor(value.color);
@@ -112,6 +116,10 @@ export function AccountDialog(props: AccountDialogProps) {
 
 	const handleNameInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
 		setAccountName(event.currentTarget.value);
+	};
+
+	const handleOwnerInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
+		setAccountOwner(event.currentTarget.value);
 	};
 
 	const handleBalanceInput = (event: InputEvent & { currentTarget: HTMLInputElement }) => {
@@ -147,6 +155,7 @@ export function AccountDialog(props: AccountDialogProps) {
 				isColorAccentEnabled: isColorAccentEnabled(),
 				isIncludedInFamilyTotal: isIncludedInFamilyTotal(),
 				name,
+				owner: accountOwner().trim(),
 				type: accountType()
 			});
 		}
@@ -216,6 +225,17 @@ export function AccountDialog(props: AccountDialogProps) {
 							required
 							value={accountName()}
 							onInput={handleNameInput}
+						/>
+
+						<TextField
+							class={css.formFieldFull}
+							error={props.fieldErrors?.owner}
+							label='Кому принадлежит'
+							maxLength={60}
+							optional
+							placeholder='Например, Сергей'
+							value={accountOwner()}
+							onInput={handleOwnerInput}
 						/>
 
 						<TextField
