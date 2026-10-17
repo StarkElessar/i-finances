@@ -1,5 +1,11 @@
 import { z } from 'zod';
 
+import {
+	cardAccountDetailsFullSchema,
+	cardAccountDetailsInputSchema,
+	cardAccountDetailsViewSchema,
+	emptyAccountDetailsSchema
+} from './account-details';
 import { currencyCodeSchema } from './category';
 
 export const accountTypeSchema = z.enum(['card', 'cash', 'other', 'savings']);
@@ -19,6 +25,11 @@ const accountDescriptionSchema = z.string()
 	.trim()
 	.max(160, 'Описание не должно превышать 160 символов.');
 
+const accountOwnerSchema = z.string()
+	.trim()
+	.max(60, 'Не длиннее 60 символов.')
+	.default('');
+
 const editableAccountFields = {
 	color: z.string().regex(/^#[\da-f]{6}$/i, 'Укажите цвет в HEX-формате.'),
 	currency: currencyCodeSchema,
@@ -27,7 +38,12 @@ const editableAccountFields = {
 	isColorAccentEnabled: z.boolean(),
 	isIncludedInFamilyTotal: z.boolean(),
 	name: accountNameSchema,
-	type: accountTypeSchema
+	owner: accountOwnerSchema
+};
+
+const updateIdentityFields = {
+	id: accountIdSchema,
+	version: accountVersionSchema
 };
 
 export const accountListInputSchema = z.object({
@@ -39,15 +55,23 @@ export const accountListInputSchema = z.object({
 
 export type AccountListInput = z.infer<typeof accountListInputSchema>;
 
-export const createAccountInputSchema = z.object(editableAccountFields);
+export const createAccountInputSchema = z.discriminatedUnion('type', [
+	z.object({ ...editableAccountFields, details: cardAccountDetailsInputSchema.optional(), type: z.literal('card') }),
+	z.object({ ...editableAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('cash') }),
+	z.object({ ...editableAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('other') }),
+	z.object({ ...editableAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('savings') })
+]);
 
 export type CreateAccountInput = z.infer<typeof createAccountInputSchema>;
 
-export const updateAccountInputSchema = z.object({
-	...editableAccountFields,
-	id: accountIdSchema,
-	version: accountVersionSchema
-});
+const updateAccountFields = { ...editableAccountFields, ...updateIdentityFields };
+
+export const updateAccountInputSchema = z.discriminatedUnion('type', [
+	z.object({ ...updateAccountFields, details: cardAccountDetailsInputSchema.optional(), type: z.literal('card') }),
+	z.object({ ...updateAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('cash') }),
+	z.object({ ...updateAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('other') }),
+	z.object({ ...updateAccountFields, details: emptyAccountDetailsSchema.optional(), type: z.literal('savings') })
+]);
 
 export type UpdateAccountInput = z.infer<typeof updateAccountInputSchema>;
 
@@ -62,7 +86,7 @@ export type ChangeAccountArchiveStateInput = z.infer<
 
 const accountDateSchema = z.string().min(1);
 
-export const persistedAccountSchema = z.object({
+const persistedAccountFields = {
 	archivedAt: accountDateSchema.nullable(),
 	color: z.string(),
 	createdAt: accountDateSchema,
@@ -74,10 +98,29 @@ export const persistedAccountSchema = z.object({
 	isColorAccentEnabled: z.boolean(),
 	isIncludedInFamilyTotal: z.boolean(),
 	name: z.string().min(1),
-	type: accountTypeSchema,
+	owner: z.string(),
 	updatedAt: accountDateSchema,
 	version: accountVersionSchema
-});
+};
+
+export const persistedAccountSchema = z.discriminatedUnion('type', [
+	z.object({ ...persistedAccountFields, details: cardAccountDetailsViewSchema, type: z.literal('card') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('cash') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('other') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('savings') })
+]);
+
+/**
+ * One account with full details, for the edit form (`GET /api/accounts/:id`).
+ */
+export const persistedAccountFullSchema = z.discriminatedUnion('type', [
+	z.object({ ...persistedAccountFields, details: cardAccountDetailsFullSchema, type: z.literal('card') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('cash') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('other') }),
+	z.object({ ...persistedAccountFields, details: emptyAccountDetailsSchema, type: z.literal('savings') })
+]);
+
+export type PersistedAccountFull = z.infer<typeof persistedAccountFullSchema>;
 
 export type PersistedAccount = z.infer<typeof persistedAccountSchema>;
 
