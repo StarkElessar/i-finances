@@ -2,12 +2,12 @@
 @use "@/shared/styles/mixins" as mx;
 
 .root {
+    // No z-index on purpose: a stacking context here would trap the profile
+    // menu (popover and mobile sheet, --z-popover) at the header's level, and
+    // the portaled bottom navigation (--z-nav) would cover the sheet.
     position: relative;
-    z-index: var(--z-nav);
-
     padding-block: var(--space-3);
     border-block-end: 1px solid var(--color-border);
-
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 
     @include mx.media-mn(md) {

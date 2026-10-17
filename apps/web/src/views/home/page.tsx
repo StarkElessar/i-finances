@@ -110,7 +110,8 @@ import type {
 import { TransferDialog } from './ui/transfer-dialog';
 
 const FALLBACK_FAMILY_TOTAL_CURRENCY = CurrencyCode.BYN;
-const DESKTOP_DETAILS_QUERY = '(min-width: 60.0625em)';
+// Same as mx.media-mn(md) in home.module.scss (960 px), so the docked column and the docked panel switch together.
+const DESKTOP_DETAILS_QUERY = '(min-width: 60em)';
 
 const ACCOUNT_CURRENCY_OPTIONS = CurrencyCode.values();
 

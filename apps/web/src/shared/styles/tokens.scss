@@ -26,6 +26,9 @@
     --font-size-body-lg: #{fn.rem(16)};
     --font-size-body-md: #{fn.rem(14)};
     --font-size-caption: #{fn.rem(13)}; // mockup --fs-sm: compact secondary text, buttons sm
+    // Legacy 12 px with no mockup counterpart (same value as --font-size-label).
+    // New code uses --font-size-caption (13) or --font-size-label (12); screens
+    // migrate in IF-15…IF-19 and IF-39, then the token goes.
     --font-size-body-sm: #{fn.rem(12)};
     --font-size-label: #{fn.rem(12)}; // mockup --fs-label (was 11): field label, hint, table head
     --line-height-display: 1.2;
@@ -81,27 +84,30 @@
     --color-surface-subtle: #f1f5f9;
     --color-surface-strong: #e8edf4;
     --color-text-primary: #172033;
-    --color-text-secondary: #526078;
+    --color-text-secondary: #4a586f;
     --color-text-tertiary: #627089;
     --color-text-inverse: #fff;
     --color-border: #dce3ed;
     --color-border-strong: #c5cfdd;
     --color-scrim: rgb(23 32 51 / 45%);
     --color-ink-card: #1b2333;
+    --color-on-ink-card: #f3f6fb; // same in both themes: the card is dark in both
+    --color-on-ink-card-secondary: #aab6c9;
 
     // Brand and semantic states
     --color-primary: rgb(63 119 168);
     --color-primary-hover: color-mix(in srgb, var(--color-primary), #000 6%);
     --color-primary-active: color-mix(in srgb, var(--color-primary), #000 10%);
-    --color-primary-soft: #eaf1ff;
+    --color-on-primary: #fff; // text and icons on --color-primary
+    --color-primary-soft: #e6eff8;
     --color-danger: #c82d4d;
     --color-danger-hover: #a9203d;
-    --color-danger-soft: #fff0f3;
+    --color-danger-soft: #fdecef;
     --color-success: #147a50;
-    --color-success-soft: #eaf8f1;
-    --color-warning: #a15c00;
-    --color-warning-soft: #fff5df;
-    --color-focus-ring: rgb(37 99 235 / 22%);
+    --color-success-soft: #e6f6ee;
+    --color-warning: #8f5200;
+    --color-warning-soft: #fff3d9;
+    --color-focus-ring: rgb(63 119 168 / 35%);
 
     // Category palette: 10 hues, lightness varies so they stay apart without
     // relying on hue alone (mockup --k-1..10, --k-other). Charts show the top
@@ -120,7 +126,7 @@
 
     // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
-    --shadow-md: 0 12px 32px rgb(23 32 51 / 10%);
+    --shadow-md: 0 12px 32px rgb(23 32 51 / 12%);
     --shadow-lg: 0 24px 64px rgb(23 32 51 / 22%);
     --duration-fast: 120ms;
     --duration-normal: 180ms;
@@ -145,6 +151,7 @@
     --color-primary: #6ea8ff;
     --color-primary-hover: #8ab8ff;
     --color-primary-active: #a7c9ff;
+    --color-on-primary: #0b1424; // white on #6ea8ff is 2.4:1, this is 7.6:1
     --color-primary-soft: #1c3154;
     --color-danger: #ff7891;
     --color-danger-hover: #ff93a7;
@@ -153,7 +160,7 @@
     --color-success-soft: #17392d;
     --color-warning: #efb45f;
     --color-warning-soft: #42331c;
-    --color-focus-ring: rgb(110 168 255 / 28%);
+    --color-focus-ring: rgb(110 168 255 / 40%);
 
     // Category palette, dark steps
     --color-series-1: #5b9cf0;
@@ -167,8 +174,8 @@
     --color-series-9: #c9a45f;
     --color-series-10: #8e9bb2;
     --color-series-other: #6b778c;
-    --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
-    --shadow-md: 0 12px 32px rgb(0 0 0 / 28%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 30%);
+    --shadow-md: 0 12px 32px rgb(0 0 0 / 40%);
     --shadow-lg: 0 24px 64px rgb(0 0 0 / 55%);
 
     color-scheme: dark;

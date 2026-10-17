@@ -30,7 +30,7 @@
     &:hover,
     &[aria-expanded="true"] {
         border-color: var(--color-primary);
-        color: var(--color-text-inverse);
+        color: var(--color-on-primary);
         background: var(--color-primary);
     }
 }
