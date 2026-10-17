@@ -19,6 +19,12 @@
     }
 }
 
+.row-single {
+    @include mx.media-mn(640) {
+        grid-template-columns: 1fr;
+    }
+}
+
 .preview {
     display: flex;
     flex-wrap: wrap;

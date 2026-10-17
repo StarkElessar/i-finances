@@ -26,4 +26,5 @@ export {
 	toCanonicalTransferRate,
 	toDisplayTransferRate
 } from './model/rate-quote';
+export { listTransferTargetAccounts } from './model/target-accounts';
 export type { Transfer } from './model/types';

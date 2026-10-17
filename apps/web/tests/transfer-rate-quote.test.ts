@@ -68,4 +68,39 @@ describe('transfer rate quote', () => {
 			CurrencyCode.BYN
 		))).toBe('Курс (1 USD = … EUR)');
 	});
+
+	it('treats equal currencies as a fixed 1:1 transfer', () => {
+		expect(getTransferRateQuoteMode(
+			CurrencyCode.BYN,
+			CurrencyCode.BYN,
+			CurrencyCode.BYN
+		)).toEqual({ currency: CurrencyCode.BYN, kind: 'same-currency' });
+
+		expect(toCanonicalTransferRate(
+			'',
+			CurrencyCode.USD,
+			CurrencyCode.USD,
+			CurrencyCode.BYN
+		)).toBe('1');
+
+		expect(toCanonicalTransferRate(
+			'3',
+			CurrencyCode.BYN,
+			CurrencyCode.BYN,
+			CurrencyCode.BYN
+		)).toBe('1');
+
+		expect(toDisplayTransferRate(
+			'1',
+			CurrencyCode.USD,
+			CurrencyCode.USD,
+			CurrencyCode.BYN
+		)).toBe('1');
+
+		expect(formatTransferRateQuoteLabel(getTransferRateQuoteMode(
+			CurrencyCode.BYN,
+			CurrencyCode.BYN,
+			CurrencyCode.BYN
+		))).toBe('Курс (1 BYN = 1 BYN)');
+	});
 });

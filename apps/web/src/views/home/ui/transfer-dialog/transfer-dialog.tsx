@@ -24,6 +24,7 @@ import type { Transfer } from '@/entities/transfer';
 import {
 	formatTransferRateQuoteLabel,
 	getTransferRateQuoteMode,
+	listTransferTargetAccounts,
 	toCanonicalTransferRate,
 	toDisplayTransferRate
 } from '@/entities/transfer';
@@ -79,7 +80,7 @@ type ContactOption = {
 };
 
 /**
- * Renders the create/edit dialog for a cross-currency account transfer.
+ * Renders the create/edit dialog for an account transfer.
  */
 export function TransferDialog(props: TransferDialogProps) {
 	const [fromAccountId, setFromAccountId] = createSignal<string | null>(null);
@@ -106,21 +107,20 @@ export function TransferDialog(props: TransferDialogProps) {
 	});
 
 	const toAccountOptions = createMemo(() => {
-		const from = fromAccount();
-
-		return accountOptions().filter((account) => {
-			if (from === undefined) {
-				return true;
-			}
-
-			return account.id !== from.id && account.currency !== from.currency;
-		});
+		return listTransferTargetAccounts(accountOptions(), fromAccount()?.id);
 	});
 
 	const toAccount = createMemo(() => {
 		const id = toAccountId();
 
 		return toAccountOptions().find((account) => account.id === id);
+	});
+
+	const sameCurrency = createMemo(() => {
+		const from = fromAccount();
+		const to = toAccount();
+
+		return from !== undefined && to !== undefined && from.currency === to.currency;
 	});
 
 	const contactOptions = createMemo((): ContactOption[] => {
@@ -154,6 +154,26 @@ export function TransferDialog(props: TransferDialogProps) {
 
 		return options;
 	});
+
+	/**
+	 * Switches the account pair and clears the rate when the pair stops or
+	 * starts being same-currency, so a stale `1` never leaks into a real rate.
+	 */
+	const applyAccounts = (nextFromId: string | null, nextToId: string | null) => {
+		const find = (id: string | null) => accountOptions().find((account) => account.id === id);
+		const nextFrom = find(nextFromId);
+		const nextTo = find(nextToId);
+		const nextSameCurrency = nextFrom !== undefined
+			&& nextTo !== undefined
+			&& nextFrom.currency === nextTo.currency;
+
+		if (nextSameCurrency !== sameCurrency()) {
+			setRateInput('');
+		}
+
+		setFromAccountId(nextFromId);
+		setToAccountId(nextToId);
+	};
 
 	const rateQuoteMode = createMemo(() => {
 		const from = fromAccount();
@@ -282,7 +302,10 @@ export function TransferDialog(props: TransferDialogProps) {
 			props.householdBaseCurrency
 		);
 
-		if (canonicalRate === undefined || normalizeExchangeRate(rateInput()) === undefined) {
+		if (
+			canonicalRate === undefined
+			|| (!sameCurrency() && normalizeExchangeRate(rateInput()) === undefined)
+		) {
 			setLocalError('Укажите курс обмена.');
 			return;
 		}
@@ -313,6 +336,7 @@ export function TransferDialog(props: TransferDialogProps) {
 						</Dialog.Title>
 						<Dialog.Description>
 							Сумма списывается с одного счёта и зачисляется на другой.
+							Между счетами в одной валюте сумма зачисления равна сумме списания.
 							Если одна из валют — базовая валюта семьи, курс вводится как
 							в банке: сколько базовой валюты за 1 единицу иностранной.
 							Перевод не влияет на статистику расходов.
@@ -330,23 +354,10 @@ export function TransferDialog(props: TransferDialogProps) {
 							placeholder='Выберите счёт'
 							searchPlaceholder='Название счёта'
 							value={fromAccountId()}
-							onChange={(value) => {
-								setFromAccountId(value);
-								const nextTo = toAccountId();
-								const from = accountOptions().find((account) => account.id === value);
-
-								if (
-									from
-									&& nextTo
-									&& (
-										nextTo === from.id
-										|| accountOptions().find((account) => account.id === nextTo)?.currency
-											=== from.currency
-									)
-								) {
-									setToAccountId(null);
-								}
-							}}
+							onChange={(value) => applyAccounts(
+								value,
+								toAccountId() === value ? null : toAccountId()
+							)}
 						/>
 
 						<Combobox
@@ -361,10 +372,10 @@ export function TransferDialog(props: TransferDialogProps) {
 								: 'Выберите счёт'}
 							searchPlaceholder='Название счёта'
 							value={toAccountId()}
-							onChange={(value) => setToAccountId(value)}
+							onChange={(value) => applyAccounts(fromAccountId(), value)}
 						/>
 
-						<div class={css.row}>
+						<div class={cn(css.row, sameCurrency() && css.rowSingle)}>
 							<TextField
 								disabled={props.loading}
 								error={props.fieldErrors?.fromAmountMinor}
@@ -378,16 +389,18 @@ export function TransferDialog(props: TransferDialogProps) {
 								onInput={(event) => setAmountInput(event.currentTarget.value)}
 							/>
 
-							<TextField
-								disabled={props.loading}
-								error={props.fieldErrors?.exchangeRate}
-								inputMode='decimal'
-								label={rateFieldLabel()}
-								placeholder='3,2'
-								required
-								value={rateInput()}
-								onInput={(event) => setRateInput(event.currentTarget.value)}
-							/>
+							<Show when={!sameCurrency()}>
+								<TextField
+									disabled={props.loading}
+									error={props.fieldErrors?.exchangeRate}
+									inputMode='decimal'
+									label={rateFieldLabel()}
+									placeholder='3,2'
+									required
+									value={rateInput()}
+									onInput={(event) => setRateInput(event.currentTarget.value)}
+								/>
+							</Show>
 						</div>
 
 						<div class={css.preview}>

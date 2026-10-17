@@ -9,8 +9,13 @@ import {
  *
  * When exactly one leg uses the household base currency, the quote means
  * `1 foreign = rate base` (bank-style). Otherwise it means `1 from = rate to`.
+ * Accounts of one currency have no editable rate: the transfer is always 1:1.
  */
 export type TransferRateQuoteMode =
+	| {
+		kind: 'same-currency';
+		currency: CurrencyCodeValue;
+	}
 	| {
 		kind: 'foreign-in-base';
 		baseCurrency: CurrencyCodeValue;
@@ -31,7 +36,7 @@ export function getTransferRateQuoteMode(
 	householdBaseCurrency: CurrencyCodeValue
 ): TransferRateQuoteMode {
 	if (fromCurrency === toCurrency) {
-		throw new Error('Transfer currencies must differ.');
+		return { currency: fromCurrency, kind: 'same-currency' };
 	}
 
 	if (
@@ -67,6 +72,10 @@ export function getTransferRateQuoteMode(
  * Builds the rate field label for the active quote mode.
  */
 export function formatTransferRateQuoteLabel(mode: TransferRateQuoteMode): string {
+	if (mode.kind === 'same-currency') {
+		return `Курс (1 ${mode.currency} = 1 ${mode.currency})`;
+	}
+
 	if (mode.kind === 'foreign-in-base') {
 		return `Курс (1 ${mode.foreignCurrency} = … ${mode.baseCurrency})`;
 	}
@@ -83,6 +92,10 @@ export function toCanonicalTransferRate(
 	toCurrency: CurrencyCodeValue,
 	householdBaseCurrency: CurrencyCodeValue
 ): string | undefined {
+	if (fromCurrency === toCurrency) {
+		return '1';
+	}
+
 	const normalizedRate = normalizeExchangeRate(userRate);
 
 	if (normalizedRate === undefined) {
@@ -114,6 +127,10 @@ export function toDisplayTransferRate(
 	toCurrency: CurrencyCodeValue,
 	householdBaseCurrency: CurrencyCodeValue
 ): string {
+	if (fromCurrency === toCurrency) {
+		return '1';
+	}
+
 	const mode = getTransferRateQuoteMode(
 		fromCurrency,
 		toCurrency,
