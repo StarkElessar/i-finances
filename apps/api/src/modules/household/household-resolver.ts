@@ -1,31 +1,13 @@
 import type { CurrencyCode } from '@i-finances/contracts';
 
+import { HouseholdAccessRequiredError } from './household-access-required-error';
 import type { HouseholdRepository } from './household-repository';
 import { type HouseholdAccessRecord } from './household-repository';
+import { HouseholdSelectionRequiredError } from './household-selection-required-error';
 
 export const DEFAULT_HOUSEHOLD_ID = 'default-household';
 export const DEFAULT_HOUSEHOLD_NAME = 'Семья';
 export const DEFAULT_HOUSEHOLD_BASE_CURRENCY: CurrencyCode = 'BYN';
-
-/**
- * Signals that an authenticated user does not belong to a household.
- */
-export class HouseholdAccessRequiredError extends Error {
-	public constructor() {
-		super('Household membership required.');
-		this.name = 'HouseholdAccessRequiredError';
-	}
-}
-
-/**
- * Signals that the first version cannot choose between several households.
- */
-export class HouseholdSelectionRequiredError extends Error {
-	public constructor() {
-		super('Household selection required.');
-		this.name = 'HouseholdSelectionRequiredError';
-	}
-}
 
 export class HouseholdResolver {
 	public constructor(
