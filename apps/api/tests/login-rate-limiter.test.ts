@@ -107,6 +107,14 @@ describe('LoginRateLimiter', () => {
 			});
 		});
 
+		it('can be switched off for limiters that are already keyed by one account', () => {
+			limiter = new LoginRateLimiter({ maxAttemptsPerUsername: Number.POSITIVE_INFINITY });
+
+			for (let index = 0; index < 100; index += 1) {
+				expect(limiter.tryReserve({ ipAddress: `198.51.100.${index + 1}`, now: 1000, username: 'user-id' }).allowed).toBe(true);
+			}
+		});
+
 		it('still allows an attempt after nineteen attempts', () => {
 			attemptFromManyAddresses(19);
 

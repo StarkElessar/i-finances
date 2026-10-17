@@ -1,7 +1,7 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
-import { users } from '@/infrastructure/database/schema';
+import { sessions, users } from '@/infrastructure/database/schema';
 
-import { eq } from 'drizzle-orm';
+import { and, eq, ne } from 'drizzle-orm';
 
 export type PasswordAuthUserRecord = {
 	displayName: string;
@@ -9,6 +9,16 @@ export type PasswordAuthUserRecord = {
 	isActive: boolean;
 	passwordHash: string;
 	username: string;
+};
+
+export type ReplacePasswordInput = {
+	/** The hash the caller verified; the update is skipped if it changed meanwhile. */
+	expectedPasswordHash: string;
+	/** The session that stays signed in. */
+	keepSessionId: string;
+	newPasswordHash: string;
+	now: Date;
+	userId: string;
 };
 
 export class PasswordUserRepository {
@@ -52,5 +62,31 @@ export class PasswordUserRepository {
 		await this.database.update(users)
 			.set({ displayName, updatedAt: new Date() })
 			.where(eq(users.id, userId));
+	}
+
+	/**
+	 * Stores the new password hash and deletes every other session of the user
+	 * in one transaction, so a changed password never leaves old sessions alive.
+	 * Returns the number of revoked sessions, or `undefined` when the stored hash
+	 * no longer matches `expectedPasswordHash` (the password changed concurrently).
+	 */
+	public replacePasswordAndRevokeOtherSessions(input: ReplacePasswordInput): number | undefined {
+		return this.database.transaction((transaction) => {
+			const updated = transaction.update(users)
+				.set({ passwordHash: input.newPasswordHash, updatedAt: input.now })
+				.where(and(eq(users.id, input.userId), eq(users.passwordHash, input.expectedPasswordHash)))
+				.returning({ id: users.id })
+				.all();
+
+			if (updated.length === 0) {
+				return undefined;
+			}
+
+			return transaction.delete(sessions)
+				.where(and(eq(sessions.userId, input.userId), ne(sessions.id, input.keepSessionId)))
+				.returning({ id: sessions.id })
+				.all()
+				.length;
+		});
 	}
 }
