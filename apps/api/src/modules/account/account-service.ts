@@ -13,9 +13,9 @@ import {
 
 import { ACCOUNT_DETAILS_HANDLERS } from './details/account-details-handlers';
 import { AccountCurrencyLockedError } from './account-currency-locked-error';
-import { AccountVersionConflictError } from './account-errors';
 import type { AccountRecord, AccountRepository } from './account-repository';
 import { AccountRules } from './account-rules';
+import { AccountVersionConflictError } from './account-version-conflict-error';
 
 export type AccountServiceDependencies = {
 	accountRepository: AccountRepository;
