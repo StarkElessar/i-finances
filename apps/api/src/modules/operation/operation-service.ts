@@ -27,18 +27,16 @@ import type {
 	UpdateOperationInput
 } from '@i-finances/contracts';
 
-import {
-	OperationReferenceUnavailableError,
-	OperationTransferLinkedError,
-	OperationVersionConflictError
-} from './operation-errors';
 import { toPersistedOperation } from './operation-mappers';
 import {
 	createOperationRateSnapshot,
 	getStoredOperationQuote
 } from './operation-rate';
+import { OperationReferenceUnavailableError } from './operation-reference-unavailable-error';
 import type { OperationRepository } from './operation-repository';
 import { OperationRules } from './operation-rules';
+import { OperationTransferLinkedError } from './operation-transfer-linked-error';
+import { OperationVersionConflictError } from './operation-version-conflict-error';
 
 export type OperationServiceDependencies = {
 	accountRepository: AccountRepository;
