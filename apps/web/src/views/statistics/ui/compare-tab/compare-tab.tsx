@@ -33,7 +33,7 @@ const DIMENSIONS: readonly { id: BreakdownDimension; label: string }[] = [
 
 const PLAIN_AMOUNT_FORMATTER = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
 
-const SERIES_FALLBACKS = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300', '#4a3aa7', '#e34948'];
+const SERIES_FALLBACKS = ['#2a78d6', '#e0632c', '#14946a', '#d99a00', '#d8588a', '#6a4fc9', '#0c7f94', '#c93c40'];
 
 function browserStorage(): Storage | undefined {
 	try {
@@ -120,7 +120,7 @@ export function CompareTab(): JSX.Element {
 		);
 	});
 	const palette = createMemo(() => ({
-		other: resolveThemeColor('--color-series-other', '#a3adbd'),
+		other: resolveThemeColor('--color-series-other', '#9aa5b8'),
 		series: SERIES_FALLBACKS.map((fallback, slot) => resolveThemeColor(`--color-series-${slot + 1}`, fallback))
 	}));
 	const options = createMemo<ReferenceOption[]>(() => {

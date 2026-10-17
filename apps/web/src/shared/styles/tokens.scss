@@ -102,16 +102,20 @@
     --color-warning-soft: #fff5df;
     --color-focus-ring: rgb(37 99 235 / 22%);
 
-    // Categorical series palette (dataviz reference instance, CVD-validated order)
+    // Category palette: 10 hues, lightness varies so they stay apart without
+    // relying on hue alone (mockup --k-1..10, --k-other). Charts show the top
+    // 8 and fold the rest into "other".
     --color-series-1: #2a78d6;
-    --color-series-2: #eb6834;
-    --color-series-3: #1baf7a;
-    --color-series-4: #eda100;
-    --color-series-5: #e87ba4;
-    --color-series-6: #008300;
-    --color-series-7: #4a3aa7;
-    --color-series-8: #e34948;
-    --color-series-other: #a3adbd;
+    --color-series-2: #e0632c;
+    --color-series-3: #14946a;
+    --color-series-4: #d99a00;
+    --color-series-5: #d8588a;
+    --color-series-6: #6a4fc9;
+    --color-series-7: #0c7f94;
+    --color-series-8: #c93c40;
+    --color-series-9: #8c6a2f;
+    --color-series-10: #56647c;
+    --color-series-other: #9aa5b8;
 
     // Elevation and motion
     --shadow-sm: 0 1px 2px rgb(23 32 51 / 8%);
@@ -150,16 +154,18 @@
     --color-warning-soft: #42331c;
     --color-focus-ring: rgb(110 168 255 / 28%);
 
-    // Categorical series palette, dark steps
-    --color-series-1: #3987e5;
-    --color-series-2: #d95926;
-    --color-series-3: #199e70;
-    --color-series-4: #c98500;
-    --color-series-5: #d55181;
-    --color-series-6: #008300;
-    --color-series-7: #9085e9;
-    --color-series-8: #e66767;
-    --color-series-other: #5d6879;
+    // Category palette, dark steps
+    --color-series-1: #5b9cf0;
+    --color-series-2: #f0825a;
+    --color-series-3: #3cc196;
+    --color-series-4: #f0b94a;
+    --color-series-5: #ef86ae;
+    --color-series-6: #9b86ee;
+    --color-series-7: #3bb5cb;
+    --color-series-8: #f06a6e;
+    --color-series-9: #c9a45f;
+    --color-series-10: #8e9bb2;
+    --color-series-other: #6b778c;
     --shadow-sm: 0 1px 2px rgb(0 0 0 / 24%);
     --shadow-md: 0 12px 32px rgb(0 0 0 / 28%);
     --shadow-lg: 0 24px 64px rgb(0 0 0 / 55%);
