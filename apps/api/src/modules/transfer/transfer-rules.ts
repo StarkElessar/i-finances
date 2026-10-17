@@ -2,15 +2,13 @@ import type { AccountRecord, TransferRecord } from '@/infrastructure/database/sc
 import type { AccountRepository } from '@/modules/account';
 import type { ContactRepository } from '@/modules/contact';
 
-import {
-	TransferAccountsInvalidError,
-	TransferAccountUnavailableError,
-	TransferDeletedError,
-	TransferNotFoundError,
-	TransferReferenceUnavailableError,
-	TransferVersionConflictError
-} from './transfer-errors';
+import { TransferAccountUnavailableError } from './transfer-account-unavailable-error';
+import { TransferAccountsInvalidError } from './transfer-accounts-invalid-error';
+import { TransferDeletedError } from './transfer-deleted-error';
+import { TransferNotFoundError } from './transfer-not-found-error';
+import { TransferReferenceUnavailableError } from './transfer-reference-unavailable-error';
 import type { TransferRepository, TransferWithLegs } from './transfer-repository';
+import { TransferVersionConflictError } from './transfer-version-conflict-error';
 
 export type TransferContactSelection = {
 	id: string;
