@@ -47,3 +47,14 @@ $max-offset: 0.02px;
         @content;
     }
 }
+
+// Safety gutter for a scroll container (overflow auto/scroll/hidden): its
+// edge clips children, which cuts off focus rings and shadows. The padding
+// moves the clip edge outward and the negative margin cancels it, so the
+// content stays where it was. Only for containers sized by their content or
+// by flex/grid stretch, with no padding or margin of their own: with a fixed
+// size (`block-size: 100%`) the margin shifts the layout.
+@mixin scroll-gutter {
+    margin: calc(var(--space-focus-gutter) * -1);
+    padding: var(--space-focus-gutter);
+}

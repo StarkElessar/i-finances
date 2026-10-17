@@ -52,6 +52,7 @@
     --space-10: #{fn.rem(40)};
     --space-11: #{fn.rem(48)};
     --space-12: #{fn.rem(48)};
+    --space-focus-gutter: #{fn.rem(4)}; // safety padding inside scroll containers (mx.scroll-gutter)
 
     // Shape and control dimensions
     --radius-xs: #{fn.rem(4)};
