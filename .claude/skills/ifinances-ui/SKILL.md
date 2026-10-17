@@ -19,7 +19,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Что | Где |
 |---|---|
-| **Макет и кит** (Claude Design, 34 доски, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
+| **Макет и кит** (Claude Design, 46 досок, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
 | Решения владельца, состав холста | `development/ui-mockup.md` |
 | Аудит дефектов (A1…C6) | `development/ui-audit.md` |
 | Токены в коде (эталон) | `apps/web/src/shared/styles/tokens.scss` |
@@ -43,19 +43,31 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Switch | `shared/ui/switch` | есть |
 | | цвет счёта | `shared/ui/color-picker` | есть |
 | | Checkbox, Select, поле даты, Segmented, Tabs, Chip, Badge, навигатор периода | нет в `shared/ui` (период живёт в `views/home/ui/operations-workspace`, месяц в `views/statistics/ui/month-navigator`) | нет, IF-20 |
+| `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/combobox` (есть), select и дата: нативные `<select>`, `type=date` в оболочке | оболочка нет, IF-20 |
+| | мультивыбор в popover, диапазон периода (статистика) | нет | нет, IF-19, IF-20 |
+| | выбор цвета категории (10 оттенков `k-1…k-10`, свой запрещён) | `shared/ui/color-picker` (6 цветов, hex) | не по доске, IF-19 |
 | `Kit-Surfaces` | Dialog | `shared/ui/dialog` | есть |
 | | Menu / Popover | `shared/ui/context-menu` | есть |
 | | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Toast, Skeleton, Empty state | нет | нет, IF-20 |
-| `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код» | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
+| `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
+| | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
+| | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
+| | FAB и нижняя навигация | `widgets/app-header` (навигация), FAB экранный | нет общих, IF-17, IF-20 |
+| | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, z-index не по шкале, IF-14 |
+| `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть |
 | | поля номера и срока карты | `shared/ui/card-number-field`, `card-expiry-field` | есть |
 | | выбор типа счёта, блок реквизитов в форме | `features/account-details` (`ui/card`, `model`) | есть |
 | | шапка счёта с мини-картой | `features/account-details/ui/card/card-header-visual.tsx` | есть |
 | `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout` | раскладка операций, колонки по контейнеру, тулбар периода | `views/home/ui/operations-workspace` | не по доске, IF-15, IF-16 |
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
+| `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
+| `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |
+| `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` | нет, IF-10, IF-39 |
+| `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие, участники окружения, тексты бота | нет | нет, IF-10 |
 | `M-*` (390 px), `D-*` (1280 px) | экраны по одному | `views/home` (операции, счета, перевод), `views/receipts`, `views/categories`, `views/contacts`, `views/statistics`, `features/auth` (вход), `widgets/app-header` (навигация, меню профиля) | по задачам IF-15…IF-19 |
 
 Домашний слой: UI экранов живёт в `views/<экран>/page.tsx` и `views/<экран>/ui`. `features/*/api` это клиенты API; UI в `features` есть только у `account-details`, `auth`, `passkey-registration`.
