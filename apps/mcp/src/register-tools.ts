@@ -1,6 +1,6 @@
 import { toAccountSummary } from '@/account-summary';
 import type { ApiClient } from '@/api-client';
-import { ApiRequestError } from '@/api-request-error';
+import { describeApiError } from '@/describe-api-error';
 import { parseAmountToMinor } from '@/parse-amount';
 
 import type {
@@ -20,16 +20,6 @@ function toolText(value: unknown): { content: Array<{ text: string; type: 'text'
 
 function toolError(message: string): { content: Array<{ text: string; type: 'text' }>; isError: true } {
 	return { content: [{ text: `Error: ${message}`, type: 'text' }], isError: true };
-}
-
-function describeApiError(error: unknown): string {
-	if (error instanceof ApiRequestError) {
-		const body = error.body as { message?: string } | undefined;
-
-		return body?.message ?? `API request failed with status ${error.status}`;
-	}
-
-	return error instanceof Error ? error.message : String(error);
 }
 
 export function registerTools(server: McpServer, apiClient: ApiClient): void {

@@ -116,7 +116,7 @@ afterEach(() => {
 
 function createService(): OperationService {
 	let operationSequence = 0;
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
 
 	return new OperationService({

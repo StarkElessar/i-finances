@@ -111,7 +111,7 @@ afterEach(() => {
 
 function createService(): OperationService {
 	let operationSequence = 0;
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
 
 	return new OperationService({
@@ -134,7 +134,7 @@ function createTransferServiceForTest(): TransferService {
 		contactRepository: new ContactRepository(database),
 		createId: () => `transfer-${++sequence}`,
 		exchangeRateResolver: new ExchangeRateService(new ExchangeRateRepository(database)),
-		householdResolver: new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE),
+		householdResolver: new HouseholdResolver(new HouseholdRepository(database)),
 		now: () => FIXED_DATE,
 		transferRepository: createTransferRepository(database)
 	});

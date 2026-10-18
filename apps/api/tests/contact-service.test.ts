@@ -77,7 +77,7 @@ function createService(): ContactService {
 	return new ContactService({
 		contactRepository: new ContactRepository(database),
 		createId: () => 'contact-main',
-		householdResolver: new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE),
+		householdResolver: new HouseholdResolver(new HouseholdRepository(database)),
 		now: () => FIXED_DATE
 	});
 }

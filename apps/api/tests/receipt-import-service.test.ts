@@ -142,7 +142,7 @@ afterEach(async () => {
 });
 
 function createOperationService(): OperationService {
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => currentDate);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const exchangeRateService = new ExchangeRateService(new ExchangeRateRepository(database));
 
 	return new OperationService({
@@ -158,7 +158,7 @@ function createOperationService(): OperationService {
 
 function createService(operationService: OperationService = createOperationService()): ReceiptImportService {
 	let idSequence = 0;
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => currentDate);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const contactRepository = new ContactRepository(database);
 
 	return new ReceiptImportService({

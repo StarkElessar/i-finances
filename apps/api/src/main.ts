@@ -1,5 +1,5 @@
 import { createApiApp } from '@/app';
-import { createApiDependencies } from '@/composition-root';
+import { createApiDependencies, toApiAppDependencies } from '@/composition-root';
 
 import { serve } from '@hono/node-server';
 
@@ -15,10 +15,7 @@ dependencies.startReceiptProcessing().catch((error: unknown) => {
 	console.error('Failed to start receipt processing.', error);
 });
 
-const app = createApiApp({
-	...dependencies,
-	telegramWebhookController: dependencies.telegram.webhookController
-});
+const app = createApiApp(toApiAppDependencies(dependencies));
 
 // Telegram: webhook registration or polling starts only once the server is up, and polling ends with the process.
 const telegramUpdatesRunner = dependencies.telegram.updatesRunner;

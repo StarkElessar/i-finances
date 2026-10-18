@@ -5,11 +5,7 @@ import {
 	CategoryNotFoundError,
 	CategoryVersionConflictError
 } from '@/modules/category';
-import {
-	DEFAULT_HOUSEHOLD_ID,
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
+import { DEFAULT_HOUSEHOLD_ID } from '@/modules/household';
 
 import {
 	type CategoryCommandResult,
@@ -259,7 +255,7 @@ export class CategoryHttpController {
 			}, 409);
 		}
 
-		if (error instanceof CategoryVersionConflictError || error instanceof HouseholdSelectionRequiredError) {
+		if (error instanceof CategoryVersionConflictError) {
 			return context.json<CategoryCommandResult>({
 				errorCode: 'conflict',
 				message: 'Данные изменились. Обновите категории и повторите действие.',
@@ -273,14 +269,6 @@ export class CategoryHttpController {
 				message: 'Категория не найдена.',
 				ok: false
 			}, 404);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError) {
-			return context.json<CategoryCommandResult>({
-				errorCode: 'forbidden',
-				message: 'Недостаточно прав для изменения категорий.',
-				ok: false
-			}, 403);
 		}
 
 		throw error;

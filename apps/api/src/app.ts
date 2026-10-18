@@ -4,6 +4,8 @@ import type { CategoryHttpController } from '@/http/category-controller';
 import type { ContactHttpController } from '@/http/contact-controller';
 import type { ExchangeRateHttpController } from '@/http/exchange-rate-controller';
 import { HealthController } from '@/http/health-controller';
+import type { HouseholdHttpController } from '@/http/household-controller';
+import { respondToHouseholdAccessError } from '@/http/household-required-response';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
@@ -21,6 +23,7 @@ export type ApiAppDependencies = {
 	categoryController?: CategoryHttpController;
 	contactController?: ContactHttpController;
 	exchangeRateController?: ExchangeRateHttpController;
+	householdController?: HouseholdHttpController;
 	operationController?: OperationHttpController;
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
@@ -106,6 +109,14 @@ export function createApiApp(
 		app.get('/api/exchange-rates/current', dependencies.exchangeRateController.current());
 	}
 
+	if (dependencies.householdController !== undefined) {
+		const householdController = dependencies.householdController;
+
+		app.get('/api/household', householdController.get());
+		app.post('/api/household', householdController.create());
+		app.put('/api/household', householdController.update());
+	}
+
 	if (dependencies.operationController !== undefined) {
 		const operationController = dependencies.operationController;
 
@@ -166,6 +177,13 @@ export function createApiApp(
 	}, 404));
 
 	app.onError((error, context) => {
+		// The single mapping of «no household» for every household-scoped route (Р8): controllers let it through.
+		const householdRequired = respondToHouseholdAccessError(context, error);
+
+		if (householdRequired !== undefined) {
+			return householdRequired;
+		}
+
 		console.error(error);
 
 		return context.json({
