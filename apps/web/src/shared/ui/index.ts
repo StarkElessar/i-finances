@@ -69,6 +69,8 @@ export type { SegmentedOption, SegmentedProps } from './segmented';
 export { Segmented } from './segmented';
 export type { SwitchProps } from './switch';
 export { Switch } from './switch';
+export type { TabOption, TabsProps } from './tabs';
+export { Tabs } from './tabs';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
 export type {

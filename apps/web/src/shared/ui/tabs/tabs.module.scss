@@ -1,0 +1,79 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+// Mockup `.i-tabs`: a strip with a 1 px rule; the selected tab has a 2 px underline in the
+// primary colour that covers the rule (margin-bottom -1px).
+.root {
+    display: flex;
+    gap: var(--space-7);
+    border-block-end: 1px solid var(--color-border);
+
+    // The selected tab is the only tab stop, so it is the one that holds focus. It must not
+    // change on focus (AGENTS.md), so the ring is drawn around the whole strip instead.
+    &:has(.tab-selected:focus-visible) {
+        border-radius: var(--radius-sm);
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+}
+
+.tab {
+    display: inline-flex;
+    align-items: center;
+
+    box-sizing: border-box;
+    margin-block-end: fn.rem(-1);
+    padding: var(--space-4) 0 var(--space-5);
+    border: 0;
+    border-block-end: 2px solid transparent;
+
+    font-family: inherit;
+    font-size: var(--font-size-body-md);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-secondary);
+    white-space: nowrap;
+
+    background: transparent;
+
+    transition:
+        color var(--duration-fast) var(--ease-standard),
+        border-color var(--duration-fast) var(--ease-standard);
+
+    &:not(.tab-selected, :disabled) {
+        cursor: pointer;
+
+        &:hover {
+            border-block-end-color: var(--color-border-strong);
+            color: var(--color-text-primary);
+        }
+
+        &:focus-visible {
+            outline: 3px solid var(--color-focus-ring);
+            outline-offset: 1px;
+        }
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+    }
+
+    @include mx.pointer-coarse {
+        min-block-size: var(--control-size-touch);
+    }
+}
+
+.tab-selected {
+    border-block-end-color: var(--color-primary);
+    color: var(--color-primary);
+
+    // The strip shows the focus (see `.root`), not the tab itself.
+    &:focus-visible {
+        outline: none;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tab {
+        transition: none;
+    }
+}
