@@ -16,10 +16,10 @@ function renderMenu(args: MenuStoryArgs) {
 			<ContextMenu.Content align={args.align}>
 				<ContextMenu.Label>Операция</ContextMenu.Label>
 				<ContextMenu.Item><Pencil size={16}/> Изменить</ContextMenu.Item>
-				<ContextMenu.Item><Copy size={16}/> Дублировать</ContextMenu.Item>
+				<ContextMenu.Item id='context-menu-duplicate'><Copy size={16}/> Дублировать</ContextMenu.Item>
 				<ContextMenu.Item disabled>Переместить</ContextMenu.Item>
 				<ContextMenu.Separator/>
-				<ContextMenu.Item variant='danger'><Trash size={16}/> Удалить</ContextMenu.Item>
+				<ContextMenu.Item id='context-menu-delete' variant='danger'><Trash size={16}/> Удалить</ContextMenu.Item>
 			</ContextMenu.Content>
 		</ContextMenu.Root>
 	);
@@ -58,4 +58,19 @@ export const AlignEnd: Story = {
 
 export const RightClick: Story = {
 	args: { triggerMode: 'contextmenu' }
+};
+
+export const Hover: Story = {
+	args: { defaultOpen: true },
+	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-duplicate' } }
+};
+
+export const Focus: Story = {
+	args: { defaultOpen: true },
+	parameters: { layout: 'fullscreen', pseudo: { focusVisible: '#context-menu-duplicate' } }
+};
+
+export const DangerHover: Story = {
+	args: { defaultOpen: true },
+	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-delete' } }
 };
