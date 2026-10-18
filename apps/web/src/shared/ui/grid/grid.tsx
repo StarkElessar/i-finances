@@ -50,7 +50,7 @@ export function Grid<T>(props: GridProps<T>) {
 				<table
 					aria-label={props['aria-label']}
 					class={css.table}
-					style={{ width: `${tableWidth()}px`, 'min-width': '100%' }}
+					style={{ width: `${tableWidth()}px` }}
 				>
 					<colgroup>
 						<For each={columns}>

@@ -82,6 +82,7 @@
 .group-header-row {
     position: sticky;
     z-index: var(--z-raised);
+    /* stylelint-disable-next-line no-unknown-custom-properties -- declared by shared/ui/grid, which this table sits in */
     inset-block-start: var(--grid-header-block-size);
 }
 
