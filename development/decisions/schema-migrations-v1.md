@@ -17,12 +17,13 @@
 - `scripts/migrate-db.ts` вызывает `applyMigrations` при каждом старте контейнера `if-api` (`command` в compose: `migrate-db.ts && main.ts`). Если миграция падает, API не стартует, контейнер не становится `healthy`.
 - Мигратор Drizzle выполняет **все ожидающие миграции в одной транзакции**. Если 0016 упадёт, откатятся и 0014, и 0015: база останется ровно такой, какой была до старта.
 - `applyMigrations` выключает `foreign_keys` **до** транзакции (внутри транзакции `PRAGMA foreign_keys` ничего не делает) и после миграций проверяет `PRAGMA foreign_key_check`.
+- `foreign_key_check` выполняется **после** `COMMIT`. Если он найдёт нарушения, миграции уже записаны, а API не стартует, пока нарушения не убраны (проверка повторяется при каждом старте). Поэтому пробный прогон 5.3 смотрит `fk violations`.
 
 ## 3. Опасное место DB-2 и предохранитель
 
 `DROP TABLE users` при включённых внешних ключах делает неявный `DELETE FROM users`. Каскадные дети (`sessions`, `webauthn_credentials`, `webauthn_challenges`, `household_members`) при этом **молча удаляются**, а NO ACTION-ссылки (`operations.created_by_user_id` и другие) роняют миграцию. Проверено тестом: обычный `migrate()` с включёнными ключами на базе, где у пользователя есть только сеанс, оставляет 0 сеансов.
 
-Через `applyMigrations` этого не происходит. Чтобы ошибочный запуск (`drizzle-kit migrate`, ручной `migrate()`, другой скрипт) не стёр данные, в начале 0015 стоит предохранитель: если ключи включены и в `users` есть строки, миграция падает с `CHECK constraint failed: users_rebuild_requires_foreign_keys_off_use_apply_migrations`. Пустые базы (тесты, новая установка) он пропускает. **Миграции на проде запускать только `scripts/migrate-db.ts` (или стартом контейнера), не `drizzle-kit migrate`.**
+Через `applyMigrations` этого не происходит. Чтобы ошибочный запуск (`drizzle-kit migrate`, ручной `migrate()`, другой скрипт) не стёр данные, в начале 0015 стоит предохранитель: если ключи включены и в `users` есть строки, миграция падает с `CHECK constraint failed: users_rebuild_requires_foreign_keys_off_use_apply_migrations`. Пустые базы (тесты, новая установка) он пропускает. `drizzle-kit migrate` при срабатывании только завершается с кодом 1 и причину не печатает; база при этом не меняется. **Миграции на проде запускать только `scripts/migrate-db.ts` (или стартом контейнера), не `drizzle-kit migrate`.**
 
 ## 4. Правило DB-3 для дублей и пользователей без членства
 
@@ -63,10 +64,12 @@ docker compose exec -T backup sh -c "OUT=/backups/pre-deploy-db-migrations-$TS; 
   sqlite3 \$OUT/i-finances.sqlite 'PRAGMA integrity_check;'"
 ```
 
-Ожидается `ok`. Файл лежит на хосте в `~/sites/homelab/backups/pre-deploy-db-migrations-<ts>/`. Записать количество строк до миграции:
+Ожидается `ok`. Файл лежит на хосте в `~/sites/homelab/backups/pre-deploy-db-migrations-$TS/`. Ниже `$TS` — та же переменная: команды выполнять в той же сессии SSH (в новой сессии задать `TS=<метка из имени каталога>`). Подставлять `<ts>` буквально нельзя: вне кавычек `<` — перенаправление, а в `-v "...-<ts>:..."` Docker молча создаст пустой каталог.
+
+Записать количество строк до миграции. Без `-readonly`: это копия, а копия из `.backup` остаётся в режиме WAL, и `sqlite3 -readonly` без файлов `-wal`/`-shm` её не откроет (`unable to open database file`):
 
 ```sh
-cat <<'SQL' | docker compose exec -T backup sqlite3 -readonly /backups/pre-deploy-db-migrations-<ts>/i-finances.sqlite
+cat <<'SQL' | docker compose exec -T backup sqlite3 "/backups/pre-deploy-db-migrations-$TS/i-finances.sqlite"
 SELECT 'users', count(*) FROM users UNION ALL SELECT 'sessions', count(*) FROM sessions
 UNION ALL SELECT 'webauthn_credentials', count(*) FROM webauthn_credentials
 UNION ALL SELECT 'household_members', count(*) FROM household_members
@@ -76,11 +79,11 @@ SQL
 
 ### 5.3. Пробный прогон на копии (до `up`)
 
-После `git pull --ff-only` и `docker compose build if-api` прогнать миграции на копии бэкапа в одноразовом контейнере из нового образа. `docker run`, а не `docker compose run`: так не монтируется боевой том и не подхватывается `env_file`. Имя образа проверить (`docker compose images if-api` или `docker image ls`), обычно `homelab-if-api`.
+После `cd ~/sites/i-finances && git pull --ff-only` и `cd ~/sites/homelab && docker compose build if-api if-web` (оба образа, как в обычной выкатке) прогнать миграции на копии бэкапа в одноразовом контейнере из нового образа. `docker run`, а не `docker compose run`: так не монтируется боевой том и не подхватывается `env_file`. Имя образа проверить (`docker compose images if-api` или `docker image ls`), обычно `homelab-if-api`.
 
 ```sh
 cd ~/sites/homelab
-docker run --rm -i -v "$PWD/backups/pre-deploy-db-migrations-<ts>:/check:ro" -e DATABASE_URL=/tmp/trial.sqlite homelab-if-api sh -c '
+docker run --rm -i -v "$PWD/backups/pre-deploy-db-migrations-$TS:/check:ro" -e DATABASE_URL=/tmp/trial.sqlite homelab-if-api sh -c '
   cp /check/i-finances.sqlite /tmp/trial.sqlite &&
   ./node_modules/.bin/tsx scripts/migrate-db.ts &&
   node -e "
@@ -101,14 +104,16 @@ docker run --rm -i -v "$PWD/backups/pre-deploy-db-migrations-<ts>:/check:ro" -e 
 
 ## 6. Откат
 
-**Сначала откат кода, а не базы.** Старый код (до этой ветки) совместим со схемой после миграций, пока в базе нет пользователей без пароля, то есть до релиза 2 (вход через Telegram):
+**Сначала откат кода, а не базы.** Старый код (до этой ветки) совместим со схемой после миграций, пока у каждого пользователя есть членство (проверено: тесты API текущего master проходят на схеме 0016):
 
-- `password_hash` NULL-able, но все значения непустые, старый код читает их как строки;
+- `password_hash` NULL-able; в типе старого кода это `string`, но во время выполнения старый код перед каждой проверкой пароля вызывает `hasUsablePassword`, который принимает NULL;
 - уникальный индекс членства старому резолверу не мешает: он создаёт членство только тому, у кого его нет;
 - новые таблицы старый код не видит;
 - старый мигратор при старте ничего не применяет: последняя запись в `__drizzle_migrations` новее последней миграции его журнала.
 
-Порядок: `git checkout <предыдущий коммит>` в `~/sites/i-finances` (или revert), `docker compose build if-api && docker compose up -d if-api`. Данные, внесённые после выкатки, сохраняются.
+**Опасно после A5:** старый резолвер пользователю без членства **создаёт членство `owner` в `default-household`**. Как только появятся пользователи без членства (онбординг после входа через Telegram, удалённые участники по Р7), откат кода ниже A5 откроет им все финансы семьи с правами владельца. После релиза 2 откат кода — только с предварительной проверкой `SELECT ... WHERE NOT EXISTS (членство)` (запрос из 5.1) на пустой результат.
+
+Порядок: `git revert` слияния в репозитории, `push`, затем на сервере `cd ~/sites/i-finances && git pull --ff-only` (не `git checkout` на сервере: master и origin не должны расходиться), `cd ~/sites/homelab && docker compose build if-api if-web && docker compose up -d if-api && docker compose run --rm if-web`. Данные, внесённые после выкатки, сохраняются.
 
 **Восстановление базы из бэкапа** — только если сама база повреждена или миграция сделала не то. Теряется всё, что записано после бэкапа (операции, сеансы, ключи доступа). Порядок:
 
@@ -117,8 +122,8 @@ docker run --rm -i -v "$PWD/backups/pre-deploy-db-migrations-<ts>:/check:ro" -e 
 3. Подложить бэкап в том `if-sqlite-data`, удалив `-wal` и `-shm` текущей базы (иначе SQLite применит чужой журнал WAL к восстановленному файлу):
 
    ```sh
-   docker compose run --rm --no-deps --user root -v "$PWD/backups/pre-deploy-db-migrations-<ts>:/restore:ro" \
-     --entrypoint sh if-api -c 'cd /app/apps/api/data && rm -f i-finances.sqlite-wal i-finances.sqlite-shm && \
+   docker compose run --rm --no-deps --user root -v "$PWD/backups/pre-deploy-db-migrations-$TS:/restore:ro" \
+     --entrypoint sh if-api -c 'test -s /restore/i-finances.sqlite && cd /app/apps/api/data && rm -f i-finances.sqlite-wal i-finances.sqlite-shm && \
        cp /restore/i-finances.sqlite i-finances.sqlite && chown node:node i-finances.sqlite'
    ```
 
@@ -128,7 +133,7 @@ docker run --rm -i -v "$PWD/backups/pre-deploy-db-migrations-<ts>:/check:ro" -e 
 ## 7. Что необратимо
 
 - **DB-3, вставленные членства.** Обратной миграции нет. Добавленные строки опознаются по `role = 'member'`, `household_id = 'default-household'` и `joined_at` = времени выкатки, но удалять их обратно — решение владельца, а не скрипта: человек потеряет доступ к окружению.
-- **DB-2 после первого пользователя без пароля.** Пока в `users` нет NULL, обратная пересборка с `NOT NULL` возможна. После релиза 2 (регистрация через Telegram) вернуть `NOT NULL` можно только удалив или поменяв таких пользователей, то есть с потерей данных. Откат кода после этого тоже ломается: старый код ожидает строку в `password_hash`.
+- **DB-2 после первого пользователя без пароля.** Пока в `users` нет NULL, обратная пересборка с `NOT NULL` возможна. После релиза 2 (регистрация через Telegram) вернуть `NOT NULL` можно только удалив или поменяв таких пользователей, то есть с потерей данных. Откат кода после этого опасен не из-за NULL в `password_hash` (старый код его переносит), а из-за автосоздания членства `owner` в старом резолвере (раздел 6).
 - **DB-1 после записи в новые таблицы.** Удаление таблиц теряет привязки Telegram и приглашения; люди, вошедшие только через Telegram, останутся без входа.
 - **Восстановление из бэкапа** теряет всё, что записано после него (раздел 6).
 
