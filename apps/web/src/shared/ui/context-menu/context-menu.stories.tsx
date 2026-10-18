@@ -60,17 +60,21 @@ export const RightClick: Story = {
 	args: { triggerMode: 'contextmenu' }
 };
 
+// An open menu focuses its first item after a timeout, which would show a real :focus-visible next to the forced
+// hover. Waiting for that timeout and then blurring keeps only the targeted item highlighted; the menu stays open.
+async function releaseAutoFocus() {
+	await new Promise((resolve) => setTimeout(resolve));
+	(document.activeElement as HTMLElement | null)?.blur();
+}
+
 export const Hover: Story = {
 	args: { defaultOpen: true },
-	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-duplicate' } }
-};
-
-export const Focus: Story = {
-	args: { defaultOpen: true },
-	parameters: { layout: 'fullscreen', pseudo: { focusVisible: '#context-menu-duplicate' } }
+	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-duplicate' } },
+	play: releaseAutoFocus
 };
 
 export const DangerHover: Story = {
 	args: { defaultOpen: true },
-	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-delete' } }
+	parameters: { layout: 'fullscreen', pseudo: { hover: '#context-menu-delete' } },
+	play: releaseAutoFocus
 };
