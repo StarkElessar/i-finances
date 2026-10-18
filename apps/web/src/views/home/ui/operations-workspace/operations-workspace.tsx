@@ -169,7 +169,7 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 						aria-label={view.sort().direction === 'desc' ? 'Показать в обратном порядке' : 'Показать в прямом порядке'}
 						class={css.sortDirection}
 						iconOnly
-						size='sm'
+						size='md'
 						title={view.sort().direction === 'desc' ? 'По убыванию' : 'По возрастанию'}
 						variant='secondary'
 						onClick={handleSortDirectionChange}
@@ -220,18 +220,18 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 
 				<div class={cn(css.toolbarGroup, css.toolbarActions)}>
 					<Show when={!isSearchOpen()}>
-						<Button aria-label='Открыть поиск' iconOnly size='sm' variant='ghost' onClick={handleOpenSearch}>
+						<Button aria-label='Открыть поиск' iconOnly size='md' variant='ghost' onClick={handleOpenSearch}>
 							<Search size={18}/>
 						</Button>
 					</Show>
-					<Button aria-label='Добавить перевод' iconOnly size='sm' variant='secondary' onClick={props.onCreateTransfer}>
+					<Button aria-label='Добавить перевод' iconOnly size='md' variant='secondary' onClick={props.onCreateTransfer}>
 						<ArrowLeftRight size={18}/>
 					</Button>
 					<Button
 						aria-label='Добавить операцию'
 						class={css.addOperation}
 						iconOnly
-						size='sm'
+						size='md'
 						variant='primary'
 						onClick={props.onCreateOperation}
 					>
@@ -249,13 +249,13 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 						aria-label='Поиск операций'
 						class={css.searchField}
 						placeholder='Название, комментарий, категория, получатель или сумма'
-						size='sm'
+						size='md'
 						startContent={<Search size={16}/>}
 						value={view.searchQuery()}
 						onInput={(event) => view.setSearchQuery(event.currentTarget.value)}
 						onKeyDown={handleSearchKeyDown}
 					/>
-					<Button aria-label='Закрыть поиск' iconOnly size='sm' variant='ghost' onClick={handleCloseSearch}>
+					<Button aria-label='Закрыть поиск' iconOnly size='md' variant='ghost' onClick={handleCloseSearch}>
 						<X size={17}/>
 					</Button>
 				</div>

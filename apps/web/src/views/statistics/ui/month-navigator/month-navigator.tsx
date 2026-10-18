@@ -28,6 +28,7 @@ export function MonthNavigator(props: MonthNavigatorProps) {
 			label={formatMonthNavigatorLabel(props.anchor)}
 			nextLabel='Следующий месяц'
 			previousLabel='Предыдущий месяц'
+			size='sm'
 			onNext={() => props.onChange(shiftOperationPeriod(props.anchor, 'month', 1))}
 			onPrevious={() => props.onChange(shiftOperationPeriod(props.anchor, 'month', -1))}
 		/>

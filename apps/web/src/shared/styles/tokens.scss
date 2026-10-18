@@ -210,3 +210,13 @@
         --space-12: #{fn.rem(64)};
     }
 }
+
+// Touch screens: every standalone control is 44 px, `sm` and `md` alike (decision 2026-10-19,
+// kit-open-questions.md, section 5). `lg` stays 48. Precise pointer: 40 in toolbars, forms and headers,
+// 32 only in dense places. Declared after the theme blocks (same specificity as `[data-theme]`).
+:root {
+    @include mx.pointer-coarse {
+        --control-size-sm: var(--control-size-touch);
+        --control-size-md: var(--control-size-touch);
+    }
+}
