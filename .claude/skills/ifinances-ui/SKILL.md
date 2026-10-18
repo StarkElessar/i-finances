@@ -36,6 +36,8 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | Доска (файл) | Что на ней | Код | Статус |
 |---|---|---|---|
 | `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index | `shared/styles/tokens.scss` | частично, добивает IF-14 |
+| | типографика (компонент `Typography`) | `shared/ui/typography` | есть, есть история |
+| | контейнер страницы: ширина и боковые отступы | `shared/ui/container` | есть, есть история |
 | `Kit-Controls` | Button | `shared/ui/button` | есть, есть история |
 | | поля ввода (text, textarea, сумма) | `shared/ui/text-field` | есть, есть история |
 | | телефон | `shared/ui/phone-field` | есть, есть история |
@@ -50,6 +52,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Menu / Popover | `shared/ui/context-menu` | есть, есть история |
 | | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
+| | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Toast, Skeleton, Empty state | нет | нет, IF-20 |
 | `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
@@ -62,11 +65,13 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | поля номера и срока карты | `shared/ui/card-number-field`, `card-expiry-field` | есть, есть история |
 | | выбор типа счёта, блок реквизитов в форме | `features/account-details` (`ui/card`, `model`) | есть |
 | | шапка счёта с мини-картой | `features/account-details/ui/card/card-header-visual.tsx` | есть |
+| | иконка типа счёта (карта, наличные, сбережения, прочее) | `shared/ui/account-icon` | есть, есть история |
 | `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout` | раскладка операций, колонки по контейнеру, тулбар периода | `views/home/ui/operations-workspace` (контейнер, `mx.container-mn`, колонки и тулбар по ширине контейнера, IF-15) | тулбар и колонки по доске; раскладка (лента счетов, панель 340) не по доске, IF-16 |
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
 | `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
 | `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |
 | `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` | нет, IF-10, IF-39 |
+| | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` | есть, есть история |
 | `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие, участники окружения, тексты бота | нет | нет, IF-10 |
 | `M-*` (390 px), `D-*` (1280 px) | экраны по одному | `views/home` (операции, счета, перевод), `views/receipts`, `views/categories`, `views/contacts`, `views/statistics`, `features/auth` (вход), `widgets/app-header` (навигация, меню профиля) | по задачам IF-15…IF-19 |
 
