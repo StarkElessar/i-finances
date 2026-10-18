@@ -1,4 +1,6 @@
 export { FetchTelegramBotClient, type FetchTelegramBotClientOptions } from './fetch-telegram-bot-client';
+export { IgnoringTelegramUpdateHandler } from './ignoring-telegram-update-handler';
+export { ProcessedUpdateIds } from './processed-update-ids';
 export { TelegramApiError } from './telegram-api-error';
 export {
 	type AnswerCallbackQueryInput,
@@ -18,6 +20,8 @@ export { TelegramNetworkError } from './telegram-network-error';
 export { TelegramRateLimitedError } from './telegram-rate-limited-error';
 export { TelegramSecret } from './telegram-secret';
 export { TelegramTimeoutError } from './telegram-timeout-error';
+export { type TelegramDispatchOutcome, TelegramUpdateDispatcher } from './telegram-update-dispatcher';
+export { type TelegramUpdateHandler } from './telegram-update-handler';
 export {
 	type TelegramCallbackQuery,
 	type TelegramMessage,
@@ -27,3 +31,4 @@ export {
 } from './telegram-update-schema';
 export { ALLOWED_TELEGRAM_UPDATES } from './telegram-updates';
 export { TELEGRAM_UPDATES_MODES, type TelegramUpdatesMode } from './telegram-updates-mode';
+export { TelegramUpdatesRunner, type TelegramUpdatesRunnerOptions } from './telegram-updates-runner';
