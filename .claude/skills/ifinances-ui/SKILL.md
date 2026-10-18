@@ -42,7 +42,13 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Combobox | `shared/ui/combobox` | есть, есть история |
 | | Switch | `shared/ui/switch` | есть, есть история |
 | | цвет счёта | `shared/ui/color-picker` | есть, есть история |
-| | Checkbox, Select, поле даты, Segmented, Tabs, Chip, Badge, навигатор периода | нет в `shared/ui` (период живёт в `views/home/ui/operations-workspace`, месяц в `views/statistics/ui/month-navigator`) | нет, IF-20 |
+| | Segmented | `shared/ui/segmented` (`radiogroup`, стрелки; в операциях, панели операции, сравнении статистики) | есть, есть история |
+| | Tabs | `shared/ui/tabs` (`tablist`, стрелки; вкладки статистики) | есть, есть история |
+| | Chip | `shared/ui/chip` (пресеты периода в `views/statistics/ui/period-range-picker`) | есть, есть история |
+| | Badge | `shared/ui/badge` (статусы чеков `views/receipts/ui/status-badge` ещё свои, IF-18) | есть, есть история |
+| | Checkbox | `shared/ui/checkbox` | есть, есть история |
+| | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
+| | Select, поле даты | нет в `shared/ui` (нативные в оболочке кита, часть 2 IF-20) | нет, IF-20 |
 | `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/combobox` (есть), select и дата: нативные `<select>`, `type=date` в оболочке | оболочка нет, IF-20 |
 | | мультивыбор в popover, диапазон периода (статистика) | нет | нет, IF-19, IF-20 |
 | | выбор цвета категории (10 оттенков `k-1…k-10`, свой запрещён) | `shared/ui/color-picker` (6 цветов, hex) | не по доске, IF-19 |
@@ -51,7 +57,8 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
-| | Toast, Skeleton, Empty state | нет | нет, IF-20 |
+| | Empty state | `shared/ui/empty-state` (сравнение статистики) | есть, есть история |
+| | Toast, Skeleton | нет | нет, IF-20 |
 | `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
 | | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
@@ -91,6 +98,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `--r-xs…xl` | `--radius-xs…xl` |
 | `--r-pill` | `--radius-pill` |
 | `--ctl-sm`, `--ctl`, `--ctl-lg` | `--control-size-sm`, `-md`, `-lg` |
+| `--ctl` в `.i-touch` (44 px на телефоне) | `--control-size-touch` (44 px), миксин `mx.pointer-coarse` (запрос `pointer: coarse`) |
 | `--fs-display`, `-h1`, `-h2`, `-h3`, `-lg`, `-md` | `--font-size-display`, `-heading-1`, `-2`, `-3`, `-body-lg`, `-body-md` |
 | `--fs-sm` (13 px) | `--font-size-caption` |
 | `--fs-label` (12 px) | `--font-size-label` |
@@ -109,7 +117,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 **Расхождения, которые IF-14 не закрыл** (до их закрытия не выдумывай значения, бери из макета и отмечай в задаче):
 - `--color-primary-hover` и `-active`: в коде `color-mix` 6 % и 10 %, в макете hover `#386a97`, active нет. IF-20.
 - Затемнения литералами 32…42 % вместо `--color-scrim` (макет 45 %). IF-21.
-- Поле 16 px при `(pointer: coarse)`: нужен будущий миксин, его пока нет. Этап 2 или IF-20.
+- Поле 16 px при `(pointer: coarse)`: миксин `mx.pointer-coarse` есть (IF-20, часть 1), сам размер шрифта в полях ещё не переведён.
 - Мобильные значения `--font-size-display` 28, `--font-size-heading-1` 24, `--space-12` 48 ниже 640 (в макете 32, 28, 64). Экранные задачи.
 - Пока не используются: `--panel-docked-inline-size` (IF-16), `--row-height-*` (IF-13), `--color-series-9`, `-10` (IF-19). `--font-size-body-sm` (12 px) устаревший: экраны уходят с него в своих задачах.
 
