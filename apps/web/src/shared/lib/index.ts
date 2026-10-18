@@ -63,6 +63,8 @@ export {
 	toE164
 } from './phone';
 export { getReadableTextColor } from './readable-text-color';
+export type { RovingTargetOptions } from './roving-index';
+export { resolveRovingTarget } from './roving-index';
 export type { RawSearchParams, SerializedSearchParams } from './search-params';
 export {
 	parseRouteSearchParams,

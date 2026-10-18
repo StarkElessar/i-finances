@@ -76,6 +76,7 @@
     --control-size-sm: #{fn.rem(32)};
     --control-size-md: #{fn.rem(40)};
     --control-size-lg: #{fn.rem(48)};
+    --control-size-touch: #{fn.rem(44)}; // mockup .i-touch: --ctl 44 on touch screens (pointer: coarse)
 
     // Data rows (mockup `.i-tr` and `.i-row`); the fixed heights virtual scroll needs (IF-13)
     --row-height-compact: #{fn.rem(44)};

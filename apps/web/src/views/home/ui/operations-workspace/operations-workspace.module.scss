@@ -48,59 +48,12 @@
 }
 
 .period-switch {
-    display: flex;
     flex: 1 1 auto;
-    gap: var(--space-1);
-
     min-inline-size: 0;
-    padding: var(--space-1);
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-md);
-
-    background-color: var(--color-surface-subtle);
 
     @include mx.container-mn(columns-4) {
         flex: 0 0 auto;
     }
-}
-
-.period-button {
-    flex: 1 1 auto;
-
-    padding: var(--space-3) var(--space-4);
-    border: 0;
-    border-radius: var(--radius-sm);
-
-    font-size: var(--font-size-body-sm);
-    font-weight: var(--font-weight-semibold);
-    color: var(--color-text-secondary);
-    white-space: nowrap;
-
-    background-color: transparent;
-
-    @include mx.container-mn(columns-4) {
-        padding-inline: var(--space-5);
-    }
-
-    &:not(.period-button-active) {
-        cursor: pointer;
-
-        &:hover {
-            color: var(--color-primary);
-            background-color: var(--color-surface);
-        }
-
-        &:focus-visible {
-            outline: 3px solid var(--color-focus-ring);
-            outline-offset: 1px;
-        }
-    }
-}
-
-.period-button-active {
-    color: var(--color-text-primary);
-    background-color: var(--color-surface);
-    box-shadow: var(--shadow-sm);
 }
 
 // Sort field: an icon-sized control (caption hidden, `aria-label` stays on the
@@ -174,19 +127,6 @@
         flex: 0 1 auto;
         order: 1;
     }
-}
-
-.period-label {
-    overflow: hidden;
-
-    min-inline-size: fn.rem(138);
-    max-inline-size: fn.rem(260);
-
-    font-size: var(--font-size-body-sm);
-    font-weight: var(--font-weight-bold);
-    text-align: center;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 // On the phone the FAB creates operations, the toolbar button appears from `sm`.

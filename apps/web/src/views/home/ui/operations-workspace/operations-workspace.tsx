@@ -3,6 +3,9 @@ import css from './operations-workspace.module.scss';
 import { cn } from '@/shared/lib';
 import { Button } from '@/shared/ui/button';
 import { Fab } from '@/shared/ui/fab';
+import { PeriodNavigator } from '@/shared/ui/period-navigator';
+import type { SegmentedOption } from '@/shared/ui/segmented';
+import { Segmented } from '@/shared/ui/segmented';
 import { TextField } from '@/shared/ui/text-field';
 
 import type { Account } from '@/entities/account';
@@ -14,26 +17,23 @@ import {
 	ArrowDownWideNarrow,
 	ArrowLeftRight,
 	ArrowUpNarrowWide,
-	ChevronLeft,
-	ChevronRight,
 	ListFilter,
 	Plus,
 	Search,
 	X
 } from 'lucide-solid';
-import { createSignal, For, Show } from 'solid-js';
+import { createSignal, Show } from 'solid-js';
 
 import { OperationsList } from '../operations-list/operations-list';
 import { OperationsTable } from '../operations-table/operations-table';
 
 import { useOperationsView } from './lib/use-operations-view';
 
-const PERIOD_LABELS: Record<OperationPeriodMode, string> = {
-	month: 'Месяц',
-	week: 'Неделя',
-	year: 'Год'
-};
-const PERIOD_MODES: OperationPeriodMode[] = ['week', 'month', 'year'];
+const PERIOD_OPTIONS: SegmentedOption<OperationPeriodMode>[] = [
+	{ value: 'week', label: 'Неделя' },
+	{ value: 'month', label: 'Месяц' },
+	{ value: 'year', label: 'Год' }
+];
 
 export type OperationsWorkspaceProps = {
 	account: Account;
@@ -163,39 +163,24 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 						</select>
 						<ListFilter aria-hidden='true' class={css.sortIcon} size={16}/>
 					</span>
-					<div aria-label='Период' class={css.periodSwitch} role='group'>
-						<For each={PERIOD_MODES}>
-							{(mode) => (
-								<button
-									aria-pressed={props.periodMode === mode}
-									class={cn(css.periodButton, props.periodMode === mode && css.periodButtonActive)}
-									disabled={props.periodMode === mode}
-									type='button'
-									onClick={() => props.periodMode !== mode && props.onPeriodModeChange(mode)}
-								>
-									{PERIOD_LABELS[mode]}
-								</button>
-							)}
-						</For>
-					</div>
+					<Segmented
+						aria-label='Период'
+						class={css.periodSwitch}
+						options={PERIOD_OPTIONS}
+						value={props.periodMode}
+						onChange={props.onPeriodModeChange}
+					/>
 				</div>
 
-				<div class={css.periodNavigation}>
-					<Button aria-label='Предыдущий период' iconOnly size='sm' variant='ghost' onClick={() => props.onPeriodMove(-1)}>
-						<ChevronLeft size={18}/>
-					</Button>
-					<span class={css.periodLabel}>{formatPeriodLabel(view.periodAnchor(), props.periodMode)}</span>
-					<Button
-						aria-label='Следующий период'
-						disabled={!view.canMoveToNextPeriod()}
-						iconOnly
-						size='sm'
-						variant='ghost'
-						onClick={() => props.onPeriodMove(1)}
-					>
-						<ChevronRight size={18}/>
-					</Button>
-				</div>
+				<PeriodNavigator
+					canMoveNext={view.canMoveToNextPeriod()}
+					class={css.periodNavigation}
+					label={formatPeriodLabel(view.periodAnchor(), props.periodMode)}
+					nextLabel='Следующий период'
+					previousLabel='Предыдущий период'
+					onNext={() => props.onPeriodMove(1)}
+					onPrevious={() => props.onPeriodMove(-1)}
+				/>
 
 				<div class={cn(css.toolbarGroup, css.toolbarActions)}>
 					<Show when={!isSearchOpen()}>

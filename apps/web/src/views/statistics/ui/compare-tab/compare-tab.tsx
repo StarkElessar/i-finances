@@ -2,6 +2,9 @@ import css from './compare-tab.module.scss';
 
 import { formatMinorUnitsCurrency } from '@/shared/lib';
 import { createRouteSearchParams } from '@/shared/routing/create-route-search-params';
+import { EmptyState } from '@/shared/ui/empty-state';
+import type { SegmentedOption } from '@/shared/ui/segmented';
+import { Segmented } from '@/shared/ui/segmented';
 
 import { getCategories } from '@/entities/category';
 import { getContacts } from '@/entities/contact';
@@ -24,11 +27,12 @@ import { ReferenceMultiselect, type ReferenceOption } from '@/views/statistics/u
 
 import { MONTHLY_BREAKDOWN_MAX_MONTHS } from '@i-finances/contracts';
 import { createAsync } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, For, type JSX, Show, untrack } from 'solid-js';
+import { ChartColumn, ListChecks } from 'lucide-solid';
+import { createEffect, createMemo, createSignal, type JSX, Show, untrack } from 'solid-js';
 
-const DIMENSIONS: readonly { id: BreakdownDimension; label: string }[] = [
-	{ id: 'category', label: 'Категории' },
-	{ id: 'contact', label: 'Контакты' }
+const DIMENSIONS: readonly SegmentedOption<BreakdownDimension>[] = [
+	{ value: 'category', label: 'Категории' },
+	{ value: 'contact', label: 'Контакты' }
 ];
 
 const PLAIN_AMOUNT_FORMATTER = new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 0 });
@@ -196,20 +200,13 @@ export function CompareTab(): JSX.Element {
 	return (
 		<div class={css.root}>
 			<div class={css.controls}>
-				<div class={css.segment} role='group' aria-label='Разрез'>
-					<For each={DIMENSIONS}>
-						{(item) => (
-							<button
-								aria-pressed={by() === item.id}
-								class={css.segmentButton}
-								onClick={() => handleDimension(item.id)}
-								type='button'
-							>
-								{item.label}
-							</button>
-						)}
-					</For>
-				</div>
+				<Segmented
+					aria-label='Разрез'
+					class={css.segment}
+					options={DIMENSIONS}
+					value={by()}
+					onChange={handleDimension}
+				/>
 				<ReferenceMultiselect
 					colorOf={colorOf}
 					formatAmount={formatAmount}
@@ -225,22 +222,21 @@ export function CompareTab(): JSX.Element {
 					<Show
 						when={selectedIds().length > 0}
 						fallback={(
-							<div class={css.empty}>
-								<b>{by() === 'category' ? 'Выберите категории' : 'Выберите контакты'}</b>
-								<span>
-									Можно выбрать несколько или сразу «Все».
-									По месяцам появятся столбцы, итоги и среднее.
-								</span>
-							</div>
+							<EmptyState
+								description='Можно выбрать несколько или сразу «Все». По месяцам появятся столбцы, итоги и среднее.'
+								icon={<ListChecks/>}
+								title={by() === 'category' ? 'Выберите категории' : 'Выберите контакты'}
+							/>
 						)}
 					>
 						<Show
 							when={current().rows.length > 0}
 							fallback={(
-								<div class={css.empty}>
-									<b>За этот период трат нет</b>
-									<span>Расширьте период или выберите другие строки.</span>
-								</div>
+								<EmptyState
+									description='Расширьте период или выберите другие строки.'
+									icon={<ChartColumn/>}
+									title='За этот период трат нет'
+								/>
 							)}
 						>
 							<BreakdownSummary currentMonth={currentMonth} formatAmount={formatAmount} matrix={current()}/>

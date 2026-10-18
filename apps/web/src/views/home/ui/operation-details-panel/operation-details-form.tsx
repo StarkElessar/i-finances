@@ -9,6 +9,8 @@ import {
 import { Button } from '@/shared/ui/button';
 import { Combobox } from '@/shared/ui/combobox';
 import { Dialog } from '@/shared/ui/dialog';
+import type { SegmentedOption } from '@/shared/ui/segmented';
+import { Segmented } from '@/shared/ui/segmented';
 import { TextField } from '@/shared/ui/text-field';
 
 import {
@@ -43,6 +45,11 @@ import {
 } from 'solid-js';
 
 import type { OperationDetailsPanelProps } from './types';
+
+const TYPE_OPTIONS: SegmentedOption<OperationType>[] = [
+	{ value: 'expense', label: 'Расход' },
+	{ value: 'income', label: 'Приход' }
+];
 
 type OperationDetailsFormProps = Pick<
 	OperationDetailsPanelProps,
@@ -95,6 +102,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 	const [isDeleteDialogOpen, setIsDeleteDialogOpen] = createSignal(false);
 	const [title, setTitle] = createSignal('');
 	const [type, setType] = createSignal<OperationType>('expense');
+	const typeOptions = () => TYPE_OPTIONS.map((option) => ({ ...option, disabled: props.loading }));
 
 	const isEditMode = () => props.mode === 'edit';
 	const usesExchangeRate = () => (
@@ -311,28 +319,13 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 				</header>
 
 				<div class={css.body}>
-					<div aria-label='Тип операции' class={css.typeSwitch} role='group'>
-						<button
-							aria-pressed={type() === 'expense'}
-							class={cn(css.typeButton, type() === 'expense' && css.typeButtonActive)}
-							disabled={props.loading || type() === 'expense'}
-							tabIndex={type() === 'expense' ? -1 : 0}
-							type='button'
-							onClick={() => setType('expense')}
-						>
-							Расход
-						</button>
-						<button
-							aria-pressed={type() === 'income'}
-							class={cn(css.typeButton, type() === 'income' && css.typeButtonActive)}
-							disabled={props.loading || type() === 'income'}
-							tabIndex={type() === 'income' ? -1 : 0}
-							type='button'
-							onClick={() => setType('income')}
-						>
-							Приход
-						</button>
-					</div>
+					<Segmented
+						aria-label='Тип операции'
+						fullWidth
+						options={typeOptions()}
+						value={type()}
+						onChange={setType}
+					/>
 
 					<div class={css.dateField}>
 						<TextField

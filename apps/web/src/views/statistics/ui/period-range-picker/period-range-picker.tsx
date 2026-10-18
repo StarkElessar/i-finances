@@ -1,5 +1,7 @@
 import css from './period-range-picker.module.scss';
 
+import { Chip } from '@/shared/ui/chip';
+
 import { addMonths, listMonthKeys } from '@/views/statistics/lib/month-keys';
 import { isPresetActive, type MonthRange, PERIOD_PRESETS, resolvePeriodPreset } from '@/views/statistics/lib/period-presets';
 
@@ -40,14 +42,12 @@ export function PeriodRangePicker(props: PeriodRangePickerProps): JSX.Element {
 			<span class={css.label}>Период</span>
 			<For each={PERIOD_PRESETS}>
 				{(preset) => (
-					<button
-						aria-pressed={isPresetActive(preset.id, props.range, props.currentMonth, props.earliestMonth)}
-						class={css.preset}
+					<Chip
+						selected={isPresetActive(preset.id, props.range, props.currentMonth, props.earliestMonth)}
 						onClick={() => props.onChange(resolvePeriodPreset(preset.id, props.currentMonth, props.earliestMonth))}
-						type='button'
 					>
 						{preset.label}
-					</button>
+					</Chip>
 				)}
 			</For>
 			<span class={css.range}>

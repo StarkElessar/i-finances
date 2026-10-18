@@ -1,5 +1,7 @@
 export { AccountIcon } from './account-icon';
 export { AppLogo } from './app-logo';
+export type { BadgeProps, BadgeTone } from './badge';
+export { Badge } from './badge';
 export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
 export { Button } from './button';
 export type { CardExpiryFieldProps } from './card-expiry-field';
@@ -8,6 +10,10 @@ export type { CardFaceProps, CardFaceSize } from './card-face';
 export { CardFace } from './card-face';
 export type { CardNumberFieldProps } from './card-number-field';
 export { CardNumberField } from './card-number-field';
+export type { CheckboxProps } from './checkbox';
+export { Checkbox } from './checkbox';
+export type { ChipProps } from './chip';
+export { Chip } from './chip';
 export type { ColorPickerOption, ColorPickerProps } from './color-picker';
 export { ColorPicker } from './color-picker';
 export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
@@ -51,6 +57,8 @@ export type {
 	DragActionTone
 } from './drag-action';
 export { createDragAction, DragAction } from './drag-action';
+export type { EmptyStateHeadingLevel, EmptyStateProps } from './empty-state';
+export { EmptyState } from './empty-state';
 export type { FabProps } from './fab';
 export { Fab } from './fab';
 export type {
@@ -63,10 +71,16 @@ export type {
 	GridSortState
 } from './grid';
 export { Grid } from './grid';
+export type { PeriodNavigatorProps } from './period-navigator';
+export { PeriodNavigator } from './period-navigator';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
+export type { SegmentedOption, SegmentedProps } from './segmented';
+export { Segmented } from './segmented';
 export type { SwitchProps } from './switch';
 export { Switch } from './switch';
+export type { TabOption, TabsProps } from './tabs';
+export { Tabs } from './tabs';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
 export type {
