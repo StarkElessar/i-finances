@@ -185,6 +185,7 @@ export {
 	householdInvitationsResultSchema,
 	INVITATION_PAGE_PATH,
 	INVITATION_TOKEN_PATTERN,
+	type InvitationLinkLocation,
 	type InvitationPreview,
 	type InvitationPreviewInput,
 	invitationPreviewInputSchema,
@@ -193,7 +194,7 @@ export {
 	invitationPreviewSchema,
 	invitationTokenSchema,
 	MAX_ACTIVE_HOUSEHOLD_INVITATIONS,
-	readInvitationTokenFromPath,
+	readInvitationTokenFromLocation,
 	type RevokeHouseholdInvitationResult,
 	revokeHouseholdInvitationResultSchema
 } from './household-invitation';

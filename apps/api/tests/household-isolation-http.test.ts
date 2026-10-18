@@ -1126,7 +1126,7 @@ async function seed(): Promise<Fixture> {
 			category: alphaCategory,
 			contact: alphaContact,
 			invitationId: invitationJson.invitation.id,
-			invitationToken: invitationJson.invitation.link.split('/').at(-1) as string,
+			invitationToken: invitationJson.invitation.link.split('#').at(-1) as string,
 			operation: alphaOperation,
 			ownerPasskeyId: `${A_OWNER}-passkey`,
 			ownerSessionId: `${A_OWNER}-session`,

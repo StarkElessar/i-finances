@@ -186,7 +186,7 @@ describe('removing a member', () => {
 			.toEqual({ revoked_at: null });
 
 		const back = await harness.call('/api/invitations/accept', {
-			body: { token: invitation.link.split('/').at(-1) },
+			body: { token: invitation.link.split('#').at(-1) },
 			token: await harness.signIn(MEMBER)
 		});
 
@@ -230,7 +230,17 @@ describe('leaving a household', () => {
 	it('an owner leaves while another owner remains, and then the remaining one cannot', async () => {
 		connection.prepare('UPDATE household_members SET role = \'owner\' WHERE user_id = ?').run(MEMBER);
 
+		const created = await harness.call('/api/household/invitations', { method: 'POST', token: tokens[OWNER] });
+		const { invitation } = await created.json() as { invitation: { id: string; link: string } };
+
 		expect((await leave(OWNER)).status).toBe(200);
+		// The owner who left loses the links they created there, so they cannot come back with one.
+		expect(connection.prepare('SELECT revoked_at FROM household_invitations WHERE id = ?').get(invitation.id))
+			.toEqual({ revoked_at: harness.clock.now.getTime() });
+		expect((await harness.call('/api/invitations/accept', {
+			body: { token: invitation.link.split('#').at(-1) },
+			token: tokens[OWNER]
+		})).status).toBe(404);
 		expect((await leave(MEMBER)).status).toBe(409);
 		expect(membershipOf(MEMBER)).toEqual({ household_id: FAMILY, role: 'owner' });
 	});

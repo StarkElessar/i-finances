@@ -18,7 +18,7 @@ import {
 	householdInvitationErrorMessageByCode,
 	invitationPreviewResultSchema,
 	invitationTokenSchema,
-	readInvitationTokenFromPath
+	readInvitationTokenFromLocation
 } from '../src/household-invitation';
 
 /**
@@ -102,12 +102,17 @@ describe('household invitation contracts', () => {
 		expect(acceptInvitationInputSchema.safeParse({ replaceEmptyHousehold: 'yes', token: TOKEN }).success).toBe(false);
 	});
 
-	it('reads the token from the invitation page path only', () => {
-		expect(readInvitationTokenFromPath(`/invite/${TOKEN}`)).toBe(TOKEN);
-		expect(readInvitationTokenFromPath(`/invite/${TOKEN}/`)).toBe(TOKEN);
-		expect(readInvitationTokenFromPath('/invite')).toBeUndefined();
-		expect(readInvitationTokenFromPath('/invite/short')).toBeUndefined();
-		expect(readInvitationTokenFromPath(`/other/${TOKEN}`)).toBeUndefined();
+	it('reads the token from the fragment of the invitation page only, never from a path', () => {
+		const read = (link: string) => readInvitationTokenFromLocation(new URL(link));
+
+		expect(read(`https://finance.example/invite#${TOKEN}`)).toBe(TOKEN);
+		expect(read(`https://finance.example/invite/#${TOKEN}`)).toBe(TOKEN);
+		expect(readInvitationTokenFromLocation({ hash: `#${TOKEN}`, pathname: '/invite' })).toBe(TOKEN);
+		expect(read('https://finance.example/invite')).toBeUndefined();
+		expect(read('https://finance.example/invite#short')).toBeUndefined();
+		expect(read(`https://finance.example/invite/${TOKEN}`)).toBeUndefined();
+		expect(read(`https://finance.example/other#${TOKEN}`)).toBeUndefined();
+		expect(read(`https://finance.example/invite?token=${TOKEN}`)).toBeUndefined();
 	});
 
 	it('the preview carries the two names and the deadline only', () => {

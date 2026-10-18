@@ -101,11 +101,7 @@ export class HouseholdInvitationService {
 				return failure('rate-limited');
 			case 'created':
 				return {
-					invitation: {
-						expiresAt: expiresAt.toISOString(),
-						id,
-						link: new URL(`${INVITATION_PAGE_PATH}/${token}`, this.dependencies.origin).toString()
-					},
+					invitation: { expiresAt: expiresAt.toISOString(), id, link: this.buildLink(token) },
 					ok: true
 				};
 		}
@@ -204,5 +200,17 @@ export class HouseholdInvitationService {
 					ok: true
 				};
 		}
+	}
+
+	/**
+	 * `<origin>/invite#<token>`: the token goes into the fragment, which the browser never sends to the server, so it
+	 * lands neither in the access log of the page nor in a `Referer` (review decision A6, Р5).
+	 */
+	private buildLink(token: string): string {
+		const link = new URL(INVITATION_PAGE_PATH, this.dependencies.origin);
+
+		link.hash = token;
+
+		return link.toString();
 	}
 }

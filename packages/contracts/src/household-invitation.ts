@@ -16,15 +16,16 @@ import { HOUSEHOLD_REQUIRED_ERROR_CODE, HOUSEHOLD_REQUIRED_MESSAGE, householdSum
  *   invitation. Unknown, expired, used and revoked tokens get one and the same answer (`invitation-unavailable`);
  * - `POST /api/invitations/accept { token, replaceEmptyHousehold }` (browser session): joins as `member`.
  *
- * The token travels in request bodies only, never in an API path, so it does not land in access logs. In a browser
- * address it appears only on the invitation page `/invite/<token>`; the page moves it to `sessionStorage` and replaces
- * the address with `/invite` right away (Р5), so it never reaches `Referer` or the history.
+ * The token travels in request bodies only, never in an API path, so it does not land in access logs. The link is
+ * `<origin>/invite#<token>` (review decision A6, Р5): the fragment is never sent by the browser, so the token reaches
+ * neither the nginx access log of the page nor any `Referer`. The page moves it to `sessionStorage` and replaces the
+ * address with `/invite` right away, so it does not stay in the address bar and the history entry.
  */
 
 /** 32 random bytes in base64url: 43 characters. */
 export const INVITATION_TOKEN_PATTERN = /^[A-Za-z0-9_-]{43}$/;
 
-/** The path of the invitation page; the link is `<origin>/invite/<token>`. */
+/** The path of the invitation page; the link is `<origin>/invite#<token>`, the token in the fragment. */
 export const INVITATION_PAGE_PATH = '/invite';
 
 /** No more than this many active (not accepted, not revoked, not expired) invitations per household (Р5). */
@@ -49,17 +50,23 @@ export const acceptInvitationInputSchema = z.object({
 
 export type AcceptInvitationInput = z.infer<typeof acceptInvitationInputSchema>;
 
-/**
- * The token of an invitation link, or `undefined` when the path is not an invitation link with a well-formed token.
- */
-export function readInvitationTokenFromPath(pathname: string): string | undefined {
-	const prefix = `${INVITATION_PAGE_PATH}/`;
+/** The parts of an address the invitation page reads: `window.location` and `new URL(pastedLink)` both fit. */
+export type InvitationLinkLocation = {
+	hash: string;
+	pathname: string;
+};
 
-	if (!pathname.startsWith(prefix)) {
+/**
+ * The token of an invitation link `<origin>/invite#<token>`, or `undefined` when the address is not the invitation
+ * page or its fragment is not a well-formed token. A token in the path (`/invite/<token>`) is not read: such a link
+ * would have put the token into the access log.
+ */
+export function readInvitationTokenFromLocation(location: InvitationLinkLocation): string | undefined {
+	if (location.pathname !== INVITATION_PAGE_PATH && location.pathname !== `${INVITATION_PAGE_PATH}/`) {
 		return undefined;
 	}
 
-	const token = pathname.slice(prefix.length).replace(/\/$/, '');
+	const token = location.hash.startsWith('#') ? location.hash.slice(1) : '';
 
 	return INVITATION_TOKEN_PATTERN.test(token) ? token : undefined;
 }

@@ -52,7 +52,8 @@ const OTHER = 'other-household';
 
 const SOLO_HOUSEHOLD = 'solo-household';
 
-const TOKEN_LINK = new RegExp(`^${TEST_ORIGIN}/invite/([A-Za-z0-9_-]{43})$`, 'u');
+/** The token is in the fragment, never in the path: the browser does not send it to nginx nor in `Referer`. */
+const TOKEN_LINK = new RegExp(`^${TEST_ORIGIN}/invite#([A-Za-z0-9_-]{43})$`, 'u');
 
 const UNKNOWN_TOKEN = 'u'.repeat(43);
 
@@ -256,6 +257,8 @@ describe('creating an invitation', () => {
 		expect(fourth.status).toBe(409);
 		expect(await fourth.json()).toMatchObject({ errorCode: 'invitation-limit-reached', ok: false });
 		expect(connection.prepare('SELECT count(*) AS count FROM household_invitations').get()).toEqual({ count: 3 });
+		// The limit is per household: the full one of the family does not stop another household.
+		await createInvitation(OTHER_OWNER);
 
 		await harness.call(`/api/household/invitations/${created[0].id}/revoke`, { method: 'POST', token: tokens[OWNER] });
 		await accept(NEWCOMER, created[1].token);
@@ -553,6 +556,12 @@ describe('accepting', () => {
 		await database.insert(householdMembers)
 			.values({ householdId: SOLO_HOUSEHOLD, joinedAt: new Date(), role: 'member', userId: NEWCOMER });
 
+		// With another member there is nothing to confirm: the answer is the refusal, not the warning of board 5.
+		const withMemberUnasked = await accept(SOLO, token);
+
+		expect(withMemberUnasked.status).toBe(409);
+		expect(await withMemberUnasked.json()).toMatchObject({ errorCode: 'already-in-household' });
+
 		const withMember = await accept(SOLO, token, { replaceEmptyHousehold: true });
 
 		expect(withMember.status).toBe(409);
@@ -639,6 +648,23 @@ describe('HouseholdInvitationRepository conditions on their own', () => {
 		expect(membershipOf(SOLO)).toEqual({ household_id: SOLO_HOUSEHOLD, role: 'owner' });
 		expect(invitationRow('replace').accepted_at).toBeNull();
 		expect(connection.prepare('SELECT count(*) AS count FROM categories WHERE id = \'late\'').get()).toEqual({ count: 0 });
+	});
+
+	it('the empty household is not deleted when another member arrives between the check and the delete', () => {
+		const repository = new HouseholdInvitationRepository(database);
+
+		insertInvitation('member-arrives', 'member-arrives-hash');
+		// Someone joins the «empty» household after the rules were checked: the delete must find them and refuse.
+		connection.exec(`CREATE TRIGGER member_arrives AFTER UPDATE ON household_invitations
+			BEGIN INSERT INTO household_members (household_id, user_id, role, joined_at)
+			VALUES ('${SOLO_HOUSEHOLD}', '${NEWCOMER}', 'member', 0); END`);
+
+		expect(repository.accept({ now, replaceEmptyHousehold: true, tokenHash: 'member-arrives-hash', userId: SOLO }))
+			.toEqual({ currentHouseholdName: 'Пустое', kind: 'already-in-household' });
+		expect(membershipOf(SOLO)).toEqual({ household_id: SOLO_HOUSEHOLD, role: 'owner' });
+		expect(membershipOf(NEWCOMER)).toBeUndefined();
+		expect(invitationRow('member-arrives').accepted_at).toBeNull();
+		expect(connection.prepare('SELECT count(*) AS count FROM households WHERE id = ?').get(SOLO_HOUSEHOLD)).toEqual({ count: 1 });
 	});
 
 	it('a membership created in parallel stops the acceptance through the unique index', () => {
