@@ -33,6 +33,7 @@ export {
 	storedCardAccountDetailsSchema
 } from './account-details';
 export {
+	authSessionTelegramSchema,
 	authSessionUserSchema,
 	type CurrentSessionResponse,
 	currentSessionResponseSchema,
@@ -333,6 +334,27 @@ export {
 	type SecuritySessionsResult,
 	securitySessionsResultSchema
 } from './security';
+export {
+	type DevTelegramConfirmInput,
+	devTelegramConfirmInputSchema,
+	type DevTelegramConfirmResult,
+	devTelegramConfirmResultSchema,
+	TELEGRAM_LOGIN_CODE_PATTERN,
+	telegramLoginCodeSchema,
+	type TelegramSignInCancelResult,
+	telegramSignInCancelResultSchema,
+	type TelegramSignInCodeInput,
+	telegramSignInCodeInputSchema,
+	type TelegramSignInCompleteResult,
+	telegramSignInCompleteResultSchema,
+	type TelegramSignInErrorCode,
+	telegramSignInErrorCodes,
+	telegramSignInErrorMessageByCode,
+	type TelegramSignInFailure,
+	telegramSignInFailureSchema,
+	type TelegramSignInStartResult,
+	telegramSignInStartResultSchema
+} from './telegram-auth';
 export {
 	type ChangeTransferDeletionStateInput,
 	changeTransferDeletionStateInputSchema,

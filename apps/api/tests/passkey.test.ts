@@ -3,11 +3,12 @@ import { PasskeyHttpController } from '@/http/passkey-controller';
 import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { users, webauthnChallenges } from '@/infrastructure/database/schema';
+import { telegramAccounts, users, webauthnChallenges } from '@/infrastructure/database/schema';
 import type { AuthConfig } from '@/modules/auth';
 import {
 	SessionRepository,
 	SessionService,
+	SignInMethodsRepository,
 	WebAuthnChallengeRepository,
 	WebAuthnCredentialRepository,
 	WebAuthnService
@@ -25,6 +26,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-1';
+// Shaped like an Argon2 hash, so the user counts as having a password (the passkey `userName` depends on it).
+const STORED_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const AUTH_CONFIG: AuthConfig = {
 	origin: 'http://localhost:5173',
@@ -49,7 +52,7 @@ beforeEach(async () => {
 		displayName: 'Sergei Test',
 		id: USER_ID,
 		isActive: true,
-		passwordHash: 'stored-hash',
+		passwordHash: STORED_HASH,
 		updatedAt: FIXED_DATE,
 		username: 'sergei'
 	});
@@ -73,7 +76,8 @@ function createPasskeyApp(config: AuthConfig = AUTH_CONFIG) {
 		createId: () => `challenge-${nextChallengeId++}`,
 		credentialRepository: new WebAuthnCredentialRepository(database),
 		now: () => FIXED_DATE,
-		sessionService
+		sessionService,
+		signInMethods: new SignInMethodsRepository(database)
 	});
 	const controller = new PasskeyHttpController(
 		service,
@@ -164,6 +168,58 @@ describe('passkey API', () => {
 
 		expect(challenge.purpose).toBe('registration');
 		expect(challenge.userId).toBe(USER_ID);
+	});
+
+	describe('passkey userName of a user without a password (A10)', () => {
+		const registrationUserName = async (): Promise<string> => {
+			const { app, sessionService } = createPasskeyApp();
+			const session = await sessionService.createSession(USER_ID);
+			const response = await app.request('/api/auth/passkey/registration/options', {
+				headers: { cookie: `${AUTH_CONFIG.sessionCookieName}=${session.token}`, origin: AUTH_CONFIG.origin },
+				method: 'POST'
+			});
+
+			expect(response.status).toBe(200);
+
+			return passkeyRegistrationOptionsSchema.parse(await response.json()).user.name;
+		};
+
+		const linkTelegram = async (username: string | null): Promise<void> => {
+			await database.insert(telegramAccounts).values({
+				chatId: '5005',
+				firstName: 'Анна',
+				lastName: null,
+				lastSignInAt: FIXED_DATE,
+				linkedAt: FIXED_DATE,
+				telegramId: '5005',
+				updatedAt: FIXED_DATE,
+				userId: USER_ID,
+				username
+			});
+		};
+
+		beforeEach(async () => {
+			await database.update(users).set({ passwordHash: null, username: 'tg-5005' });
+		});
+
+		it('is the Telegram @username, never tg-<id>', async () => {
+			await linkTelegram('anna_k');
+
+			expect(await registrationUserName()).toBe('@anna_k');
+		});
+
+		it('is the display name when Telegram has no username', async () => {
+			await linkTelegram(null);
+
+			expect(await registrationUserName()).toBe('Sergei Test');
+		});
+
+		it('stays the username for a user with a password, even with Telegram linked', async () => {
+			await database.update(users).set({ passwordHash: STORED_HASH, username: 'sergei' });
+			await linkTelegram('anna_k');
+
+			expect(await registrationUserName()).toBe('sergei');
+		});
 	});
 
 	it('rejects malformed authentication and registration responses before verification', async () => {

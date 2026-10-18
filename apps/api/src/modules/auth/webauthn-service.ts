@@ -21,9 +21,11 @@ import {
 } from '@simplewebauthn/server';
 
 import { type AuthConfig, getAuthConfig } from './auth-config';
+import { choosePasskeyUserName } from './choose-passkey-user-name';
 import { base64UrlToUint8Array, uint8ArrayToBase64Url } from './passkey-encoding';
 import type { SessionService } from './session-service';
 import { type AuthenticatedSession, type CreatedSession } from './session-service';
+import type { SignInMethodsPort } from './sign-in-methods-repository';
 import { validateReturnPath } from './validate-return-path';
 import type {
 	ConsumeWebAuthnChallengeInput,
@@ -58,6 +60,8 @@ export type WebAuthnServiceDependencies = {
 	>;
 	now?: () => Date;
 	sessionService: Pick<SessionService, 'createSession'>;
+	/** Picks the passkey `userName`: users without a password must not see `tg-<id>` in their password manager (A10). */
+	signInMethods: SignInMethodsPort;
 };
 
 function createFailureResult(
@@ -174,6 +178,10 @@ export class WebAuthnService {
 		session: AuthenticatedSession
 	): Promise<PublicKeyCredentialCreationOptionsJSON> {
 		const existingCredentials = await this.dependencies.credentialRepository.findByUserId(session.user.id);
+		const methods = await this.dependencies.signInMethods.read(session.user.id);
+		const userName = methods === undefined
+			? session.user.username
+			: choosePasskeyUserName({ ...methods, displayName: session.user.displayName });
 		const options = await generateRegistrationOptions({
 			authenticatorSelection: {
 				residentKey: 'preferred',
@@ -188,7 +196,7 @@ export class WebAuthnService {
 			rpName: this.config.webauthnRpName,
 			userDisplayName: session.user.displayName,
 			userID: new TextEncoder().encode(session.user.id),
-			userName: session.user.username
+			userName
 		});
 
 		await this.storeChallenge({

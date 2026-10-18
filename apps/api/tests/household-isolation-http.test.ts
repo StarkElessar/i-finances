@@ -26,6 +26,8 @@ import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import sharp from 'sharp';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { FakeTelegramBotClient } from './support/fake-telegram-bot-client';
+
 /**
  * A8: one HTTP test of household isolation over every route of the real production graph (`createApiDependencies`).
  *
@@ -59,6 +61,8 @@ const A_MARKER = /альфа/iu;
  */
 const A_AMOUNT_MINOR = 7_310_947;
 const A_AMOUNT_MARKER = new RegExp(`(?<!\\d)${A_AMOUNT_MINOR}(?!\\d)`, 'u');
+/** A well-formed sign-in code that no request has. */
+const UNKNOWN_LOGIN_CODE = 'unknownloginrequestcode000000000';
 const NOW = Date.now();
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -718,6 +722,44 @@ const PROBES: Probe[] = [
 		}),
 		route: 'POST /api/telegram/webhook',
 		scope: 'public'
+	},
+
+	// Telegram sign-in (A3): open routes that create a session, so they must work without one and without a household,
+	// and must not answer anything about a user (nor of household A) before a request is confirmed in the bot.
+	{
+		beta: [200],
+		loner: [200],
+		name: 'starts a sign-in that reveals nobody',
+		request: () => ({ path: '/api/auth/telegram/start' }),
+		route: 'POST /api/auth/telegram/start',
+		scope: 'public'
+	},
+	{
+		beta: [403],
+		loner: [403],
+		name: 'a session cookie does not complete someone else\'s sign-in',
+		request: () => ({ body: { code: UNKNOWN_LOGIN_CODE }, path: '/api/auth/telegram/complete' }),
+		route: 'POST /api/auth/telegram/complete',
+		scope: 'public'
+	},
+	{
+		beta: [200],
+		loner: [200],
+		name: 'cancels nothing that is not its own',
+		request: () => ({ body: { code: UNKNOWN_LOGIN_CODE }, path: '/api/auth/telegram/cancel' }),
+		route: 'POST /api/auth/telegram/cancel',
+		scope: 'public'
+	},
+	{
+		beta: [410],
+		loner: [410],
+		name: 'dev confirmation of an unknown code changes nothing, even as the Telegram of A member',
+		request: () => ({
+			body: { code: UNKNOWN_LOGIN_CODE, firstName: 'Захват', telegramId: '2002' },
+			path: '/api/dev/telegram/confirm'
+		}),
+		route: 'POST /api/dev/telegram/confirm',
+		scope: 'public'
 	}
 ];
 
@@ -749,8 +791,10 @@ beforeAll(async () => {
 	vi.stubEnv('MCP_API_KEY', MCP_API_KEY);
 	vi.stubEnv('MCP_USER_ID', A_OWNER);
 	vi.stubEnv('RECEIPT_IMAGE_ROOT', imageRoot);
-	// Webhook mode registers POST /api/telegram/webhook, the most routes the server can have. The bot client is built
-	// but never called: the runner is not started and the stand-in update handler ignores updates; fetch is stubbed.
+	// Webhook mode registers POST /api/telegram/webhook and the dev confirmation POST /api/dev/telegram/confirm: the
+	// most routes the server can have. The bot client is the fake one (`createApiDependencies` option); the runner is
+	// never started, and fetch is stubbed anyway.
+	vi.stubEnv('DEV_TELEGRAM_LOGIN', 'true');
 	vi.stubEnv('TELEGRAM_UPDATES', 'webhook');
 	vi.stubEnv('TELEGRAM_BOT_TOKEN', '123456:isolation-test-token');
 	vi.stubEnv('TELEGRAM_BOT_USERNAME', 'i_finances_test_bot');
@@ -785,7 +829,7 @@ beforeEach(async () => {
 	database = drizzle(connection, { schema });
 	migrate(database, { migrationsFolder: './drizzle' });
 	// Exactly how main.ts builds the server app, so a route registered only there is part of the coverage check.
-	app = createApp(toAppDependencies(createDependencies(database)));
+	app = createApp(toAppDependencies(createDependencies(database, { telegramBotClient: new FakeTelegramBotClient() })));
 	fixture = await seed();
 });
 
@@ -1071,6 +1115,7 @@ describe('household isolation over every route', () => {
 
 		// Guards the setup itself: the app is the full server app (every optional controller wired, as in main.ts).
 		expect(registered).toContain('POST /api/telegram/webhook');
+		expect(registered).toContain('POST /api/dev/telegram/confirm');
 		expect(probed).toEqual(registered);
 	});
 

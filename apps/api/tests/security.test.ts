@@ -20,6 +20,7 @@ import {
 	SecurityService,
 	SessionRepository,
 	SessionService,
+	SignInMethodsRepository,
 	WebAuthnCredentialRepository
 } from '@/modules/auth';
 
@@ -112,7 +113,12 @@ afterEach(() => {
  * `randomRotatedTokens` keeps the production token generator of `SecurityService`; `securityNow` moves its clock
  * away from the sign-in time, so a rotation that renewed the expiry from «now» cannot pass by coincidence.
  */
-function createContext(options: { randomRotatedTokens?: boolean; rateLimiter?: LoginRateLimiter; securityNow?: Date } = {}) {
+function createContext(options: {
+	randomRotatedTokens?: boolean;
+	rateLimiter?: LoginRateLimiter;
+	securityNow?: Date;
+	telegramSignInAvailable?: boolean;
+} = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => `session-${++nextSessionId}`,
@@ -122,10 +128,12 @@ function createContext(options: { randomRotatedTokens?: boolean; rateLimiter?: L
 	const securityService = new SecurityService({
 		createToken: options.randomRotatedTokens === true ? undefined : () => `rotated-token-${++nextRotatedToken}`,
 		credentialRepository: new WebAuthnCredentialRepository(database),
+		isTelegramSignInAvailable: options.telegramSignInAvailable ?? true,
 		now: () => options.securityNow ?? FIXED_DATE,
 		passwordService,
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionRepository: new SessionRepository(database),
+		signInMethods: new SignInMethodsRepository(database),
 		userRepository: new PasswordUserRepository(database)
 	});
 	const app = createApiApp({
