@@ -120,6 +120,15 @@
     white-space: nowrap;
 }
 
+// On the phone the FAB creates operations, the toolbar button appears from `sm`.
+.toolbar .add-operation {
+    display: none;
+
+    @include mx.media-mn(sm) {
+        display: inline-flex;
+    }
+}
+
 .search-row {
     display: flex;
     gap: var(--space-3);

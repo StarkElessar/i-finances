@@ -12,6 +12,14 @@
     --z-modal: 40; // dialog, bottom sheet
     --z-popover: 50; // popover, menu, drop-down list, drag preview zone
     --z-toast: 60; // toast, drag ghost
+
+    // Phone bottom navigation (mockup Kit-States, "FAB и нижняя навигация").
+    // `--bottom-nav-inset` is the gap under the bar: 12 px, or the iOS home
+    // indicator when it is taller. `--bottom-nav-offset` is the distance from
+    // the screen bottom to the bar's top edge: content, FAB and toasts sit above it.
+    --bottom-nav-block-size: #{fn.rem(64)};
+    --bottom-nav-inset: max(var(--space-5), env(safe-area-inset-bottom));
+    --bottom-nav-offset: calc(var(--bottom-nav-inset) + var(--bottom-nav-block-size));
 }
 
 :root,

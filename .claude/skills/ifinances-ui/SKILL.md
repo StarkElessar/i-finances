@@ -55,7 +55,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
 | | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
-| | FAB и нижняя навигация | `widgets/app-header` (навигация), FAB экранный | нет общих, IF-17, IF-20 |
+| | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; панель до 960 px (на 640–959 нижняя, верхняя не помещается), история Storybook в IF-20 |
 | | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, z-index не по шкале, IF-14 |
 | `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть |

@@ -51,6 +51,8 @@ export type {
 	DragActionTone
 } from './drag-action';
 export { createDragAction, DragAction } from './drag-action';
+export type { FabProps } from './fab';
+export { Fab } from './fab';
 export type {
 	GridCellTemplateContext,
 	GridCellValue,

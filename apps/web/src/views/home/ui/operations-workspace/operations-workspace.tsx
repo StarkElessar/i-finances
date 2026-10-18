@@ -2,6 +2,7 @@ import css from './operations-workspace.module.scss';
 
 import { cn } from '@/shared/lib';
 import { Button } from '@/shared/ui/button';
+import { Fab } from '@/shared/ui/fab';
 import { TextField } from '@/shared/ui/text-field';
 
 import type { Account } from '@/entities/account';
@@ -201,7 +202,14 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 					<Button aria-label='Добавить перевод' iconOnly size='sm' variant='secondary' onClick={props.onCreateTransfer}>
 						<ArrowLeftRight size={18}/>
 					</Button>
-					<Button aria-label='Добавить операцию' iconOnly size='sm' variant='primary' onClick={props.onCreateOperation}>
+					<Button
+						aria-label='Добавить операцию'
+						class={css.addOperation}
+						iconOnly
+						size='sm'
+						variant='primary'
+						onClick={props.onCreateOperation}
+					>
 						<Plus size={18}/>
 					</Button>
 				</div>
@@ -231,6 +239,10 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 			<Show fallback={<OperationsList {...bodyProps()}/>} when={resolvedMode() === 'table'}>
 				<OperationsTable {...bodyProps()}/>
 			</Show>
+
+			<Fab aria-label='Новая операция' onClick={props.onCreateOperation}>
+				<Plus size={26}/>
+			</Fab>
 		</section>
 	);
 }

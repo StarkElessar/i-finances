@@ -127,7 +127,7 @@
 
     block-size: 100%;
     min-block-size: 0;
-    padding-block: var(--space-5) calc(var(--space-5) + fn.rem(78));
+    padding-block: var(--space-5) calc(var(--space-5) + var(--bottom-nav-offset));
 
     @include mx.media-mn(md) {
         padding-block: var(--space-6);
