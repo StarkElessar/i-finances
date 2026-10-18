@@ -84,7 +84,7 @@ afterEach(() => {
 });
 
 function createService(): AccountService {
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 
 	return new AccountService({
 		accountRepository: new AccountRepository(database),

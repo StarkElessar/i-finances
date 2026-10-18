@@ -5,10 +5,6 @@ import {
 	ContactNotFoundError,
 	ContactVersionConflictError
 } from '@/modules/contact';
-import {
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
 
 import {
 	changeContactArchiveStateInputSchema,
@@ -210,7 +206,7 @@ export class ContactHttpController {
 			}, 409);
 		}
 
-		if (error instanceof ContactVersionConflictError || error instanceof HouseholdSelectionRequiredError) {
+		if (error instanceof ContactVersionConflictError) {
 			return context.json<ContactCommandResult>({
 				errorCode: 'conflict',
 				message: 'Данные изменились. Обновите контакты и повторите действие.',
@@ -224,14 +220,6 @@ export class ContactHttpController {
 				message: 'Контакт не найден.',
 				ok: false
 			}, 404);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError) {
-			return context.json<ContactCommandResult>({
-				errorCode: 'forbidden',
-				message: 'Недостаточно прав для изменения контактов.',
-				ok: false
-			}, 403);
 		}
 
 		throw error;

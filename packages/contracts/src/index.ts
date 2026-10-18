@@ -135,6 +135,34 @@ export {
 	healthResponseSchema
 } from './health';
 export {
+	type CreateHouseholdInput,
+	createHouseholdInputSchema,
+	HOUSEHOLD_NAME_MAX_LENGTH,
+	HOUSEHOLD_REQUIRED_ERROR_CODE,
+	HOUSEHOLD_REQUIRED_MESSAGE,
+	type HouseholdDetails,
+	householdDetailsSchema,
+	type HouseholdErrorCode,
+	householdErrorCodes,
+	householdErrorMessageByCode,
+	type HouseholdFailure,
+	householdFailureSchema,
+	type HouseholdMember,
+	householdMemberSchema,
+	householdNameSchema,
+	type HouseholdRequiredFailure,
+	householdRequiredFailureSchema,
+	type HouseholdResult,
+	householdResultSchema,
+	type HouseholdRole,
+	householdRoleSchema,
+	type HouseholdSummary,
+	householdSummarySchema,
+	isHouseholdRequiredFailure,
+	type UpdateHouseholdInput,
+	updateHouseholdInputSchema
+} from './household';
+export {
 	type AccountBalance,
 	accountBalanceSchema,
 	accountBalancesSchema,

@@ -77,7 +77,7 @@ afterEach(() => {
 });
 
 function createService(): CategoryService {
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 
 	return new CategoryService({
 		categoryRepository: new CategoryRepository(database),

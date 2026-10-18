@@ -1,9 +1,5 @@
 import type { AuthenticatedSession } from '@/modules/auth';
 import { ExchangeRateNotFoundError } from '@/modules/exchange-rate';
-import {
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
 import type { OperationService } from '@/modules/operation';
 import {
 	OperationAccountUnavailableError,
@@ -419,7 +415,7 @@ export class OperationHttpController {
 			}, 409);
 		}
 
-		if (error instanceof OperationVersionConflictError || error instanceof HouseholdSelectionRequiredError) {
+		if (error instanceof OperationVersionConflictError) {
 			return context.json({
 				errorCode: 'conflict',
 				message: 'Данные операции изменились. Обновите страницу и повторите действие.',
@@ -466,14 +462,6 @@ export class OperationHttpController {
 				message: 'Не удалось подобрать исторический курс операции.',
 				ok: false
 			}, 409);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError) {
-			return context.json({
-				errorCode: 'forbidden',
-				message: 'Недостаточно прав для работы с операциями.',
-				ok: false
-			}, 403);
 		}
 
 		throw error;

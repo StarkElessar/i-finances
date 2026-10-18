@@ -1,8 +1,4 @@
 import type { AuthConfig, AuthenticatedSession } from '@/modules/auth';
-import {
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
 import type { ReceiptImage } from '@/modules/receipt-import';
 import {
 	ReceiptImageValidationError,
@@ -284,14 +280,6 @@ export class ReceiptImportHttpController {
 				message: error.message,
 				ok: false
 			}, 422);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError || error instanceof HouseholdSelectionRequiredError) {
-			return context.json({
-				errorCode: 'forbidden',
-				message: 'Недостаточно прав для работы с чеками.',
-				ok: false
-			}, 403);
 		}
 
 		throw error;

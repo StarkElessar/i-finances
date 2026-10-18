@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { householdSummarySchema } from './household';
+
 export const passwordSignInErrorCodes = [
 	'invalid-input',
 	'invalid-credentials',
@@ -56,6 +58,8 @@ export const authSessionUserSchema = z.object({
 export const currentSessionResponseSchema = z.discriminatedUnion('authenticated', [
 	z.object({
 		authenticated: z.literal(true),
+		/** `null` while the user has no household yet (onboarding). */
+		household: householdSummarySchema.nullable(),
 		user: authSessionUserSchema
 	}),
 	z.object({

@@ -4,6 +4,7 @@ import {
 	type AuthConfig,
 	getAuthConfig
 } from '@/modules/auth';
+import type { HouseholdResolver } from '@/modules/household';
 
 import {
 	type CurrentSessionResponse,
@@ -39,6 +40,7 @@ export class AuthHttpController {
 		private readonly sessionService: SessionService,
 		private readonly sessionResolver: RequestSessionResolver,
 		private readonly passwordUserRepository: PasswordUserRepository,
+		private readonly householdResolver: HouseholdResolver,
 		config: AuthConfig = getAuthConfig()
 	) {
 		this.config = config;
@@ -47,16 +49,24 @@ export class AuthHttpController {
 	public currentSession() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
 			const session = await this.sessionResolver.resolve(context.req.raw);
-			const response: CurrentSessionResponse = session === null
-				? { authenticated: false }
-				: {
-					authenticated: true,
-					user: {
-						displayName: session.user.displayName,
-						id: session.user.id,
-						username: session.user.username
-					}
-				};
+
+			if (session === null) {
+				return context.json(currentSessionResponseSchema.parse({ authenticated: false }), 200);
+			}
+
+			// Read on every call, like the household routes: a removed member sees `null` right away.
+			const household = await this.householdResolver.findForUser(session.user.id);
+			const response: CurrentSessionResponse = {
+				authenticated: true,
+				household: household === undefined
+					? null
+					: { id: household.id, name: household.name, role: household.role },
+				user: {
+					displayName: session.user.displayName,
+					id: session.user.id,
+					username: session.user.username
+				}
+			};
 
 			return context.json(currentSessionResponseSchema.parse(response), 200);
 		};

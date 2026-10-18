@@ -1,9 +1,5 @@
 import type { AuthenticatedSession } from '@/modules/auth';
 import { ExchangeRateNotFoundError } from '@/modules/exchange-rate';
-import {
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
 import type { TransferService } from '@/modules/transfer';
 import {
 	TransferAccountsInvalidError,
@@ -198,10 +194,7 @@ export class TransferHttpController {
 			return this.failure(context, 'invalid-state', 'Перевод удалён.', 409);
 		}
 
-		if (
-			error instanceof TransferVersionConflictError
-			|| error instanceof HouseholdSelectionRequiredError
-		) {
+		if (error instanceof TransferVersionConflictError) {
 			return this.failure(
 				context,
 				'conflict',
@@ -212,10 +205,6 @@ export class TransferHttpController {
 
 		if (error instanceof TransferNotFoundError) {
 			return this.failure(context, 'not-found', 'Перевод не найден.', 404);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError) {
-			return this.failure(context, 'forbidden', 'Нет доступа к семье.', 403);
 		}
 
 		throw error;

@@ -3,7 +3,7 @@ import { CategoryHttpController } from '@/http/category-controller';
 import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { categories, categoryKeywords, households, users } from '@/infrastructure/database/schema';
+import { categories, categoryKeywords, householdMembers, households, users } from '@/infrastructure/database/schema';
 import type { AuthenticatedSession } from '@/modules/auth';
 import { CategoryRepository, CategoryService } from '@/modules/category';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
@@ -42,6 +42,12 @@ beforeEach(async () => {
 		name: 'Семья',
 		updatedAt: FIXED_DATE
 	});
+	await database.insert(householdMembers).values({
+		householdId: HOUSEHOLD_ID,
+		joinedAt: FIXED_DATE,
+		role: 'owner',
+		userId: USER_ID
+	});
 	await database.insert(categories).values({
 		archivedAt: null,
 		color: '#3f77a8',
@@ -70,7 +76,7 @@ afterEach(() => {
 });
 
 function createController(sessionResolver: RequestSessionResolver): CategoryHttpController {
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const categoryService = new CategoryService({
 		categoryRepository: new CategoryRepository(database),
 		householdResolver,

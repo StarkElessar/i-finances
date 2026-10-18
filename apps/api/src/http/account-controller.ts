@@ -7,10 +7,6 @@ import {
 import type { AuthenticatedSession } from '@/modules/auth';
 import type { AuthConfig } from '@/modules/auth';
 import { getAuthConfig } from '@/modules/auth';
-import {
-	HouseholdAccessRequiredError,
-	HouseholdSelectionRequiredError
-} from '@/modules/household';
 
 import {
 	type AccountCommandResult,
@@ -239,10 +235,7 @@ export class AccountHttpController {
 			}, 409);
 		}
 
-		if (
-			error instanceof AccountVersionConflictError
-			|| error instanceof HouseholdSelectionRequiredError
-		) {
+		if (error instanceof AccountVersionConflictError) {
 			return context.json<AccountCommandResult>({
 				errorCode: 'conflict',
 				message: 'Данные счёта изменились. Обновите счета и повторите действие.',
@@ -256,14 +249,6 @@ export class AccountHttpController {
 				message: 'Счёт не найден.',
 				ok: false
 			}, 404);
-		}
-
-		if (error instanceof HouseholdAccessRequiredError) {
-			return context.json<AccountCommandResult>({
-				errorCode: 'forbidden',
-				message: 'Недостаточно прав для изменения счетов.',
-				ok: false
-			}, 403);
 		}
 
 		throw error;

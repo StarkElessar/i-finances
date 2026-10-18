@@ -63,7 +63,7 @@ afterEach(() => {
 });
 
 function createController(sessionResolver: RequestSessionResolver): AccountHttpController {
-	const householdResolver = new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE);
+	const householdResolver = new HouseholdResolver(new HouseholdRepository(database));
 	const accountService = new AccountService({
 		accountRepository: new AccountRepository(database),
 		createId: () => 'account-http',

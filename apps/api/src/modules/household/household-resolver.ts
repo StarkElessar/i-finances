@@ -1,64 +1,27 @@
-import type { CurrencyCode } from '@i-finances/contracts';
-
 import { HouseholdAccessRequiredError } from './household-access-required-error';
-import type { HouseholdRepository } from './household-repository';
-import { type HouseholdAccessRecord } from './household-repository';
-import { HouseholdSelectionRequiredError } from './household-selection-required-error';
+import type { HouseholdAccessRecord, HouseholdRepository } from './household-repository';
 
-export const DEFAULT_HOUSEHOLD_ID = 'default-household';
-export const DEFAULT_HOUSEHOLD_NAME = 'Семья';
-export const DEFAULT_HOUSEHOLD_BASE_CURRENCY: CurrencyCode = 'BYN';
-
+/**
+ * Resolves the household of the current user on every request. Access is decided by membership alone, so removing
+ * a member takes effect on their next request.
+ *
+ * It never creates anything: a user without a membership is in onboarding and must create a household or accept
+ * an invitation explicitly (Р4, Р8).
+ */
 export class HouseholdResolver {
-	public constructor(
-		private readonly repository: HouseholdRepository,
-		private readonly now: () => Date = () => new Date()
-	) {}
+	public constructor(private readonly repository: HouseholdRepository) {}
 
-	/**
-	 * Resolves the one household available in the first product version.
-	 *
-	 * Existing development databases may contain users created before
-	 * households existed, so first access provisions the default workspace.
-	 */
-	public async requireForUser(userId: string): Promise<HouseholdAccessRecord> {
-		const availableHouseholds = await this.repository.findForUser(userId);
-		const household = this.selectSingleHousehold(availableHouseholds);
-
-		if (household !== undefined) {
-			return household;
-		}
-
-		const provisionedHouseholds = await this.repository.ensureMembership({
-			baseCurrency: DEFAULT_HOUSEHOLD_BASE_CURRENCY,
-			householdId: DEFAULT_HOUSEHOLD_ID,
-			householdName: DEFAULT_HOUSEHOLD_NAME,
-			joinedAt: this.now(),
-			role: 'owner',
-			userId
-		});
-		const provisionedHousehold = this.selectSingleHousehold(provisionedHouseholds);
-
-		if (provisionedHousehold !== undefined) {
-			return provisionedHousehold;
-		}
-
-		throw new HouseholdAccessRequiredError();
+	public findForUser(userId: string): Promise<HouseholdAccessRecord | undefined> {
+		return this.repository.findForUser(userId);
 	}
 
-	private selectSingleHousehold(
-		households: HouseholdAccessRecord[]
-	): HouseholdAccessRecord | undefined {
-		const household = households[0];
+	public async requireForUser(userId: string): Promise<HouseholdAccessRecord> {
+		const household = await this.repository.findForUser(userId);
 
-		if (households.length === 1) {
-			return household;
+		if (household === undefined) {
+			throw new HouseholdAccessRequiredError();
 		}
 
-		if (households.length > 1) {
-			throw new HouseholdSelectionRequiredError();
-		}
-
-		return undefined;
+		return household;
 	}
 }

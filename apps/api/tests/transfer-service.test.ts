@@ -98,7 +98,7 @@ function createService(): TransferService {
 		contactRepository: new ContactRepository(database),
 		createId: () => `id-${++sequence}`,
 		exchangeRateResolver: new ExchangeRateService(new ExchangeRateRepository(database)),
-		householdResolver: new HouseholdResolver(new HouseholdRepository(database), () => FIXED_DATE),
+		householdResolver: new HouseholdResolver(new HouseholdRepository(database)),
 		now: () => FIXED_DATE,
 		transferRepository: createTransferRepository(database)
 	});
