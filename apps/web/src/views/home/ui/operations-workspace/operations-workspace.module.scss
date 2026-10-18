@@ -1,7 +1,11 @@
 @use "@/shared/styles/functions" as fn;
 @use "@/shared/styles/mixins" as mx;
 
+// The workspace is a size container: the toolbar and the table columns follow
+// ITS width, which shrinks when the operation panel docks next to it, while the
+// window stays the same (Layout-Spec, IF-15). Thresholds: `mx.container-mn`.
 .root {
+    container-type: inline-size;
     display: flex;
     flex: 1 1 0;
     flex-direction: column;
@@ -11,36 +15,58 @@
     min-block-size: 0;
 }
 
+// Narrow container (phone board M-Ops): row 1 is order, period segment and
+// actions, row 2 is the period navigator. From `columns-4` everything sits in one
+// row, and if even that does not fit the actions wrap onto a second row.
 .toolbar {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto;
-    gap: var(--space-4);
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4) var(--space-5);
     align-items: center;
 }
 
 .toolbar-group {
     display: flex;
+    flex: 1 1 0;
     gap: var(--space-3);
     align-items: center;
-    min-inline-size: 0;
+
+    // Never squeezed below its content: when the actions do not fit they wrap
+    // onto the next row instead of overlapping the period segment.
+    min-inline-size: min-content;
+
+    @include mx.container-mn(columns-4) {
+        flex: 0 1 auto;
+    }
 }
 
+// Also has `.toolbar-group`, declared above: this one wins by source order.
 .toolbar-actions {
-    justify-self: end;
+    flex: none;
+    order: 2;
+    margin-inline-start: auto;
 }
 
 .period-switch {
     display: flex;
+    flex: 1 1 auto;
     gap: var(--space-1);
 
+    min-inline-size: 0;
     padding: var(--space-1);
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
 
     background-color: var(--color-surface-subtle);
+
+    @include mx.container-mn(columns-4) {
+        flex: 0 0 auto;
+    }
 }
 
 .period-button {
+    flex: 1 1 auto;
+
     padding: var(--space-3) var(--space-4);
     border: 0;
     border-radius: var(--radius-sm);
@@ -48,10 +74,11 @@
     font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-semibold);
     color: var(--color-text-secondary);
+    white-space: nowrap;
 
     background-color: transparent;
 
-    @include mx.media-mn(sm) {
+    @include mx.container-mn(columns-4) {
         padding-inline: var(--space-5);
     }
 
@@ -76,42 +103,81 @@
     box-shadow: var(--shadow-sm);
 }
 
+// Sort field: an icon-sized control (caption hidden, `aria-label` stays on the
+// select) until `sort-label`, then a select with its caption. The select is the
+// real control in both modes, the icon only draws on top of it.
 .sort-field {
-    flex: 1 1 auto;
+    position: relative;
+    display: inline-flex;
+    flex: none;
+}
 
-    inline-size: auto;
-    min-inline-size: 0;
-    max-inline-size: fn.rem(110);
-    padding: var(--space-2) var(--space-3);
+.sort-select {
+    cursor: pointer;
+
+    inline-size: var(--control-size-sm);
+    block-size: var(--control-size-sm);
+    padding: 0;
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
 
-    color: var(--color-text-primary);
+    font-size: var(--font-size-body-md);
+    color: transparent;
 
+    appearance: none;
     background-color: var(--color-surface);
 
-    @include mx.media-mn(sm) {
-        flex: 0 1 auto;
+    option {
+        color: var(--color-text-primary);
+    }
+
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    @include mx.container-mn(sort-label) {
         inline-size: fn.rem(140);
-        min-inline-size: auto;
-        max-inline-size: none;
+        padding: var(--space-2) var(--space-3);
+        color: var(--color-text-primary);
+        appearance: auto;
+    }
+}
+
+.sort-icon {
+    pointer-events: none;
+
+    position: absolute;
+    inset: 0;
+
+    margin: auto;
+
+    color: var(--color-text-secondary);
+
+    @include mx.container-mn(sort-label) {
+        display: none;
     }
 }
 
 .period-navigation {
     display: flex;
-    grid-column: 1 / -1;
-    grid-row: 2;
+    flex: 1 1 100%;
     gap: var(--space-3);
     align-items: center;
-    justify-self: center;
+    justify-content: center;
+    order: 3;
+
+    @include mx.container-mn(columns-4) {
+        flex: 0 1 auto;
+        order: 1;
+    }
 }
 
 .period-label {
     overflow: hidden;
 
     min-inline-size: fn.rem(138);
-    max-inline-size: min(52vw, fn.rem(260));
+    max-inline-size: fn.rem(260);
 
     font-size: var(--font-size-body-sm);
     font-weight: var(--font-weight-bold);
@@ -137,15 +203,4 @@
 
 .search-field {
     flex: 1 1 0;
-}
-
-@include mx.media-mn(md) {
-    .toolbar {
-        grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
-    }
-
-    .period-navigation {
-        grid-column: auto;
-        grid-row: auto;
-    }
 }

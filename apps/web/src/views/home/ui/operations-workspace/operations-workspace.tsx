@@ -16,6 +16,7 @@ import {
 	ArrowUpNarrowWide,
 	ChevronLeft,
 	ChevronRight,
+	ListFilter,
 	Plus,
 	Search,
 	X
@@ -140,25 +141,28 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 							<ArrowDownWideNarrow size={17}/>
 						</Show>
 					</Button>
-					<select
-						aria-label='Сортировать по'
-						class={css.sortField}
-						value={view.sort().field}
-						onChange={(event) => {
-							const field = event.currentTarget.value as OperationSortField;
+					<span class={css.sortField}>
+						<select
+							aria-label='Сортировать по'
+							class={css.sortSelect}
+							value={view.sort().field}
+							onChange={(event) => {
+								const field = event.currentTarget.value as OperationSortField;
 
-							view.setSort({
-								direction: field === 'date' ? 'desc' : 'asc',
-								field
-							});
-						}}
-					>
-						<option value='date'>По дате</option>
-						<option value='amount'>По сумме</option>
-						<option value='balance'>По балансу</option>
-						<option value='category'>По категории</option>
-						<option value='contact'>По контакту</option>
-					</select>
+								view.setSort({
+									direction: field === 'date' ? 'desc' : 'asc',
+									field
+								});
+							}}
+						>
+							<option value='date'>По дате</option>
+							<option value='amount'>По сумме</option>
+							<option value='balance'>По балансу</option>
+							<option value='category'>По категории</option>
+							<option value='contact'>По контакту</option>
+						</select>
+						<ListFilter aria-hidden='true' class={css.sortIcon} size={16}/>
+					</span>
 					<div aria-label='Период' class={css.periodSwitch} role='group'>
 						<For each={PERIOD_MODES}>
 							{(mode) => (

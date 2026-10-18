@@ -31,6 +31,7 @@ export function GridHeaderCell<T>(props: GridHeaderCellProps<T>) {
 	return (
 		<th
 			aria-sort={ariaSort()}
+			class={props.column.class}
 			scope='col'
 			style={{ width: `${props.column.width}px` }}
 		>

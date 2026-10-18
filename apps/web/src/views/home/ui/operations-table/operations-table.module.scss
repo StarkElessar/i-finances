@@ -1,7 +1,51 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 .grid {
     flex: 1 1 0;
+}
+
+// Columns by the width of the workspace container, not the window (Layout-Spec):
+// date, title and amount always; + category from `columns-4`, + contact from
+// `columns-5`, + balance and comment from `columns-7`. Hidden values stay in the
+// operation panel. A hidden column is scaled to zero width and its cells are
+// `overflow: hidden` and `visibility: hidden` (the grid's contract, see `GridColumn.class`).
+.column-category,
+.column-contact,
+.column-wide {
+    --column-scale: 0;
+
+    &:not(col) {
+        overflow: hidden;
+        visibility: hidden;
+    }
+}
+
+@mixin column-visible {
+    --column-scale: 1;
+
+    &:not(col) {
+        overflow: visible;
+        visibility: visible;
+    }
+}
+
+.column-category {
+    @include mx.container-mn(columns-4) {
+        @include column-visible;
+    }
+}
+
+.column-contact {
+    @include mx.container-mn(columns-5) {
+        @include column-visible;
+    }
+}
+
+.column-wide {
+    @include mx.container-mn(columns-7) {
+        @include column-visible;
+    }
 }
 
 .date-cell,
