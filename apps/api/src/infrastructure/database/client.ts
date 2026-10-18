@@ -61,3 +61,10 @@ export const db = drizzle(sqlite, { schema });
  * Shared Drizzle database shape accepted by repositories and test databases.
  */
 export type AppDatabase = typeof db;
+
+/**
+ * The handle every statement of one `database.transaction(...)` callback runs on. Repositories that must change rows
+ * of another repository's table inside their own transaction pass it on (for example the member removal of Р7 ends the
+ * removed user's sessions through `SessionRepository.deleteByUserId`).
+ */
+export type AppTransaction = Parameters<Parameters<AppDatabase['transaction']>[0]>[0];

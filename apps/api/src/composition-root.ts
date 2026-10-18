@@ -6,6 +6,7 @@ import { CompositeSessionResolver } from './http/composite-session-resolver';
 import { ContactHttpController } from './http/contact-controller';
 import { ExchangeRateHttpController } from './http/exchange-rate-controller';
 import { HouseholdHttpController } from './http/household-controller';
+import { HouseholdInvitationHttpController } from './http/household-invitation-controller';
 import { OperationHttpController } from './http/operation-controller';
 import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
@@ -50,6 +51,10 @@ import {
 	NationalBankExchangeRateClient
 } from './modules/exchange-rate';
 import {
+	getHouseholdInvitationConfig,
+	HouseholdInvitationRepository,
+	HouseholdInvitationService,
+	HouseholdMembershipRepository,
 	HouseholdRepository,
 	HouseholdResolver,
 	HouseholdService
@@ -100,6 +105,7 @@ export type ApiDependencies = {
 	contactController: ContactHttpController;
 	exchangeRateController: ExchangeRateHttpController;
 	householdController: HouseholdHttpController;
+	householdInvitationController: HouseholdInvitationHttpController;
 	operationController: OperationHttpController;
 	passkeyController: PasskeyHttpController;
 	receiptImportController: ReceiptImportHttpController;
@@ -238,7 +244,20 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 		startRateLimiter: telegramStartRateLimiter
 	});
 	const telegramDispatcher = new TelegramUpdateDispatcher(telegramSignInService, new ProcessedUpdateIds());
-	const householdService = new HouseholdService({ householdRepository, householdResolver });
+	const householdService = new HouseholdService({
+		householdRepository,
+		householdResolver,
+		membershipRepository: new HouseholdMembershipRepository(database, sessionRepository)
+	});
+	const householdInvitationService = new HouseholdInvitationService({
+		acceptRateLimiter: new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS }),
+		// Throws, and so stops the start, on a HOUSEHOLD_INVITATION_TTL_HOURS outside 1-168.
+		config: getHouseholdInvitationConfig(process.env),
+		householdResolver,
+		invitations: new HouseholdInvitationRepository(database),
+		origin: authConfig.origin,
+		previewRateLimiter: new FixedWindowRateLimiter({ maxRequests: 30, windowMilliseconds: FIVE_MINUTES_MILLISECONDS })
+	});
 	const categoryService = new CategoryService({
 		categoryRepository: new CategoryRepository(database),
 		householdResolver
@@ -361,6 +380,12 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 		// remove, leave). A leaked key must not be able to invite someone into the family finances.
 		householdController: new HouseholdHttpController(
 			householdService,
+			cookieSessionResolver,
+			authConfig
+		),
+		// Browser cookie only, for the same reason: inviting and accepting are membership management.
+		householdInvitationController: new HouseholdInvitationHttpController(
+			householdInvitationService,
 			cookieSessionResolver,
 			authConfig
 		),

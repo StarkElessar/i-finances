@@ -19,6 +19,7 @@ import {
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
 import { hashSessionToken } from '@/modules/auth';
+import { hashHouseholdInvitationToken } from '@/modules/household';
 
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -66,6 +67,16 @@ const UNKNOWN_LOGIN_CODE = 'unknownloginrequestcode000000000';
 const NOW = Date.now();
 const DAY = 24 * 60 * 60 * 1000;
 
+/** Well-formed invitation tokens (43 base64url characters) of household A that no longer open anything. */
+const A_EXPIRED_INVITATION_TOKEN = 'e'.repeat(43);
+
+const A_REVOKED_INVITATION_TOKEN = 'r'.repeat(43);
+
+const A_USED_INVITATION_TOKEN = 'd'.repeat(43);
+
+/** A well-formed invitation token that no invitation has. */
+const UNKNOWN_INVITATION_TOKEN = 'n'.repeat(43);
+
 type Actor = 'beta' | 'loner';
 type Scope = 'household' | 'onboarding' | 'user' | 'public';
 
@@ -77,6 +88,10 @@ type Fixture = {
 		account2: Entity;
 		category: Entity;
 		contact: Entity;
+		/** The active invitation of household A, created by its owner over HTTP. */
+		invitationId: string;
+		/** Its token, as the link the owner sent; only the person it was sent to should have it. */
+		invitationToken: string;
 		operation: Entity;
 		ownerPasskeyId: string;
 		ownerSessionId: string;
@@ -102,6 +117,12 @@ type ProbeRequest = {
 };
 
 type Probe = {
+	/**
+	 * Who runs the probe; both by default. A probe that would legitimately change household A for one of them (the user
+	 * without a household accepting A's live invitation joins A) runs as the other one only; the route still needs a
+	 * probe for both, through another probe.
+	 */
+	actors?: Actor[];
 	/** Allowed statuses for user B (member of the other household). */
 	beta: number[];
 	/** Allowed statuses for the user without a household; household-scoped routes always expect 403 household-required. */
@@ -342,6 +363,82 @@ const PROBES: Probe[] = [
 		request: () => ({ body: { name: 'Бета переименована' }, path: '/api/household' }),
 		route: 'PUT /api/household',
 		scope: 'household'
+	},
+	{
+		beta: [404],
+		name: 'cannot remove a member of A',
+		request: () => ({ path: `/api/household/members/${A_MEMBER}/remove` }),
+		route: 'POST /api/household/members/:userId/remove',
+		scope: 'household'
+	},
+	{
+		beta: [404],
+		name: 'cannot remove the owner of A',
+		request: () => ({ path: `/api/household/members/${A_OWNER}/remove` }),
+		route: 'POST /api/household/members/:userId/remove',
+		scope: 'household'
+	},
+	{
+		beta: [409],
+		name: 'the last owner of B cannot leave, and leaving touches nothing of A',
+		request: () => ({ path: '/api/household/leave' }),
+		route: 'POST /api/household/leave',
+		scope: 'household'
+	},
+
+	// Household invitations (A6): owner routes act on the caller's own household only.
+	{
+		beta: [201],
+		name: 'creates an invitation into own household only',
+		request: () => ({ path: '/api/household/invitations' }),
+		route: 'POST /api/household/invitations',
+		scope: 'household'
+	},
+	{
+		beta: [200],
+		name: 'lists only own invitations',
+		request: () => ({ path: '/api/household/invitations' }),
+		route: 'GET /api/household/invitations',
+		scope: 'household'
+	},
+	{
+		beta: [404],
+		name: 'cannot revoke A invitation',
+		request: (f) => ({ path: `/api/household/invitations/${f.alpha.invitationId}/revoke` }),
+		route: 'POST /api/household/invitations/:id/revoke',
+		scope: 'household'
+	},
+	// Guest routes: work without a household (onboarding is what they are for).
+	...[
+		['an unknown', UNKNOWN_INVITATION_TOKEN],
+		['an expired A', A_EXPIRED_INVITATION_TOKEN],
+		['a revoked A', A_REVOKED_INVITATION_TOKEN],
+		['a used A', A_USED_INVITATION_TOKEN]
+	].flatMap(([label, token]): Probe[] => [
+		{
+			beta: [404],
+			loner: [404],
+			name: `preview of ${label} invitation reveals nothing`,
+			request: () => ({ body: { token }, path: '/api/invitations/preview' }),
+			route: 'POST /api/invitations/preview',
+			scope: 'public'
+		},
+		{
+			beta: [404],
+			loner: [404],
+			name: `cannot accept ${label} invitation`,
+			request: () => ({ body: { replaceEmptyHousehold: true, token }, path: '/api/invitations/accept' }),
+			route: 'POST /api/invitations/accept',
+			scope: 'onboarding'
+		}
+	]),
+	{
+		actors: ['beta'],
+		beta: [409],
+		name: 'a live A invitation does not move B out of its household nor touch A',
+		request: (f) => ({ body: { replaceEmptyHousehold: true, token: f.alpha.invitationToken }, path: '/api/invitations/accept' }),
+		route: 'POST /api/invitations/accept',
+		scope: 'onboarding'
 	},
 
 	// Operations
@@ -994,6 +1091,26 @@ async function seed(): Promise<Fixture> {
 		title: 'Альфа покупка'
 	}), 'operation');
 	const alphaTransfer = await created(A_OWNER, '/api/transfers', transferBody(alphaAccount.id, alphaAccount2.id), 'transfer');
+	const invitationResponse = await call(A_OWNER, 'POST /api/household/invitations', { path: '/api/household/invitations' });
+	const invitationJson = await invitationResponse.json() as { invitation: { id: string; link: string } };
+
+	expect(invitationResponse.status, JSON.stringify(invitationJson)).toBe(201);
+
+	const deadInvitation = (id: string, token: string, extra: Record<string, unknown>) => ({
+		createdAt: at,
+		createdByUserId: A_OWNER,
+		expiresAt: new Date(NOW + DAY),
+		householdId: A_HOUSEHOLD,
+		id,
+		tokenHash: hashHouseholdInvitationToken(token),
+		...extra
+	});
+
+	await database.insert(schema.householdInvitations).values([
+		deadInvitation('alpha-invitation-expired', A_EXPIRED_INVITATION_TOKEN, { expiresAt: new Date(NOW - DAY) }),
+		deadInvitation('alpha-invitation-revoked', A_REVOKED_INVITATION_TOKEN, { revokedAt: at }),
+		deadInvitation('alpha-invitation-used', A_USED_INVITATION_TOKEN, { acceptedAt: at, acceptedByUserId: A_MEMBER })
+	]);
 	const receiptResponse = await call(A_OWNER, 'POST /api/receipt-imports', { form: receiptForm, path: '/api/receipt-imports' });
 	const receiptJson = await receiptResponse.json() as { receiptImport: { id: string } };
 
@@ -1008,6 +1125,8 @@ async function seed(): Promise<Fixture> {
 			account2: alphaAccount2,
 			category: alphaCategory,
 			contact: alphaContact,
+			invitationId: invitationJson.invitation.id,
+			invitationToken: invitationJson.invitation.link.split('/').at(-1) as string,
 			operation: alphaOperation,
 			ownerPasskeyId: `${A_OWNER}-passkey`,
 			ownerSessionId: `${A_OWNER}-session`,
@@ -1128,6 +1247,8 @@ function sendsAlphaIds(probe: Probe): boolean {
 			account2: alpha,
 			category: alpha,
 			contact: alpha,
+			invitationId: ALPHA_PLACEHOLDER_ID,
+			invitationToken: 'placeholder-token',
 			operation: alpha,
 			ownerPasskeyId: ALPHA_PLACEHOLDER_ID,
 			ownerSessionId: ALPHA_PLACEHOLDER_ID,
@@ -1159,7 +1280,7 @@ describe('household isolation over every route', () => {
 		expect(probed).toEqual(registered);
 	});
 
-	const cases = PROBES.flatMap((probe) => (['beta', 'loner'] as const).map((actor) => ({ actor, probe })));
+	const cases = PROBES.flatMap((probe) => (probe.actors ?? ['beta', 'loner'] as const).map((actor) => ({ actor, probe })));
 
 	it.each(cases)('$probe.route as $actor: $probe.name', async ({ actor, probe }) => {
 		const before = readDatabaseState();
@@ -1288,6 +1409,101 @@ describe('existing users keep working', () => {
 		}
 
 		expect(readDatabaseState()).toEqual(before);
+	});
+
+	it('the MCP key manages no membership: invitations, acceptance, removal and leaving take the browser session only', async () => {
+		const bearer = { authorization: `Bearer ${MCP_API_KEY}`, 'content-type': 'application/json', origin: ORIGIN };
+		const before = readDatabaseState();
+		const requests: Array<[string, string, unknown]> = [
+			['POST', '/api/household/invitations', undefined],
+			['GET', '/api/household/invitations', undefined],
+			['POST', `/api/household/invitations/${fixture.alpha.invitationId}/revoke`, undefined],
+			['POST', '/api/invitations/accept', { token: fixture.alpha.invitationToken }],
+			['POST', `/api/household/members/${A_MEMBER}/remove`, undefined],
+			['POST', '/api/household/leave', undefined]
+		];
+
+		for (const [method, path, body] of requests) {
+			const response = await app.request(path, {
+				body: body === undefined ? undefined : JSON.stringify(body),
+				headers: bearer,
+				method
+			});
+
+			expect(response.status, `${method} ${path}`).toBe(401);
+			expect(await response.json()).toMatchObject({ errorCode: 'unauthenticated', ok: false });
+		}
+
+		expect(readDatabaseState()).toEqual(before);
+	});
+
+	it('the member of A manages nothing: invitations and removal are the owner\'s', async () => {
+		const before = readDatabaseState();
+		const requests: Array<[string, string]> = [
+			['POST', '/api/household/invitations'],
+			['GET', '/api/household/invitations'],
+			['POST', `/api/household/invitations/${fixture.alpha.invitationId}/revoke`],
+			['POST', `/api/household/members/${A_OWNER}/remove`]
+		];
+
+		for (const [method, path] of requests) {
+			const response = await call(A_MEMBER, `${method} ${path}`, { path });
+
+			expect(response.status, `${method} ${path}`).toBe(403);
+			expect(await response.json()).toMatchObject({ errorCode: 'owner-required' });
+		}
+
+		expect(readDatabaseState()).toEqual(before);
+	});
+
+	it('a removed member loses access at once: the old cookie is dead, their operation stays in A', async () => {
+		const removed = await call(A_OWNER, `POST /api/household/members/${A_MEMBER}/remove`, {
+			path: `/api/household/members/${A_MEMBER}/remove`
+		});
+
+		expect(removed.status).toBe(200);
+
+		for (const path of ['/api/accounts', '/api/operations/balances', '/api/household', '/api/auth/session']) {
+			const response = await call(A_MEMBER, `GET ${path}`, { path });
+
+			if (path === '/api/auth/session') {
+				expect(await response.json()).toMatchObject({ authenticated: false });
+			}
+			else {
+				expect(response.status, path).toBe(401);
+			}
+		}
+
+		expect(connection.prepare('SELECT count(*) AS count FROM sessions WHERE user_id = ?').get(A_MEMBER)).toEqual({ count: 0 });
+		expect(connection.prepare('SELECT household_id, created_by_user_id FROM operations WHERE id = ?').get(fixture.alpha.operation.id))
+			.toEqual({ created_by_user_id: A_MEMBER, household_id: A_HOUSEHOLD });
+		// The owner and the MCP key (MCP_USER_ID = A owner) are not affected.
+		expect((await call(A_OWNER, 'GET /api/accounts', { path: '/api/accounts' })).status).toBe(200);
+		expect((await app.request('/api/accounts', { headers: { authorization: `Bearer ${MCP_API_KEY}` } })).status).toBe(200);
+	});
+
+	it('the person holding A\'s link sees A\'s name and joins A as member, nothing else', async () => {
+		const previewed = await call(LONER, 'POST /api/invitations/preview', {
+			body: { token: fixture.alpha.invitationToken },
+			path: '/api/invitations/preview'
+		});
+
+		expect(await previewed.json()).toEqual({
+			invitation: { expiresAt: expect.any(String), householdName: 'Альфа Семья', inviterName: 'Альфа Владелец' },
+			ok: true
+		});
+
+		const accepted = await call(LONER, 'POST /api/invitations/accept', {
+			body: { token: fixture.alpha.invitationToken },
+			path: '/api/invitations/accept'
+		});
+
+		expect(accepted.status).toBe(200);
+		expect(await accepted.json()).toEqual({ household: { id: A_HOUSEHOLD, name: 'Альфа Семья', role: 'member' }, ok: true });
+
+		const accounts = await call(LONER, 'GET /api/accounts', { path: '/api/accounts' });
+
+		expect((await accounts.json() as { items: unknown[] }).items).toHaveLength(2);
 	});
 
 	it('a user without a household is never added to one implicitly', async () => {

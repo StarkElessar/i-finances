@@ -1,4 +1,4 @@
-import type { AppDatabase } from '@/infrastructure/database/client';
+import type { AppDatabase, AppTransaction } from '@/infrastructure/database/client';
 import { sessions, users } from '@/infrastructure/database/schema';
 
 import { and, desc, eq, gt, lt, ne } from 'drizzle-orm';
@@ -36,6 +36,9 @@ export type SessionSummaryRecord = {
 	lastSeenAt: Date;
 	userAgent: string | null;
 };
+
+/** The shared connection or the transaction of another repository: both run the statement synchronously. */
+export type SessionStatementExecutor = Pick<AppDatabase | AppTransaction, 'delete'>;
 
 export class SessionRepository {
 	public constructor(private readonly database: AppDatabase) {}
@@ -124,5 +127,17 @@ export class SessionRepository {
 			.returning({ id: sessions.id });
 
 		return deleted.length;
+	}
+
+	/**
+	 * Ends every session of the user, all devices included. Runs on `executor` when given, so that a caller can end the
+	 * sessions in the same transaction as the change that requires it: removing a member deletes the membership and the
+	 * sessions together (Р7). Shared with «завершить все сеансы» of IF-41. Returns how many sessions were removed.
+	 */
+	public deleteByUserId(userId: string, executor: SessionStatementExecutor = this.database): number {
+		return executor.delete(sessions)
+			.where(eq(sessions.userId, userId))
+			.run()
+			.changes;
 	}
 }

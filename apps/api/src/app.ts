@@ -5,6 +5,7 @@ import type { ContactHttpController } from '@/http/contact-controller';
 import type { ExchangeRateHttpController } from '@/http/exchange-rate-controller';
 import { HealthController } from '@/http/health-controller';
 import type { HouseholdHttpController } from '@/http/household-controller';
+import type { HouseholdInvitationHttpController } from '@/http/household-invitation-controller';
 import { respondToHouseholdAccessError } from '@/http/household-required-response';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
@@ -27,6 +28,7 @@ export type ApiAppDependencies = {
 	contactController?: ContactHttpController;
 	exchangeRateController?: ExchangeRateHttpController;
 	householdController?: HouseholdHttpController;
+	householdInvitationController?: HouseholdInvitationHttpController;
 	operationController?: OperationHttpController;
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
@@ -149,6 +151,19 @@ export function createApiApp(
 		app.get('/api/household', householdController.get());
 		app.post('/api/household', householdController.create());
 		app.put('/api/household', householdController.update());
+		app.post('/api/household/members/:userId/remove', householdController.removeMember());
+		app.post('/api/household/leave', householdController.leave());
+	}
+
+	if (dependencies.householdInvitationController !== undefined) {
+		const invitationController = dependencies.householdInvitationController;
+
+		app.post('/api/household/invitations', invitationController.bodyLimit(), invitationController.create());
+		app.get('/api/household/invitations', invitationController.list());
+		app.post('/api/household/invitations/:id/revoke', invitationController.bodyLimit(), invitationController.revoke());
+		// The token travels in the body, never in the path: paths end up in access logs (Р5).
+		app.post('/api/invitations/preview', invitationController.bodyLimit(), invitationController.preview());
+		app.post('/api/invitations/accept', invitationController.bodyLimit(), invitationController.accept());
 	}
 
 	if (dependencies.operationController !== undefined) {
