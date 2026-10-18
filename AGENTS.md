@@ -139,7 +139,7 @@ Never hide the keyboard focus indicator (`:focus-visible`) without replacing it.
 | `pnpm lint` / `pnpm lint:fix` | ESLint + Stylelint over `apps/**` and `packages/**` |
 | `pnpm db:migrate` | Apply pending migrations in `apps/api` |
 
-`apps/api` also owns `db:generate` (drizzle-kit), `mcp:api-key`, and `receipt:cleanup-images`.
+`apps/api` also owns `db:generate` (drizzle-kit), `mcp:api-key`, `receipt:cleanup-images`, and `telegram:reset` (service recovery of a user's Telegram link, see Auth).
 
 ## Architecture
 
@@ -177,6 +177,22 @@ Never hide the keyboard focus indicator (`:focus-visible`) without replacing it.
 - API middleware guards authenticated routes and sets security headers: `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`
 - Environment: `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `SESSION_COOKIE_NAME`, `SESSION_TTL_DAYS`, `TRUSTED_PROXY_COUNT` (reverse proxies in front of the API, default 0, must be set explicitly when `NODE_ENV=production` or the API refuses to start; see `development/decisions/client-ip.md`)
 - `apps/mcp` authenticates with `MCP_API_KEY` as a bearer token instead of a browser session
+- Three ways to sign in, all kept: password, passkey, Telegram. The full design, with the reasons, is `development/decisions/telegram-auth-and-households-v1.md` (sections Р1–Р13); this section is the short version.
+- **Sign-in through Telegram** is a bot deep link, not a widget: `POST /api/auth/telegram/start` creates a request (code in `https://t.me/<bot>?start=<code>`, secret in the httpOnly cookie `i_finances_tg_login`, only its hash in `telegram_login_requests`), the user presses «Войти» in the bot, the browser polls `complete` and gets a session. Identity comes only from updates that reach `POST /api/telegram/webhook` with the right `X-Telegram-Bot-Api-Secret-Token`; the client never sends its own. Requests move `pending → confirmed|rejected → used` only through conditional `UPDATE`s checked with `changes === 1`.
+- **Linking** (`link/start`, `link/complete`, session required) attaches Telegram to an existing account; an empty duplicate created earlier by a Telegram sign-up is merged. There is no unlink in v1; recovery is the script below.
+- Users created by a Telegram sign-up have no password (`users.password_hash` is NULL) and the username `tg-<telegram id>`. The prefix `tg-` is reserved: `seed-auth-user.ts` refuses it. Never treat a NULL hash as a wrong password: use `hasUsablePassword`.
+- Recovery of access without a password (Р10): `pnpm --filter @i-finances/api telegram:reset <username>` (`apps/api/scripts/reset-user-telegram.ts`) removes that user's Telegram link and revokes their open login requests. Dry run by default; `--apply` asks to type the username; `--end-sessions` also ends their sessions; it refuses a user with no password and no passkey unless `--allow-lockout`. It never deletes the user or data. Server use is in `docs/deployment.md`.
+- Telegram environment (Р12; the schema is `modules/telegram/telegram-config.ts`, the template is `.env.example`): `TELEGRAM_BOT_TOKEN` (secret), `TELEGRAM_BOT_USERNAME`, `TELEGRAM_UPDATES` (`off` default, `webhook`, `polling`), `TELEGRAM_WEBHOOK_SECRET` (secret), `TELEGRAM_WEBHOOK_URL`, `TELEGRAM_LOGIN_TTL_MINUTES`, `TELEGRAM_REGISTRATION_ENABLED` (default `false`), `HOUSEHOLD_INVITATION_TTL_HOURS` (default 168), `DEV_TELEGRAM_LOGIN` (the API refuses to start with it when `NODE_ENV=production`). A bad value stops the start; messages name variables, never values.
+- Never run with the production bot token locally and never test with a real token: tests use `TELEGRAM_UPDATES=off` and a fake bot client. `DEV_TELEGRAM_LOGIN=true` signs in as any user of the database, so it is for a disposable local database only, never for a copy of the production one.
+
+## Households
+
+- A user belongs to **one** household (unique `household_members(user_id)`); roles are `owner` and `member`. A household has at least one owner.
+- **The household is never created implicitly.** `HouseholdResolver.requireForUser` creates nothing: a user without membership gets 403 `household-required` on every household route (one mapping, `http/household-required-response.ts`; controllers let the error through) and `GET /api/auth/session` returns `household: null`. The web onboarding creates the household or accepts an invitation.
+- **Only the browser cookie session manages the household and its membership.** Household, invitation and Telegram-link routes are wired to `cookieSessionResolver`; the MCP bearer key gets 401 there. A leaked `MCP_API_KEY` must not be able to invite, remove or rename anything. Finance routes use the composite resolver (cookie or key). New routes that change membership or add a way to sign in follow the cookie-only rule.
+- Invitations are one-time links `https://<domain>/invite#<token>` (the token is in the fragment, never in a path or query: those reach access logs). Only the SHA-256 of the token is stored; the link is shown once; at most 3 active per household; the lifetime is `HOUSEHOLD_INVITATION_TTL_HOURS`. `preview` and `accept` take the token in the JSON body. A dead link is always the same 404 `invitation-unavailable`.
+- Removing a member deletes the membership and all their sessions in one transaction; the user row is never deleted. `leave` keeps the sessions.
+- Routes (all under `/api`): `POST /auth/telegram/start|complete|cancel`; `POST /auth/telegram/link/start|complete`; `POST /telegram/webhook` (Telegram only, secret header, no `Origin` check); `POST /dev/telegram/confirm` (only with `DEV_TELEGRAM_LOGIN`, loopback peers only); `GET|POST|PUT /household`; `POST /household/members/:userId/remove`; `POST /household/leave`; `GET|POST /household/invitations`; `POST /household/invitations/:id/revoke`; `POST /invitations/preview`; `POST /invitations/accept`.
 
 ## Deployment
 
