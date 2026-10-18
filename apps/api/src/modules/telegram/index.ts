@@ -1,5 +1,6 @@
 export { FetchTelegramBotClient, type FetchTelegramBotClientOptions } from './fetch-telegram-bot-client';
 export { IgnoringTelegramUpdateHandler } from './ignoring-telegram-update-handler';
+export { loadTelegramMessages } from './load-telegram-messages';
 export { ProcessedUpdateIds } from './processed-update-ids';
 export { TelegramApiError } from './telegram-api-error';
 export {
@@ -16,6 +17,14 @@ export {
 export { getTelegramConfig, type TelegramConfig } from './telegram-config';
 export { TelegramConfigurationError } from './telegram-configuration-error';
 export { TelegramForbiddenError } from './telegram-forbidden-error';
+export {
+	TELEGRAM_MESSAGE_KEYS,
+	TELEGRAM_MESSAGE_PLACEHOLDERS,
+	type TelegramMessageKey,
+	type TelegramMessageParameters
+} from './telegram-message-key';
+export { TelegramMessages } from './telegram-messages';
+export { TelegramMessagesError } from './telegram-messages-error';
 export { TelegramNetworkError } from './telegram-network-error';
 export { TelegramRateLimitedError } from './telegram-rate-limited-error';
 export { TelegramSecret } from './telegram-secret';
