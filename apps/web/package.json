@@ -25,6 +25,7 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@testing-library/jest-dom": "^7.0.1",
 		"@types/node": "^26.1.1",
 		"sass-embedded": "^1.100.0",
 		"storybook": "10.6.2",
