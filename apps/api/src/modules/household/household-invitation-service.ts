@@ -32,7 +32,10 @@ export type HouseholdInvitationServiceDependencies = {
 	createToken?: () => string;
 	householdResolver: Pick<HouseholdResolver, 'requireForUser'>;
 	invitations: Pick<HouseholdInvitationRepository, 'accept' | 'create' | 'findActivePreview' | 'listActive' | 'revoke'>;
-	/** Tells the inviter, after the acceptance is committed (A9). Its failure never undoes the acceptance. */
+	/**
+	 * Tells the inviter, after the acceptance is committed (A9). Started in the background: the answer to the guest does
+	 * not wait for it, and its failure never undoes the acceptance.
+	 */
 	memberJoinedNotifier: HouseholdMemberJoinedNotifier;
 	now?: () => Date;
 	/** `AUTH_ORIGIN`: the links point to the web application. */
@@ -210,7 +213,9 @@ export class HouseholdInvitationService {
 			case 'confirmation-required':
 				return { ...failure('empty-household-confirmation-required'), currentHouseholdName: acceptance.currentHouseholdName };
 			case 'joined':
-				await this.notifyMemberJoined({
+				// In the background: the guest is not kept waiting for Telegram (up to its 10 s request timeout), and a
+				// slow or failed send cannot turn a committed acceptance into an error on the client (review A9).
+				void this.notifyMemberJoined({
 					householdName: acceptance.householdName,
 					inviterUserId: acceptance.inviterUserId,
 					memberDisplayName: acceptance.memberDisplayName
@@ -223,7 +228,10 @@ export class HouseholdInvitationService {
 		}
 	}
 
-	/** After the commit: a failure here is logged and forgotten, the caller still gets the household (A9). */
+	/**
+	 * After the commit, not awaited by `accept`: a failure here is logged and forgotten, the caller still gets the
+	 * household (A9). Never rejects, so the promise left behind cannot become an unhandled rejection.
+	 */
 	private async notifyMemberJoined(notice: HouseholdMemberJoinedNotice): Promise<void> {
 		try {
 			await this.dependencies.memberJoinedNotifier.notifyMemberJoined(notice);

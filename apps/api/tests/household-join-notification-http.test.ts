@@ -21,7 +21,8 @@ import {
 
 /**
  * A9: when an invitation is accepted, the inviter hears about it through the bot (Р5, A9). The notice goes out after
- * the acceptance is committed; a failure of the send, or a missing or blocked Telegram, never changes the acceptance.
+ * the acceptance is committed and in the background (the answer to the guest does not wait for Telegram); a failure of
+ * the send, or a missing or blocked Telegram, never changes the acceptance.
  */
 
 const OWNER = 'owner';
@@ -103,8 +104,28 @@ async function createInvitation(): Promise<{ id: string; token: string }> {
 	return { id: body.invitation.id, token: token as string };
 }
 
-function accept(token: string, userId = NEWCOMER) {
-	return harness.call('/api/invitations/accept', { body: { token }, token: tokens[userId] });
+/** Accepts and waits for the background notice, so that what the bot was asked to send is final. */
+async function accept(token: string, userId = NEWCOMER): Promise<Response> {
+	const response = await harness.call('/api/invitations/accept', { body: { token }, token: tokens[userId] });
+
+	await harness.notificationsSettled();
+
+	return response;
+}
+
+async function linkTelegram(userId: string, telegramId: string, chatId: string): Promise<void> {
+	const at = new Date('2026-10-01T10:00:00.000Z');
+
+	await database.insert(telegramAccounts).values({
+		chatId,
+		firstName: userId,
+		linkedAt: at,
+		lastSignInAt: at,
+		telegramId,
+		updatedAt: at,
+		userId,
+		username: null
+	});
 }
 
 function sentMessages() {
@@ -187,6 +208,56 @@ describe('the inviter is told through the bot', () => {
 		expect(membershipAtSend).toEqual({ household_id: FAMILY, role: 'member' });
 		expect(acceptedAtSend).toBe(NEWCOMER);
 	});
+
+	it('the answer to the guest does not wait for Telegram (the notice is sent in the background)', async () => {
+		const { token } = await createInvitation();
+		let finishSend: () => void = () => undefined;
+		const sendStarted = vi.fn();
+
+		vi.spyOn(bot, 'sendMessage').mockImplementation(() => {
+			sendStarted();
+
+			return new Promise((resolve) => {
+				finishSend = () => resolve({ messageId: 1 });
+			});
+		});
+
+		const response = await harness.call('/api/invitations/accept', { body: { token }, token: tokens[NEWCOMER] });
+
+		expect(response.status).toBe(200);
+		expect(await response.json()).toMatchObject({ household: { id: FAMILY, role: 'member' }, ok: true });
+		await vi.waitFor(() => {
+			expect(sendStarted).toHaveBeenCalledOnce();
+		});
+		finishSend();
+		await harness.notificationsSettled();
+	});
+
+	it('names are cut to their limits: 100 characters for the member, 120 for the household', async () => {
+		await insertUser(database, 'long', 'Я'.repeat(150));
+		connection.prepare('UPDATE households SET name = ? WHERE id = ?').run('С'.repeat(130), FAMILY);
+		tokens.long = await harness.signIn('long');
+		const { token } = await createInvitation();
+
+		expect((await accept(token, 'long')).status).toBe(200);
+		expect(sentMessages()).toEqual([{ chatId: OWNER_CHAT, text: joinedText('Я'.repeat(100), 'С'.repeat(120)) }]);
+	});
+
+	it('nothing is looked up, sent or logged while no bot token is configured', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const consoleWarn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+
+		harness = createHouseholdTestApp(database, DEFAULT_INVITATION_TTL, { botClient: null });
+		for (const userId of [OWNER, NEWCOMER]) {
+			tokens[userId] = await harness.signIn(userId);
+		}
+		const { token } = await createInvitation();
+
+		expect((await accept(token)).status).toBe(200);
+		expect(membershipOf(NEWCOMER)).toEqual({ household_id: FAMILY, role: 'member' });
+		expect(consoleError).not.toHaveBeenCalled();
+		expect(consoleWarn).not.toHaveBeenCalled();
+	});
 });
 
 describe('a 403 from Telegram marks the owner as blocked the bot', () => {
@@ -199,6 +270,16 @@ describe('a 403 from Telegram marks the owner as blocked the bot', () => {
 		expect(response.status).toBe(200);
 		expect(membershipOf(NEWCOMER)).toEqual({ household_id: FAMILY, role: 'member' });
 		expect(botBlockedAtOf(OWNER)).toBe(harness.clock.now.getTime());
+	});
+
+	it('marks only the owner: another linked Telegram keeps bot_blocked_at empty', async () => {
+		await linkTelegram(MEMBER, '5002', '777000222');
+		bot.failNext('sendMessage', new TelegramForbiddenError('sendMessage', 'Forbidden: bot was blocked by the user'));
+		const { token } = await createInvitation();
+
+		expect((await accept(token)).status).toBe(200);
+		expect(botBlockedAtOf(OWNER)).toBe(harness.clock.now.getTime());
+		expect(botBlockedAtOf(MEMBER)).toBeNull();
 	});
 
 	it('a successful send changes nothing: bot_blocked_at keeps its earlier value', async () => {
@@ -265,6 +346,8 @@ describe('a failed send never fails the acceptance', () => {
 			household: { id: FAMILY, name: 'Семья', role: 'member' },
 			ok: true
 		});
-		expect(consoleError).toHaveBeenCalledWith('Household member notification failed.', 'Error');
+		await vi.waitFor(() => {
+			expect(consoleError).toHaveBeenCalledWith('Household member notification failed.', 'Error');
+		});
 	});
 });
