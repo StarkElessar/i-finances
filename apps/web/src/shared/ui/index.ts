@@ -63,6 +63,8 @@ export type {
 	GridSortState
 } from './grid';
 export { Grid } from './grid';
+export type { PeriodNavigatorProps } from './period-navigator';
+export { PeriodNavigator } from './period-navigator';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
 export type { SegmentedOption, SegmentedProps } from './segmented';

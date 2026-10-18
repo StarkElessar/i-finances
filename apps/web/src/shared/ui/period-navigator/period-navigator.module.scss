@@ -1,0 +1,24 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup: buttons and name in a row with a 6 px gap; the name is bold and at least 120 px wide
+// so that the buttons do not jump when the month changes. Layout in the parent (flex, order,
+// justify-content) comes through `class`.
+.root {
+    display: flex;
+    gap: var(--space-3);
+    align-items: center;
+}
+
+.label {
+    overflow: hidden;
+
+    min-inline-size: fn.rem(120);
+    max-inline-size: fn.rem(260);
+
+    font-size: var(--font-size-body-md);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+    text-align: center;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
