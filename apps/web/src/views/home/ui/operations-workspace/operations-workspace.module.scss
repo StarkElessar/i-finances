@@ -110,6 +110,10 @@
     position: relative;
     display: inline-flex;
     flex: none;
+
+    // On the wrapper, not on the select: below `sm` the select keeps the 16 px
+    // floor from global.scss, otherwise iOS Safari zooms the page when it opens.
+    font-size: var(--font-size-body-md);
 }
 
 .sort-select {
@@ -121,7 +125,6 @@
     border: 1px solid var(--color-border);
     border-radius: var(--radius-md);
 
-    font-size: var(--font-size-body-md);
     color: transparent;
 
     appearance: none;

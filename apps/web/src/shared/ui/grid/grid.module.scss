@@ -31,6 +31,10 @@
     // The cells stay in the table, so the column mapping and the colspan of
     // full-width rows survive, and the fixed layout spreads the free width over
     // the columns that remain.
+    // The `<col>` is the only width source: a width on the header cell would win
+    // over a zero-width `<col>` in Safari (WebKit fixed layout treats `0` as auto)
+    // and the hidden column would keep its full width there.
+    /* stylelint-disable-next-line no-unknown-custom-properties -- set inline on the <col> by grid.tsx */
     inline-size: calc(var(--column-width) * var(--column-scale, 1));
 }
 
