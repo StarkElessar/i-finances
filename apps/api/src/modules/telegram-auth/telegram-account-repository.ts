@@ -1,5 +1,6 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import { telegramAccounts, users } from '@/infrastructure/database/schema';
+import { TELEGRAM_USERNAME_PREFIX } from '@/modules/auth';
 
 import { eq } from 'drizzle-orm';
 
@@ -94,7 +95,7 @@ export class TelegramAccountRepository {
 				isActive: true,
 				passwordHash: null,
 				updatedAt: now,
-				username: `tg-${identity.telegramId}`
+				username: `${TELEGRAM_USERNAME_PREFIX}${identity.telegramId}`
 			}).run();
 			transaction.insert(telegramAccounts).values({
 				chatId: identity.chatId,

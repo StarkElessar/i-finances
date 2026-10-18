@@ -42,6 +42,7 @@ export {
 	PasswordUserRepository,
 	type ReplacePasswordInput
 } from './password-user-repository';
+export { isReservedUsername, TELEGRAM_USERNAME_PREFIX } from './reserved-username';
 export {
 	type ChangePasswordOutcome,
 	type RotatedSession,

@@ -13,6 +13,7 @@
 		"mcp:api-key": "tsx scripts/generate-mcp-api-key.ts",
 		"receipt:cleanup-images": "tsx --env-file-if-exists=../../.env scripts/cleanup-receipt-images.ts",
 		"start": "tsx --env-file-if-exists=../../.env src/main.ts",
+		"telegram:reset": "tsx --env-file-if-exists=../../.env scripts/reset-user-telegram.ts",
 		"test": "vitest run",
 		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
 	},

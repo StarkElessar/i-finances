@@ -6,7 +6,7 @@ import {
 	households,
 	users
 } from '@/infrastructure/database/schema';
-import { normalizeUsername, PasswordService } from '@/modules/auth';
+import { isReservedUsername, normalizeUsername, PasswordService } from '@/modules/auth';
 import {
 	DEFAULT_HOUSEHOLD_BASE_CURRENCY,
 	DEFAULT_HOUSEHOLD_ID,
@@ -21,7 +21,10 @@ const seedEnvironmentSchema = z.object({
 	SEED_HOUSEHOLD_ID: z.string().trim().min(1).max(128).default(DEFAULT_HOUSEHOLD_ID),
 	SEED_HOUSEHOLD_NAME: z.string().trim().min(1).max(120).default(DEFAULT_HOUSEHOLD_NAME),
 	SEED_PASSWORD: z.string().min(12).max(256),
-	SEED_USERNAME: z.string().trim().min(3).max(64)
+	SEED_USERNAME: z.string().trim().min(3).max(64).refine(
+		(username) => !isReservedUsername(username),
+		'SEED_USERNAME must not start with "tg-": that prefix is reserved for users who sign up through Telegram'
+	)
 });
 
 type SeedEnvironment = z.infer<typeof seedEnvironmentSchema>;
