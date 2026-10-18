@@ -108,6 +108,7 @@ describe('PasswordSignInService accounts without a usable password', () => {
 	it.each([
 		['an unknown user', async () => undefined],
 		['an inactive user', async () => ({ ...USER, isActive: false })],
+		['an account without a password (NULL hash)', async () => ({ ...USER, passwordHash: null })],
 		['an account without a usable hash', async () => ({ ...USER, passwordHash: 'telegram-only' })],
 		['an account with an empty hash', async () => ({ ...USER, passwordHash: '' })]
 	])('spends one Argon2 verification on the dummy hash for %s and never signs in', async (_name, findByUsername) => {
