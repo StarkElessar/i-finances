@@ -4,7 +4,8 @@ export default {
 	ignoreFiles: [
 		'**/node_modules/**',
 		'**/dist/**',
-		'**/build/**'
+		'**/build/**',
+		'**/storybook-static/**'
 	],
 	rules: {
 		'property-no-deprecated': [

@@ -1,4 +1,5 @@
 dist
+storybook-static
 apps/api/storage/receipts/*
 !apps/api/storage/receipts/.gitkeep
 .wrangler
