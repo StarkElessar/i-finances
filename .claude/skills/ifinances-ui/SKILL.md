@@ -31,23 +31,23 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 ## Реестр: доска → код
 
-Статус «есть» значит, что компонент в `shared/ui` существует; он может отставать от доски, сверяй размеры и состояния. «Нет» значит, что сначала его создают по доске (IF-20).
+Статус «есть» значит, что компонент в `shared/ui` существует; он может отставать от доски, сверяй размеры и состояния. «Нет» значит, что сначала его создают по доске (IF-20). Пометка «есть история» значит, что рядом с компонентом лежит `*.stories.tsx` (Storybook, `Kit/<Компонент>`). Новая история: файл `<имя>.stories.tsx` рядом с компонентом, состояния default, hover и focus (`parameters.pseudo`), disabled, loading, error; обе темы и ширины 390/768/1024/1280 переключаются в панели Storybook, не дублируй их историями. Запуск: `pnpm storybook` (порт 6006), сборка: `pnpm build-storybook`. Обёртки раскладки для историй: `@/shared/storybook` (`StoryStack`), без `style={{}}`. Аддоны `storybook-addon-pseudo-states` включён, `a11y` и `docs` нет.
 
 | Доска (файл) | Что на ней | Код | Статус |
 |---|---|---|---|
 | `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index | `shared/styles/tokens.scss` | частично, добивает IF-14 |
-| `Kit-Controls` | Button | `shared/ui/button` | есть |
-| | поля ввода (text, textarea, сумма) | `shared/ui/text-field` | есть |
-| | телефон | `shared/ui/phone-field` | есть |
-| | Combobox | `shared/ui/combobox` | есть |
-| | Switch | `shared/ui/switch` | есть |
-| | цвет счёта | `shared/ui/color-picker` | есть |
+| `Kit-Controls` | Button | `shared/ui/button` | есть, есть история |
+| | поля ввода (text, textarea, сумма) | `shared/ui/text-field` | есть, есть история |
+| | телефон | `shared/ui/phone-field` | есть, есть история |
+| | Combobox | `shared/ui/combobox` | есть, есть история |
+| | Switch | `shared/ui/switch` | есть, есть история |
+| | цвет счёта | `shared/ui/color-picker` | есть, есть история |
 | | Checkbox, Select, поле даты, Segmented, Tabs, Chip, Badge, навигатор периода | нет в `shared/ui` (период живёт в `views/home/ui/operations-workspace`, месяц в `views/statistics/ui/month-navigator`) | нет, IF-20 |
 | `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/combobox` (есть), select и дата: нативные `<select>`, `type=date` в оболочке | оболочка нет, IF-20 |
 | | мультивыбор в popover, диапазон периода (статистика) | нет | нет, IF-19, IF-20 |
 | | выбор цвета категории (10 оттенков `k-1…k-10`, свой запрещён) | `shared/ui/color-picker` (6 цветов, hex) | не по доске, IF-19 |
-| `Kit-Surfaces` | Dialog | `shared/ui/dialog` | есть |
-| | Menu / Popover | `shared/ui/context-menu` | есть |
+| `Kit-Surfaces` | Dialog | `shared/ui/dialog` | есть, есть история |
+| | Menu / Popover | `shared/ui/context-menu` | есть, есть история |
 | | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
@@ -56,10 +56,10 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
 | | FAB и нижняя навигация | `widgets/app-header` (навигация), FAB экранный | нет общих, IF-17, IF-20 |
-| | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, z-index не по шкале, IF-14 |
+| | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, есть история, z-index не по шкале, IF-14 |
 | `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
-| `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть |
-| | поля номера и срока карты | `shared/ui/card-number-field`, `card-expiry-field` | есть |
+| `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть, есть история |
+| | поля номера и срока карты | `shared/ui/card-number-field`, `card-expiry-field` | есть, есть история |
 | | выбор типа счёта, блок реквизитов в форме | `features/account-details` (`ui/card`, `model`) | есть |
 | | шапка счёта с мини-картой | `features/account-details/ui/card/card-header-visual.tsx` | есть |
 | `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout` | раскладка операций, колонки по контейнеру, тулбар периода | `views/home/ui/operations-workspace` | не по доске, IF-15, IF-16 |

@@ -6,7 +6,7 @@ import { createLiteralConfigs } from './lint/eslint-literals.js';
 import { eslintExceptions } from './lint/literal-exceptions.js';
 
 export default defineConfig([
-	globalIgnores(['**/dist/**']),
+	globalIgnores(['**/dist/**', '**/storybook-static/**']),
 	...stark,
 	{
 		files: ['apps/**/*.{js,ts,tsx}', 'packages/**/*.{js,ts,tsx}'],

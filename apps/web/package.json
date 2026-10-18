@@ -7,7 +7,9 @@
 		"dev": "vite --port 5173",
 		"build": "vite build",
 		"test": "vitest run --environment node",
-		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json"
+		"typecheck": "node ./node_modules/typescript7/bin/tsc -p tsconfig.json",
+		"storybook": "storybook dev --port 6006 --disable-telemetry",
+		"build-storybook": "storybook build --disable-telemetry"
 	},
 	"dependencies": {
 		"@floating-ui/dom": "^1.8.0",
@@ -23,8 +25,12 @@
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
+		"@testing-library/jest-dom": "^7.0.1",
 		"@types/node": "^26.1.1",
 		"sass-embedded": "^1.100.0",
+		"storybook": "10.6.2",
+		"storybook-addon-pseudo-states": "10.6.2",
+		"storybook-solidjs-vite": "10.7.2",
 		"typescript7": "npm:typescript@7.0.2",
 		"vite": "^7.3.6",
 		"vite-plugin-solid": "^2.11.0",

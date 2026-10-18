@@ -5,6 +5,8 @@
 	"scripts": {
 		"dev": "pnpm --parallel --filter @i-finances/api --filter @i-finances/web dev",
 		"mcp": "pnpm --filter @i-finances/mcp start",
+		"storybook": "pnpm --filter @i-finances/web storybook",
+		"build-storybook": "pnpm --filter @i-finances/web build-storybook",
 		"build": "pnpm --filter @i-finances/contracts build && pnpm --filter @i-finances/api build && pnpm --filter @i-finances/web build && pnpm --filter @i-finances/mcp build",
 		"test": "pnpm --filter @i-finances/contracts test && pnpm --filter @i-finances/api test && pnpm --filter @i-finances/web test && pnpm --filter @i-finances/mcp test",
 		"typecheck": "pnpm --filter @i-finances/contracts typecheck && pnpm --filter @i-finances/api typecheck && pnpm --filter @i-finances/web typecheck && pnpm --filter @i-finances/mcp typecheck",

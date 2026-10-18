@@ -14,7 +14,8 @@ export default {
 	ignoreFiles: [
 		'**/node_modules/**',
 		'**/dist/**',
-		'**/build/**'
+		'**/build/**',
+		'**/storybook-static/**'
 	],
 	// `var(--x)` is checked against the custom properties declared in the token file.
 	referenceFiles: [{ files: [TOKENS_FILE], customSyntax: 'postcss-scss' }],
