@@ -49,6 +49,8 @@ const AUTH_CONFIG: AuthConfig = {
 const OLD_PASSWORD = 'old-password-123';
 const NEW_PASSWORD = 'new-password-456';
 const PLACEHOLDER_HASH = 'passkey-only-placeholder';
+/** Both ways an account can lack a password: NULL (Telegram sign-up) and a legacy non-Argon2 placeholder. */
+const MISSING_PASSWORD_HASHES = [['a NULL password hash', null], ['a placeholder password hash', PLACEHOLDER_HASH]] as const;
 const CHROME_ON_MAC = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 '
 	+ '(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36';
 const SAFARI_ON_IPHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 '
@@ -224,6 +226,19 @@ function holdPasswordHashing(calls: number, whileHeld: () => Promise<void> = asy
 	});
 }
 
+/**
+ * Reads the stored password hash, failing the test when the user has none.
+ */
+async function readPasswordHash(userId: string): Promise<string> {
+	const [row] = await database.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId));
+
+	if (row.passwordHash === null) {
+		throw new Error(`User ${userId} has no password hash.`);
+	}
+
+	return row.passwordHash;
+}
+
 async function listSessionIds(userId: string): Promise<string[]> {
 	const rows = await database.select({ id: sessions.id }).from(sessions).where(eq(sessions.userId, userId));
 
@@ -331,8 +346,8 @@ describe('passkeys', () => {
 		expect(await countPasskeys('alice')).toBe(0);
 	});
 
-	it('refuses to remove the last key when the account has no password', async () => {
-		await database.update(users).set({ passwordHash: PLACEHOLDER_HASH }).where(eq(users.id, 'alice'));
+	it.each(MISSING_PASSWORD_HASHES)('refuses to remove the last key when the account has %s', async (_label, passwordHash) => {
+		await database.update(users).set({ passwordHash }).where(eq(users.id, 'alice'));
 		const { app, sessionService } = createContext();
 		const alice = await signIn(sessionService, app, 'alice');
 		await addPasskey('alice', 'key-1');
@@ -385,12 +400,11 @@ describe('change password', () => {
 		expect((await aliceLaptop.request('/api/security/sessions')).status).toBe(200);
 		expect((await bob.request('/api/security/sessions')).status).toBe(200);
 
-		const [alice] = await database.select().from(users).where(eq(users.id, 'alice'));
-		const [bobRow] = await database.select().from(users).where(eq(users.id, 'bob'));
+		const aliceHash = await readPasswordHash('alice');
 
-		expect(await passwordService.verify(alice.passwordHash, NEW_PASSWORD)).toBe(true);
-		expect(await passwordService.verify(alice.passwordHash, OLD_PASSWORD)).toBe(false);
-		expect(bobRow.passwordHash).toBe(oldPasswordHash);
+		expect(await passwordService.verify(aliceHash, NEW_PASSWORD)).toBe(true);
+		expect(await passwordService.verify(aliceHash, OLD_PASSWORD)).toBe(false);
+		expect(await readPasswordHash('bob')).toBe(oldPasswordHash);
 	});
 
 	it('replaces the token of the current session: the old cookie is dead, the new one works', async () => {
@@ -561,9 +575,7 @@ describe('change password', () => {
 		expect(stale.status).toBe(401);
 		expect(stale.setCookie).toBeNull();
 
-		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
-
-		expect(await passwordService.verify(row.passwordHash, newPasswords[winnerIndex])).toBe(true);
+		expect(await passwordService.verify(await readPasswordHash('alice'), newPasswords[winnerIndex])).toBe(true);
 	});
 
 	it('still changes the password but sets no cookie when the current session ended meanwhile', async () => {
@@ -588,9 +600,7 @@ describe('change password', () => {
 		expect((await aliceLaptop.request('/api/security/sessions')).status).toBe(401);
 		expect((await alicePhone.request('/api/security/sessions')).status).toBe(401);
 
-		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
-
-		expect(await passwordService.verify(row.passwordHash, NEW_PASSWORD)).toBe(true);
+		expect(await passwordService.verify(await readPasswordHash('alice'), NEW_PASSWORD)).toBe(true);
 	});
 
 	it('rejects a wrong current password and changes nothing', async () => {
@@ -699,8 +709,11 @@ describe('change password', () => {
 		expect(row.passwordHash).toBe(oldPasswordHash);
 	});
 
-	it('answers password-not-set without counting an attempt for an account without a password', async () => {
-		await database.update(users).set({ passwordHash: PLACEHOLDER_HASH }).where(eq(users.id, 'alice'));
+	it.each(MISSING_PASSWORD_HASHES)('answers password-not-set without counting an attempt for an account with %s', async (
+		_label,
+		passwordHash
+	) => {
+		await database.update(users).set({ passwordHash }).where(eq(users.id, 'alice'));
 		const { app, sessionService } = createContext({ rateLimiter: new LoginRateLimiter({ maxAttempts: 1 }) });
 		const alice = await signIn(sessionService, app, 'alice');
 		const attempt = () => alice.request('/api/security/password', {

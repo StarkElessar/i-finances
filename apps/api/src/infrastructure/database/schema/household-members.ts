@@ -1,9 +1,9 @@
 import {
-	index,
 	integer,
 	primaryKey,
 	sqliteTable,
-	text
+	text,
+	uniqueIndex
 } from 'drizzle-orm/sqlite-core';
 
 import { households } from './households';
@@ -13,6 +13,9 @@ export type HouseholdMemberRole = 'member' | 'owner';
 
 /**
  * Grants one authenticated user access to one household.
+ *
+ * A user belongs to at most one household: the unique index on `user_id`
+ * enforces it in the schema, not only in code.
  */
 export const householdMembers = sqliteTable(
 	'household_members',
@@ -31,7 +34,7 @@ export const householdMembers = sqliteTable(
 			columns: [table.householdId, table.userId],
 			name: 'household_members_household_id_user_id_pk'
 		}),
-		index('household_members_user_id_idx').on(table.userId)
+		uniqueIndex('household_members_user_id_unique').on(table.userId)
 	]
 );
 
