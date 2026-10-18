@@ -65,6 +65,8 @@ export type {
 export { Grid } from './grid';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
+export type { SegmentedOption, SegmentedProps } from './segmented';
+export { Segmented } from './segmented';
 export type { SwitchProps } from './switch';
 export { Switch } from './switch';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';

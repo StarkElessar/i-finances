@@ -93,3 +93,12 @@ $max-offset: 0.02px;
     margin: calc(var(--space-focus-gutter) * -1);
     padding: var(--space-focus-gutter);
 }
+
+// Touch screens (`pointer: coarse`): controls grow to `--control-size-touch`
+// (mockup `.i-touch`, 44 px). A pointer query, not a size query, so the
+// lint rule on raw `@media` by size does not apply.
+@mixin pointer-coarse {
+    @media (pointer: coarse) {
+        @content;
+    }
+}
