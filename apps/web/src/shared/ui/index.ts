@@ -8,6 +8,8 @@ export type { CardFaceProps, CardFaceSize } from './card-face';
 export { CardFace } from './card-face';
 export type { CardNumberFieldProps } from './card-number-field';
 export { CardNumberField } from './card-number-field';
+export type { ChipProps } from './chip';
+export { Chip } from './chip';
 export type { ColorPickerOption, ColorPickerProps } from './color-picker';
 export { ColorPicker } from './color-picker';
 export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
