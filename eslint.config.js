@@ -2,6 +2,9 @@ import stark, { typeChecked } from '@stark/eslint-config';
 import globals from 'globals';
 import { defineConfig, globalIgnores } from 'eslint/config';
 
+import { createLiteralConfigs } from './lint/eslint-literals.js';
+import { eslintExceptions } from './lint/literal-exceptions.js';
+
 export default defineConfig([
 	globalIgnores(['**/dist/**']),
 	...stark,
@@ -62,5 +65,7 @@ export default defineConfig([
 			'@typescript-eslint/require-await': 'off',
 			'@typescript-eslint/no-unnecessary-type-parameters': 'off'
 		}
-	}
+	},
+	// IF-40: no new literals. Existing violations are listed per file in lint/literal-exceptions.js.
+	...createLiteralConfigs(eslintExceptions)
 ]);
