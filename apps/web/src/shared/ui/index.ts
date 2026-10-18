@@ -57,6 +57,8 @@ export type {
 	DragActionTone
 } from './drag-action';
 export { createDragAction, DragAction } from './drag-action';
+export type { EmptyStateHeadingLevel, EmptyStateProps } from './empty-state';
+export { EmptyState } from './empty-state';
 export type { FabProps } from './fab';
 export { Fab } from './fab';
 export type {
