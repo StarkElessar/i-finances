@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import { householdMembers, households } from '@/infrastructure/database/schema';
-import { getHouseholdInvitationConfig, HouseholdInvitationRepository } from '@/modules/household';
+import { getHouseholdInvitationConfig, HouseholdInvitationRepository, HouseholdInvitationService } from '@/modules/household';
 
 import {
 	acceptInvitationResultSchema,
@@ -488,6 +488,17 @@ describe('accepting', () => {
 		expect(invitationRow(id).accepted_at).toBeNull();
 	});
 
+	it('the only member of an empty household cannot «replace» it with its own invitation', async () => {
+		const { id, token } = await createInvitation(SOLO);
+		const before = snapshot();
+		const response = await accept(SOLO, token, { replaceEmptyHousehold: true });
+
+		expect(response.status).toBe(409);
+		expect(await response.json()).toMatchObject({ currentHousehold: { name: 'Пустое' }, errorCode: 'already-in-household' });
+		expect(snapshot()).toBe(before);
+		expect(invitationRow(id).accepted_at).toBeNull();
+	});
+
 	it('an invitation of one household cannot move the owner of another household with data', async () => {
 		const { id, token } = await createInvitation();
 		const before = snapshot();
@@ -678,6 +689,33 @@ describe('HouseholdInvitationRepository conditions on their own', () => {
 		}
 
 		expect(membershipOf(NEWCOMER)).toBeUndefined();
+	});
+});
+
+describe('HouseholdInvitationService checks the role itself', () => {
+	it('a member never reaches the repository: create, list and revoke answer owner-required', async () => {
+		const invitations = {
+			accept: vi.fn(),
+			create: vi.fn(() => ({ kind: 'created' as const })),
+			findActivePreview: vi.fn(),
+			listActive: vi.fn(async () => []),
+			revoke: vi.fn(() => true)
+		};
+		const service = new HouseholdInvitationService({
+			acceptRateLimiter: { tryConsume: () => ({ allowed: true }) },
+			config: { ttlMilliseconds: DEFAULT_INVITATION_TTL },
+			householdResolver: { requireForUser: async () => ({ baseCurrency: 'BYN', id: FAMILY, name: 'Семья', role: 'member' }) },
+			invitations,
+			origin: TEST_ORIGIN,
+			previewRateLimiter: { tryConsume: () => ({ allowed: true }) }
+		});
+
+		expect(await service.create(MEMBER)).toMatchObject({ errorCode: 'owner-required', ok: false });
+		expect(await service.listActive(MEMBER)).toMatchObject({ errorCode: 'owner-required', ok: false });
+		expect(await service.revoke(MEMBER, 'any')).toMatchObject({ errorCode: 'owner-required', ok: false });
+		expect(invitations.create).not.toHaveBeenCalled();
+		expect(invitations.listActive).not.toHaveBeenCalled();
+		expect(invitations.revoke).not.toHaveBeenCalled();
 	});
 });
 
