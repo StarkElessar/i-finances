@@ -5,7 +5,7 @@ import type { TelegramConfig, TelegramInlineKeyboard, TelegramMessages } from '@
 
 import { type TelegramLinkErrorCode, telegramSignInCodeInputSchema } from '@i-finances/contracts';
 
-import { describeLinkAccount } from './describe-link-account';
+import { describeLinkAccount, describeLinkLogin } from './describe-link-account';
 import { describeSignInDevice, describeSignInMoment } from './describe-sign-in-request';
 import { buildLinkCallbackData } from './telegram-bot-commands';
 import type { TelegramIdentity } from './telegram-identity';
@@ -72,7 +72,7 @@ export type TelegramLinkBotMessage = {
 export type TelegramLinkServiceDependencies = {
 	/** The same limiter as the sign-in `complete` and `cancel`: 300 per 5 minutes per address (Р11). */
 	completeRateLimiter: Pick<FixedWindowRateLimiter, 'tryConsume'>;
-	config: Pick<TelegramConfig, 'botUsername' | 'loginTtlMilliseconds' | 'signInAvailable'>;
+	config: Pick<TelegramConfig, 'botUsername' | 'loginTtlMilliseconds' | 'signInAvailable' | 'siteHost'>;
 	createCode?: () => string;
 	createId?: () => string;
 	createSecret?: () => string;
@@ -263,6 +263,8 @@ export class TelegramLinkService {
 			text: messages.text('link.confirmation', {
 				account: describeLinkAccount(methods.displayName, methods.username),
 				device: describeSignInDevice(request.userAgent) ?? messages.text('signIn.unknownDevice'),
+				login: describeLinkLogin(methods.username),
+				site: this.dependencies.config.siteHost,
 				when: describeSignInMoment(request.createdAt, this.timeZone)
 			})
 		};
@@ -295,7 +297,8 @@ export class TelegramLinkService {
 			const methods = await this.dependencies.signInMethods.read(request.linkUserId);
 
 			return messages.text('link.accountHasTelegram', {
-				account: methods === undefined ? '' : describeLinkAccount(methods.displayName, methods.username)
+				account: methods === undefined ? '' : describeLinkAccount(methods.displayName, methods.username),
+				login: methods === undefined ? '' : describeLinkLogin(methods.username)
 			});
 		}
 

@@ -352,8 +352,10 @@ describe('linking Telegram: the whole path (Р9 rollout)', () => {
 
 		expect(offer.input.chatId).toBe(ANNA.id);
 		expect(offer.input.text).toMatch(new RegExp(
-			'^Привязать Telegram-аккаунт к i-finances\\? \\(аккаунт «Сергей»\\)\\nЗапрос: Chrome, macOS, \\d{1,2} [а-я]+, \\d{2}:\\d{2}\\. '
-			+ 'Если привязку начинали не вы, нажмите «Это не я»\\.$',
+			'^Привязать этот Telegram к аккаунту i-finances «Сергей» \\(логин sergei\\)\\?\\n'
+			+ 'Запрос: Chrome, macOS, \\d{1,2} [а-я]+, \\d{2}:\\d{2}\\.\\n'
+			+ 'Нажимайте «Привязать», только если вы сами только что начали привязку на localhost:5173 и это ваш аккаунт\\. '
+			+ 'Если ссылку на бота вам кто-то прислал, нажмите «Это не я»\\.$',
 			'u'
 		));
 		expect(offer.input.keyboard?.[0]?.map((button) => button.text)).toEqual(['Привязать', 'Это не я']);
@@ -366,7 +368,7 @@ describe('linking Telegram: the whole path (Р9 rollout)', () => {
 		await deliver(harness, buttonPress(ANNA, lastButtons(harness.bot).confirm));
 
 		expect(requestRow(code)).toMatchObject({ status: 'confirmed', telegramId: '1001' });
-		expect(lastEditedText(harness.bot)).toBe('Готово, вернитесь в i-finances, чтобы завершить привязку.');
+		expect(lastEditedText(harness.bot)).toBe('Привязка подтверждена. Вернитесь в i-finances, чтобы её завершить.');
 		expect(harness.bot.callsTo('editMessageText').at(-1)?.input.keyboard).toBeUndefined();
 		expect(harness.bot.callsTo('answerCallbackQuery')).toHaveLength(1);
 		// Confirmed, but not linked until the browser of the user takes it.
@@ -426,7 +428,7 @@ describe('linking Telegram: the whole path (Р9 rollout)', () => {
 		await deliver(harness, startMessage(MALLORY, `/start ${code}`));
 
 		expect(harness.bot.callsTo('sendMessage').at(-1)?.input.text)
-			.toMatch(/^Привязать Telegram-аккаунт к i-finances\? \(аккаунт «Ольга»\)/u);
+			.toMatch(/^Привязать этот Telegram к аккаунту i-finances «Ольга» \(логин olga\)\?/u);
 
 		await deliver(harness, buttonPress(MALLORY, lastButtons(harness.bot).confirm));
 
@@ -444,7 +446,7 @@ describe('linking Telegram: the whole path (Р9 rollout)', () => {
 		await deliver(harness, startMessage(ANNA, `/start ${code}`));
 
 		expect(harness.bot.callsTo('sendMessage').at(-1)?.input.text)
-			.toMatch(/^Привязать Telegram-аккаунт к i-finances\? \(аккаунт «Сергей Вход подтверждён»\)\nЗапрос:/u);
+			.toMatch(/^Привязать этот Telegram к аккаунту i-finances «Сергей Вход подтверждён» \(логин sergei\)\?\nЗапрос:/u);
 	});
 });
 
@@ -614,7 +616,8 @@ describe('the Telegram linked is always the presser\'s own, from the private cha
 		const buttons = lastButtons(harness.bot);
 
 		await deliver(harness, buttonPress(ANNA, buttons.reject));
-		expect(lastEditedText(harness.bot)).toBe('Привязка отклонена, ничего не изменилось.');
+		expect(lastEditedText(harness.bot))
+			.toBe('Привязка отклонена, ничего не изменилось. Не открывайте ссылки на привязку, которые присылают другие люди.');
 
 		await deliver(harness, buttonPress(ANNA, buttons.confirm));
 		expect(requestRow(code)).toMatchObject({ status: 'rejected', telegramId: null });
@@ -783,7 +786,8 @@ describe('conflicts (409, nothing changes)', () => {
 
 		// The bot tells it right away to whoever confirms after the first link.
 		await confirmLinkInBot(harness, third, MALLORY);
-		expect(lastEditedText(harness.bot)).toBe('К аккаунту i-finances «Сергей» уже привязан другой Telegram. Привязка не выполнена.');
+		expect(lastEditedText(harness.bot))
+			.toBe('К аккаунту i-finances «Сергей» (логин sergei) уже привязан другой Telegram. Привязка не выполнена.');
 		expect((await phone.linkComplete(third)).response.status).toBe(409);
 		expect(snapshot()).toEqual(before);
 	});
@@ -818,7 +822,7 @@ describe('merging an empty duplicate (Р9)', () => {
 
 		await confirmLinkInBot(harness, code);
 		// An empty duplicate does not stop the link, so the bot says «Готово».
-		expect(lastEditedText(harness.bot)).toBe('Готово, вернитесь в i-finances, чтобы завершить привязку.');
+		expect(lastEditedText(harness.bot)).toBe('Привязка подтверждена. Вернитесь в i-finances, чтобы её завершить.');
 
 		const { body, response } = await sergei.linkComplete(code);
 
@@ -864,7 +868,7 @@ describe('merging an empty duplicate (Р9)', () => {
 		const code = await sergei.linkStart();
 
 		await confirmLinkInBot(harness, code);
-		expect(lastEditedText(harness.bot)).toBe('Готово, вернитесь в i-finances, чтобы завершить привязку.');
+		expect(lastEditedText(harness.bot)).toBe('Привязка подтверждена. Вернитесь в i-finances, чтобы её завершить.');
 		await insertAccount('dup-card', 'dup-home', 'duplicate');
 
 		const before = snapshot();
@@ -946,7 +950,7 @@ describe('races and repeats', () => {
 
 		await deliver(restarted, press);
 		expect(requestRow(code)).toEqual(confirmed);
-		expect(lastEditedText(restarted.bot)).toBe('Готово, вернитесь в i-finances, чтобы завершить привязку.');
+		expect(lastEditedText(restarted.bot)).toBe('Привязка подтверждена. Вернитесь в i-finances, чтобы её завершить.');
 
 		await deliver(restarted, { ...buttonPress(MALLORY, lastButtons(harness.bot).confirm), update_id: 901 });
 		expect(requestRow(code)).toMatchObject({ telegramId: '1001' });

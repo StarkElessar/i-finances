@@ -290,7 +290,12 @@ describe('Telegram sign-up: the whole path', () => {
 		const [confirmation] = harness.bot.callsTo('sendMessage');
 
 		expect(confirmation.input.chatId).toBe(ANNA.id);
-		expect(confirmation.input.text).toMatch(/^Вход в i-finances: Chrome, macOS, \d{1,2} [а-я]+, \d{2}:\d{2}\. Это вы\?$/u);
+		expect(confirmation.input.text).toMatch(new RegExp(
+			'^Вход в i-finances: Chrome, macOS, \\d{1,2} [а-я]+, \\d{2}:\\d{2}\\.\\n'
+			+ 'Нажимайте «Войти», только если вы сами только что начали вход на localhost:5173\\. '
+			+ 'Если ссылку на бота вам кто-то прислал, нажмите «Это не я»\\.$',
+			'u'
+		));
 		expect(confirmation.input.keyboard?.[0]?.map((button) => button.text)).toEqual(['Войти', 'Это не я']);
 		// `/start` alone confirms nothing (phishing protection, Р11).
 		expect(requestRow(code)?.status).toBe('pending');
@@ -299,7 +304,7 @@ describe('Telegram sign-up: the whole path', () => {
 		await deliver(harness, buttonPress(ANNA, lastButtons(harness.bot).confirm));
 
 		expect(requestRow(code)).toMatchObject({ status: 'confirmed', telegramId: '1001', username: 'anna_k' });
-		expect(lastEditedText(harness.bot)).toBe('Готово, вернитесь в i-finances.');
+		expect(lastEditedText(harness.bot)).toBe('Вход подтверждён. Вернитесь в i-finances.');
 		expect(harness.bot.callsTo('editMessageText').at(-1)?.input.keyboard).toBeUndefined();
 		expect(harness.bot.callsTo('answerCallbackQuery')).toHaveLength(1);
 
@@ -405,7 +410,7 @@ describe('Telegram sign-in of a linked user', () => {
 		const browser = new Browser(harness);
 		const code = await confirmInBot(harness, browser);
 
-		expect(lastEditedText(harness.bot)).toBe('Готово, вернитесь в i-finances.');
+		expect(lastEditedText(harness.bot)).toBe('Вход подтверждён. Вернитесь в i-finances.');
 		expect((await browser.complete(code)).body).toEqual({ hasHousehold: true, isNewUser: false, ok: true, status: 'confirmed' });
 		expect(await database.select().from(users)).toHaveLength(1);
 		expect(await database.select().from(telegramAccounts)).toEqual([expect.objectContaining({
@@ -483,13 +488,13 @@ describe('«Это не я» and other people', () => {
 		await deliver(harness, buttonPress(ANNA, buttons.reject));
 
 		expect(requestRow(code)?.status).toBe('rejected');
-		expect(lastEditedText(harness.bot)).toMatch(/^Вход отклонён\./u);
+		expect(lastEditedText(harness.bot)).toMatch(/^Вход отклонён, ничего не изменилось\./u);
 
 		await deliver(harness, buttonPress(ANNA, buttons.confirm));
 
 		expect(requestRow(code)?.status).toBe('rejected');
 		expect(requestRow(code)?.telegramId).toBeNull();
-		expect(lastEditedText(harness.bot)).toMatch(/^Вход отклонён\./u);
+		expect(lastEditedText(harness.bot)).toMatch(/^Вход отклонён, ничего не изменилось\./u);
 		expect(harness.bot.callsTo('answerCallbackQuery')).toHaveLength(2);
 
 		const { body, response } = await browser.complete(code);
@@ -646,7 +651,7 @@ describe('races and repeats', () => {
 
 		await deliver(restarted, press);
 		expect(requestRow(code)).toEqual(confirmed);
-		expect(lastEditedText(restarted.bot)).toBe('Готово, вернитесь в i-finances.');
+		expect(lastEditedText(restarted.bot)).toBe('Вход подтверждён. Вернитесь в i-finances.');
 
 		expect((await browser.complete(code)).body).toMatchObject({ status: 'confirmed' });
 

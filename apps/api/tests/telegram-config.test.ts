@@ -21,6 +21,11 @@ describe('getTelegramConfig', () => {
 		expect(config).toMatchObject({ updatesMode: 'off', botToken: undefined, webhookSecret: undefined, webhookUrl: undefined });
 	});
 
+	it('takes the site the bot names from AUTH_ORIGIN, host only', () => {
+		expect(getTelegramConfig({}, ORIGIN).siteHost).toBe('finances.example.test');
+		expect(getTelegramConfig({}, 'http://localhost:5173').siteHost).toBe('localhost:5173');
+	});
+
 	it('treats empty values from an .env file as not set', () => {
 		const config = getTelegramConfig({ TELEGRAM_BOT_TOKEN: '', TELEGRAM_UPDATES: '', TELEGRAM_WEBHOOK_SECRET: '  ' }, ORIGIN);
 
