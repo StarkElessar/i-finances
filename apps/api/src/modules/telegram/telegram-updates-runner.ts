@@ -25,7 +25,10 @@ export type TelegramUpdatesRunnerOptions = {
  *
  * - `webhook`: registers the webhook (URL and secret token) with Telegram. Telegram pushes updates to the webhook
  *   controller afterwards, nothing runs in the process.
- * - `polling`: removes any webhook, then long-polls `getUpdates` with a growing offset until `stop()`.
+ * - `polling`: long-polls `getUpdates` with a growing offset until `stop()`. It never deletes a webhook: with the
+ *   production token on a developer machine `getUpdates` then fails with 409 and production keeps its updates, instead
+ *   of polling silently taking the bot over (ServicePlanner lesson 4). A dev bot left with a webhook needs a one-off
+ *   manual `deleteWebhook`.
  * - `off`: does nothing.
  *
  * `start()` returns at once and never throws: a Telegram outage must not stop the API from booting, so failures are
@@ -84,8 +87,6 @@ export class TelegramUpdatesRunner {
 	}
 
 	async #poll(): Promise<void> {
-		await this.#retryUntilDone('deleteWebhook', () => this.#botClient.deleteWebhook());
-
 		let offset = 0;
 
 		while (!this.#isStopped()) {
@@ -139,7 +140,10 @@ export class TelegramUpdatesRunner {
 			? Math.max(error.retryAfterSeconds * 1000, this.#retryDelayMilliseconds)
 			: this.#retryDelayMilliseconds;
 
-		const hint = isConflict ? ' Another consumer holds the updates of this bot (webhook or second getUpdates).' : '';
+		const hint = isConflict
+			? ' Another consumer holds the updates of this bot: a webhook (is this the production bot?) or a second getUpdates.'
+				+ ' Polling never deletes a webhook; use a dev bot, or call deleteWebhook by hand if this is one.'
+			: '';
 
 		console.error(`Telegram ${name} failed, retrying in ${delay} ms.${hint}`, error);
 		await this.#sleep(delay);
@@ -155,13 +159,12 @@ export class TelegramUpdatesRunner {
 				return;
 			}
 
-			const timer = setTimeout(done, milliseconds);
-
-			function done(): void {
+			const done = (): void => {
 				clearTimeout(timer);
 				signal.removeEventListener('abort', done);
 				resolve();
-			}
+			};
+			const timer = setTimeout(done, milliseconds);
 
 			signal.addEventListener('abort', done, { once: true });
 		});

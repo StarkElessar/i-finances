@@ -1,5 +1,5 @@
 {
-	"household.memberJoined": "К окружению «{household}» присоединился новый участник: {name}. Если вы не приглашали этого человека, удалите участника в разделе «Окружение».",
+	"household.memberJoined": "{name} теперь в окружении «{household}». Если вы не приглашали этого человека, удалите его в разделе «Окружение».",
 	"signIn.confirmation": "Вход в i-finances: {device}, {when}. Это вы?",
 	"signIn.confirmButton": "Войти",
 	"signIn.confirmed": "Готово, вернитесь в i-finances.",

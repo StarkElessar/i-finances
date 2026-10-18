@@ -1,4 +1,5 @@
 import { createApiApp } from '@/app';
+import * as constantTimeEqualsModule from '@/http/constant-time-equals';
 import { TelegramWebhookHttpController } from '@/http/telegram-webhook-controller';
 import {
 	ProcessedUpdateIds,
@@ -9,6 +10,12 @@ import {
 } from '@/modules/telegram';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+vi.mock('@/http/constant-time-equals', async (importOriginal) => {
+	const actual = await importOriginal<typeof constantTimeEqualsModule>();
+
+	return { constantTimeEquals: vi.fn(actual.constantTimeEquals) };
+});
 
 const SECRET = 'webhook-secret-for-tests-0123456789';
 const URL_PATH = '/api/telegram/webhook';
@@ -108,6 +115,24 @@ describe('POST /api/telegram/webhook', () => {
 			const response = await post('{not json', { 'x-telegram-bot-api-secret-token': 'wrong' });
 
 			expect(response.status).toBe(401);
+		});
+
+		it('answers a stranger 401 before the body limit, so an oversized body is never looked at', async () => {
+			const oversized = JSON.stringify({ ...messageUpdate(12), padding: 'x'.repeat(2048) });
+			const response = await post(oversized, {
+				'content-length': String(oversized.length),
+				'x-telegram-bot-api-secret-token': 'wrong'
+			});
+
+			expect(response.status).toBe(401);
+		});
+
+		it('compares the secret in constant time', async () => {
+			vi.mocked(constantTimeEqualsModule.constantTimeEquals).mockClear();
+
+			await post(JSON.stringify(messageUpdate(13)), { 'x-telegram-bot-api-secret-token': 'wrong-secret' });
+
+			expect(constantTimeEqualsModule.constantTimeEquals).toHaveBeenCalledWith(SECRET, 'wrong-secret');
 		});
 
 		it('does not answer to other methods', async () => {

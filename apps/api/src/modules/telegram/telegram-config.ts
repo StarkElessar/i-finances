@@ -8,6 +8,11 @@ import { TELEGRAM_UPDATES_MODES, type TelegramUpdatesMode } from './telegram-upd
 const WEBHOOK_SECRET_PATTERN = /^[A-Za-z0-9_-]{1,256}$/;
 const PRODUCTION_WEBHOOK_SECRET_MIN_LENGTH = 32;
 const BOT_USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{2,31}$/;
+/**
+ * BotFather issues `<bot id>:<letters, digits, _ and ->`. The token becomes a path segment of every Bot API URL, so
+ * anything else (`/`, `?`, `#`, spaces, a pasted quote) is refused instead of silently changing the request path.
+ */
+const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]+$/;
 const WEBHOOK_PATH = '/api/telegram/webhook';
 
 /** An empty value in `.env` ("TELEGRAM_BOT_TOKEN=") means "not set". */
@@ -68,6 +73,10 @@ export function getTelegramConfig(environment: NodeJS.ProcessEnv, authOrigin: st
 	} = parsed.data;
 	const isProduction = environment.NODE_ENV === 'production';
 	const problems: string[] = [];
+
+	if (botToken !== undefined && !BOT_TOKEN_PATTERN.test(botToken)) {
+		problems.push('TELEGRAM_BOT_TOKEN must look like <digits>:<letters, digits, "_" and "-">, as issued by BotFather');
+	}
 
 	if (botUsername !== undefined && !BOT_USERNAME_PATTERN.test(botUsername)) {
 		problems.push('TELEGRAM_BOT_USERNAME must be the bot name without "@" (letters, digits, underscore)');

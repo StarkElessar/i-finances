@@ -101,7 +101,7 @@ describe('TelegramUpdatesRunner', () => {
 		expect(() => new TelegramUpdatesRunner({ botClient: bot, dispatcher, mode: 'webhook' })).toThrow();
 	});
 
-	it('polling mode removes the webhook first, then dispatches updates and advances the offset', async () => {
+	it('polling mode dispatches updates and advances the offset, and never deletes a webhook', async () => {
 		bot.queueUpdates(textUpdate(10), textUpdate(11));
 
 		const runner = createRunner('polling');
@@ -110,7 +110,9 @@ describe('TelegramUpdatesRunner', () => {
 		await waitUntil(() => bot.callsTo('getUpdates').length >= 2);
 		await runner.stop();
 
-		expect(bot.calls[0]?.method).toBe('deleteWebhook');
+		// Deleting the webhook would let a developer machine with the production token take the bot over.
+		expect(bot.callsTo('deleteWebhook')).toHaveLength(0);
+		expect(bot.calls[0]?.method).toBe('getUpdates');
 		expect(handler.ids).toEqual([10, 11]);
 		expect(bot.callsTo('getUpdates').map((call) => call.input.offset)).toEqual([0, 12]);
 	});
@@ -142,8 +144,10 @@ describe('TelegramUpdatesRunner', () => {
 		expect(console.error).toHaveBeenCalledTimes(2);
 	});
 
-	it('names the cause when another consumer holds the updates (409)', async () => {
-		bot.failNext('getUpdates', new TelegramApiError('getUpdates', 409, 'Conflict: terminated by other getUpdates request'));
+	it('names the cause when another consumer holds the updates (409) and keeps the webhook', async () => {
+		const conflict = new TelegramApiError('getUpdates', 409, "Conflict: can't use getUpdates method while webhook is active");
+
+		bot.failNext('getUpdates', conflict);
 
 		const runner = createRunner('polling');
 
@@ -152,6 +156,7 @@ describe('TelegramUpdatesRunner', () => {
 		await runner.stop();
 
 		expect(vi.mocked(console.error).mock.calls[0]?.[0]).toContain('Another consumer');
+		expect(bot.callsTo('deleteWebhook')).toHaveLength(0);
 	});
 
 	it('stop() ends a long poll that is waiting and aborts its signal', async () => {
@@ -169,14 +174,14 @@ describe('TelegramUpdatesRunner', () => {
 	});
 
 	it('stop() also ends the wait between retries', async () => {
-		bot.failNext('deleteWebhook', new Error('down'));
+		bot.failNext('getUpdates', new Error('down'));
 
 		const runner = new TelegramUpdatesRunner({ botClient: bot, dispatcher, mode: 'polling', retryDelayMilliseconds: 60_000 });
 
 		runner.start();
-		await waitUntil(() => bot.callsTo('deleteWebhook').length === 1);
+		await waitUntil(() => bot.callsTo('getUpdates').length === 1);
 		await runner.stop();
 
-		expect(bot.callsTo('getUpdates')).toHaveLength(0);
+		expect(bot.callsTo('getUpdates')).toHaveLength(1);
 	});
 });

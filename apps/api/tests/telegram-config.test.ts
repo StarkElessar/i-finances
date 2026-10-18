@@ -97,6 +97,14 @@ describe('getTelegramConfig', () => {
 			.toBe('http://localhost:5173/api/telegram/webhook');
 	});
 
+	it.each(['123456', 'token-without-id', '123:abc/../../other', '123:abc?x=1', '123:abc def', '"123:abc"'])(
+		'rejects the bot token %j, which would end up in the request path',
+		(token) => {
+			expect(() => getTelegramConfig({ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_BOT_TOKEN: token }, ORIGIN))
+				.toThrow(/TELEGRAM_BOT_TOKEN must look like/);
+		}
+	);
+
 	it.each(['@i_finances_bot', 'a b', 'ab'])('rejects the bot username %j', (username) => {
 		expect(() => getTelegramConfig({ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_BOT_USERNAME: username }, ORIGIN))
 			.toThrow(/TELEGRAM_BOT_USERNAME must be/);
@@ -107,7 +115,8 @@ describe('getTelegramConfig', () => {
 			const attempts = [
 				{ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_WEBHOOK_SECRET: 'bad secret with spaces', TELEGRAM_BOT_USERNAME: '@x' },
 				{ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_UPDATES: 'bogus' },
-				{ ...BASE_WEBHOOK_ENVIRONMENT, NODE_ENV: 'production', TELEGRAM_WEBHOOK_SECRET: 'short-secret' }
+				{ ...BASE_WEBHOOK_ENVIRONMENT, NODE_ENV: 'production', TELEGRAM_WEBHOOK_SECRET: 'short-secret' },
+				{ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_BOT_TOKEN: `${TOKEN}/sendMessage?x=1` }
 			];
 
 			for (const environment of attempts) {

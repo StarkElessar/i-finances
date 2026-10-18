@@ -20,6 +20,9 @@ const app = createApiApp({
 	telegramWebhookController: dependencies.telegram.webhookController
 });
 
+// Telegram: webhook registration or polling starts only once the server is up, and polling ends with the process.
+const telegramUpdatesRunner = dependencies.telegram.updatesRunner;
+
 const server = serve(
 	{
 		fetch: app.fetch,
@@ -27,13 +30,9 @@ const server = serve(
 	},
 	(info) => {
 		console.warn(`API listening on http://localhost:${info.port}`);
+		telegramUpdatesRunner?.start();
 	}
 );
-
-// Telegram: webhook registration or polling starts only once the server is up, and polling ends with the process.
-const telegramUpdatesRunner = dependencies.telegram.updatesRunner;
-
-telegramUpdatesRunner?.start();
 
 for (const signal of ['SIGINT', 'SIGTERM'] as const) {
 	process.once(signal, () => {
