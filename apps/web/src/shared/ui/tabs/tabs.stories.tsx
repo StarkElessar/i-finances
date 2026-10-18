@@ -41,8 +41,9 @@ export const Hover: Story = {
 	parameters: { pseudo: { hover: true } }
 };
 
+// Only the selected tab can hold focus (roving tabindex), so only it gets the pseudo state.
 export const Focus: Story = {
-	parameters: { pseudo: { focusVisible: true } }
+	parameters: { pseudo: { focusVisible: ['[aria-selected="true"]'] } }
 };
 
 export const Disabled: Story = {
