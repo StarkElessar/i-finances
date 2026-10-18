@@ -13,6 +13,7 @@ import type { SecurityHttpController } from '@/http/security-controller';
 import { securityHeaders } from '@/http/security-headers';
 import type { TelegramAuthHttpController } from '@/http/telegram-auth-controller';
 import type { TelegramDevLoginHttpController } from '@/http/telegram-dev-login-controller';
+import type { TelegramLinkHttpController } from '@/http/telegram-link-controller';
 import type { TelegramWebhookHttpController } from '@/http/telegram-webhook-controller';
 import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
@@ -33,6 +34,7 @@ export type ApiAppDependencies = {
 	telegramAuthController?: TelegramAuthHttpController;
 	/** Present only with `DEV_TELEGRAM_LOGIN=true`, which production refuses. */
 	telegramDevLoginController?: TelegramDevLoginHttpController;
+	telegramLinkController?: TelegramLinkHttpController;
 	telegramWebhookController?: TelegramWebhookHttpController;
 	transferController?: TransferHttpController;
 };
@@ -73,6 +75,14 @@ export function createApiApp(
 			telegramDevLoginController.bodyLimit(),
 			telegramDevLoginController.confirm()
 		);
+	}
+
+	if (dependencies.telegramLinkController !== undefined) {
+		const telegramLinkController = dependencies.telegramLinkController;
+
+		// Under /api/auth/telegram, so the request cookie (`Path=/api/auth/telegram`) reaches them.
+		app.post('/api/auth/telegram/link/start', telegramLinkController.bodyLimit(), telegramLinkController.start());
+		app.post('/api/auth/telegram/link/complete', telegramLinkController.bodyLimit(), telegramLinkController.complete());
 	}
 
 	if (dependencies.accountController !== undefined) {

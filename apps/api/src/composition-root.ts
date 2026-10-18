@@ -13,6 +13,7 @@ import { SecurityHttpController } from './http/security-controller';
 import { CookieSessionResolver } from './http/session-resolver';
 import { TelegramAuthHttpController } from './http/telegram-auth-controller';
 import { TelegramDevLoginHttpController } from './http/telegram-dev-login-controller';
+import { TelegramLinkHttpController } from './http/telegram-link-controller';
 import { TelegramWebhookHttpController } from './http/telegram-webhook-controller';
 import { TransferHttpController } from './http/transfer-controller';
 import { type AppDatabase, db } from './infrastructure/database/client';
@@ -78,6 +79,8 @@ import {
 } from './modules/telegram';
 import {
 	TelegramAccountRepository,
+	TelegramLinkRepository,
+	TelegramLinkService,
 	TelegramLoginRequestRepository,
 	TelegramSignInService
 } from './modules/telegram-auth';
@@ -111,6 +114,8 @@ export type ApiDependencies = {
 		dispatcher: TelegramUpdateDispatcher;
 		/** Present only with `DEV_TELEGRAM_LOGIN=true` (never in production). */
 		devLoginController: TelegramDevLoginHttpController | undefined;
+		/** `link/start` and `link/complete` (A4), on the browser cookie session only. */
+		linkController: TelegramLinkHttpController;
 		messages: TelegramMessages;
 		signInController: TelegramAuthHttpController;
 		signInService: TelegramSignInService;
@@ -131,6 +136,7 @@ export function toApiAppDependencies(dependencies: ApiDependencies): ApiAppDepen
 		...dependencies,
 		telegramAuthController: dependencies.telegram.signInController,
 		telegramDevLoginController: dependencies.telegram.devLoginController,
+		telegramLinkController: dependencies.telegram.linkController,
 		telegramWebhookController: dependencies.telegram.webhookController
 	};
 }
@@ -205,16 +211,31 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 	});
 	const householdRepository = new HouseholdRepository(database);
 	const householdResolver = new HouseholdResolver(householdRepository);
+	// One pair of limiters for both flows (Р11 lists `start` with `link/start` and `complete` with `link/complete`): a
+	// second flow must not double what one address may do.
+	const telegramStartRateLimiter = new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS });
+	const telegramCompleteRateLimiter = new FixedWindowRateLimiter({ maxRequests: 300, windowMilliseconds: FIVE_MINUTES_MILLISECONDS });
+	const telegramLoginRequests = new TelegramLoginRequestRepository(database);
+	const telegramLinkService = new TelegramLinkService({
+		completeRateLimiter: telegramCompleteRateLimiter,
+		config: telegramConfig,
+		links: new TelegramLinkRepository(database),
+		messages: telegramMessages,
+		requests: telegramLoginRequests,
+		signInMethods,
+		startRateLimiter: telegramStartRateLimiter
+	});
 	const telegramSignInService = new TelegramSignInService({
 		accounts: new TelegramAccountRepository(database),
 		botClient: telegramBotClient,
-		completeRateLimiter: new FixedWindowRateLimiter({ maxRequests: 300, windowMilliseconds: FIVE_MINUTES_MILLISECONDS }),
+		completeRateLimiter: telegramCompleteRateLimiter,
 		config: telegramConfig,
 		households: householdResolver,
+		link: telegramLinkService,
 		messages: telegramMessages,
-		requests: new TelegramLoginRequestRepository(database),
+		requests: telegramLoginRequests,
 		sessionService,
-		startRateLimiter: new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS })
+		startRateLimiter: telegramStartRateLimiter
 	});
 	const telegramDispatcher = new TelegramUpdateDispatcher(telegramSignInService, new ProcessedUpdateIds());
 	const householdService = new HouseholdService({ householdRepository, householdResolver });
@@ -366,6 +387,8 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 				? new TelegramDevLoginHttpController(telegramSignInService, authConfig)
 				: undefined,
 			dispatcher: telegramDispatcher,
+			// Browser cookie only: a leaked MCP key must not attach a Telegram (a new way in) to its user.
+			linkController: new TelegramLinkHttpController(telegramLinkService, cookieSessionResolver, authConfig),
 			messages: telegramMessages,
 			signInController: new TelegramAuthHttpController(telegramSignInService, authConfig),
 			signInService: telegramSignInService,

@@ -776,6 +776,25 @@ const PROBES: Probe[] = [
 		}),
 		route: 'POST /api/dev/telegram/confirm',
 		scope: 'public'
+	},
+
+	// Telegram link (A4): the caller's own account only, from the session; no household data is read or written. The
+	// whole flow with A's Telegram (2002, the A member) is covered by `telegram-link-http.test.ts`.
+	{
+		beta: [200],
+		loner: [200],
+		name: 'starts a link for the caller only',
+		request: () => ({ path: '/api/auth/telegram/link/start' }),
+		route: 'POST /api/auth/telegram/link/start',
+		scope: 'user'
+	},
+	{
+		beta: [403],
+		loner: [403],
+		name: 'a session does not complete a link it did not start',
+		request: () => ({ body: { code: UNKNOWN_LOGIN_CODE }, path: '/api/auth/telegram/link/complete' }),
+		route: 'POST /api/auth/telegram/link/complete',
+		scope: 'user'
 	}
 ];
 
@@ -1136,6 +1155,7 @@ describe('household isolation over every route', () => {
 		// Guards the setup itself: the app is the full server app (every optional controller wired, as in main.ts).
 		expect(registered).toContain('POST /api/telegram/webhook');
 		expect(registered).toContain('POST /api/dev/telegram/confirm');
+		expect(registered).toContain('POST /api/auth/telegram/link/start');
 		expect(probed).toEqual(registered);
 	});
 
