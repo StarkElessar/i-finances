@@ -81,6 +81,18 @@ export const Focus: Story = {
 	parameters: { pseudo: { focusVisible: true } }
 };
 
+/** A selected chip is a tab stop as well: it shows the same ring. */
+export const FocusSelected: Story = {
+	args: { selected: true },
+	parameters: { pseudo: { focusVisible: true } }
+};
+
+/** Hover on a selected removable chip: a click removes it, so it reacts. */
+export const HoverRemovable: Story = {
+	args: { color: 'var(--color-series-1)', removable: true, selected: true },
+	parameters: { pseudo: { hover: true } }
+};
+
 export const Disabled: Story = {
 	render: (args) => (
 		<StoryStack>

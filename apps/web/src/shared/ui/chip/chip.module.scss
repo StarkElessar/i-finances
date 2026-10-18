@@ -25,17 +25,21 @@
         border-color var(--duration-fast) var(--ease-standard),
         background-color var(--duration-fast) var(--ease-standard);
 
-    &:not(.chip-selected, :disabled) {
+    // A chip is a toggle: a click changes its state, so it is never "already selected" in the
+    // sense of AGENTS.md. The focus ring shows in both states (it is a tab stop either way).
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    // Hover and pointer: an unselected chip (click selects it) and a selected removable chip
+    // (click removes it). A plain selected chip stays quiet, like a selected segment.
+    &:not(:disabled):is(:not(.chip-selected), .chip-removable) {
         cursor: pointer;
 
         &:hover {
             border-color: var(--color-primary);
             background-color: var(--color-surface-subtle);
-        }
-
-        &:focus-visible {
-            outline: 3px solid var(--color-focus-ring);
-            outline-offset: 1px;
         }
     }
 

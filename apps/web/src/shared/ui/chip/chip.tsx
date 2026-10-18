@@ -40,7 +40,7 @@ export function Chip(props: ChipProps) {
 		<button
 			{...buttonProps}
 			aria-pressed={local.selected}
-			class={cn(css.chip, local.selected && css.chipSelected, local.class)}
+			class={cn(css.chip, local.selected && css.chipSelected, local.selected && local.removable && css.chipRemovable, local.class)}
 			type={local.type ?? 'button'}
 		>
 			<Show when={local.color}>
