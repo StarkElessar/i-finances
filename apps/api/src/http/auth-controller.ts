@@ -2,7 +2,8 @@ import type { PasswordUserRepository, SessionService } from '@/modules/auth';
 import type { PasswordSignInService } from '@/modules/auth';
 import {
 	type AuthConfig,
-	getAuthConfig
+	getAuthConfig,
+	type SignInMethodsPort
 } from '@/modules/auth';
 import type { HouseholdResolver } from '@/modules/household';
 
@@ -41,6 +42,7 @@ export class AuthHttpController {
 		private readonly sessionResolver: RequestSessionResolver,
 		private readonly passwordUserRepository: PasswordUserRepository,
 		private readonly householdResolver: HouseholdResolver,
+		private readonly signInMethods: SignInMethodsPort,
 		config: AuthConfig = getAuthConfig()
 	) {
 		this.config = config;
@@ -56,11 +58,14 @@ export class AuthHttpController {
 
 			// Read on every call, like the household routes: a removed member sees `null` right away.
 			const household = await this.householdResolver.findForUser(session.user.id);
+			const methods = await this.signInMethods.read(session.user.id);
 			const response: CurrentSessionResponse = {
 				authenticated: true,
+				hasPassword: methods?.hasPassword ?? false,
 				household: household === undefined
 					? null
 					: { id: household.id, name: household.name, role: household.role },
+				telegram: methods?.telegram ?? null,
 				user: {
 					displayName: session.user.displayName,
 					id: session.user.id,

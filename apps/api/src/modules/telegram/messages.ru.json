@@ -1,10 +1,12 @@
 {
 	"household.memberJoined": "{name} теперь в окружении «{household}». Если вы не приглашали этого человека, удалите его в разделе «Окружение».",
+	"signIn.accountNotFound": "Аккаунт i-finances для этого Telegram не найден. Войдите паролем или ключом доступа и привяжите Telegram в разделе «Безопасность».",
 	"signIn.confirmation": "Вход в i-finances: {device}, {when}. Это вы?",
 	"signIn.confirmButton": "Войти",
 	"signIn.confirmed": "Готово, вернитесь в i-finances.",
 	"signIn.expired": "Ссылка устарела. Вернитесь в i-finances и начните вход заново.",
 	"signIn.rejectButton": "Это не я",
 	"signIn.rejected": "Вход отклонён. Если это были не вы, смените пароль и завершите чужие сеансы в разделе «Безопасность».",
+	"signIn.unknownDevice": "неизвестное устройство",
 	"start.greeting": "Здравствуйте! Это бот i-finances. Он подтверждает вход и присылает уведомления. Чтобы войти, откройте i-finances и нажмите «Войти через Telegram»."
 }

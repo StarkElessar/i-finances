@@ -8,6 +8,7 @@ import {
 	householdMembers,
 	households,
 	sessions,
+	telegramAccounts,
 	users,
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
@@ -20,6 +21,7 @@ import {
 	SecurityService,
 	SessionRepository,
 	SessionService,
+	SignInMethodsRepository,
 	WebAuthnCredentialRepository
 } from '@/modules/auth';
 
@@ -112,7 +114,12 @@ afterEach(() => {
  * `randomRotatedTokens` keeps the production token generator of `SecurityService`; `securityNow` moves its clock
  * away from the sign-in time, so a rotation that renewed the expiry from «now» cannot pass by coincidence.
  */
-function createContext(options: { randomRotatedTokens?: boolean; rateLimiter?: LoginRateLimiter; securityNow?: Date } = {}) {
+function createContext(options: {
+	randomRotatedTokens?: boolean;
+	rateLimiter?: LoginRateLimiter;
+	securityNow?: Date;
+	telegramSignInAvailable?: boolean;
+} = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => `session-${++nextSessionId}`,
@@ -122,10 +129,12 @@ function createContext(options: { randomRotatedTokens?: boolean; rateLimiter?: L
 	const securityService = new SecurityService({
 		createToken: options.randomRotatedTokens === true ? undefined : () => `rotated-token-${++nextRotatedToken}`,
 		credentialRepository: new WebAuthnCredentialRepository(database),
+		isTelegramSignInAvailable: options.telegramSignInAvailable ?? true,
 		now: () => options.securityNow ?? FIXED_DATE,
 		passwordService,
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionRepository: new SessionRepository(database),
+		signInMethods: new SignInMethodsRepository(database),
 		userRepository: new PasswordUserRepository(database)
 	});
 	const app = createApiApp({
@@ -374,6 +383,58 @@ describe('passkeys', () => {
 
 		expect(refused.status).toBe(409);
 		expect(await countPasskeys('alice')).toBe(1);
+	});
+
+	describe('a linked Telegram counts as a way back in (A10, IF-41)', () => {
+		const linkTelegram = async (userId: string, telegramId: string): Promise<void> => {
+			await database.insert(telegramAccounts).values({
+				chatId: telegramId,
+				firstName: userId,
+				lastName: null,
+				lastSignInAt: FIXED_DATE,
+				linkedAt: FIXED_DATE,
+				telegramId,
+				updatedAt: FIXED_DATE,
+				userId,
+				username: null
+			});
+		};
+
+		it('lets a user without a password remove the last key when Telegram is linked and sign-in through it works', async () => {
+			await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'alice'));
+			await linkTelegram('alice', '1001');
+			const { app, sessionService } = createContext({ telegramSignInAvailable: true });
+			const alice = await signIn(sessionService, app, 'alice');
+			await addPasskey('alice', 'key-1');
+
+			expect((await alice.request('/api/security/passkeys/key-1', { method: 'DELETE' })).status).toBe(200);
+			expect(await countPasskeys('alice')).toBe(0);
+		});
+
+		it('refuses when Telegram sign-in is switched off on this server: the link would open nothing', async () => {
+			await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'alice'));
+			await linkTelegram('alice', '1001');
+			const { app, sessionService } = createContext({ telegramSignInAvailable: false });
+			const alice = await signIn(sessionService, app, 'alice');
+			await addPasskey('alice', 'key-1');
+
+			const refused = await alice.request('/api/security/passkeys/key-1', { method: 'DELETE' });
+
+			expect(refused.status).toBe(409);
+			expect(refused.body).toMatchObject({ errorCode: 'last-passkey' });
+			expect(await countPasskeys('alice')).toBe(1);
+		});
+
+		it('refuses without a password and without Telegram, and another user\'s Telegram does not count', async () => {
+			await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'alice'));
+			await linkTelegram('bob', '2002');
+			const { app, sessionService } = createContext({ telegramSignInAvailable: true });
+			const alice = await signIn(sessionService, app, 'alice');
+			await addPasskey('alice', 'key-1');
+
+			expect((await alice.request('/api/security/passkeys/key-1', { method: 'DELETE' })).status).toBe(409);
+			expect(await countPasskeys('alice')).toBe(1);
+		});
 	});
 });
 

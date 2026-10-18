@@ -11,6 +11,8 @@ import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
 import { SecurityHttpController } from './http/security-controller';
 import { CookieSessionResolver } from './http/session-resolver';
+import { TelegramAuthHttpController } from './http/telegram-auth-controller';
+import { TelegramDevLoginHttpController } from './http/telegram-dev-login-controller';
 import { TelegramWebhookHttpController } from './http/telegram-webhook-controller';
 import { TransferHttpController } from './http/transfer-controller';
 import { type AppDatabase, db } from './infrastructure/database/client';
@@ -19,6 +21,7 @@ import {
 	AccountService
 } from './modules/account';
 import {
+	FixedWindowRateLimiter,
 	getAuthConfig,
 	LoginRateLimiter,
 	PasswordService,
@@ -27,6 +30,7 @@ import {
 	SecurityService,
 	SessionRepository,
 	SessionService,
+	SignInMethodsRepository,
 	WebAuthnChallengeRepository,
 	WebAuthnCredentialRepository,
 	WebAuthnService
@@ -64,7 +68,6 @@ import {
 import {
 	FetchTelegramBotClient,
 	getTelegramConfig,
-	IgnoringTelegramUpdateHandler,
 	loadTelegramMessages,
 	ProcessedUpdateIds,
 	type TelegramBotClient,
@@ -73,6 +76,11 @@ import {
 	TelegramUpdateDispatcher,
 	TelegramUpdatesRunner
 } from './modules/telegram';
+import {
+	TelegramAccountRepository,
+	TelegramLoginRequestRepository,
+	TelegramSignInService
+} from './modules/telegram-auth';
 import {
 	createTransferRepository,
 	createTransferService
@@ -99,7 +107,13 @@ export type ApiDependencies = {
 		/** Undefined while no bot token is configured. */
 		botClient: TelegramBotClient | undefined;
 		config: TelegramConfig;
+		/** `main.ts` drains it at shutdown, so handlers still running are not cut off. */
+		dispatcher: TelegramUpdateDispatcher;
+		/** Present only with `DEV_TELEGRAM_LOGIN=true` (never in production). */
+		devLoginController: TelegramDevLoginHttpController | undefined;
 		messages: TelegramMessages;
+		signInController: TelegramAuthHttpController;
+		signInService: TelegramSignInService;
 		/** Present in `webhook` and `polling` modes; `start()` it after the server listens. */
 		updatesRunner: TelegramUpdatesRunner | undefined;
 		/** Present in `webhook` mode only; in the other modes the route does not exist. */
@@ -115,9 +129,21 @@ export type ApiDependencies = {
 export function toApiAppDependencies(dependencies: ApiDependencies): ApiAppDependencies {
 	return {
 		...dependencies,
+		telegramAuthController: dependencies.telegram.signInController,
+		telegramDevLoginController: dependencies.telegram.devLoginController,
 		telegramWebhookController: dependencies.telegram.webhookController
 	};
 }
+
+export type ApiDependenciesOptions = {
+	/**
+	 * The Bot API client. Defaults to the real `FetchTelegramBotClient` when `TELEGRAM_BOT_TOKEN` is set (none without
+	 * a token); tests pass `FakeTelegramBotClient` so that nothing ever reaches Telegram.
+	 */
+	telegramBotClient?: TelegramBotClient;
+};
+
+const FIVE_MINUTES_MILLISECONDS = 5 * 60 * 1000;
 
 /**
  * Builds the production object graph explicitly at the application boundary.
@@ -125,16 +151,16 @@ export function toApiAppDependencies(dependencies: ApiDependencies): ApiAppDepen
  * `database` defaults to the configured shared connection; tests pass a fresh in-memory database so the real graph
  * runs per test (`household-isolation-http.test.ts`).
  */
-export function createApiDependencies(database: AppDatabase = db): ApiDependencies {
+export function createApiDependencies(database: AppDatabase = db, options: ApiDependenciesOptions = {}): ApiDependencies {
 	const authConfig = getAuthConfig();
-	// Throws, and so stops the start, when the Telegram environment is half configured or the bot texts are broken.
+	// Throws, and so stops the start, when the Telegram environment is half configured (DEV_TELEGRAM_LOGIN in
+	// production included) or the bot texts are broken.
 	const telegramConfig = getTelegramConfig(process.env, authConfig.origin);
 	const telegramMessages = loadTelegramMessages();
-	const telegramBotClient = telegramConfig.botToken === undefined
+	const telegramBotClient = options.telegramBotClient ?? (telegramConfig.botToken === undefined
 		? undefined
-		: new FetchTelegramBotClient({ token: telegramConfig.botToken });
-	// A3 replaces the stand-in with the sign-in handler.
-	const telegramDispatcher = new TelegramUpdateDispatcher(new IgnoringTelegramUpdateHandler(), new ProcessedUpdateIds());
+		: new FetchTelegramBotClient({ token: telegramConfig.botToken }));
+	const signInMethods = new SignInMethodsRepository(database);
 	const sessionRepository = new SessionRepository(database);
 	const sessionService = new SessionService(sessionRepository, {
 		config: authConfig
@@ -160,10 +186,12 @@ export function createApiDependencies(database: AppDatabase = db): ApiDependenci
 		challengeRepository: new WebAuthnChallengeRepository(database),
 		config: authConfig,
 		credentialRepository: webAuthnCredentialRepository,
-		sessionService
+		sessionService,
+		signInMethods
 	});
 	const securityService = new SecurityService({
 		credentialRepository: webAuthnCredentialRepository,
+		isTelegramSignInAvailable: telegramConfig.signInAvailable,
 		passwordService,
 		// This limiter is keyed by `unknown:<userId>` (no address) and must stay a plain per-user attempt counter. The
 		// per-username and per-address ceilings of the sign-in form would add counters with different behavior.
@@ -172,10 +200,23 @@ export function createApiDependencies(database: AppDatabase = db): ApiDependenci
 			maxAttemptsPerUsername: Number.POSITIVE_INFINITY
 		}),
 		sessionRepository,
+		signInMethods,
 		userRepository: passwordUserRepository
 	});
 	const householdRepository = new HouseholdRepository(database);
 	const householdResolver = new HouseholdResolver(householdRepository);
+	const telegramSignInService = new TelegramSignInService({
+		accounts: new TelegramAccountRepository(database),
+		botClient: telegramBotClient,
+		completeRateLimiter: new FixedWindowRateLimiter({ maxRequests: 300, windowMilliseconds: FIVE_MINUTES_MILLISECONDS }),
+		config: telegramConfig,
+		households: householdResolver,
+		messages: telegramMessages,
+		requests: new TelegramLoginRequestRepository(database),
+		sessionService,
+		startRateLimiter: new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS })
+	});
+	const telegramDispatcher = new TelegramUpdateDispatcher(telegramSignInService, new ProcessedUpdateIds());
 	const householdService = new HouseholdService({ householdRepository, householdResolver });
 	const categoryService = new CategoryService({
 		categoryRepository: new CategoryRepository(database),
@@ -273,6 +314,7 @@ export function createApiDependencies(database: AppDatabase = db): ApiDependenci
 			sessionResolver,
 			passwordUserRepository,
 			householdResolver,
+			signInMethods,
 			authConfig
 		),
 		accountController: new AccountHttpController(
@@ -320,7 +362,13 @@ export function createApiDependencies(database: AppDatabase = db): ApiDependenci
 		telegram: {
 			botClient: telegramBotClient,
 			config: telegramConfig,
+			devLoginController: telegramConfig.devLoginEnabled
+				? new TelegramDevLoginHttpController(telegramSignInService, authConfig)
+				: undefined,
+			dispatcher: telegramDispatcher,
 			messages: telegramMessages,
+			signInController: new TelegramAuthHttpController(telegramSignInService, authConfig),
+			signInService: telegramSignInService,
 			updatesRunner: telegramUpdatesRunner,
 			webhookController: telegramWebhookController
 		},

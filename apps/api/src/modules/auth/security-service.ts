@@ -19,16 +19,23 @@ import type { LoginRateLimitPort } from './password-sign-in-service';
 import type { PasswordUserRepository } from './password-user-repository';
 import type { SessionRepository } from './session-repository';
 import { generateSessionToken, hashSessionToken } from './session-service';
+import type { SignInMethodsPort } from './sign-in-methods-repository';
 import type { WebAuthnCredentialRepository } from './webauthn-credential-repository';
 
 export type SecurityServiceDependencies = {
 	createToken?: () => string;
 	credentialRepository: Pick<WebAuthnCredentialRepository, 'deleteForUser' | 'findByUserId'>;
+	/**
+	 * Whether this server lets people sign in through Telegram right now (`TelegramConfig.signInAvailable`). A linked
+	 * Telegram account counts as a way back in only then: with Telegram switched off it opens nothing.
+	 */
+	isTelegramSignInAvailable: boolean;
 	now?: () => Date;
 	passwordService: Pick<PasswordService, 'hash' | 'verify'>;
 	/** Counts wrong «current password» attempts per user, not per address. */
 	rateLimiter: LoginRateLimitPort;
 	sessionRepository: Pick<SessionRepository, 'deleteForUser' | 'deleteOthersForUser' | 'findActiveByUserId'>;
+	signInMethods: SignInMethodsPort;
 	userRepository: Pick<PasswordUserRepository, 'findById' | 'replacePasswordAndRotateSessions'>;
 };
 
@@ -93,20 +100,24 @@ export class SecurityService {
 	/**
 	 * Removes one of the user's passkeys.
 	 *
-	 * Rule: the last passkey can only be removed when the account has a usable
-	 * password to fall back to. Otherwise the user would lock themselves out, so
-	 * the request is refused with `last-passkey`. The check runs inside the
-	 * delete statement itself (see `WebAuthnCredentialRepository.deleteForUser`).
+	 * Rule: the last passkey can only be removed when the account keeps another
+	 * way to sign in: a usable password, or a linked Telegram account while
+	 * Telegram sign-in is available on this server. Otherwise the user would lock
+	 * themselves out, so the request is refused with `last-passkey`. The «last»
+	 * check runs inside the delete statement itself (see
+	 * `WebAuthnCredentialRepository.deleteForUser`); the fallbacks cannot vanish
+	 * meanwhile, because v1 can neither remove a password nor unlink Telegram.
 	 */
 	public async deletePasskey(actor: SecurityActor, credentialId: string): Promise<DeleteSecurityPasskeyResult> {
-		const user = await this.dependencies.userRepository.findById(actor.userId);
+		const methods = await this.dependencies.signInMethods.read(actor.userId);
 
-		if (user === undefined || !user.isActive) {
+		if (methods === undefined || !methods.isActive) {
 			return failure('unauthenticated');
 		}
 
+		const hasTelegramFallback = this.dependencies.isTelegramSignInAvailable && methods.telegram !== null;
 		const deleted = await this.dependencies.credentialRepository.deleteForUser({
-			allowLast: hasUsablePassword(user.passwordHash),
+			allowLast: methods.hasPassword || hasTelegramFallback,
 			id: credentialId,
 			userId: actor.userId
 		});

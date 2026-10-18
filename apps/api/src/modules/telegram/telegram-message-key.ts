@@ -5,12 +5,14 @@
  */
 export const TELEGRAM_MESSAGE_PLACEHOLDERS = {
 	'household.memberJoined': ['name', 'household'],
+	'signIn.accountNotFound': [],
 	'signIn.confirmation': ['device', 'when'],
 	'signIn.confirmButton': [],
 	'signIn.confirmed': [],
 	'signIn.expired': [],
 	'signIn.rejectButton': [],
 	'signIn.rejected': [],
+	'signIn.unknownDevice': [],
 	'start.greeting': []
 } as const satisfies Record<string, readonly string[]>;
 

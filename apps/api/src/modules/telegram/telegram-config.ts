@@ -14,13 +14,21 @@ const BOT_USERNAME_PATTERN = /^[A-Za-z][A-Za-z0-9_]{2,31}$/;
  */
 const BOT_TOKEN_PATTERN = /^\d+:[A-Za-z0-9_-]+$/;
 const WEBHOOK_PATH = '/api/telegram/webhook';
+const DEFAULT_LOGIN_TTL_MINUTES = 10;
+const MINUTE_MILLISECONDS = 60 * 1000;
 
 /** An empty value in `.env` ("TELEGRAM_BOT_TOKEN=") means "not set". */
 const optionalText = z.string().trim().transform((value) => (value === '' ? undefined : value)).optional();
 
+/** `true` or `false` only: a typo such as `ture` must stop the start, not silently mean «off». */
+const optionalFlag = optionalText.pipe(z.enum(['true', 'false']).default('false')).transform((value) => value === 'true');
+
 const telegramEnvironmentSchema = z.object({
+	DEV_TELEGRAM_LOGIN: optionalFlag,
 	TELEGRAM_BOT_TOKEN: optionalText,
 	TELEGRAM_BOT_USERNAME: optionalText,
+	TELEGRAM_LOGIN_TTL_MINUTES: optionalText,
+	TELEGRAM_REGISTRATION_ENABLED: optionalFlag,
 	TELEGRAM_UPDATES: optionalText.pipe(z.enum(TELEGRAM_UPDATES_MODES).default('off')),
 	TELEGRAM_WEBHOOK_SECRET: optionalText,
 	TELEGRAM_WEBHOOK_URL: optionalText
@@ -31,6 +39,24 @@ export type TelegramConfig = {
 	botToken: TelegramSecret | undefined;
 	/** Bot name without `@`, for `https://t.me/<name>` links. */
 	botUsername: string | undefined;
+	/**
+	 * `DEV_TELEGRAM_LOGIN=true`: `POST /api/dev/telegram/confirm` confirms a request instead of the bot. Never true in
+	 * production: the configuration refuses to load there.
+	 */
+	devLoginEnabled: boolean;
+	/** How long a sign-in request lives (`TELEGRAM_LOGIN_TTL_MINUTES`, 1-60, default 10). */
+	loginTtlMilliseconds: number;
+	/**
+	 * `TELEGRAM_REGISTRATION_ENABLED=true`: an unknown Telegram account creates a new user. Off by default (Р9): only
+	 * users who already linked Telegram sign in with it.
+	 */
+	registrationEnabled: boolean;
+	/**
+	 * Whether a sign-in request can be confirmed at all: the bot receives updates (`webhook` or `polling`) or the dev
+	 * confirmation stands in for it, and there is a bot name for the link. When false, `start` answers
+	 * `telegram-unavailable` and the sign-in screen hides the button.
+	 */
+	signInAvailable: boolean;
 	updatesMode: TelegramUpdatesMode;
 	/** Set only in `webhook` mode. */
 	webhookSecret: TelegramSecret | undefined;
@@ -53,6 +79,7 @@ function resolveWebhookUrl(explicitUrl: string | undefined, authOrigin: string):
  * - `TELEGRAM_UPDATES` is `off` by default; tests and anyone who has not configured a bot stay on it.
  * - Any other mode needs a bot token and a bot username; `webhook` also needs `TELEGRAM_WEBHOOK_SECRET`.
  * - In production the webhook URL must be https (Telegram refuses plain http) and the secret at least 32 characters.
+ * - `DEV_TELEGRAM_LOGIN=true` is refused in production, like any other broken setting: the API does not start.
  *
  * Throws `TelegramConfigurationError` listing every problem (variable names only, never values), so the API refuses to
  * start instead of running with a half-configured bot.
@@ -65,8 +92,11 @@ export function getTelegramConfig(environment: NodeJS.ProcessEnv, authOrigin: st
 	}
 
 	const {
+		DEV_TELEGRAM_LOGIN: devLoginEnabled,
 		TELEGRAM_BOT_TOKEN: botToken,
 		TELEGRAM_BOT_USERNAME: botUsername,
+		TELEGRAM_LOGIN_TTL_MINUTES: rawLoginTtlMinutes,
+		TELEGRAM_REGISTRATION_ENABLED: registrationEnabled,
 		TELEGRAM_UPDATES: updatesMode,
 		TELEGRAM_WEBHOOK_SECRET: webhookSecret,
 		TELEGRAM_WEBHOOK_URL: explicitWebhookUrl
@@ -113,6 +143,23 @@ export function getTelegramConfig(environment: NodeJS.ProcessEnv, authOrigin: st
 		}
 	}
 
+	const loginTtlMinutes = rawLoginTtlMinutes === undefined ? DEFAULT_LOGIN_TTL_MINUTES : Number(rawLoginTtlMinutes);
+
+	if (rawLoginTtlMinutes !== undefined && (!/^\d+$/.test(rawLoginTtlMinutes) || loginTtlMinutes < 1 || loginTtlMinutes > 60)) {
+		problems.push('TELEGRAM_LOGIN_TTL_MINUTES must be a whole number of minutes from 1 to 60');
+	}
+
+	if (devLoginEnabled) {
+		// Anyone who can reach the API could then sign in as any Telegram user: the API must not start like this.
+		if (isProduction) {
+			problems.push('DEV_TELEGRAM_LOGIN must not be enabled in production');
+		}
+
+		if (botUsername === undefined) {
+			problems.push('TELEGRAM_BOT_USERNAME is required when DEV_TELEGRAM_LOGIN=true (any bot name works for the links)');
+		}
+	}
+
 	if (problems.length > 0) {
 		throw new TelegramConfigurationError(problems);
 	}
@@ -120,6 +167,10 @@ export function getTelegramConfig(environment: NodeJS.ProcessEnv, authOrigin: st
 	return {
 		botToken: botToken === undefined ? undefined : new TelegramSecret(botToken),
 		botUsername,
+		devLoginEnabled,
+		loginTtlMilliseconds: loginTtlMinutes * MINUTE_MILLISECONDS,
+		registrationEnabled,
+		signInAvailable: botUsername !== undefined && (updatesMode !== 'off' || devLoginEnabled),
 		updatesMode,
 		webhookSecret: updatesMode === 'webhook' && webhookSecret !== undefined ? new TelegramSecret(webhookSecret) : undefined,
 		webhookUrl: updatesMode === 'webhook' ? resolveWebhookUrl(explicitWebhookUrl, authOrigin) : undefined

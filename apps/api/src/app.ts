@@ -11,6 +11,8 @@ import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
 import type { SecurityHttpController } from '@/http/security-controller';
 import { securityHeaders } from '@/http/security-headers';
+import type { TelegramAuthHttpController } from '@/http/telegram-auth-controller';
+import type { TelegramDevLoginHttpController } from '@/http/telegram-dev-login-controller';
 import type { TelegramWebhookHttpController } from '@/http/telegram-webhook-controller';
 import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
@@ -28,6 +30,9 @@ export type ApiAppDependencies = {
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
 	securityController?: SecurityHttpController;
+	telegramAuthController?: TelegramAuthHttpController;
+	/** Present only with `DEV_TELEGRAM_LOGIN=true`, which production refuses. */
+	telegramDevLoginController?: TelegramDevLoginHttpController;
 	telegramWebhookController?: TelegramWebhookHttpController;
 	transferController?: TransferHttpController;
 };
@@ -49,6 +54,20 @@ export function createApiApp(
 		app.post('/api/auth/sign-in', authController.signIn());
 		app.post('/api/auth/sign-out', authController.signOut());
 		app.put('/api/auth/display-name', authController.updateDisplayName());
+	}
+
+	if (dependencies.telegramAuthController !== undefined) {
+		const telegramAuthController = dependencies.telegramAuthController;
+
+		app.post('/api/auth/telegram/start', telegramAuthController.bodyLimit(), telegramAuthController.start());
+		app.post('/api/auth/telegram/complete', telegramAuthController.bodyLimit(), telegramAuthController.complete());
+		app.post('/api/auth/telegram/cancel', telegramAuthController.bodyLimit(), telegramAuthController.cancel());
+	}
+
+	if (dependencies.telegramDevLoginController !== undefined) {
+		const telegramDevLoginController = dependencies.telegramDevLoginController;
+
+		app.post('/api/dev/telegram/confirm', telegramDevLoginController.bodyLimit(), telegramDevLoginController.confirm());
 	}
 
 	if (dependencies.accountController !== undefined) {

@@ -110,6 +110,59 @@ describe('getTelegramConfig', () => {
 			.toThrow(/TELEGRAM_BOT_USERNAME must be/);
 	});
 
+	describe('sign-in settings (A3)', () => {
+		it('defaults to a 10-minute request, registration closed, no dev confirmation', () => {
+			expect(getTelegramConfig(BASE_WEBHOOK_ENVIRONMENT, ORIGIN)).toMatchObject({
+				devLoginEnabled: false,
+				loginTtlMilliseconds: 10 * 60 * 1000,
+				registrationEnabled: false,
+				signInAvailable: true
+			});
+		});
+
+		it('reads the TTL and the registration flag', () => {
+			const config = getTelegramConfig({
+				...BASE_WEBHOOK_ENVIRONMENT,
+				TELEGRAM_LOGIN_TTL_MINUTES: '60',
+				TELEGRAM_REGISTRATION_ENABLED: 'true'
+			}, ORIGIN);
+
+			expect(config).toMatchObject({ loginTtlMilliseconds: 60 * 60 * 1000, registrationEnabled: true });
+		});
+
+		it.each(['0', '61', '1.5', 'ten', '-1'])('rejects TELEGRAM_LOGIN_TTL_MINUTES=%s', (value) => {
+			expect(() => getTelegramConfig({ ...BASE_WEBHOOK_ENVIRONMENT, TELEGRAM_LOGIN_TTL_MINUTES: value }, ORIGIN))
+				.toThrow(/TELEGRAM_LOGIN_TTL_MINUTES must be a whole number/);
+		});
+
+		it.each(['TELEGRAM_REGISTRATION_ENABLED', 'DEV_TELEGRAM_LOGIN'])('rejects a typo in %s instead of reading it as off', (name) => {
+			expect(() => getTelegramConfig({ ...BASE_WEBHOOK_ENVIRONMENT, [name]: 'ture' }, ORIGIN)).toThrow(TelegramConfigurationError);
+		});
+
+		it('is unavailable without a source of updates, available with the dev confirmation', () => {
+			const withoutUpdates = getTelegramConfig({ TELEGRAM_BOT_TOKEN: TOKEN, TELEGRAM_BOT_USERNAME: 'i_finances_bot' }, ORIGIN);
+
+			expect(withoutUpdates.signInAvailable).toBe(false);
+			expect(getTelegramConfig({ DEV_TELEGRAM_LOGIN: 'true', TELEGRAM_BOT_USERNAME: 'dev_bot' }, ORIGIN)).toMatchObject({
+				devLoginEnabled: true,
+				signInAvailable: true
+			});
+		});
+
+		it('refuses DEV_TELEGRAM_LOGIN in production, and without a bot name for the links', () => {
+			expect(() => getTelegramConfig({ ...BASE_WEBHOOK_ENVIRONMENT, DEV_TELEGRAM_LOGIN: 'true', NODE_ENV: 'production' }, ORIGIN))
+				.toThrow(/DEV_TELEGRAM_LOGIN must not be enabled in production/);
+			expect(() => getTelegramConfig({ DEV_TELEGRAM_LOGIN: 'true', NODE_ENV: 'production' }, ORIGIN))
+				.toThrow(/DEV_TELEGRAM_LOGIN must not be enabled in production/);
+			expect(() => getTelegramConfig({ DEV_TELEGRAM_LOGIN: 'true' }, ORIGIN))
+				.toThrow(/TELEGRAM_BOT_USERNAME is required when DEV_TELEGRAM_LOGIN/);
+
+			const productionWithFlagOff = { ...BASE_WEBHOOK_ENVIRONMENT, DEV_TELEGRAM_LOGIN: 'false', NODE_ENV: 'production' };
+
+			expect(getTelegramConfig(productionWithFlagOff, ORIGIN).devLoginEnabled).toBe(false);
+		});
+	});
+
 	describe('secrets never leak', () => {
 		it('through the error of a misconfiguration', () => {
 			const attempts = [

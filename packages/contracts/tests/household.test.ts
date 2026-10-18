@@ -57,13 +57,15 @@ describe('household contracts', () => {
 
 	it('requires the household field in an authenticated session, null in onboarding', () => {
 		const user = { displayName: 'Сергей', id: 'user-1', username: 'sergei' };
+		const methods = { hasPassword: true, telegram: null };
 
-		expect(currentSessionResponseSchema.safeParse({ authenticated: true, household: null, user }).success).toBe(true);
+		expect(currentSessionResponseSchema.safeParse({ authenticated: true, household: null, user, ...methods }).success).toBe(true);
 		expect(currentSessionResponseSchema.safeParse({
 			authenticated: true,
 			household: { id: 'household-1', name: 'Семья', role: 'member' },
-			user
+			user,
+			...methods
 		}).success).toBe(true);
-		expect(currentSessionResponseSchema.safeParse({ authenticated: true, user }).success).toBe(false);
+		expect(currentSessionResponseSchema.safeParse({ authenticated: true, user, ...methods }).success).toBe(false);
 	});
 });

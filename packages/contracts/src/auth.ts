@@ -55,11 +55,20 @@ export const authSessionUserSchema = z.object({
 	username: z.string().min(1)
 });
 
+/** The linked Telegram account; `username` is the Telegram name without `@`, `null` when the person has none. */
+export const authSessionTelegramSchema = z.object({
+	username: z.string().nullable()
+});
+
 export const currentSessionResponseSchema = z.discriminatedUnion('authenticated', [
 	z.object({
 		authenticated: z.literal(true),
+		/** `false` for users who signed up through Telegram: the password block of «Безопасность» is hidden for them. */
+		hasPassword: z.boolean(),
 		/** `null` while the user has no household yet (onboarding). */
 		household: householdSummarySchema.nullable(),
+		/** `null` while no Telegram account is linked. */
+		telegram: authSessionTelegramSchema.nullable(),
 		user: authSessionUserSchema
 	}),
 	z.object({

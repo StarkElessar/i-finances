@@ -2,7 +2,13 @@ export {
 	type AuthConfig,
 	getAuthConfig
 } from './auth-config';
+export { choosePasskeyUserName } from './choose-passkey-user-name';
 export { DUMMY_PASSWORD_HASH } from './dummy-password-hash';
+export {
+	FixedWindowRateLimiter,
+	type FixedWindowRateLimiterOptions,
+	type FixedWindowRateLimitResult
+} from './fixed-window-rate-limiter';
 export { hasUsablePassword } from './has-usable-password';
 export {
 	LoginRateLimiter,
@@ -59,6 +65,11 @@ export {
 	type SessionServiceOptions,
 	type SessionUser
 } from './session-service';
+export {
+	type SignInMethods,
+	type SignInMethodsPort,
+	SignInMethodsRepository
+} from './sign-in-methods-repository';
 export {
 	type ConsumeWebAuthnChallengeInput,
 	type WebAuthnChallengeInsertRecord,

@@ -10,7 +10,8 @@ import {
 	PasswordSignInService,
 	PasswordUserRepository,
 	SessionRepository,
-	SessionService
+	SessionService,
+	SignInMethodsRepository
 } from '@/modules/auth';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 
@@ -94,6 +95,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 		sessionResolver,
 		new PasswordUserRepository(database),
 		new HouseholdResolver(new HouseholdRepository(database)),
+		new SignInMethodsRepository(database),
 		options.config ?? AUTH_CONFIG
 	);
 
@@ -133,7 +135,9 @@ describe('password session API', () => {
 
 		expect(currentSessionResponseSchema.parse(currentBody)).toEqual({
 			authenticated: true,
+			hasPassword: false,
 			household: null,
+			telegram: null,
 			user: {
 				displayName: 'Sergei Test',
 				id: USER_ID,
@@ -372,7 +376,9 @@ describe('update display name API', () => {
 
 		expect(currentSessionResponseSchema.parse(await currentResponse.json())).toEqual({
 			authenticated: true,
+			hasPassword: false,
 			household: null,
+			telegram: null,
 			user: {
 				displayName: 'Новый Сергей',
 				id: USER_ID,

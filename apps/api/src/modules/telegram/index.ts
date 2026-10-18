@@ -1,5 +1,4 @@
 export { FetchTelegramBotClient, type FetchTelegramBotClientOptions } from './fetch-telegram-bot-client';
-export { IgnoringTelegramUpdateHandler } from './ignoring-telegram-update-handler';
 export { loadTelegramMessages } from './load-telegram-messages';
 export { ProcessedUpdateIds } from './processed-update-ids';
 export { TelegramApiError } from './telegram-api-error';
