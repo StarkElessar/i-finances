@@ -39,6 +39,21 @@ describe('resolveRovingTarget', () => {
 		expect(resolveRovingTarget({ key: 'ArrowLeft', current: 1, disabled })).toBe(1);
 	});
 
+	it('starts from the ends when no item has focus (current is -1)', () => {
+		expect(resolveRovingTarget({ key: 'ArrowRight', current: -1, disabled: none })).toBe(0);
+		expect(resolveRovingTarget({ key: 'ArrowLeft', current: -1, disabled: none })).toBe(3);
+		expect(resolveRovingTarget({ key: 'ArrowLeft', current: -1, disabled: [false, false, false, true] })).toBe(2);
+		expect(resolveRovingTarget({ key: 'ArrowRight', current: -1, disabled: [true, false, false, false] })).toBe(1);
+	});
+
+	it('counts from the focused item, even when it is disabled', () => {
+		// The selected item (index 1) is disabled, focus sits on the first enabled one (index 0).
+		const disabled = [false, true, false];
+
+		expect(resolveRovingTarget({ key: 'ArrowLeft', current: 0, disabled })).toBe(2);
+		expect(resolveRovingTarget({ key: 'ArrowRight', current: 0, disabled })).toBe(2);
+	});
+
 	it('ignores other keys', () => {
 		expect(resolveRovingTarget({ key: 'Enter', current: 1, disabled: none })).toBeUndefined();
 		expect(resolveRovingTarget({ key: 'a', current: 1, disabled: none })).toBeUndefined();

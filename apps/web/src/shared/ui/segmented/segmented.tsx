@@ -48,7 +48,9 @@ export function Segmented<TValue extends string = string>(props: SegmentedProps<
 	};
 
 	const handleKeyDown: JSX.EventHandler<HTMLDivElement, KeyboardEvent> = (event) => {
-		const current = props.options.findIndex((option) => option.value === props.value);
+		// From the button that has focus, not from `value`: they differ when the value matches no
+		// option or the selected option is disabled.
+		const current = buttons.indexOf(event.target as HTMLButtonElement);
 		const target = resolveRovingTarget({
 			key: event.key,
 			current,
