@@ -2,7 +2,7 @@ import css from './grid.module.scss';
 
 import { cn } from '@/shared/lib';
 
-import { createMemo, For } from 'solid-js';
+import { For } from 'solid-js';
 import { createStore } from 'solid-js/store';
 
 import { useColumnResize } from './lib/use-column-resize';
@@ -33,10 +33,6 @@ export function Grid<T>(props: GridProps<T>) {
 		props.columns.map(resolveColumn)
 	);
 
-	const tableWidth = createMemo(() => (
-		columns.reduce((totalWidth, column) => totalWidth + column.width, 0)
-	));
-
 	const { startResize } = useColumnResize({
 		getWidth: (index) => columns[index].width,
 		setWidth: (index, width) => setColumns(index, 'width', width),
@@ -50,11 +46,10 @@ export function Grid<T>(props: GridProps<T>) {
 				<table
 					aria-label={props['aria-label']}
 					class={css.table}
-					style={{ width: `${tableWidth()}px` }}
 				>
 					<colgroup>
 						<For each={columns}>
-							{(column) => <col style={{ width: `${column.width}px` }}/>}
+							{(column) => <col class={cn(css.col, column.class)} style={{ '--column-width': `${column.width}px` }}/>}
 						</For>
 					</colgroup>
 

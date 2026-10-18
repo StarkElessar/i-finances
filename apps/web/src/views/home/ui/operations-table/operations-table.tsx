@@ -67,9 +67,9 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? formatShortDate(item.operation.happenedOn) : '',
 		header: 'Дата',
 		id: 'date',
-		minWidth: 104,
+		minWidth: 96,
 		sortable: true,
-		width: 112,
+		width: 104,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => <span class={css.dateCell}>{formatShortDate(item().operation.happenedOn)}</span>}
@@ -80,8 +80,8 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.title : '',
 		header: 'Название',
 		id: 'title',
-		minWidth: 210,
-		width: 280,
+		minWidth: 120,
+		width: 160,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => (
@@ -96,9 +96,9 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.signedAmountMinor : '',
 		header: 'Сумма',
 		id: 'amount',
-		minWidth: 118,
+		minWidth: 100,
 		sortable: true,
-		width: 132,
+		width: 104,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => (
@@ -121,9 +121,10 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.balanceAfterMinor : '',
 		header: 'Баланс счёта',
 		id: 'balance',
-		minWidth: 132,
+		class: css.columnWide,
+		minWidth: 110,
 		sortable: true,
-		width: 148,
+		width: 120,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => (
@@ -141,9 +142,10 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.categoryName : '',
 		header: 'Категория',
 		id: 'category',
-		minWidth: 152,
+		class: css.columnCategory,
+		minWidth: 140,
 		sortable: true,
-		width: 188,
+		width: 160,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => {
@@ -171,9 +173,10 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.contactName : '',
 		header: 'Контакт',
 		id: 'contact',
-		minWidth: 180,
+		class: css.columnContact,
+		minWidth: 120,
 		sortable: true,
-		width: 244,
+		width: 150,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => (
@@ -192,8 +195,9 @@ const columns: GridColumn<OperationTableItem>[] = [
 		accessor: (item) => item.kind === 'operation' ? item.operation.comment : '',
 		header: 'Комментарий',
 		id: 'comment',
-		minWidth: 170,
-		width: 230,
+		class: css.columnWide,
+		minWidth: 140,
+		width: 180,
 		clientTemplate: ({ dataItem }) => (
 			<Show when={getOperationItem(dataItem)}>
 				{(item) => (

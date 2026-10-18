@@ -39,6 +39,13 @@ export type GridColumn<T> = {
 	width?: number;
 	minWidth?: number;
 	maxWidth?: number;
+	/**
+	 * Class for the column's `<col>`, header cell and body cells. The grid does not own column
+	 * visibility: a consumer hides a column (for example from a container query) with
+	 * `--column-scale: 0` (zero width) plus `visibility: hidden` on the cells, so the
+	 * hidden values also leave the accessibility tree. `--column-scale: 1` shows it again.
+	 */
+	class?: string;
 };
 
 /**

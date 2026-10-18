@@ -20,11 +20,6 @@ export const stylelintExceptions = [
 	},
 	{
 		rule: 'function-disallowed-list',
-		task: 'IF-17',
-		files: [`${WEB}/widgets/app-header/app-header.module.scss`]
-	},
-	{
-		rule: 'function-disallowed-list',
 		task: 'IF-20',
 		files: [`${WEB}/shared/ui/context-menu/context-menu.module.scss`, `${WEB}/shared/ui/drag-action/drag-action.module.scss`]
 	},

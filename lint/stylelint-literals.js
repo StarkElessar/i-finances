@@ -39,6 +39,11 @@ export const literalRules = {
 		],
 		{ message: 'No raw size media queries: use @include mx.media-mn(sm|md|lg) from shared/styles/mixins.' }
 	],
+	// Raw @container queries: container breakpoints go through `@include mx.container-mn(name)`.
+	'at-rule-disallowed-list': [
+		['container'],
+		{ message: 'No raw @container queries: use @include mx.container-mn(name) from shared/styles/mixins.' }
+	],
 	// var(--x) must point at a custom property declared in the token file or in the same file.
 	'no-unknown-custom-properties': true
 };

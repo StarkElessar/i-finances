@@ -63,13 +63,13 @@
 | Задача | Файлов | Что и где |
 |---|---|---|
 | IF-16 (операции) | 1 | `views/home/home.module.scss`: `rgb()` скрима |
-| IF-17 (навигация) | 1 | `widgets/app-header/app-header.module.scss`: `rgb()` в тенях |
+| IF-17 (навигация) | 0 | снято в IF-17 (тени шапки на токенах) |
 | IF-18 (чеки) | 1 | `views/receipts/page.tsx`: `Intl.NumberFormat` |
 | IF-19 (статистика) | 1 | `views/statistics/ui/compare-tab/compare-tab.tsx`: `Intl.NumberFormat` |
 | IF-20 (кит) | 2 | `shared/ui/context-menu`: `rgb()`; `shared/ui/drag-action`: `rgb()` и hex (19 + 3 места) |
 | IF-21 (панели, диалоги) | 2 | `shared/ui/dialog`: `rgb()` скрима; `views/home/ui/operation-details-panel`: `rgb()` скрима |
 | IF-39 (вход, категории, контакты) | 0 | нарушений нет |
-| **Всего** | **8** | 9 пар «файл, правило» (7 Stylelint, 2 ESLint) |
+| **Всего** | **7** | 8 пар «файл, правило» (6 Stylelint, 2 ESLint) |
 
 Нарушений по числовому `z-index`, сырому `@media`, `style={{}}` с литералами (после правки `grid.tsx`) и `!important` в коде на момент внедрения нет: эти правила работают как ограждение без исключений.
 

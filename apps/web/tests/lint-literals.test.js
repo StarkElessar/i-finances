@@ -35,6 +35,7 @@ describe('stylelint literal rules', () => {
 		['raw min-width media', '@media (min-width: 640px) { a { color: red; } }', 'media-feature-name-disallowed-list'],
 		['raw range media', '@media (width >= 640px) { a { color: red; } }', 'media-feature-name-disallowed-list'],
 		['raw max-width media', '@media (max-width: 599px) { a { color: red; } }', 'media-feature-name-disallowed-list'],
+		['raw container query', '@container (min-width: 600px) { a { color: red; } }', 'at-rule-disallowed-list'],
 		['unknown custom property', 'a { color: var(--color-does-not-exist); }', 'no-unknown-custom-properties'],
 		['!important', 'a { color: red !important; }', 'declaration-no-important']
 	])('rejects %s', async (_name, code, rule) => {

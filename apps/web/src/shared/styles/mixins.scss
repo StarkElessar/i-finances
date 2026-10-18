@@ -14,6 +14,21 @@ $breakpoints: (
     "lg": 1280px
 );
 
+// Container breakpoints for `@container` (mockup Layout-Spec, "Колонки по ширине
+// контейнера" and "Тулбар периода"). They measure the width of the nearest
+// ancestor with `container-type: inline-size`, not of the window, so they are
+// not the viewport names above. The names say what appears at that width:
+//   columns-4: category column, toolbar in one row
+//   sort-label: the sort field shows its caption, not only an icon
+//   columns-5: contact column
+//   columns-7: balance and comment columns (all seven)
+$container-breakpoints: (
+    "columns-4": 600px,
+    "sort-label": 700px,
+    "columns-5": 860px,
+    "columns-7": 1100px
+);
+
 // Upper bound of a "below breakpoint" query: one pixel fraction under the
 // breakpoint so that min-width and max-width queries never overlap.
 $max-offset: 0.02px;
@@ -30,6 +45,18 @@ $max-offset: 0.02px;
     @return map.get($breakpoints, $name);
 }
 
+@function container-breakpoint($name) {
+    @if meta.type-of($name) == "number" {
+        @error "Container breakpoint must be a name (#{map.keys($container-breakpoints)}), got the number #{$name}.";
+    }
+
+    @if not map.has-key($container-breakpoints, $name) {
+        @error "Unknown container breakpoint \"#{$name}\". Use one of: #{map.keys($container-breakpoints)}.";
+    }
+
+    @return map.get($container-breakpoints, $name);
+}
+
 @mixin media-mn($name, $base: 16px) {
     @media (min-width: fn.em(breakpoint($name), $base)) {
         @content;
@@ -44,6 +71,14 @@ $max-offset: 0.02px;
 
 @mixin media-mn-mx($min-name, $max-name, $base: 16px) {
     @media (min-width: fn.em(breakpoint($min-name), $base)) and (max-width: fn.em(breakpoint($max-name) - $max-offset, $base)) {
+        @content;
+    }
+}
+
+// Mobile-first container query: from the container width `$name` and up. The
+// nearest ancestor needs `container-type: inline-size`.
+@mixin container-mn($name, $base: 16px) {
+    @container (min-width: #{fn.rem(container-breakpoint($name), $base)}) {
         @content;
     }
 }
