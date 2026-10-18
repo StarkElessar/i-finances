@@ -20,6 +20,7 @@
 | Правило | Что запрещает | Что разрешено |
 |---|---|---|
 | `color-no-hex` | `#fff`, `#1b2333`, в том числе внутри `color-mix()`, градиентов, теней | токены `var(--color-*)` |
+| `color-named` | `white`, `black`, `red` и другие именованные цвета, в том числе как запасное значение `var(--x, white)` | `transparent`, `currentcolor` |
 | `function-disallowed-list` | `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` | `color-mix()` поверх токенов, `transparent`, `currentcolor` (литерал внутри `color-mix` ловит `color-no-hex`) |
 | `declaration-property-value-allowed-list` для `z-index` | числовой `z-index`, `calc()` над слоем | `var(--z-*)`, `auto`, `0`, `-1` |
 | `media-feature-name-disallowed-list` | сырой `@media` по размеру: `width`, `min-width`, `max-width`, `height`, `aspect-ratio`, `resolution` и их `min-`/`max-`/`device-` варианты, включая запись диапазоном `(width >= 640px)` | миксины `@include mx.media-mn(sm\|md\|lg)`; запросы про предпочтения пользователя (`prefers-reduced-motion`, `hover`, `pointer`) |

@@ -89,8 +89,7 @@
     block-size: fn.rem(28);
     border-radius: var(--radius-sm);
 
-    // --category-color is set inline by operations-list.tsx, not declared in a stylesheet.
-    /* stylelint-disable no-unknown-custom-properties */
+    /* stylelint-disable no-unknown-custom-properties -- the category colour is set inline by operations-list.tsx */
     color: var(--category-color);
 
     background-color: color-mix(in srgb, var(--category-color) 13%, var(--color-surface));

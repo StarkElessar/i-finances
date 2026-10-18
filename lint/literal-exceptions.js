@@ -3,7 +3,7 @@
 // A file leaves the list when its screen is rebuilt from tokens and kit components.
 // Never add a new file here; fix the literal instead. The number of files per task is the
 // progress metric of IF-34 and is recorded in development/decisions/lint-literals.md.
-// `lint/literal-exceptions.test.ts` fails when an entry no longer has a violation.
+// `apps/web/tests/lint-literals.test.js` fails when an entry no longer has a violation.
 
 const WEB = 'apps/web/src';
 

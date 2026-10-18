@@ -3,7 +3,7 @@
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-import { Linter } from 'eslint';
+import { ESLint, Linter } from 'eslint';
 import stylelint from 'stylelint';
 import tseslint from 'typescript-eslint';
 import { describe, expect, it } from 'vitest';
@@ -25,6 +25,8 @@ describe('stylelint literal rules', () => {
 	it.each([
 		['hex colour', 'a { color: #fff; }', 'color-no-hex'],
 		['hex inside color-mix', 'a { color: color-mix(in srgb, var(--color-primary), #000 6%); }', 'color-no-hex'],
+		['named colour', 'a { color: white; }', 'color-named'],
+		['named colour as a var() fallback', 'a { color: var(--set-inline, black); }', 'color-named'],
 		['rgb()', 'a { background: rgb(23 32 51 / 40%); }', 'function-disallowed-list'],
 		['rgba()', 'a { background: rgba(0, 0, 0, 0.4); }', 'function-disallowed-list'],
 		['hsl()', 'a { color: hsl(210 50% 40%); }', 'function-disallowed-list'],
@@ -46,7 +48,8 @@ describe('stylelint literal rules', () => {
 		['neutral z-index', 'a { z-index: auto; } b { z-index: 0; } c { z-index: -1; }'],
 		['reduced motion media', '@media (prefers-reduced-motion: reduce) { a { animation: none; } }'],
 		['a custom property declared in the same file', 'a { --local: 1px; padding: var(--local); }'],
-		['a custom property with a fallback', 'a { color: var(--set-inline, red); }']
+		['a custom property with a fallback', 'a { color: var(--set-inline, var(--color-primary)); }'],
+		['transparent and currentcolor', 'a { color: currentcolor; background-color: transparent; }']
 	])('accepts %s', async (_name, code) => {
 		const rules = await lintScss(code);
 		const literalRuleNames = [...Object.keys(literalRules), 'declaration-no-important'];
@@ -119,6 +122,17 @@ describe('eslint literal rules', () => {
 		['Intl types', 'type O = Intl.NumberFormatOptions;']
 	])('accepts %s', (_name, code) => {
 		expect(lintTsx(code)).toEqual([]);
+	});
+
+	it('is wired into eslint.config.js, with the exceptions switched off per file', async () => {
+		const eslint = new ESLint({ cwd: ROOT });
+		const severity = async (file, rule) => {
+			const config = await eslint.calculateConfigForFile(`${ROOT}${file}`);
+			return [config.rules[rule]].flat()[0];
+		};
+		expect(await severity('apps/web/src/views/fixture/fixture.tsx', 'no-restricted-syntax')).toBe(2);
+		expect(await severity('apps/web/src/views/fixture/fixture.tsx', 'no-restricted-properties')).toBe(2);
+		expect(await severity(eslintExceptions[0].files[0], eslintExceptions[0].rule)).toBe(0);
 	});
 
 	it('allows Intl.NumberFormat inside shared/lib', () => {

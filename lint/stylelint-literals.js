@@ -13,6 +13,8 @@ export const STYLES_LAYER_GLOB = 'apps/web/src/shared/styles/**/*.scss';
 export const literalRules = {
 	// #fff, #1b2333 and any hex inside color-mix(), gradients or shadows.
 	'color-no-hex': [true, { message: 'Use a colour token from shared/styles/tokens.scss, not a hex literal.' }],
+	// white, black, red: a named colour is a literal too. `transparent` and `currentcolor` stay legal.
+	'color-named': ['never', { message: 'Use a colour token from shared/styles/tokens.scss, not a named colour.' }],
 	// rgb()/hsl() and friends with literal channels. color-mix() over tokens, `transparent`
 	// and `currentcolor` stays legal; a literal inside it is caught by color-no-hex or by this list.
 	'function-disallowed-list': [
