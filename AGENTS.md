@@ -74,6 +74,7 @@ Inside Solid components (and functions that return JSX), keep this order and do 
 - `no-negated-condition` is error
 - Prefer type-only imports where appropriate
 - Do not add abstractions without a concrete variation, ownership boundary, or testing seam
+- Parse a value once into a named constant instead of repeating the conversion (`const year = Number(match[1])`); separate top-level `const` declarations with a blank line
 
 ## SCSS / Responsive Styles
 
@@ -123,6 +124,8 @@ When an interactive element has an active class or selected state, guard hover, 
 ```
 
 Active elements should keep their active visual treatment on hover and focus.
+
+Never hide the keyboard focus indicator (`:focus-visible`) without replacing it. This matters for a roving group (Segmented, Tabs, radio group), where the selected item is the only Tab stop: keep the selected item itself unchanged and draw the focus ring on the container, for example `.group:has(.selected:focus-visible)`. Switches, checkboxes and filter chips are not "already selected" elements: they keep the pointer cursor and the focus ring in both states.
 
 ## Commands (run with pnpm, from the workspace root)
 
