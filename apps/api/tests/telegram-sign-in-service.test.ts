@@ -150,7 +150,8 @@ describe('TelegramSignInService.complete under a race', () => {
 				devLoginEnabled: false,
 				loginTtlMilliseconds: 600_000,
 				registrationEnabled: true,
-				signInAvailable: true
+				signInAvailable: true,
+				siteHost: 'localhost:5173'
 			},
 			households: new HouseholdResolver(new HouseholdRepository(database)),
 			// No bot here: link requests never reach this test.

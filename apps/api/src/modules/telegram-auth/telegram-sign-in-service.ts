@@ -87,7 +87,7 @@ export type TelegramSignInServiceDependencies = {
 	completeRateLimiter: Pick<FixedWindowRateLimiter, 'tryConsume'>;
 	config: Pick<
 		TelegramConfig,
-		'botUsername' | 'devLoginEnabled' | 'loginTtlMilliseconds' | 'registrationEnabled' | 'signInAvailable'
+		'botUsername' | 'devLoginEnabled' | 'loginTtlMilliseconds' | 'registrationEnabled' | 'signInAvailable' | 'siteHost'
 	>;
 	createCode?: () => string;
 	createId?: () => string;
@@ -351,7 +351,10 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 		}
 
 		if (payload === null) {
-			await botClient.sendMessage({ chatId: message.chat.id, text: messages.text('start.greeting') });
+			await botClient.sendMessage({
+				chatId: message.chat.id,
+				text: messages.text('start.greeting', { site: this.dependencies.config.siteHost })
+			});
 
 			return;
 		}
@@ -387,6 +390,7 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			keyboard: [[confirmButton, rejectButton]],
 			text: messages.text('signIn.confirmation', {
 				device: describeSignInDevice(request.userAgent) ?? messages.text('signIn.unknownDevice'),
+				site: this.dependencies.config.siteHost,
 				when: describeSignInMoment(request.createdAt, this.timeZone)
 			})
 		});

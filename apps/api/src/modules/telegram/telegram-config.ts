@@ -57,6 +57,11 @@ export type TelegramConfig = {
 	 * `telegram-unavailable` and the sign-in screen hides the button.
 	 */
 	signInAvailable: boolean;
+	/**
+	 * The host of `AUTH_ORIGIN` (`finances.example.by`), which the bot names in its confirmations: «Нажимайте
+	 * «Войти», только если вы сами только что начали вход на …» (Р11).
+	 */
+	siteHost: string;
 	updatesMode: TelegramUpdatesMode;
 	/** Set only in `webhook` mode. */
 	webhookSecret: TelegramSecret | undefined;
@@ -171,6 +176,7 @@ export function getTelegramConfig(environment: NodeJS.ProcessEnv, authOrigin: st
 		loginTtlMilliseconds: loginTtlMinutes * MINUTE_MILLISECONDS,
 		registrationEnabled,
 		signInAvailable: botUsername !== undefined && (updatesMode !== 'off' || devLoginEnabled),
+		siteHost: new URL(authOrigin).host,
 		updatesMode,
 		webhookSecret: updatesMode === 'webhook' && webhookSecret !== undefined ? new TelegramSecret(webhookSecret) : undefined,
 		webhookUrl: updatesMode === 'webhook' ? resolveWebhookUrl(explicitWebhookUrl, authOrigin) : undefined

@@ -1,5 +1,5 @@
 export { buildTelegramDisplayName } from './build-telegram-display-name';
-export { describeLinkAccount } from './describe-link-account';
+export { describeLinkAccount, describeLinkLogin } from './describe-link-account';
 export { describeSignInDevice, describeSignInMoment } from './describe-sign-in-request';
 export {
 	type TelegramAccount,
