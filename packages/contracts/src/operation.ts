@@ -20,23 +20,31 @@ export function isValidLocalDateKey(value: string): boolean {
 		return false;
 	}
 
-	const date = new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3]), 12);
+	const year = Number(match[1]);
+	const month = Number(match[2]) - 1;
+	const day = Number(match[3]);
 
-	return date.getFullYear() === Number(match[1])
-		&& date.getMonth() === Number(match[2]) - 1
-		&& date.getDate() === Number(match[3]);
+	const date = new Date(year, month, day, 12);
+
+	return date.getFullYear() === year
+		&& date.getMonth() === month
+		&& date.getDate() === day;
 }
 
 const localDateKeySchema = z.string()
 	.regex(/^\d{4}-\d{2}-\d{2}$/, 'Укажите существующую дату.')
 	.refine(isValidLocalDateKey, 'Укажите существующую дату.');
+
 const operationTitleSchema = z.string()
 	.transform((value) => value.trim().replace(/\s+/g, ' '))
 	.pipe(z.string().min(1, 'Укажите название операции.').max(160));
+
 const operationCommentSchema = z.string()
 	.transform((value) => value.trim().replace(/\s+/g, ' '))
 	.pipe(z.string().max(1_000));
+
 const optionalReferenceIdSchema = operationIdSchema.nullable();
+
 const editableOperationFields = {
 	amountMinor: z.number()
 		.int()
@@ -106,6 +114,7 @@ export type GetMonthlyExpenseSummaryInput = z.infer<
 >;
 
 const operationDateSchema = z.string().min(1);
+
 const operationExchangeRateSchema = z.object({
 	effectiveOn: localDateKeySchema,
 	fromCurrency: currencyCodeSchema,
