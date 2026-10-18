@@ -43,9 +43,12 @@
         }
     }
 
+    // The category dot (`--chip-dot`) keeps its colour: it ties the chip to the chart, it is not a sign of availability.
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
+        border-color: var(--color-disabled-border);
+        color: var(--color-disabled-text);
+        background-color: var(--color-surface-subtle);
     }
 }
 
@@ -53,6 +56,12 @@
     border-color: var(--color-primary);
     color: var(--color-primary);
     background-color: var(--color-primary-soft);
+
+    &:disabled {
+        border-color: var(--color-disabled-border);
+        color: var(--color-disabled-text);
+        background-color: var(--color-disabled-surface);
+    }
 }
 
 .dot {

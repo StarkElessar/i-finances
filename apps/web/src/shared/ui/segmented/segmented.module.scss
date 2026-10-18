@@ -30,6 +30,11 @@
     }
 }
 
+// Every option is disabled: the selected plate loses its shadow too.
+.root:not(:has(.option:enabled)) .option-selected {
+    box-shadow: none;
+}
+
 .full-width {
     display: flex;
     inline-size: 100%;
@@ -82,7 +87,11 @@
 
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
+        color: var(--color-disabled-text);
+
+        .count {
+            color: var(--color-disabled-text);
+        }
     }
 }
 
@@ -90,6 +99,11 @@
     color: var(--color-text-primary);
     background-color: var(--color-surface);
     box-shadow: var(--shadow-sm);
+
+    // Selected and disabled: the white plate stays, the text goes grey.
+    &:disabled {
+        color: var(--color-disabled-text);
+    }
 
     // The track shows the focus (see `.root`), not the option itself.
     &:focus-visible {

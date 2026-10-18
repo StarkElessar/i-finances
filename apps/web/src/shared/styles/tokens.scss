@@ -118,6 +118,13 @@
     --color-warning-soft: #fff3d9;
     --color-focus-ring: rgb(63 119 168 / 35%);
 
+    // "Unavailable" is shown by colour, never by opacity (decision 2026-10-19, development/decisions/kit-open-questions.md,
+    // section 2). Aliases of the theme tokens above, declared in both theme blocks so they resolve at the themed element.
+    --color-disabled-surface: var(--color-surface-strong); // button, unchecked box, switch track, selected disabled chip
+    --color-disabled-text: var(--color-text-tertiary); // text, icons, placeholder, chevrons
+    --color-disabled-border: var(--color-border); // fields, chip, unchecked box
+    --color-disabled-fill: var(--color-text-tertiary); // checked box and switch that is on
+
     // Category palette: 10 hues, lightness varies so they stay apart without
     // relying on hue alone (mockup --k-1..10, --k-other). Charts show the top
     // 8 and fold the rest into "other".
@@ -170,6 +177,12 @@
     --color-warning: #efb45f;
     --color-warning-soft: #42331c;
     --color-focus-ring: rgb(110 168 255 / 40%);
+
+    // Disabled aliases, same as in the light block.
+    --color-disabled-surface: var(--color-surface-strong); // button, unchecked box, switch track, selected disabled chip
+    --color-disabled-text: var(--color-text-tertiary); // text, icons, placeholder, chevrons
+    --color-disabled-border: var(--color-border); // fields, chip, unchecked box
+    --color-disabled-fill: var(--color-text-tertiary); // checked box and switch that is on
 
     // Category palette, dark steps
     --color-series-1: #5b9cf0;

@@ -13,7 +13,7 @@
 
     &:disabled {
         cursor: not-allowed;
-        color: var(--color-text-tertiary);
+        color: var(--color-disabled-text);
     }
 
     &:focus-visible {

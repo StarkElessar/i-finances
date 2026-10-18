@@ -11,7 +11,7 @@
 
     &:has(.input:disabled) {
         cursor: not-allowed;
-        opacity: 0.48;
+        color: var(--color-disabled-text);
     }
 
     &:not(:has(.input:disabled)) {
@@ -50,6 +50,16 @@
     &:has(.input:checked) {
         border-color: var(--color-primary);
         background-color: var(--color-primary);
+    }
+
+    &:has(.input:disabled) {
+        border-color: var(--color-disabled-border);
+        background-color: var(--color-disabled-surface);
+    }
+
+    &:has(.input:checked:disabled) {
+        border-color: var(--color-disabled-fill);
+        background-color: var(--color-disabled-fill);
     }
 
     // Hover on the whole row, not only on the box, but never on a checked or disabled one.

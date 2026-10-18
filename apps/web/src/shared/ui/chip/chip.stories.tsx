@@ -98,6 +98,8 @@ export const Disabled: Story = {
 		<StoryStack>
 			<Chip {...args} disabled>Не выбран</Chip>
 			<Chip {...args} disabled selected>Выбран</Chip>
+			<Chip {...args} color='var(--color-series-1)' disabled>С точкой</Chip>
+			<Chip {...args} color='var(--color-series-1)' disabled selected>С точкой, выбран</Chip>
 		</StoryStack>
 	)
 };
