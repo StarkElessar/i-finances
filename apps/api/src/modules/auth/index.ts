@@ -32,10 +32,13 @@ export {
 } from './password-sign-in-service';
 export {
 	type PasswordAuthUserRecord,
+	type PasswordReplacement,
 	PasswordUserRepository,
 	type ReplacePasswordInput
 } from './password-user-repository';
 export {
+	type ChangePasswordOutcome,
+	type RotatedSession,
 	type SecurityActor,
 	SecurityService,
 	type SecurityServiceDependencies
@@ -49,6 +52,7 @@ export {
 export {
 	type AuthenticatedSession,
 	type CreatedSession,
+	generateSessionToken,
 	hashSessionToken,
 	type SessionMetadata,
 	SessionService,

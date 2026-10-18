@@ -18,16 +18,30 @@ import type { PasswordService } from './password-service';
 import type { LoginRateLimitPort } from './password-sign-in-service';
 import type { PasswordUserRepository } from './password-user-repository';
 import type { SessionRepository } from './session-repository';
+import { generateSessionToken, hashSessionToken } from './session-service';
 import type { WebAuthnCredentialRepository } from './webauthn-credential-repository';
 
 export type SecurityServiceDependencies = {
+	createToken?: () => string;
 	credentialRepository: Pick<WebAuthnCredentialRepository, 'deleteForUser' | 'findByUserId'>;
 	now?: () => Date;
 	passwordService: Pick<PasswordService, 'hash' | 'verify'>;
 	/** Counts wrong «current password» attempts per user, not per address. */
 	rateLimiter: LoginRateLimitPort;
 	sessionRepository: Pick<SessionRepository, 'deleteForUser' | 'deleteOthersForUser' | 'findActiveByUserId'>;
-	userRepository: Pick<PasswordUserRepository, 'findById' | 'replacePasswordAndRevokeOtherSessions'>;
+	userRepository: Pick<PasswordUserRepository, 'findById' | 'replacePasswordAndRotateSessions'>;
+};
+
+/** The new secret of the caller's session after a password change; the controller turns it into a cookie. */
+export type RotatedSession = {
+	expiresAt: Date;
+	token: string;
+};
+
+export type ChangePasswordOutcome = {
+	result: ChangePasswordResult;
+	/** Present only on success, when the current session received a new token and the old one no longer works. */
+	rotatedSession?: RotatedSession;
 };
 
 /**
@@ -52,9 +66,11 @@ function failure(errorCode: SecurityErrorCode, fieldErrors?: Record<string, stri
  * Application service of the «Безопасность» section.
  */
 export class SecurityService {
+	private readonly createToken: () => string;
 	private readonly now: () => Date;
 
 	public constructor(private readonly dependencies: SecurityServiceDependencies) {
+		this.createToken = dependencies.createToken ?? generateSessionToken;
 		this.now = dependencies.now ?? (() => new Date());
 	}
 
@@ -111,25 +127,26 @@ export class SecurityService {
 
 	/**
 	 * Changes the password after verifying the current one, then ends every other
-	 * session of the user. The session that made the request stays signed in.
+	 * session of the user. The session that made the request stays signed in, but
+	 * gets a new token (same row, same id), so a stolen cookie of it stops working.
 	 */
-	public async changePassword(actor: SecurityActor, input: unknown): Promise<ChangePasswordResult> {
+	public async changePassword(actor: SecurityActor, input: unknown): Promise<ChangePasswordOutcome> {
 		const parsedInput = changePasswordInputSchema.safeParse(input);
 
 		if (!parsedInput.success) {
-			return failure('invalid-input', collectFieldErrors(parsedInput.error));
+			return { result: failure('invalid-input', collectFieldErrors(parsedInput.error)) };
 		}
 
 		const user = await this.dependencies.userRepository.findById(actor.userId);
 
 		if (user === undefined || !user.isActive) {
-			return failure('unauthenticated');
+			return { result: failure('unauthenticated') };
 		}
 
 		// No password to change: this is not a failed guess, so it is neither counted
 		// nor reported as a wrong password. Argon2 would throw on a placeholder hash.
 		if (!hasUsablePassword(user.passwordHash)) {
-			return failure('password-not-set');
+			return { result: failure('password-not-set') };
 		}
 
 		const rateLimitInput = { username: user.id };
@@ -138,42 +155,55 @@ export class SecurityService {
 		// on success. Check and reservation run in the same tick, so parallel requests
 		// cannot all pass the check and guess the password at once.
 		if (!this.dependencies.rateLimiter.tryReserve(rateLimitInput).allowed) {
-			return failure('rate-limited');
+			return { result: failure('rate-limited') };
 		}
 
 		const { currentPassword, newPassword } = parsedInput.data;
 		const isCurrentPasswordValid = await this.dependencies.passwordService.verify(user.passwordHash, currentPassword);
 
 		if (!isCurrentPasswordValid) {
-			return failure('invalid-current-password', {
-				currentPassword: securityErrorMessageByCode['invalid-current-password']
-			});
+			return {
+				result: failure('invalid-current-password', {
+					currentPassword: securityErrorMessageByCode['invalid-current-password']
+				})
+			};
 		}
 
 		this.dependencies.rateLimiter.recordSuccess(rateLimitInput);
 
 		if (newPassword === currentPassword) {
-			return failure('password-unchanged', {
-				newPassword: securityErrorMessageByCode['password-unchanged']
-			});
+			return {
+				result: failure('password-unchanged', {
+					newPassword: securityErrorMessageByCode['password-unchanged']
+				})
+			};
 		}
 
-		const revokedSessionCount = this.dependencies.userRepository.replacePasswordAndRevokeOtherSessions({
+		const rotatedToken = this.createToken();
+		const replacement = this.dependencies.userRepository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: user.passwordHash,
 			keepSessionId: actor.sessionId,
 			newPasswordHash: await this.dependencies.passwordService.hash(newPassword),
 			now: this.now(),
+			rotatedTokenHash: hashSessionToken(rotatedToken),
 			userId: user.id
 		});
 
-		if (revokedSessionCount === undefined) {
+		if (replacement === undefined) {
 			// The password was changed by a parallel request after we verified it.
-			return failure('invalid-current-password', {
-				currentPassword: securityErrorMessageByCode['invalid-current-password']
-			});
+			return {
+				result: failure('invalid-current-password', {
+					currentPassword: securityErrorMessageByCode['invalid-current-password']
+				})
+			};
 		}
 
-		return { ok: true, revokedSessionCount };
+		return {
+			result: { ok: true, revokedSessionCount: replacement.revokedSessionCount },
+			rotatedSession: replacement.rotatedSession === undefined
+				? undefined
+				: { expiresAt: replacement.rotatedSession.expiresAt, token: rotatedToken }
+		};
 	}
 
 	public async listSessions(actor: SecurityActor): Promise<SecuritySessionsResult> {

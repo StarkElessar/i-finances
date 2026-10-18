@@ -1,5 +1,6 @@
 import { createApiApp } from '@/app';
 import { SecurityHttpController } from '@/http/security-controller';
+import { createSessionCookie } from '@/http/session-cookie';
 import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
@@ -12,6 +13,7 @@ import {
 } from '@/infrastructure/database/schema';
 import type { AuthConfig } from '@/modules/auth';
 import {
+	hashSessionToken,
 	LoginRateLimiter,
 	PasswordService,
 	PasswordUserRepository,
@@ -56,6 +58,7 @@ const passwordService = new PasswordService();
 let oldPasswordHash: string;
 let connection: Database.Database;
 let database: AppDatabase;
+let nextRotatedToken: number;
 let nextSessionId: number;
 let nextToken: number;
 
@@ -64,6 +67,7 @@ beforeAll(async () => {
 });
 
 beforeEach(async () => {
+	nextRotatedToken = 0;
 	nextSessionId = 0;
 	nextToken = 0;
 	connection = new Database(':memory:');
@@ -102,7 +106,11 @@ afterEach(() => {
 	connection.close();
 });
 
-function createContext(options: { rateLimiter?: LoginRateLimiter } = {}) {
+/**
+ * `randomRotatedTokens` keeps the production token generator of `SecurityService`; `securityNow` moves its clock
+ * away from the sign-in time, so a rotation that renewed the expiry from «now» cannot pass by coincidence.
+ */
+function createContext(options: { randomRotatedTokens?: boolean; rateLimiter?: LoginRateLimiter; securityNow?: Date } = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => `session-${++nextSessionId}`,
@@ -110,8 +118,9 @@ function createContext(options: { rateLimiter?: LoginRateLimiter } = {}) {
 		now: () => FIXED_DATE
 	});
 	const securityService = new SecurityService({
+		createToken: options.randomRotatedTokens === true ? undefined : () => `rotated-token-${++nextRotatedToken}`,
 		credentialRepository: new WebAuthnCredentialRepository(database),
-		now: () => FIXED_DATE,
+		now: () => options.securityNow ?? FIXED_DATE,
 		passwordService,
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionRepository: new SessionRepository(database),
@@ -138,24 +147,37 @@ async function signIn(
 	userId: string,
 	userAgent?: string
 ) {
-	const { token } = await sessionService.createSession(userId, { ipAddress: '203.0.113.7', userAgent });
+	const { token: initialToken } = await sessionService.createSession(userId, { ipAddress: '203.0.113.7', userAgent });
 	const sessionId = `session-${nextSessionId}`;
+	let token = initialToken;
 
-	async function request(path: string, init: { body?: unknown; method?: string } = {}) {
+	/** `token` sends a different secret than the current one, e.g. the one a rotation has just replaced. */
+	async function request(path: string, init: { body?: unknown; method?: string; token?: string } = {}) {
 		const method = init.method ?? 'GET';
 		const response = await app.request(path, {
 			body: init.body === undefined ? undefined : JSON.stringify(init.body),
 			headers: {
-				cookie: `${AUTH_CONFIG.sessionCookieName}=${token}`,
+				cookie: `${AUTH_CONFIG.sessionCookieName}=${init.token ?? token}`,
 				...(method === 'GET' ? {} : { 'content-type': 'application/json', origin: AUTH_CONFIG.origin })
 			},
 			method
 		});
 
-		return { body: await response.json() as unknown, status: response.status };
+		return { body: await response.json() as unknown, setCookie: response.headers.get('set-cookie'), status: response.status };
 	}
 
-	return { request, sessionId };
+	/** Behaves like a browser: from now on sends the cookie that the server has just set. */
+	function adoptCookie(setCookie: string | null): void {
+		const match = new RegExp(`^${AUTH_CONFIG.sessionCookieName}=([^;]*)`).exec(setCookie ?? '');
+
+		if (match === null) {
+			throw new Error('The response did not set the session cookie');
+		}
+
+		token = decodeURIComponent(match[1]);
+	}
+
+	return { adoptCookie, getToken: () => token, request, sessionId };
 }
 
 async function addPasskey(userId: string, id: string, deviceName: string | null = null): Promise<void> {
@@ -173,6 +195,33 @@ async function addPasskey(userId: string, id: string, deviceName: string | null 
 
 async function countPasskeys(userId: string): Promise<number> {
 	return (await database.select().from(webauthnCredentials).where(eq(webauthnCredentials.userId, userId))).length;
+}
+
+/**
+ * Makes `passwordService.hash` wait until `calls` requests have reached it (each one has already verified the current
+ * password by then), runs `whileHeld`, and only then lets them continue to the transaction. Restore the spy afterwards.
+ */
+function holdPasswordHashing(calls: number, whileHeld: () => Promise<void> = async () => undefined) {
+	const hash = passwordService.hash.bind(passwordService);
+	const waiting: Array<() => void> = [];
+
+	return vi.spyOn(passwordService, 'hash').mockImplementation(async (password) => {
+		const hashed = await hash(password);
+
+		await new Promise<void>((resolve) => {
+			waiting.push(resolve);
+
+			if (waiting.length === calls) {
+				void whileHeld().then(() => {
+					for (const release of waiting) {
+						release();
+					}
+				});
+			}
+		});
+
+		return hashed;
+	});
 }
 
 async function listSessionIds(userId: string): Promise<string[]> {
@@ -320,7 +369,7 @@ describe('change password', () => {
 		const alicePhone = await signIn(sessionService, app, 'alice', SAFARI_ON_IPHONE);
 		const bob = await signIn(sessionService, app, 'bob');
 
-		const { body, status } = await aliceLaptop.request('/api/security/password', {
+		const { body, setCookie, status } = await aliceLaptop.request('/api/security/password', {
 			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
 			method: 'POST'
 		});
@@ -330,7 +379,11 @@ describe('change password', () => {
 		expect(await listSessionIds('alice')).toEqual([aliceLaptop.sessionId]);
 		expect(await listSessionIds('bob')).toEqual([bob.sessionId]);
 		expect((await alicePhone.request('/api/security/sessions')).status).toBe(401);
+
+		aliceLaptop.adoptCookie(setCookie);
+
 		expect((await aliceLaptop.request('/api/security/sessions')).status).toBe(200);
+		expect((await bob.request('/api/security/sessions')).status).toBe(200);
 
 		const [alice] = await database.select().from(users).where(eq(users.id, 'alice'));
 		const [bobRow] = await database.select().from(users).where(eq(users.id, 'bob'));
@@ -338,6 +391,206 @@ describe('change password', () => {
 		expect(await passwordService.verify(alice.passwordHash, NEW_PASSWORD)).toBe(true);
 		expect(await passwordService.verify(alice.passwordHash, OLD_PASSWORD)).toBe(false);
 		expect(bobRow.passwordHash).toBe(oldPasswordHash);
+	});
+
+	it('replaces the token of the current session: the old cookie is dead, the new one works', async () => {
+		const { app, sessionService } = createContext();
+		const alice = await signIn(sessionService, app, 'alice', CHROME_ON_MAC);
+		const oldToken = alice.getToken();
+		const [before] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+
+		const { body, setCookie, status } = await alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		});
+
+		expect(status).toBe(200);
+		expect(changePasswordResultSchema.parse(body)).toEqual({ ok: true, revokedSessionCount: 0 });
+
+		alice.adoptCookie(setCookie);
+
+		const newToken = alice.getToken();
+
+		expect(newToken).toBe('rotated-token-1');
+		expect(newToken).not.toBe(oldToken);
+		expect((await alice.request('/api/security/sessions', { token: oldToken })).status).toBe(401);
+		expect((await alice.request('/api/security/sessions', { token: newToken })).status).toBe(200);
+
+		// Same row: id, creation time, expiry and metadata survive; only the secret changed.
+		const [after] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+
+		expect(await listSessionIds('alice')).toEqual([alice.sessionId]);
+		expect(after).toEqual({ ...before, tokenHash: hashSessionToken(newToken) });
+		expect(after.tokenHash).not.toBe(before.tokenHash);
+
+		const { body: sessionsBody } = await alice.request('/api/security/sessions');
+
+		const sessionsResult = securitySessionsResultSchema.parse(sessionsBody);
+
+		expect(sessionsResult.ok && sessionsResult.sessions).toMatchObject([
+			{ id: alice.sessionId, isCurrent: true, userAgent: CHROME_ON_MAC }
+		]);
+	});
+
+	it('sets the new cookie with the attributes of a sign-in cookie', async () => {
+		const { app, sessionService } = createContext();
+		const alice = await signIn(sessionService, app, 'alice');
+		const [stored] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+		const { setCookie } = await alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		});
+
+		expect(setCookie).toBe(createSessionCookie(AUTH_CONFIG, 'rotated-token-1', stored.expiresAt));
+		expect(setCookie).toBe([
+			`${AUTH_CONFIG.sessionCookieName}=rotated-token-1`,
+			'Path=/',
+			'HttpOnly',
+			'SameSite=Lax',
+			`Expires=${new Date(FIXED_DATE.getTime() + AUTH_CONFIG.sessionTtlMilliseconds).toUTCString()}`
+		].join('; '));
+	});
+
+	it('marks the new cookie Secure in production, like the sign-in cookie', async () => {
+		vi.stubEnv('NODE_ENV', 'production');
+
+		try {
+			const { app, sessionService } = createContext();
+			const alice = await signIn(sessionService, app, 'alice');
+			const { setCookie } = await alice.request('/api/security/password', {
+				body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+				method: 'POST'
+			});
+
+			expect(setCookie).toMatch(/; Secure$/);
+		}
+		finally {
+			vi.unstubAllEnvs();
+		}
+	});
+
+	it('does not rotate the session or set a cookie when the change is refused', async () => {
+		const { app, sessionService } = createContext();
+		const alice = await signIn(sessionService, app, 'alice');
+		const oldToken = alice.getToken();
+		const refused = [
+			{ currentPassword: 'definitely-wrong', newPassword: NEW_PASSWORD },
+			{ currentPassword: OLD_PASSWORD, newPassword: OLD_PASSWORD },
+			{ currentPassword: OLD_PASSWORD, newPassword: 'short' }
+		];
+
+		for (const body of refused) {
+			const response = await alice.request('/api/security/password', { body, method: 'POST' });
+
+			expect(response.status).toBe(400);
+			expect(response.setCookie).toBeNull();
+		}
+
+		expect((await alice.request('/api/security/sessions', { token: oldToken })).status).toBe(200);
+	});
+
+	it('issues a fresh random 256-bit token by default and never puts it in the body', async () => {
+		const { app, sessionService } = createContext({ randomRotatedTokens: true });
+		const alice = await signIn(sessionService, app, 'alice');
+		const { body, setCookie } = await alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		});
+
+		alice.adoptCookie(setCookie);
+
+		const [stored] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+
+		// 32 bytes of base64url without padding.
+		expect(alice.getToken()).toMatch(/^[\w-]{43}$/);
+		expect(stored.tokenHash).toBe(hashSessionToken(alice.getToken()));
+		expect(body).toEqual({ ok: true, revokedSessionCount: 0 });
+		expect((await alice.request('/api/security/sessions')).status).toBe(200);
+	});
+
+	it('keeps the original expiry: the rotation does not extend the session', async () => {
+		const tenDaysLater = new Date(FIXED_DATE.getTime() + 10 * 24 * 60 * 60 * 1000);
+		const { app, sessionService } = createContext({ securityNow: tenDaysLater });
+		const alice = await signIn(sessionService, app, 'alice');
+		const [before] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+		const { setCookie, status } = await alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		});
+		const [after] = await database.select().from(sessions).where(eq(sessions.id, alice.sessionId));
+
+		expect(status).toBe(200);
+		expect(after.expiresAt).toEqual(before.expiresAt);
+		expect(setCookie).toContain(`; Expires=${before.expiresAt.toUTCString()}`);
+	});
+
+	it('lets only one of two parallel changes with the same cookie win; only the winner rotates and sets a cookie', async () => {
+		const { app, sessionService } = createContext();
+		const alice = await signIn(sessionService, app, 'alice');
+		const oldToken = alice.getToken();
+		const newPasswords = ['first-new-password-1', 'second-new-password-2'];
+		const hashing = holdPasswordHashing(2);
+		const responses = await Promise.all(newPasswords.map((newPassword) => alice.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword },
+			method: 'POST'
+		})));
+
+		hashing.mockRestore();
+
+		const winnerIndex = responses.findIndex((response) => response.status === 200);
+		const winner = responses[winnerIndex];
+		const loser = responses[1 - winnerIndex];
+
+		expect(responses.map((response) => response.status).sort()).toEqual([200, 400]);
+		// The loser verified the old hash, but the guarded update saw it replaced: nothing of its own is applied.
+		expect(loser.body).toMatchObject({ errorCode: 'invalid-current-password', ok: false });
+		expect(loser.setCookie).toBeNull();
+
+		alice.adoptCookie(winner.setCookie);
+
+		expect((await alice.request('/api/security/sessions')).status).toBe(200);
+		expect(await listSessionIds('alice')).toEqual([alice.sessionId]);
+
+		// A request still carrying the cookie from before the rotation is 401 and cannot change the password again.
+		const stale = await alice.request('/api/security/password', {
+			body: { currentPassword: newPasswords[winnerIndex], newPassword: 'third-new-password-3' },
+			method: 'POST',
+			token: oldToken
+		});
+
+		expect(stale.status).toBe(401);
+		expect(stale.setCookie).toBeNull();
+
+		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
+
+		expect(await passwordService.verify(row.passwordHash, newPasswords[winnerIndex])).toBe(true);
+	});
+
+	it('still changes the password but sets no cookie when the current session ended meanwhile', async () => {
+		const { app, sessionService } = createContext();
+		const aliceLaptop = await signIn(sessionService, app, 'alice');
+		const alicePhone = await signIn(sessionService, app, 'alice');
+		// Signed out (or revoked from another device) after the session check, before the transaction.
+		const hashing = holdPasswordHashing(1, async () => {
+			await database.delete(sessions).where(eq(sessions.id, aliceLaptop.sessionId));
+		});
+		const { body, setCookie, status } = await aliceLaptop.request('/api/security/password', {
+			body: { currentPassword: OLD_PASSWORD, newPassword: NEW_PASSWORD },
+			method: 'POST'
+		});
+
+		hashing.mockRestore();
+
+		expect(status).toBe(200);
+		expect(body).toEqual({ ok: true, revokedSessionCount: 1 });
+		expect(setCookie).toBeNull();
+		expect(await listSessionIds('alice')).toEqual([]);
+		expect((await aliceLaptop.request('/api/security/sessions')).status).toBe(401);
+		expect((await alicePhone.request('/api/security/sessions')).status).toBe(401);
+
+		const [row] = await database.select().from(users).where(eq(users.id, 'alice'));
+
+		expect(await passwordService.verify(row.passwordHash, NEW_PASSWORD)).toBe(true);
 	});
 
 	it('rejects a wrong current password and changes nothing', async () => {
@@ -414,7 +667,11 @@ describe('change password', () => {
 		});
 
 		expect((await attempt('wrong-one-123456', NEW_PASSWORD)).status).toBe(400);
-		expect((await attempt(OLD_PASSWORD, NEW_PASSWORD)).status).toBe(200);
+
+		const changed = await attempt(OLD_PASSWORD, NEW_PASSWORD);
+
+		expect(changed.status).toBe(200);
+		alice.adoptCookie(changed.setCookie);
 		// Without the reset the counter would be at the limit and this would be 429.
 		expect((await attempt(OLD_PASSWORD, 'another-password-789')).status).toBe(400);
 		expect((await attempt('wrong-two-123456', 'another-password-789')).status).toBe(400);

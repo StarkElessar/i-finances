@@ -41,6 +41,11 @@ export function hashSessionToken(token: string): string {
 	return createHash('sha256').update(token).digest('hex');
 }
 
+/** A new random session secret: 32 bytes from the CSPRNG. Used for sign-in and for rotating a live session. */
+export function generateSessionToken(): string {
+	return randomBytes(32).toString('base64url');
+}
+
 export class SessionService {
 	private readonly config: AuthConfig;
 	private readonly createId: () => string;
@@ -53,7 +58,7 @@ export class SessionService {
 	) {
 		this.config = options.config ?? getAuthConfig();
 		this.createId = options.createId ?? randomUUID;
-		this.createToken = options.createToken ?? (() => randomBytes(32).toString('base64url'));
+		this.createToken = options.createToken ?? generateSessionToken;
 		this.now = options.now ?? (() => new Date());
 	}
 
