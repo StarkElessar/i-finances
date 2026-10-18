@@ -24,6 +24,7 @@
 | `function-disallowed-list` | `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` | `color-mix()` поверх токенов, `transparent`, `currentcolor` (литерал внутри `color-mix` ловит `color-no-hex`) |
 | `declaration-property-value-allowed-list` для `z-index` | числовой `z-index`, `calc()` над слоем | `var(--z-*)`, `auto`, `0`, `-1` |
 | `media-feature-name-disallowed-list` | сырой `@media` по размеру: `width`, `min-width`, `max-width`, `height`, `aspect-ratio`, `resolution` и их `min-`/`max-`/`device-` варианты, включая запись диапазоном `(width >= 640px)` | миксины `@include mx.media-mn(sm\|md\|lg)`; запросы про предпочтения пользователя (`prefers-reduced-motion`, `hover`, `pointer`) |
+| `at-rule-disallowed-list` | сырой `@container` | `@include mx.container-mn(name)` из `shared/styles/mixins` |
 | `no-unknown-custom-properties` | `var(--x)` на свойство, которого нет | свойства из `tokens.scss` (`referenceFiles`), объявленные в том же файле, и `var(--x, fallback)` |
 | `declaration-no-important` | `!important` | (правило из общего конфига) |
 
@@ -71,7 +72,7 @@
 | IF-39 (вход, категории, контакты) | 0 | нарушений нет |
 | **Всего** | **7** | 8 пар «файл, правило» (6 Stylelint, 2 ESLint) |
 
-Нарушений по числовому `z-index`, сырому `@media`, `style={{}}` с литералами (после правки `grid.tsx`) и `!important` в коде на момент внедрения нет: эти правила работают как ограждение без исключений.
+Нарушений по числовому `z-index`, сырому `@media` и `@container`, `style={{}} с литералами (после правки `grid.tsx`) и `!important` в коде на момент внедрения нет: эти правила работают как ограждение без исключений.
 
 ## Как снять исключение
 

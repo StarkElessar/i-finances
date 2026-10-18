@@ -143,7 +143,7 @@ Active elements should keep their active visual treatment on hover and focus.
 `apps/api`:
 - `src/http/` — Hono controllers, middleware, and routing; the only place that touches `Context`
 - `src/modules/<name>/` — application services and domain errors per module
-- `src/infrastructure/` — Drizzle repositories, database schema (19 tables), and adapters
+- `src/infrastructure/` — Drizzle repositories, database schema (20 tables), and adapters
 - `src/composition-root.ts` — explicit wiring of dependencies
 - `drizzle/` — generated SQL migrations, snapshots, and journal
 

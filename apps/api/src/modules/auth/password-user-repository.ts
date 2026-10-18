@@ -7,7 +7,8 @@ export type PasswordAuthUserRecord = {
 	displayName: string;
 	id: string;
 	isActive: boolean;
-	passwordHash: string;
+	/** NULL when the user has no password (signed up through Telegram); check with `hasUsablePassword`. */
+	passwordHash: string | null;
 	username: string;
 };
 
