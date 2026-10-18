@@ -1,4 +1,29 @@
+export { FetchTelegramBotClient, type FetchTelegramBotClientOptions } from './fetch-telegram-bot-client';
+export { TelegramApiError } from './telegram-api-error';
+export {
+	type AnswerCallbackQueryInput,
+	type EditMessageTextInput,
+	type GetUpdatesInput,
+	type SendMessageInput,
+	type SetWebhookInput,
+	type TelegramBotClient,
+	type TelegramChatId,
+	type TelegramInlineButton,
+	type TelegramInlineKeyboard
+} from './telegram-bot-client';
 export { getTelegramConfig, type TelegramConfig } from './telegram-config';
 export { TelegramConfigurationError } from './telegram-configuration-error';
+export { TelegramForbiddenError } from './telegram-forbidden-error';
+export { TelegramNetworkError } from './telegram-network-error';
+export { TelegramRateLimitedError } from './telegram-rate-limited-error';
 export { TelegramSecret } from './telegram-secret';
+export { TelegramTimeoutError } from './telegram-timeout-error';
+export {
+	type TelegramCallbackQuery,
+	type TelegramMessage,
+	type TelegramUpdate,
+	telegramUpdateSchema,
+	type TelegramUser
+} from './telegram-update-schema';
+export { ALLOWED_TELEGRAM_UPDATES } from './telegram-updates';
 export { TELEGRAM_UPDATES_MODES, type TelegramUpdatesMode } from './telegram-updates-mode';
