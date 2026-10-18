@@ -7,8 +7,9 @@ import { isHouseholdRequiredFailure } from '@i-finances/contracts';
  * so no household data can be read or recorded until that is fixed on the server, not in the conversation.
  */
 export const MCP_HOUSEHOLD_REQUIRED_MESSAGE = 'The MCP user is not a member of any household, so i-finances has no data '
-	+ 'to read or record for it. On the API server set MCP_USER_ID to the id of a household member (normally the '
-	+ 'household owner) or add that user to a household, then restart the API. Retrying the tool will not help.';
+	+ 'to read or record for it. The household owner has to fix this on the API server: add that user to the household, '
+	+ 'or set MCP_USER_ID to the id of a household member (normally the owner) and restart the API. '
+	+ 'Retrying the tool will not help.';
 
 /**
  * Turns a failed tool call into the text returned to the agent.

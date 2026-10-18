@@ -36,6 +36,9 @@ const STATUS_BY_ERROR_CODE: Record<HouseholdErrorCode, ContentfulStatusCode> = {
  * `GET`, `POST` and `PUT /api/household`: the caller's own household. A caller without a household gets
  * `household-required` from the shared application error mapping (`household-required-response.ts`), except on
  * `POST`, which is how onboarding creates one.
+ *
+ * The composition root gives it the browser cookie resolver only: managing the household and its membership is
+ * not something the MCP bearer key may do.
  */
 export class HouseholdHttpController {
 	private readonly config: AuthConfig;

@@ -231,9 +231,12 @@ export function createApiDependencies(database: AppDatabase = db): {
 			householdResolver,
 			sessionResolver
 		),
+		// Browser cookie only, like the credential controllers: the MCP bearer key works with the finance data of
+		// MCP_USER_ID, but must not manage the household or its membership (create, rename, and later invite,
+		// remove, leave). A leaked key must not be able to invite someone into the family finances.
 		householdController: new HouseholdHttpController(
 			householdService,
-			sessionResolver,
+			cookieSessionResolver,
 			authConfig
 		),
 		operationController: new OperationHttpController(

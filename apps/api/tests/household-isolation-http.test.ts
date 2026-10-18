@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -32,8 +33,11 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
  *
  * - the status is the expected one (404/403/409 on A's ids, 200 with B's own data on lists);
  * - the user without a household gets 403 `household-required` on every household-scoped route;
- * - the response contains no id and no name of household A (names carry the marker «Альфа»);
- * - no row of household A was changed, added or removed, and no other row now contains A's ids or names.
+ * - the response contains no id and no name of household A (names carry the marker «Альфа») and not the amount of
+ *   its operation (`A_AMOUNT_MINOR`, the only trace an aggregate leak leaves);
+ * - no row of household A was changed, added or removed, and no other row now contains A's ids or names;
+ * - a probe that sends ids of A gets exactly the answer (status and body) it gets for ids that exist nowhere, so
+ *   no route tells «someone else's» from «does not exist».
  */
 
 const ORIGIN = 'http://localhost:5173';
@@ -45,6 +49,12 @@ const A_MEMBER = 'alpha-member';
 const B_OWNER = 'beta-owner';
 const LONER = 'loner';
 const A_MARKER = /альфа/iu;
+/**
+ * The amount of the one operation of household A. Aggregates (monthly trend, summaries) carry no ids or names, so a
+ * leak of A's totals shows only as this number; household B has no operations of its own in the fixture.
+ */
+const A_AMOUNT_MINOR = 7_310_947;
+const A_AMOUNT_MARKER = new RegExp(`(?<!\\d)${A_AMOUNT_MINOR}(?!\\d)`, 'u');
 const NOW = Date.now();
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -120,9 +130,11 @@ const contactBody = (name: string) => ({
 	type: 'company'
 });
 
-const operationBody = (input: { accountId: string; categoryId: string | null; contactId: string | null; title: string }) => ({
+type OperationBodyInput = { accountId: string; amountMinor?: number; categoryId: string | null; contactId: string | null; title: string };
+
+const operationBody = (input: OperationBodyInput) => ({
 	accountId: input.accountId,
-	amountMinor: 1_000,
+	amountMinor: input.amountMinor ?? 1_000,
 	categoryId: input.categoryId,
 	comment: '',
 	contactId: input.contactId,
@@ -851,6 +863,7 @@ async function seed(): Promise<Fixture> {
 	// The member records the operation: members have full access to the household data (Р6).
 	const alphaOperation = await created(A_MEMBER, '/api/operations', operationBody({
 		accountId: alphaAccount.id,
+		amountMinor: A_AMOUNT_MINOR,
 		categoryId: alphaCategory.id,
 		contactId: alphaContact.id,
 		title: 'Альфа покупка'
@@ -945,14 +958,62 @@ function readDatabaseState(): DatabaseState {
 
 function findAlphaTraces(text: string, alphaIds: Set<string>, allowedIds: Set<string>): string[] {
 	const traces = [...alphaIds].filter((id) => !allowedIds.has(id) && text.includes(id));
+	const markers = [
+		...(A_MARKER.test(text) ? ['marker «Альфа»'] : []),
+		...(A_AMOUNT_MARKER.test(text) ? [`amount ${A_AMOUNT_MINOR} of household A`] : [])
+	];
 
-	return A_MARKER.test(text) ? [...traces, 'marker «Альфа»'] : traces;
+	return [...traces, ...markers];
+}
+
+/**
+ * The same request with every id of household A replaced by an id that exists nowhere, so the answers to «someone
+ * else's» and «does not exist» can be compared.
+ */
+function withMissingIds(request: ProbeRequest, alphaIds: Set<string>): ProbeRequest {
+	// Longest first: `alpha-owner` is a prefix of `alpha-owner-passkey`.
+	const ids = [...idsInRequest(alphaIds, request)].sort((left, right) => right.length - left.length);
+	const replace = (text: string) => ids.reduce((result, id) => result.split(id).join(randomUUID()), text);
+
+	return {
+		body: request.body === undefined ? undefined : JSON.parse(replace(JSON.stringify(request.body))) as unknown,
+		form: request.form,
+		path: replace(request.path)
+	};
 }
 
 function idsInRequest(alphaIds: Set<string>, request: ProbeRequest): Set<string> {
 	const text = `${request.path} ${JSON.stringify(request.body ?? null)}`;
 
 	return new Set([...alphaIds].filter((id) => text.includes(id)));
+}
+
+const ALPHA_PLACEHOLDER_ID = 'alpha-placeholder-id';
+
+/**
+ * Tells, before the database exists, whether a probe sends ids of household A: its request is built from a fixture
+ * where every id of A is a placeholder.
+ */
+function sendsAlphaIds(probe: Probe): boolean {
+	const alpha = { id: ALPHA_PLACEHOLDER_ID, version: 1 };
+	const beta = { id: 'beta-placeholder-id', version: 1 };
+	const request = probe.request({
+		alpha: {
+			account: alpha,
+			account2: alpha,
+			category: alpha,
+			contact: alpha,
+			operation: alpha,
+			ownerPasskeyId: ALPHA_PLACEHOLDER_ID,
+			ownerSessionId: ALPHA_PLACEHOLDER_ID,
+			receipt: alpha,
+			transfer: alpha
+		},
+		beta: { account: beta, account2: beta, category: beta, contact: beta }
+	});
+	const text = `${request.path} ${JSON.stringify(request.body ?? null)}`;
+
+	return [ALPHA_PLACEHOLDER_ID, A_HOUSEHOLD, A_OWNER, A_MEMBER].some((id) => text.includes(id));
 }
 
 function actorUser(actor: Actor): string {
@@ -998,6 +1059,20 @@ describe('household isolation over every route', () => {
 			'household A data was copied into another row'
 		).toEqual([]);
 	});
+
+	// No existence oracle: an id of household A must be answered exactly like an id that does not exist anywhere.
+	it.each(PROBES.filter(sendsAlphaIds))(
+		'$route as beta: «$name» answers like a missing id',
+		async (probe) => {
+			const { alphaIds } = readDatabaseState();
+			const request = probe.request(fixture);
+			const foreign = await call(B_OWNER, probe.route, request);
+			const missing = await call(B_OWNER, probe.route, withMissingIds(request, alphaIds));
+
+			expect(idsInRequest(alphaIds, request).size, 'the probe sends no id of household A').toBeGreaterThan(0);
+			expect(`${missing.status} ${await missing.text()}`).toBe(`${foreign.status} ${await foreign.text()}`);
+		}
+	);
 
 	it('KNOWN EXCEPTION: GET /api/public/categories still serves household A categories without a session', async () => {
 		const response = await app.request('/api/public/categories');
@@ -1066,6 +1141,24 @@ describe('existing users keep working', () => {
 		expect((await accounts.json() as { items: unknown[] }).items).toHaveLength(2);
 		expect(await session.json()).toMatchObject({ household: { id: A_HOUSEHOLD, role: 'owner' }, user: { id: A_OWNER } });
 		expect(operation.status).toBe(200);
+	});
+
+	it('the MCP key does not manage the household: /api/household accepts the browser session only', async () => {
+		const bearer = { authorization: `Bearer ${MCP_API_KEY}`, 'content-type': 'application/json', origin: ORIGIN };
+		const before = readDatabaseState();
+
+		for (const method of ['GET', 'POST', 'PUT']) {
+			const response = await app.request('/api/household', {
+				body: method === 'GET' ? undefined : JSON.stringify({ name: 'Через MCP' }),
+				headers: bearer,
+				method
+			});
+
+			expect(response.status, method).toBe(401);
+			expect(await response.json()).toMatchObject({ errorCode: 'unauthenticated', ok: false });
+		}
+
+		expect(readDatabaseState()).toEqual(before);
 	});
 
 	it('a user without a household is never added to one implicitly', async () => {
