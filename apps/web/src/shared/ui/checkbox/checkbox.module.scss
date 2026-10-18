@@ -1,0 +1,99 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+.root {
+    display: inline-flex;
+    gap: var(--space-5);
+    align-items: center;
+
+    font-size: var(--font-size-body-md);
+    color: var(--color-text-primary);
+
+    &:has(.input:disabled) {
+        cursor: not-allowed;
+        opacity: 0.48;
+    }
+
+    &:not(:has(.input:disabled)) {
+        cursor: pointer;
+    }
+
+    @include mx.pointer-coarse {
+        min-block-size: var(--control-size-touch);
+    }
+}
+
+// Mockup `.i-check`: 20 px box, 1.5 px border, 4 px radius.
+.box {
+    position: relative;
+
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    inline-size: fn.rem(20);
+    block-size: fn.rem(20);
+    border: fn.rem(1.5) solid var(--color-border-strong);
+    border-radius: var(--radius-xs);
+
+    color: var(--color-on-primary);
+
+    background-color: var(--color-surface);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard),
+        box-shadow var(--duration-fast) var(--ease-standard);
+
+    &:has(.input:checked) {
+        border-color: var(--color-primary);
+        background-color: var(--color-primary);
+    }
+
+    // Hover on the whole row, not only on the box, but never on a checked or disabled one.
+    .root:hover > &:has(.input:not(:checked, :disabled)) {
+        border-color: var(--color-primary);
+    }
+
+    // The ring also shows on a checked box: a keyboard user must see where the focus is.
+    &:has(.input:focus-visible) {
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+}
+
+.input {
+    cursor: inherit;
+
+    position: absolute;
+    z-index: var(--z-raised);
+    inset: 0;
+
+    inline-size: 100%;
+    block-size: 100%;
+    margin: 0;
+
+    opacity: 0;
+}
+
+.mark {
+    display: inline-flex;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+
+    .input:checked ~ & {
+        opacity: 1;
+    }
+}
+
+.label {
+    min-inline-size: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .box,
+    .mark {
+        transition: none;
+    }
+}
