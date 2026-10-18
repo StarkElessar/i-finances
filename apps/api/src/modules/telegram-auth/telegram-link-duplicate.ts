@@ -5,15 +5,22 @@ import {
 	contacts,
 	householdInvitations,
 	householdMembers,
+	households,
 	operations,
 	receiptImports,
+	sessions,
+	telegramAccounts,
+	telegramLoginRequests,
 	transfers,
 	users,
+	webauthnChallenges,
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
 
-import { and, eq, ne, notExists, type SQL, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, notExists, type SQL, sql } from 'drizzle-orm';
 import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
+
+import type { TelegramIdentity } from './telegram-identity';
 
 /** The handle every statement of one link transaction runs on. */
 export type TelegramLinkTransaction = Parameters<Parameters<AppDatabase['transaction']>[0]>[0];
@@ -124,4 +131,87 @@ export function assessDuplicate(transaction: TelegramLinkTransaction, userId: st
 	}
 
 	return { householdId: membership.householdId, kind: 'mergeable' };
+}
+
+/** The fields Telegram reports, refreshed on every link like on every sign-in. */
+export function telegramIdentityColumns(identity: TelegramIdentity, now: Date) {
+	return {
+		botBlockedAt: null,
+		chatId: identity.chatId,
+		firstName: identity.firstName,
+		lastName: identity.lastName,
+		updatedAt: now,
+		username: identity.username
+	};
+}
+
+/** Changed nothing although the rules said it would: give up the whole transaction, the request included. */
+export function requireOneRow(transaction: TelegramLinkTransaction, changes: number): void {
+	if (changes !== 1) {
+		transaction.rollback();
+	}
+}
+
+export type MergeDuplicateInput = {
+	/** From `assessDuplicate`: the household the duplicate is alone in, or `null` without one. */
+	duplicateHouseholdId: string | null;
+	duplicateUserId: string;
+	identity: TelegramIdentity;
+	linkUserId: string;
+	now: Date;
+};
+
+/**
+ * Removes the empty duplicate that held the Telegram account and moves the account to `linkUserId`, inside the link
+ * transaction. The second line of defence after `assessDuplicate`: every deleting statement repeats the rules as its
+ * own conditions (alone in a household without data, no password hash, active, no passkey, no membership left, no
+ * authorship) and must change exactly one row, otherwise `transaction.rollback()` undoes everything, the request
+ * included. So nothing with data is deleted even if a rule were missed above. Cascades are not relied upon: the
+ * membership, sessions, challenges and link requests of the duplicate are deleted explicitly.
+ */
+export function mergeDuplicate(transaction: TelegramLinkTransaction, input: MergeDuplicateInput): void {
+	const { duplicateHouseholdId, duplicateUserId, identity, linkUserId, now } = input;
+	const one = sql`1`;
+
+	if (duplicateHouseholdId !== null) {
+		const left = transaction.delete(householdMembers)
+			.where(and(eq(householdMembers.householdId, duplicateHouseholdId), eq(householdMembers.userId, duplicateUserId)))
+			.run();
+
+		requireOneRow(transaction, left.changes);
+
+		const deletedHousehold = transaction.delete(households)
+			.where(and(
+				eq(households.id, duplicateHouseholdId),
+				notExists(transaction.select({ one }).from(householdMembers).where(eq(householdMembers.householdId, duplicateHouseholdId))),
+				...notReferencedBy(transaction, HOUSEHOLD_DATA_REFERENCES, duplicateHouseholdId)
+			))
+			.run();
+
+		requireOneRow(transaction, deletedHousehold.changes);
+	}
+
+	transaction.delete(sessions).where(eq(sessions.userId, duplicateUserId)).run();
+	transaction.delete(webauthnChallenges).where(eq(webauthnChallenges.userId, duplicateUserId)).run();
+	transaction.delete(telegramLoginRequests).where(eq(telegramLoginRequests.linkUserId, duplicateUserId)).run();
+
+	const moved = transaction.update(telegramAccounts)
+		.set({ ...telegramIdentityColumns(identity, now), linkedAt: now, userId: linkUserId })
+		.where(and(eq(telegramAccounts.userId, duplicateUserId), eq(telegramAccounts.telegramId, identity.telegramId)))
+		.run();
+
+	requireOneRow(transaction, moved.changes);
+
+	const deletedUser = transaction.delete(users)
+		.where(and(
+			eq(users.id, duplicateUserId),
+			isNull(users.passwordHash),
+			eq(users.isActive, true),
+			notExists(transaction.select({ one }).from(webauthnCredentials).where(eq(webauthnCredentials.userId, duplicateUserId))),
+			notExists(transaction.select({ one }).from(householdMembers).where(eq(householdMembers.userId, duplicateUserId))),
+			...notReferencedBy(transaction, USER_AUTHORSHIP_REFERENCES, duplicateUserId)
+		))
+		.run();
+
+	requireOneRow(transaction, deletedUser.changes);
 }

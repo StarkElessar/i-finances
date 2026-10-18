@@ -1,24 +1,15 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
-import {
-	householdMembers,
-	households,
-	sessions,
-	telegramAccounts,
-	telegramLoginRequests,
-	users,
-	webauthnChallenges,
-	webauthnCredentials
-} from '@/infrastructure/database/schema';
+import { telegramAccounts, telegramLoginRequests } from '@/infrastructure/database/schema';
 
-import { and, eq, gt, isNull, ne, notExists, sql, TransactionRollbackError } from 'drizzle-orm';
+import { and, eq, gt, TransactionRollbackError } from 'drizzle-orm';
 
 import type { TelegramIdentity } from './telegram-identity';
 import {
 	assessDuplicate,
-	HOUSEHOLD_DATA_REFERENCES,
-	notReferencedBy,
-	type TelegramLinkTransaction,
-	USER_AUTHORSHIP_REFERENCES
+	mergeDuplicate,
+	requireOneRow,
+	telegramIdentityColumns,
+	type TelegramLinkTransaction
 } from './telegram-link-duplicate';
 
 /**
@@ -78,76 +69,6 @@ function assessLink(transaction: TelegramLinkTransaction, linkUserId: string, te
 		: { kind: 'telegram-linked-elsewhere' };
 }
 
-/** The fields Telegram reports, refreshed on every link like on every sign-in. */
-function identityColumns(identity: TelegramIdentity, now: Date) {
-	return {
-		botBlockedAt: null,
-		chatId: identity.chatId,
-		firstName: identity.firstName,
-		lastName: identity.lastName,
-		updatedAt: now,
-		username: identity.username
-	};
-}
-
-/** Changed nothing although the rules above said it would: give up the whole transaction, the request included. */
-function requireOneRow(transaction: TelegramLinkTransaction, changes: number): void {
-	if (changes !== 1) {
-		transaction.rollback();
-	}
-}
-
-/**
- * Removes the empty duplicate that held the Telegram account and moves the account to `linkUserId`. Every statement is
- * conditional on the very rules `assessDuplicate` checked (no password, no passkey, no authorship, alone in a household
- * without data) and must change exactly one row, so nothing with data is ever deleted, even if a rule were missed above.
- */
-function mergeDuplicate(
-	transaction: TelegramLinkTransaction,
-	input: { duplicateHouseholdId: string | null; duplicateUserId: string; identity: TelegramIdentity; linkUserId: string; now: Date }
-): void {
-	const { duplicateHouseholdId, duplicateUserId, identity, linkUserId, now } = input;
-
-	if (duplicateHouseholdId !== null) {
-		const deletedHousehold = transaction.delete(households)
-			.where(and(
-				eq(households.id, duplicateHouseholdId),
-				notExists(transaction.select({ one: sql`1` }).from(householdMembers).where(and(
-					eq(householdMembers.householdId, duplicateHouseholdId),
-					ne(householdMembers.userId, duplicateUserId)
-				))),
-				...notReferencedBy(transaction, HOUSEHOLD_DATA_REFERENCES, duplicateHouseholdId)
-			))
-			.run();
-
-		requireOneRow(transaction, deletedHousehold.changes);
-	}
-
-	transaction.delete(householdMembers).where(eq(householdMembers.userId, duplicateUserId)).run();
-	transaction.delete(sessions).where(eq(sessions.userId, duplicateUserId)).run();
-	transaction.delete(webauthnChallenges).where(eq(webauthnChallenges.userId, duplicateUserId)).run();
-	transaction.delete(telegramLoginRequests).where(eq(telegramLoginRequests.linkUserId, duplicateUserId)).run();
-
-	const moved = transaction.update(telegramAccounts)
-		.set({ ...identityColumns(identity, now), linkedAt: now, userId: linkUserId })
-		.where(and(eq(telegramAccounts.userId, duplicateUserId), eq(telegramAccounts.telegramId, identity.telegramId)))
-		.run();
-
-	requireOneRow(transaction, moved.changes);
-
-	const deletedUser = transaction.delete(users)
-		.where(and(
-			eq(users.id, duplicateUserId),
-			isNull(users.passwordHash),
-			eq(users.isActive, true),
-			notExists(transaction.select({ one: sql`1` }).from(webauthnCredentials).where(eq(webauthnCredentials.userId, duplicateUserId))),
-			...notReferencedBy(transaction, USER_AUTHORSHIP_REFERENCES, duplicateUserId)
-		))
-		.run();
-
-	requireOneRow(transaction, deletedUser.changes);
-}
-
 /**
  * Linking Telegram to an existing user and merging an empty duplicate (Р9, flow 5.3). One synchronous transaction
  * consumes the request and applies the outcome, so a link is decided once: a second poll, a parallel link of the same
@@ -194,7 +115,7 @@ export class TelegramLinkRepository {
 						return { kind: assessment.kind };
 					case 'already-linked': {
 						const refreshed = transaction.update(telegramAccounts)
-							.set(identityColumns(identity, input.now))
+							.set(telegramIdentityColumns(identity, input.now))
 							.where(and(eq(telegramAccounts.userId, input.linkUserId), eq(telegramAccounts.telegramId, identity.telegramId)))
 							.run();
 
@@ -205,7 +126,7 @@ export class TelegramLinkRepository {
 					case 'free':
 						transaction.insert(telegramAccounts)
 							.values({
-								...identityColumns(identity, input.now),
+								...telegramIdentityColumns(identity, input.now),
 								lastSignInAt: input.now,
 								linkedAt: input.now,
 								telegramId: identity.telegramId,

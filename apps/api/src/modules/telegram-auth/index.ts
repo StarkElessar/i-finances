@@ -21,6 +21,9 @@ export {
 	assessDuplicate,
 	type DuplicateAssessment,
 	HOUSEHOLD_DATA_REFERENCES,
+	mergeDuplicate,
+	type MergeDuplicateInput,
+	type TelegramLinkTransaction,
 	USER_AUTHORSHIP_REFERENCES
 } from './telegram-link-duplicate';
 export {
