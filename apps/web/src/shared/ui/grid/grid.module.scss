@@ -25,12 +25,27 @@
     background-color: var(--color-surface);
 }
 
+.col {
+    // `--column-scale: 0` from a consumer class (`GridColumn.class`) collapses the
+    // column to zero width: the `<col>` here, the cell padding and border below.
+    // The cells stay in the table, so the column mapping and the colspan of
+    // full-width rows survive, and the fixed layout spreads the free width over
+    // the columns that remain.
+    // The `<col>` is the only width source: a width on the header cell would win
+    // over a zero-width `<col>` in Safari (WebKit fixed layout treats `0` as auto)
+    // and the hidden column would keep its full width there.
+    /* stylelint-disable-next-line no-unknown-custom-properties -- set inline on the <col> by grid.tsx */
+    inline-size: calc(var(--column-width) * var(--column-scale, 1));
+}
+
 .table {
+    // Fixed layout: the table is as wide as the container, or as the sum of the
+    // visible `<col>` widths when that is more (then the frame scrolls).
     table-layout: fixed;
     border-spacing: 0;
     border-collapse: collapse;
 
-    min-inline-size: 100%;
+    inline-size: 100%;
     min-block-size: min-content;
 
     font-size: var(--font-size-body-md);
@@ -38,7 +53,7 @@
     th,
     td {
         box-sizing: border-box;
-        padding: fn.rem(10) var(--space-5);
+        padding: fn.rem(10) calc(var(--space-5) * var(--column-scale, 1));
         text-align: start;
         vertical-align: middle;
     }
@@ -47,7 +62,7 @@
         border-block-end: 1px solid var(--color-border);
 
         &:not(:last-child) {
-            border-inline-end: 1px solid var(--color-border);
+            border-inline-end: calc(1px * var(--column-scale, 1)) solid var(--color-border);
         }
     }
 

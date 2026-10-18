@@ -24,6 +24,7 @@
 | `function-disallowed-list` | `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` | `color-mix()` поверх токенов, `transparent`, `currentcolor` (литерал внутри `color-mix` ловит `color-no-hex`) |
 | `declaration-property-value-allowed-list` для `z-index` | числовой `z-index`, `calc()` над слоем | `var(--z-*)`, `auto`, `0`, `-1` |
 | `media-feature-name-disallowed-list` | сырой `@media` по размеру: `width`, `min-width`, `max-width`, `height`, `aspect-ratio`, `resolution` и их `min-`/`max-`/`device-` варианты, включая запись диапазоном `(width >= 640px)` | миксины `@include mx.media-mn(sm\|md\|lg)`; запросы про предпочтения пользователя (`prefers-reduced-motion`, `hover`, `pointer`) |
+| `at-rule-disallowed-list` | сырой `@container` | `@include mx.container-mn(name)` из `shared/styles/mixins` |
 | `no-unknown-custom-properties` | `var(--x)` на свойство, которого нет | свойства из `tokens.scss` (`referenceFiles`), объявленные в том же файле, и `var(--x, fallback)` |
 | `declaration-no-important` | `!important` | (правило из общего конфига) |
 
@@ -63,15 +64,15 @@
 | Задача | Файлов | Что и где |
 |---|---|---|
 | IF-16 (операции) | 1 | `views/home/home.module.scss`: `rgb()` скрима |
-| IF-17 (навигация) | 1 | `widgets/app-header/app-header.module.scss`: `rgb()` в тенях |
+| IF-17 (навигация) | 0 | снято в IF-17 (тени шапки на токенах) |
 | IF-18 (чеки) | 1 | `views/receipts/page.tsx`: `Intl.NumberFormat` |
 | IF-19 (статистика) | 1 | `views/statistics/ui/compare-tab/compare-tab.tsx`: `Intl.NumberFormat` |
 | IF-20 (кит) | 2 | `shared/ui/context-menu`: `rgb()`; `shared/ui/drag-action`: `rgb()` и hex (19 + 3 места) |
 | IF-21 (панели, диалоги) | 2 | `shared/ui/dialog`: `rgb()` скрима; `views/home/ui/operation-details-panel`: `rgb()` скрима |
 | IF-39 (вход, категории, контакты) | 0 | нарушений нет |
-| **Всего** | **8** | 9 пар «файл, правило» (7 Stylelint, 2 ESLint) |
+| **Всего** | **7** | 8 пар «файл, правило» (6 Stylelint, 2 ESLint) |
 
-Нарушений по числовому `z-index`, сырому `@media`, `style={{}}` с литералами (после правки `grid.tsx`) и `!important` в коде на момент внедрения нет: эти правила работают как ограждение без исключений.
+Нарушений по числовому `z-index`, сырому `@media` и `@container`, `style={{}} с литералами (после правки `grid.tsx`) и `!important` в коде на момент внедрения нет: эти правила работают как ограждение без исключений.
 
 ## Как снять исключение
 

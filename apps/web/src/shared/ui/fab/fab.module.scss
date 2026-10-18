@@ -1,0 +1,73 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+// Mockup Kit-States: circle 56 px, 20 px from the right edge, 16 px above the
+// bottom navigation. Phone only, the toolbar "+" takes over from `sm`.
+.fab {
+    cursor: pointer;
+
+    position: fixed;
+    z-index: var(--z-nav);
+    inset-block-end: calc(var(--bottom-nav-offset) + var(--space-6));
+    inset-inline-end: var(--space-7);
+
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(56);
+    block-size: fn.rem(56);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-round);
+
+    color: var(--color-on-primary);
+
+    background-color: var(--color-primary);
+    box-shadow: var(--shadow-md);
+
+    transition:
+        background-color var(--duration-fast) var(--ease-standard),
+        opacity var(--duration-fast) var(--ease-standard),
+        transform var(--duration-fast) var(--ease-standard);
+
+    @include mx.media-mn(sm) {
+        display: none;
+    }
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-primary-hover);
+    }
+
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 2px;
+    }
+
+    &:active:not(:disabled) {
+        transform: translateY(1px);
+        background-color: var(--color-primary-active);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+    }
+
+    svg {
+        display: block;
+    }
+}
+
+// On-screen keyboard open: the button would sit on top of the field.
+.fab-hidden {
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .fab {
+        transition: none;
+    }
+}

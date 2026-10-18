@@ -72,3 +72,4 @@ export {
 export type { DisplayModePreferenceControls } from './use-display-mode-preference';
 export { useDisplayModePreference } from './use-display-mode-preference';
 export { useMediaQuery } from './use-media-query';
+export { useTextInputFocus } from './use-text-input-focus';

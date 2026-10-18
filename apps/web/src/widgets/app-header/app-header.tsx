@@ -1,6 +1,6 @@
 import css from './app-header.module.scss';
 
-import { minWidthQuery } from '@/shared/lib';
+import { cn, minWidthQuery, useTextInputFocus } from '@/shared/lib';
 import { AppLogo } from '@/shared/ui/app-logo';
 import { Container } from '@/shared/ui/container';
 
@@ -9,6 +9,8 @@ import type { AuthClient } from '@/features/auth';
 import { ProfileMenu } from '@/widgets/app-header/ui/profile-menu';
 
 import { A } from '@solidjs/router';
+import type { LucideIcon } from 'lucide-solid';
+import { ChartColumn, House, Receipt, Tag, Users } from 'lucide-solid';
 import { createSignal, For, onCleanup, onMount, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 
@@ -16,17 +18,20 @@ type NavigationMode = 'desktop' | 'mobile';
 
 type NavigationLink = {
 	href: string;
+	icon: LucideIcon;
 	label: string;
 };
 
+// Top navigation from `md`. Layout-Spec asks for it from `sm`, but logo, five links and the avatar need
+// about 735 px, so on 640-959 the bottom bar stays (see development/decisions/ui-breakpoints.md).
 const DESKTOP_NAVIGATION_QUERY = minWidthQuery('md');
 
 const NAV_LINKS: NavigationLink[] = [
-	{ href: '/', label: 'Главная' },
-	{ href: '/receipts', label: 'Чеки' },
-	{ href: '/categories', label: 'Категории' },
-	{ href: '/contacts', label: 'Контакты' },
-	{ href: '/stats', label: 'Статистика' }
+	{ href: '/', icon: House, label: 'Главная' },
+	{ href: '/receipts', icon: Receipt, label: 'Чеки' },
+	{ href: '/categories', icon: Tag, label: 'Категории' },
+	{ href: '/contacts', icon: Users, label: 'Контакты' },
+	{ href: '/stats', icon: ChartColumn, label: 'Статистика' }
 ];
 
 function renderNavigationLink(link: NavigationLink) {
@@ -42,6 +47,20 @@ function renderNavigationLink(link: NavigationLink) {
 	);
 }
 
+function renderMobileNavigationLink(link: NavigationLink) {
+	return (
+		<A
+			end
+			activeClass={css.mobileLinkActive}
+			class={css.mobileLink}
+			href={link.href}
+		>
+			<link.icon aria-hidden='true' size={20}/>
+			<span>{link.label}</span>
+		</A>
+	);
+}
+
 function DesktopNavigation() {
 	return (
 		<nav aria-label='Основная навигация' class={css.desktopNavigation}>
@@ -51,13 +70,16 @@ function DesktopNavigation() {
 }
 
 function MobileNavigation() {
+	const isKeyboardOpen = useTextInputFocus();
+
 	return (
 		<Portal>
-			<div class={css.mobileNavigationShell}>
-				<nav aria-label='Основная навигация' class={css.mobileNavigation}>
-					<For each={NAV_LINKS}>{renderNavigationLink}</For>
-				</nav>
-			</div>
+			<nav
+				aria-label='Основная навигация'
+				class={cn(css.mobileNavigation, isKeyboardOpen() && css.mobileNavigationHidden)}
+			>
+				<For each={NAV_LINKS}>{renderMobileNavigationLink}</For>
+			</nav>
 		</Portal>
 	);
 }

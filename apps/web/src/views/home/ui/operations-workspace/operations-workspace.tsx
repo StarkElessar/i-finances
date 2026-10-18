@@ -2,6 +2,7 @@ import css from './operations-workspace.module.scss';
 
 import { cn } from '@/shared/lib';
 import { Button } from '@/shared/ui/button';
+import { Fab } from '@/shared/ui/fab';
 import { TextField } from '@/shared/ui/text-field';
 
 import type { Account } from '@/entities/account';
@@ -15,6 +16,7 @@ import {
 	ArrowUpNarrowWide,
 	ChevronLeft,
 	ChevronRight,
+	ListFilter,
 	Plus,
 	Search,
 	X
@@ -139,25 +141,28 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 							<ArrowDownWideNarrow size={17}/>
 						</Show>
 					</Button>
-					<select
-						aria-label='Сортировать по'
-						class={css.sortField}
-						value={view.sort().field}
-						onChange={(event) => {
-							const field = event.currentTarget.value as OperationSortField;
+					<span class={css.sortField}>
+						<select
+							aria-label='Сортировать по'
+							class={css.sortSelect}
+							value={view.sort().field}
+							onChange={(event) => {
+								const field = event.currentTarget.value as OperationSortField;
 
-							view.setSort({
-								direction: field === 'date' ? 'desc' : 'asc',
-								field
-							});
-						}}
-					>
-						<option value='date'>По дате</option>
-						<option value='amount'>По сумме</option>
-						<option value='balance'>По балансу</option>
-						<option value='category'>По категории</option>
-						<option value='contact'>По контакту</option>
-					</select>
+								view.setSort({
+									direction: field === 'date' ? 'desc' : 'asc',
+									field
+								});
+							}}
+						>
+							<option value='date'>По дате</option>
+							<option value='amount'>По сумме</option>
+							<option value='balance'>По балансу</option>
+							<option value='category'>По категории</option>
+							<option value='contact'>По контакту</option>
+						</select>
+						<ListFilter aria-hidden='true' class={css.sortIcon} size={16}/>
+					</span>
 					<div aria-label='Период' class={css.periodSwitch} role='group'>
 						<For each={PERIOD_MODES}>
 							{(mode) => (
@@ -201,7 +206,14 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 					<Button aria-label='Добавить перевод' iconOnly size='sm' variant='secondary' onClick={props.onCreateTransfer}>
 						<ArrowLeftRight size={18}/>
 					</Button>
-					<Button aria-label='Добавить операцию' iconOnly size='sm' variant='primary' onClick={props.onCreateOperation}>
+					<Button
+						aria-label='Добавить операцию'
+						class={css.addOperation}
+						iconOnly
+						size='sm'
+						variant='primary'
+						onClick={props.onCreateOperation}
+					>
 						<Plus size={18}/>
 					</Button>
 				</div>
@@ -231,6 +243,10 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 			<Show fallback={<OperationsList {...bodyProps()}/>} when={resolvedMode() === 'table'}>
 				<OperationsTable {...bodyProps()}/>
 			</Show>
+
+			<Fab aria-label='Новая операция' onClick={props.onCreateOperation}>
+				<Plus size={26}/>
+			</Fab>
 		</section>
 	);
 }

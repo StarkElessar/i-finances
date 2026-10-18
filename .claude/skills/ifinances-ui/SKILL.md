@@ -58,7 +58,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
 | | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
-| | FAB и нижняя навигация | `widgets/app-header` (навигация), FAB экранный | нет общих, IF-17, IF-20 |
+| | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; панель до 960 px (на 640–959 нижняя, верхняя не помещается), история Storybook в IF-20 |
 | | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, есть история, z-index не по шкале, IF-14 |
 | `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть, есть история |
@@ -66,7 +66,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | выбор типа счёта, блок реквизитов в форме | `features/account-details` (`ui/card`, `model`) | есть |
 | | шапка счёта с мини-картой | `features/account-details/ui/card/card-header-visual.tsx` | есть |
 | | иконка типа счёта (карта, наличные, сбережения, прочее) | `shared/ui/account-icon` | есть, есть история |
-| `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout` | раскладка операций, колонки по контейнеру, тулбар периода | `views/home/ui/operations-workspace` | не по доске, IF-15, IF-16 |
+| `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout` | раскладка операций, колонки по контейнеру, тулбар периода | `views/home/ui/operations-workspace` (контейнер, `mx.container-mn`, колонки и тулбар по ширине контейнера, IF-15) | тулбар и колонки по доске; раскладка (лента счетов, панель 340) не по доске, IF-16 |
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
 | `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
 | `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |

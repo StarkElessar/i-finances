@@ -25,7 +25,7 @@ export function GridCell<T>(props: GridCellProps<T>) {
 	const value = () => props.column.accessor(props.dataItem);
 
 	return (
-		<td>
+		<td class={props.column.class}>
 			<Show
 				when={props.column.clientTemplate}
 				fallback={formatCellValue(value())}
