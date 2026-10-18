@@ -37,15 +37,22 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {};
 
+// The icons (JSX nodes) are created in `render`, not in module-level `args`: Solid would create
+// them outside a root and reuse one node across renders.
 export const WithIconsAndCounts: Story = {
 	args: {
 		'aria-label': 'Состояние',
-		options: [
-			{ value: 'active', label: 'Активные', icon: <Tag/>, count: 43 },
-			{ value: 'archive', label: 'Архив', icon: <Archive/>, count: 2 }
-		],
 		value: 'active'
-	}
+	},
+	render: (args) => (
+		<Controlled
+			{...args}
+			options={[
+				{ value: 'active', label: 'Активные', icon: <Tag/>, count: 43 },
+				{ value: 'archive', label: 'Архив', icon: <Archive/>, count: 2 }
+			]}
+		/>
+	)
 };
 
 export const FullWidth: Story = {

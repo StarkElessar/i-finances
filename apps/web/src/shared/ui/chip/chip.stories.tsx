@@ -41,7 +41,7 @@ export const Removable: Story = {
 };
 
 export const WithIcon: Story = {
-	args: { children: 'Категория', icon: <Plus/> }
+	render: (args) => <Chip {...args} icon={<Plus/>}>Категория</Chip>
 };
 
 /** The filter row of the comparison tab: toggles work on click, Space and Enter. */
