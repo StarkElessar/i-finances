@@ -78,10 +78,11 @@ export class PasswordUserRepository {
 	/**
 	 * Stores the new password hash, deletes every other session of the user and replaces the token hash of the kept
 	 * session, all in one transaction: a changed password never leaves old sessions alive, and a stolen cookie of the
-	 * kept session stops working. The session keeps its id, creation time, expiry and metadata.
+	 * kept session stops working. The session keeps its id, creation time, expiry and metadata: the expiry is never
+	 * extended, so re-keying cannot keep a session alive past its original lifetime (`development/decisions/session-rotation.md`).
 	 * Returns `undefined` when the stored hash no longer matches `expectedPasswordHash` (the password changed concurrently).
 	 */
-	public replacePasswordAndRevokeOtherSessions(input: ReplacePasswordInput): PasswordReplacement | undefined {
+	public replacePasswordAndRotateSessions(input: ReplacePasswordInput): PasswordReplacement | undefined {
 		return this.database.transaction((transaction) => {
 			const updated = transaction.update(users)
 				.set({ passwordHash: input.newPasswordHash, updatedAt: input.now })

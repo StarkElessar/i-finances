@@ -29,7 +29,7 @@ export type SecurityServiceDependencies = {
 	/** Counts wrong «current password» attempts per user, not per address. */
 	rateLimiter: LoginRateLimitPort;
 	sessionRepository: Pick<SessionRepository, 'deleteForUser' | 'deleteOthersForUser' | 'findActiveByUserId'>;
-	userRepository: Pick<PasswordUserRepository, 'findById' | 'replacePasswordAndRevokeOtherSessions'>;
+	userRepository: Pick<PasswordUserRepository, 'findById' | 'replacePasswordAndRotateSessions'>;
 };
 
 /** The new secret of the caller's session after a password change; the controller turns it into a cookie. */
@@ -180,7 +180,7 @@ export class SecurityService {
 		}
 
 		const rotatedToken = this.createToken();
-		const replacement = this.dependencies.userRepository.replacePasswordAndRevokeOtherSessions({
+		const replacement = this.dependencies.userRepository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: user.passwordHash,
 			keepSessionId: actor.sessionId,
 			newPasswordHash: await this.dependencies.passwordService.hash(newPassword),

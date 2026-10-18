@@ -11,7 +11,8 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 const FIXED_DATE = new Date('2026-07-24T10:00:00.000Z');
 const LATER_DATE = new Date('2026-07-25T10:00:00.000Z');
-const SESSION_EXPIRES_AT = new Date('2026-08-24T10:00:00.000Z');
+// Deliberately not LATER_DATE + 30 days: a rotation that renewed the expiry from `now` must not pass by coincidence.
+const SESSION_EXPIRES_AT = new Date('2026-08-10T10:00:00.000Z');
 
 let connection: Database.Database;
 let database: AppDatabase;
@@ -60,9 +61,9 @@ afterEach(() => {
 	connection.close();
 });
 
-describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
+describe('PasswordUserRepository.replacePasswordAndRotateSessions', () => {
 	it('stores the hash and revokes only the user\'s other sessions', async () => {
-		const replacement = repository.replacePasswordAndRevokeOtherSessions({
+		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'hash-before',
 			keepSessionId: 'alice-session-1',
 			newPasswordHash: 'hash-after',
@@ -79,7 +80,7 @@ describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
 	});
 
 	it('replaces the token hash of the kept session and keeps its id, dates and metadata', async () => {
-		const replacement = repository.replacePasswordAndRevokeOtherSessions({
+		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'hash-before',
 			keepSessionId: 'alice-session-1',
 			newPasswordHash: 'hash-after',
@@ -103,7 +104,7 @@ describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
 	});
 
 	it('does not touch the tokens of other users\' sessions', async () => {
-		repository.replacePasswordAndRevokeOtherSessions({
+		repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'hash-before',
 			keepSessionId: 'alice-session-1',
 			newPasswordHash: 'hash-after',
@@ -117,7 +118,7 @@ describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
 	});
 
 	it('refuses to rotate a session that belongs to another user', async () => {
-		const replacement = repository.replacePasswordAndRevokeOtherSessions({
+		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'hash-before',
 			keepSessionId: 'bob-session-1',
 			newPasswordHash: 'hash-after',
@@ -132,7 +133,7 @@ describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
 	});
 
 	it('still changes the password when the kept session vanished meanwhile, and reports no rotation', async () => {
-		const replacement = repository.replacePasswordAndRevokeOtherSessions({
+		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'hash-before',
 			keepSessionId: 'alice-session-gone',
 			newPasswordHash: 'hash-after',
@@ -146,7 +147,7 @@ describe('PasswordUserRepository.replacePasswordAndRevokeOtherSessions', () => {
 	});
 
 	it('does nothing when the stored hash is not the one that was verified', async () => {
-		const replacement = repository.replacePasswordAndRevokeOtherSessions({
+		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'stale-hash',
 			keepSessionId: 'alice-session-1',
 			newPasswordHash: 'hash-after',
