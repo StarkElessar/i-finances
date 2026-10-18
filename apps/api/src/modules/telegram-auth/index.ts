@@ -1,4 +1,5 @@
 export { buildTelegramDisplayName } from './build-telegram-display-name';
+export { describeLinkAccount } from './describe-link-account';
 export { describeSignInDevice, describeSignInMoment } from './describe-sign-in-request';
 export {
 	type TelegramAccount,
@@ -7,13 +8,39 @@ export {
 	type TelegramSignInResolution
 } from './telegram-account-repository';
 export {
+	buildLinkCallbackData,
 	buildSignInCallbackData,
 	isSignInCode,
+	parseLinkCallbackData,
 	parseSignInCallbackData,
 	parseStartCommand,
 	type SignInCallbackAction
 } from './telegram-bot-commands';
 export { type TelegramIdentity, toTelegramIdentity } from './telegram-identity';
+export {
+	assessDuplicate,
+	type DuplicateAssessment,
+	HOUSEHOLD_DATA_REFERENCES,
+	mergeDuplicate,
+	type MergeDuplicateInput,
+	type TelegramLinkTransaction,
+	USER_AUTHORSHIP_REFERENCES
+} from './telegram-link-duplicate';
+export {
+	type CompleteTelegramLinkInput,
+	type TelegramLinkAssessment,
+	type TelegramLinkCompletion,
+	TelegramLinkRepository
+} from './telegram-link-repository';
+export {
+	type TelegramLinkActor,
+	type TelegramLinkBotMessage,
+	type TelegramLinkCompleteOutcome,
+	type TelegramLinkMetadata,
+	TelegramLinkService,
+	type TelegramLinkServiceDependencies,
+	type TelegramLinkStartOutcome
+} from './telegram-link-service';
 export {
 	type NewTelegramLoginRequest,
 	type TelegramLoginRequest,

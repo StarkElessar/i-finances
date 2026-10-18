@@ -97,6 +97,8 @@ type ProbeRequest = {
 	/** Extra headers, e.g. the Telegram webhook secret. */
 	headers?: Record<string, string>;
 	path: string;
+	/** The TCP peer the node server reports; none (as with `app.request`) by default. */
+	peerAddress?: string;
 };
 
 type Probe = {
@@ -756,10 +758,43 @@ const PROBES: Probe[] = [
 		name: 'dev confirmation of an unknown code changes nothing, even as the Telegram of A member',
 		request: () => ({
 			body: { code: UNKNOWN_LOGIN_CODE, firstName: 'Захват', telegramId: '2002' },
-			path: '/api/dev/telegram/confirm'
+			path: '/api/dev/telegram/confirm',
+			peerAddress: '127.0.0.1'
 		}),
 		route: 'POST /api/dev/telegram/confirm',
 		scope: 'public'
+	},
+	{
+		beta: [404],
+		loner: [404],
+		name: 'dev confirmation does not exist for a peer in the network, whatever Host and Origin say',
+		request: () => ({
+			body: { code: UNKNOWN_LOGIN_CODE, firstName: 'Захват', telegramId: '2002' },
+			headers: { host: 'localhost:3001', origin: 'http://localhost:3001' },
+			path: '/api/dev/telegram/confirm',
+			peerAddress: '192.168.1.23'
+		}),
+		route: 'POST /api/dev/telegram/confirm',
+		scope: 'public'
+	},
+
+	// Telegram link (A4): the caller's own account only, from the session; no household data is read or written. The
+	// whole flow with A's Telegram (2002, the A member) is covered by `telegram-link-http.test.ts`.
+	{
+		beta: [200],
+		loner: [200],
+		name: 'starts a link for the caller only',
+		request: () => ({ path: '/api/auth/telegram/link/start' }),
+		route: 'POST /api/auth/telegram/link/start',
+		scope: 'user'
+	},
+	{
+		beta: [403],
+		loner: [403],
+		name: 'a session does not complete a link it did not start',
+		request: () => ({ body: { code: UNKNOWN_LOGIN_CODE }, path: '/api/auth/telegram/link/complete' }),
+		route: 'POST /api/auth/telegram/link/complete',
+		scope: 'user'
 	}
 ];
 
@@ -852,19 +887,23 @@ function headersFor(userId: string | undefined, json: boolean): Record<string, s
 async function call(userId: string | undefined, route: string, request: ProbeRequest): Promise<Response> {
 	const method = route.slice(0, route.indexOf(' '));
 
+	const nodeBindings = request.peerAddress === undefined
+		? undefined
+		: { incoming: { socket: { remoteAddress: request.peerAddress } } };
+
 	if (request.form !== undefined) {
 		return app.request(request.path, {
 			body: await request.form(),
 			headers: { ...headersFor(userId, false), ...request.headers },
 			method
-		});
+		}, nodeBindings);
 	}
 
 	return app.request(request.path, {
 		body: request.body === undefined ? undefined : JSON.stringify(request.body),
 		headers: { ...headersFor(userId, request.body !== undefined), ...request.headers },
 		method
-	});
+	}, nodeBindings);
 }
 
 async function created(userId: string, path: string, body: unknown, key: string): Promise<Entity> {
@@ -1116,6 +1155,7 @@ describe('household isolation over every route', () => {
 		// Guards the setup itself: the app is the full server app (every optional controller wired, as in main.ts).
 		expect(registered).toContain('POST /api/telegram/webhook');
 		expect(registered).toContain('POST /api/dev/telegram/confirm');
+		expect(registered).toContain('POST /api/auth/telegram/link/start');
 		expect(probed).toEqual(registered);
 	});
 

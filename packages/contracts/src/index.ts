@@ -356,6 +356,17 @@ export {
 	telegramSignInStartResultSchema
 } from './telegram-auth';
 export {
+	type TelegramLinkCompleteResult,
+	telegramLinkCompleteResultSchema,
+	type TelegramLinkErrorCode,
+	telegramLinkErrorCodes,
+	telegramLinkErrorMessageByCode,
+	type TelegramLinkFailure,
+	telegramLinkFailureSchema,
+	type TelegramLinkStartResult,
+	telegramLinkStartResultSchema
+} from './telegram-link';
+export {
 	type ChangeTransferDeletionStateInput,
 	changeTransferDeletionStateInputSchema,
 	type CreateTransferInput,

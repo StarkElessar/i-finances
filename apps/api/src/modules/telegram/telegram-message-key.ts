@@ -5,6 +5,14 @@
  */
 export const TELEGRAM_MESSAGE_PLACEHOLDERS = {
 	'household.memberJoined': ['name', 'household'],
+	'link.accountHasTelegram': ['account'],
+	'link.confirmation': ['account', 'device', 'when'],
+	'link.confirmButton': [],
+	'link.confirmed': [],
+	'link.expired': [],
+	'link.rejectButton': [],
+	'link.rejected': [],
+	'link.telegramTaken': [],
 	'signIn.accountNotFound': [],
 	'signIn.confirmation': ['device', 'when'],
 	'signIn.confirmButton': [],

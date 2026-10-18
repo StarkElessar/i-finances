@@ -153,6 +153,18 @@ describe('TelegramSignInService.complete under a race', () => {
 				signInAvailable: true
 			},
 			households: new HouseholdResolver(new HouseholdRepository(database)),
+			// No bot here: link requests never reach this test.
+			link: {
+				confirmFromBot: async () => {
+					throw new Error('unexpected link confirmation');
+				},
+				offer: async () => {
+					throw new Error('unexpected link offer');
+				},
+				rejectFromBot: async () => {
+					throw new Error('unexpected link rejection');
+				}
+			},
 			messages: loadTelegramMessages(),
 			now: () => LATER,
 			requests: racingRequests,

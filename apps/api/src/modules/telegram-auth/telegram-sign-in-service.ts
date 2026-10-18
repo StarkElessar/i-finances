@@ -23,10 +23,12 @@ import type { TelegramAccountRepository } from './telegram-account-repository';
 import {
 	buildSignInCallbackData,
 	isSignInCode,
+	parseLinkCallbackData,
 	parseSignInCallbackData,
 	parseStartCommand
 } from './telegram-bot-commands';
 import { type TelegramIdentity, toTelegramIdentity } from './telegram-identity';
+import type { TelegramLinkService } from './telegram-link-service';
 import type { TelegramLoginRequest, TelegramLoginRequestRepository } from './telegram-login-request-repository';
 import {
 	generateTelegramLoginCode,
@@ -91,6 +93,8 @@ export type TelegramSignInServiceDependencies = {
 	createId?: () => string;
 	createSecret?: () => string;
 	households: Pick<HouseholdResolver, 'findForUser'>;
+	/** The bot side of link requests (A4): the bot is one, so `/start` and the buttons of a link request go there. */
+	link: Pick<TelegramLinkService, 'confirmFromBot' | 'offer' | 'rejectFromBot'>;
 	messages: TelegramMessages;
 	now?: () => Date;
 	requests: Pick<
@@ -285,8 +289,10 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 	}
 
 	/**
-	 * `DEV_TELEGRAM_LOGIN`: confirms a request as the bot would after «Войти», for the given identity. The route exists
-	 * only when the flag is on, and the configuration refuses the flag in production; this check is the last line.
+	 * `DEV_TELEGRAM_LOGIN`: confirms a request as the bot would after «Войти» (or «Привязать» for a link request), for
+	 * the given identity. It takes any Telegram id on purpose, so it is a key to every account: the route exists only
+	 * when the flag is on, the configuration refuses the flag in production, the controller answers only to this machine
+	 * (loopback), and this check is the last line. Never switch the flag on over a copy of the production database.
 	 */
 	public async devConfirm(input: unknown): Promise<TelegramSignInSimpleOutcome> {
 		if (!this.dependencies.config.devLoginEnabled) {
@@ -309,8 +315,7 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			username: username ?? null
 		};
 
-		if (request === undefined || request.purpose !== 'sign-in'
-			|| !await this.dependencies.requests.confirm({ id: request.id, identity, now: this.now() })) {
+		if (request === undefined || !await this.dependencies.requests.confirm({ id: request.id, identity, now: this.now() })) {
 			return { errorCode: 'login-expired', ok: false };
 		}
 
@@ -353,7 +358,15 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 
 		const request = isSignInCode(payload) ? await this.dependencies.requests.findByCode(payload) : undefined;
 
-		if (request === undefined || request.purpose !== 'sign-in' || request.status !== 'pending' || request.expiresAt <= this.now()) {
+		if (request?.purpose === 'link') {
+			// Same rule as below: only an offer with buttons, never a state change on `/start`.
+			await botClient.sendMessage({ chatId: message.chat.id, ...await this.dependencies.link.offer(request) });
+
+			return;
+		}
+
+		// A link request went to the link service above: what is left is a sign-in request or nothing.
+		if (request === undefined || request.status !== 'pending' || request.expiresAt <= this.now()) {
 			await botClient.sendMessage({ chatId: message.chat.id, text: messages.text('signIn.expired') });
 
 			return;
@@ -381,18 +394,31 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 
 	private async handleCallback(botClient: TelegramBotClient, query: TelegramCallbackQuery): Promise<void> {
 		try {
-			const action = parseSignInCallbackData(query.data);
+			const signInAction = parseSignInCallbackData(query.data);
+			const linkAction = signInAction === undefined ? parseLinkCallbackData(query.data) : undefined;
+			const action = signInAction ?? linkAction;
 			const message = query.message;
 
-			// Buttons of a private chat with the bot only: the presser is the person the confirmation was sent to.
+			// Buttons of a private chat with the bot only: the presser is the person the confirmation was sent to. For a
+			// link this is what makes the linked Telegram the presser's own: confirming from any other chat does nothing.
 			if (action === undefined || message === undefined || query.from.is_bot || message.chat.id !== query.from.id) {
 				return;
 			}
 
 			const identity = toTelegramIdentity(query.from, message.chat.id);
-			const text = action.kind === 'confirm'
-				? await this.confirmFromBot(action.code, identity)
-				: await this.rejectFromBot(action.code, identity);
+			const { link } = this.dependencies;
+			let text: string;
+
+			if (linkAction === undefined) {
+				text = action.kind === 'confirm'
+					? await this.confirmFromBot(action.code, identity)
+					: await this.rejectFromBot(action.code, identity);
+			}
+			else {
+				text = linkAction.kind === 'confirm'
+					? await link.confirmFromBot(linkAction.code, identity)
+					: await link.rejectFromBot(linkAction.code, identity);
+			}
 
 			// Sent without buttons, so they disappear and cannot be pressed again.
 			await botClient.editMessageText({ chatId: message.chat.id, messageId: message.message_id, text });

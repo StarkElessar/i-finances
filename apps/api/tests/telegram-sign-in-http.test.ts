@@ -112,9 +112,12 @@ class Browser {
 	public async post(
 		path: string,
 		body?: unknown,
-		extraHeaders: Record<string, string> = {}
+		extraHeaders: Record<string, string> = {},
+		/** The TCP peer of the request, as the node server reports it; none (as with `app.request`) by default. */
+		peerAddress?: string
 	): Promise<{ body: unknown; response: Response }> {
 		const cookie = [...this.cookies].map(([name, value]) => `${name}=${value}`).join('; ');
+		const nodeBindings = peerAddress === undefined ? undefined : { incoming: { socket: { remoteAddress: peerAddress } } };
 		const response = await this.harness.app.request(path, {
 			body: body === undefined ? undefined : JSON.stringify(body),
 			headers: {
@@ -127,7 +130,7 @@ class Browser {
 				...extraHeaders
 			},
 			method: 'POST'
-		});
+		}, nodeBindings);
 
 		this.adopt(response);
 
@@ -782,25 +785,61 @@ describe('availability and the dev confirmation', () => {
 		const harness = boot();
 		const browser = new Browser(harness);
 		const code = await browser.start();
-		const confirm = await browser.post('/api/dev/telegram/confirm', { code, firstName: 'Тест', telegramId: '777' });
+		const identity = { code, firstName: 'Тест', telegramId: '777' };
+		const confirm = await browser.post('/api/dev/telegram/confirm', identity, {}, '127.0.0.1');
 
 		expect(confirm.body).toEqual({ ok: true });
 		expect((await browser.complete(code)).body).toMatchObject({ isNewUser: true, status: 'confirmed' });
-		expect((await browser.post('/api/dev/telegram/confirm', { code, firstName: 'Тест', telegramId: '777' })).response.status)
-			.toBe(410);
-		const crossOrigin = await browser.post(
-			'/api/dev/telegram/confirm',
-			{ code, firstName: 'Тест', telegramId: '777' },
-			{ origin: 'https://evil.example' }
-		);
+		expect((await browser.post('/api/dev/telegram/confirm', identity, {}, '::1')).response.status).toBe(410);
+		const crossOrigin = await browser.post('/api/dev/telegram/confirm', identity, { origin: 'https://evil.example' }, '127.0.0.1');
 
 		expect(crossOrigin.response.status).toBe(403);
 	});
 
-	it('without DEV_TELEGRAM_LOGIN the dev route does not exist', async () => {
+	it('the dev confirmation answers only to this machine: a peer in the network gets 404 whatever Host and Origin say', async () => {
+		vi.stubEnv('TELEGRAM_UPDATES', 'off');
+		vi.stubEnv('TELEGRAM_BOT_TOKEN', '');
+		vi.stubEnv('DEV_TELEGRAM_LOGIN', 'true');
+
+		const harness = boot();
+		const browser = new Browser(harness);
+		const code = await browser.start();
+		const identity = { code, firstName: 'Захват', telegramId: '1001' };
+		// Origin made of the forged Host passes the same-origin check: only the TCP peer can tell a remote client.
+		const forged: Record<string, string> = { host: 'localhost:3001', origin: 'http://localhost:3001', 'x-forwarded-for': '127.0.0.1' };
+		const headerSets: Array<Record<string, string>> = [{}, forged, { origin: ORIGIN }];
+		const notFound = { error: { code: 'not_found', message: 'The requested resource was not found.' }, ok: false };
+
+		for (const peer of [undefined, '192.168.1.23', '10.0.0.5', '::ffff:192.168.1.23', '127.0.0.2', 'fe80::1', '0.0.0.0']) {
+			for (const headers of headerSets) {
+				const answer = await browser.post('/api/dev/telegram/confirm', identity, headers, peer);
+
+				expect(answer.response.status, `${peer} ${JSON.stringify(headers)}`).toBe(404);
+				expect(answer.body).toEqual(notFound);
+			}
+		}
+
+		// Not even the body limit gives the route away to a remote peer.
+		const oversized = await browser.post('/api/dev/telegram/confirm', { ...identity, padding: 'x'.repeat(4096) }, {}, '192.168.1.23');
+
+		expect(oversized.response.status).toBe(404);
+		expect(requestRow(code)?.status).toBe('pending');
+		expect(requestRow(code)?.telegramId).toBeNull();
+
+		for (const peer of ['127.0.0.1', '::1', '::ffff:127.0.0.1']) {
+			expect((await browser.post('/api/dev/telegram/confirm', { ...identity, code: UNKNOWN_CODE }, {}, peer)).response.status, peer)
+				.toBe(410);
+		}
+
+		expect((await browser.post('/api/dev/telegram/confirm', identity, {}, '::ffff:127.0.0.1')).body).toEqual({ ok: true });
+		expect(requestRow(code)).toMatchObject({ status: 'confirmed', telegramId: '1001' });
+	});
+
+	it('without DEV_TELEGRAM_LOGIN the dev route does not exist, also for this machine', async () => {
 		const browser = new Browser(boot());
 		const code = await browser.start();
-		const { response } = await browser.post('/api/dev/telegram/confirm', { code, firstName: 'Тест', telegramId: '777' });
+		const identity = { code, firstName: 'Тест', telegramId: '777' };
+		const { response } = await browser.post('/api/dev/telegram/confirm', identity, {}, '127.0.0.1');
 
 		expect(response.status).toBe(404);
 		expect(requestRow(code)?.status).toBe('pending');
