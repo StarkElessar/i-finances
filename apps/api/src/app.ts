@@ -67,7 +67,12 @@ export function createApiApp(
 	if (dependencies.telegramDevLoginController !== undefined) {
 		const telegramDevLoginController = dependencies.telegramDevLoginController;
 
-		app.post('/api/dev/telegram/confirm', telegramDevLoginController.bodyLimit(), telegramDevLoginController.confirm());
+		app.post(
+			'/api/dev/telegram/confirm',
+			telegramDevLoginController.loopbackOnly(),
+			telegramDevLoginController.bodyLimit(),
+			telegramDevLoginController.confirm()
+		);
 	}
 
 	if (dependencies.accountController !== undefined) {
