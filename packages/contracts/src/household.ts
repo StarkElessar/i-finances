@@ -91,6 +91,9 @@ export const householdErrorCodes = [
 	HOUSEHOLD_REQUIRED_ERROR_CODE,
 	'already-in-household',
 	'owner-required',
+	'member-not-found',
+	'cannot-remove-self',
+	'last-owner',
 	'unexpected'
 ] as const;
 
@@ -103,6 +106,9 @@ export const householdErrorMessageByCode: Record<HouseholdErrorCode, string> = {
 	[HOUSEHOLD_REQUIRED_ERROR_CODE]: HOUSEHOLD_REQUIRED_MESSAGE,
 	'already-in-household': 'Вы уже состоите в окружении. Чтобы создать новое, сначала покиньте текущее.',
 	'owner-required': 'Это может сделать только владелец окружения.',
+	'member-not-found': 'Участник не найден.',
+	'cannot-remove-self': 'Себя удалить нельзя.',
+	'last-owner': 'Вы единственный владелец окружения, поэтому не можете его покинуть.',
 	unexpected: 'Не удалось выполнить действие. Попробуйте ещё раз.'
 };
 
@@ -116,7 +122,8 @@ export const householdFailureSchema = z.object({
 export type HouseholdFailure = z.infer<typeof householdFailureSchema>;
 
 /**
- * Result of `GET`, `POST` and `PUT /api/household`.
+ * Result of `GET`, `POST` and `PUT /api/household` and of `POST /api/household/members/:userId/remove` (the owner's
+ * household after the removal, Р7).
  */
 export const householdResultSchema = z.discriminatedUnion('ok', [
 	z.object({
@@ -127,3 +134,13 @@ export const householdResultSchema = z.discriminatedUnion('ok', [
 ]);
 
 export type HouseholdResult = z.infer<typeof householdResultSchema>;
+
+/**
+ * Result of `POST /api/household/leave` (flow 5.5): the session stays, the caller is in onboarding afterwards.
+ */
+export const householdLeaveResultSchema = z.discriminatedUnion('ok', [
+	z.object({ ok: z.literal(true) }),
+	householdFailureSchema
+]);
+
+export type HouseholdLeaveResult = z.infer<typeof householdLeaveResultSchema>;

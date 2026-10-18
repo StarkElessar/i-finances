@@ -1,7 +1,10 @@
 import { type AuthConfig, type AuthenticatedSession, getAuthConfig } from '@/modules/auth';
 import {
 	HouseholdAlreadyJoinedError,
+	HouseholdLastOwnerError,
+	HouseholdMemberNotFoundError,
 	HouseholdOwnerRequiredError,
+	HouseholdSelfRemovalError,
 	type HouseholdService
 } from '@/modules/household';
 
@@ -11,6 +14,7 @@ import {
 	type HouseholdDetails,
 	type HouseholdErrorCode,
 	householdErrorMessageByCode,
+	type HouseholdLeaveResult,
 	type HouseholdResult,
 	updateHouseholdInputSchema
 } from '@i-finances/contracts';
@@ -24,16 +28,20 @@ import type { ApiEnvironment } from './types';
 
 const STATUS_BY_ERROR_CODE: Record<HouseholdErrorCode, ContentfulStatusCode> = {
 	'already-in-household': 409,
+	'cannot-remove-self': 409,
 	'household-required': 403,
 	'invalid-input': 400,
 	'invalid-origin': 403,
+	'last-owner': 409,
+	'member-not-found': 404,
 	'owner-required': 403,
 	unauthenticated: 401,
 	unexpected: 500
 };
 
 /**
- * `GET`, `POST` and `PUT /api/household`: the caller's own household. A caller without a household gets
+ * `GET`, `POST` and `PUT /api/household`, `POST /api/household/members/:userId/remove` and `POST /api/household/leave`:
+ * the caller's own household and its members (Р6, Р7, flow 5.5). A caller without a household gets
  * `household-required` from the shared application error mapping (`household-required-response.ts`), except on
  * `POST`, which is how onboarding creates one.
  *
@@ -85,6 +93,28 @@ export class HouseholdHttpController {
 		};
 	}
 
+	/** Owner only, never themselves: ends all sessions of the removed member in the same transaction (Р7). */
+	public removeMember() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			return this.command(context, async (userId) => this.success(
+				context,
+				await this.householdService.removeMember(userId, context.req.param('userId') ?? ''),
+				200
+			));
+		};
+	}
+
+	/** The caller leaves; the session stays and the caller is in onboarding afterwards. */
+	public leave() {
+		return async (context: Context<ApiEnvironment>): Promise<Response> => {
+			return this.command(context, async (userId) => {
+				await this.householdService.leave(userId);
+
+				return context.json<HouseholdLeaveResult>({ ok: true }, 200);
+			});
+		};
+	}
+
 	private async mutation<TInput>(
 		context: Context<ApiEnvironment>,
 		schema: z.ZodType<TInput>,
@@ -107,8 +137,31 @@ export class HouseholdHttpController {
 			return this.failure(context, 'invalid-input', collectFieldErrors(parsedInput.error));
 		}
 
+		return this.mapErrors(context, async () => this.success(context, await command(session.user.id, parsedInput.data), successStatus));
+	}
+
+	/** A mutation without a body: same-origin check, browser session, then the command. */
+	private async command(
+		context: Context<ApiEnvironment>,
+		run: (userId: string) => Promise<Response>
+	): Promise<Response> {
+		if (!isSameOriginMutation(context.req.raw, this.config)) {
+			return this.failure(context, 'invalid-origin');
+		}
+
+		const session = await this.requireSession(context);
+
+		if (session === undefined) {
+			return this.failure(context, 'unauthenticated');
+		}
+
+		return this.mapErrors(context, () => run(session.user.id));
+	}
+
+	/** Domain errors to their codes; `HouseholdAccessRequiredError` goes on to the shared mapping. */
+	private async mapErrors(context: Context<ApiEnvironment>, run: () => Promise<Response>): Promise<Response> {
 		try {
-			return this.success(context, await command(session.user.id, parsedInput.data), successStatus);
+			return await run();
 		}
 		catch (error: unknown) {
 			if (error instanceof HouseholdAlreadyJoinedError) {
@@ -117,6 +170,18 @@ export class HouseholdHttpController {
 
 			if (error instanceof HouseholdOwnerRequiredError) {
 				return this.failure(context, 'owner-required');
+			}
+
+			if (error instanceof HouseholdMemberNotFoundError) {
+				return this.failure(context, 'member-not-found');
+			}
+
+			if (error instanceof HouseholdSelfRemovalError) {
+				return this.failure(context, 'cannot-remove-self');
+			}
+
+			if (error instanceof HouseholdLastOwnerError) {
+				return this.failure(context, 'last-owner');
 			}
 
 			throw error;

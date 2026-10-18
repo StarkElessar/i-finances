@@ -10,6 +10,8 @@ import {
 import type { CurrencyCode } from '@i-finances/contracts';
 import { asc, eq } from 'drizzle-orm';
 
+import { isUniqueConstraintError } from './is-unique-constraint-error';
+
 /**
  * The caller's household together with the caller's role in it.
  */
@@ -35,27 +37,6 @@ export type CreateHouseholdWithOwnerInput = {
 	name: string;
 	ownerUserId: string;
 };
-
-const UNIQUE_CONSTRAINT_CODES = new Set(['SQLITE_CONSTRAINT_PRIMARYKEY', 'SQLITE_CONSTRAINT_UNIQUE']);
-
-/**
- * True for a primary-key or unique violation, also when Drizzle wraps the driver error in `cause`.
- */
-function isUniqueConstraintError(error: unknown): boolean {
-	let current: unknown = error;
-
-	while (typeof current === 'object' && current !== null) {
-		const code = (current as { code?: unknown }).code;
-
-		if (typeof code === 'string' && UNIQUE_CONSTRAINT_CODES.has(code)) {
-			return true;
-		}
-
-		current = (current as { cause?: unknown }).cause;
-	}
-
-	return false;
-}
 
 export class HouseholdRepository {
 	public constructor(private readonly database: AppDatabase) {}

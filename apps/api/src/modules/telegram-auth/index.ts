@@ -20,7 +20,6 @@ export { type TelegramIdentity, toTelegramIdentity } from './telegram-identity';
 export {
 	assessDuplicate,
 	type DuplicateAssessment,
-	HOUSEHOLD_DATA_REFERENCES,
 	mergeDuplicate,
 	type MergeDuplicateInput,
 	type TelegramLinkTransaction,

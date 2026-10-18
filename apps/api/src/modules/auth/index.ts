@@ -52,6 +52,7 @@ export {
 export {
 	type SessionInsertRecord,
 	SessionRepository,
+	type SessionStatementExecutor,
 	type SessionSummaryRecord,
 	type SessionWithUserRecord
 } from './session-repository';

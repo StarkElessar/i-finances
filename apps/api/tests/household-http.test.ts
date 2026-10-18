@@ -4,9 +4,10 @@ import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import { householdMembers, households, telegramAccounts, users } from '@/infrastructure/database/schema';
-import type { AuthConfig } from '@/modules/auth';
+import { type AuthConfig, SessionRepository } from '@/modules/auth';
 import {
 	HouseholdAccessRequiredError,
+	HouseholdMembershipRepository,
 	HouseholdRepository,
 	HouseholdResolver,
 	HouseholdService
@@ -110,6 +111,7 @@ function createHouseholdApp() {
 		createId: () => 'new-household',
 		householdRepository,
 		householdResolver,
+		membershipRepository: new HouseholdMembershipRepository(database, new SessionRepository(database)),
 		now: () => FIXED_DATE
 	});
 

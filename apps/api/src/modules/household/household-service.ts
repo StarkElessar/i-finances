@@ -8,9 +8,13 @@ import type {
 } from '@i-finances/contracts';
 
 import { HouseholdAlreadyJoinedError } from './household-already-joined-error';
+import { HouseholdLastOwnerError } from './household-last-owner-error';
+import { HouseholdMemberNotFoundError } from './household-member-not-found-error';
+import type { HouseholdMembershipRepository } from './household-membership-repository';
 import { HouseholdOwnerRequiredError } from './household-owner-required-error';
 import type { HouseholdAccessRecord, HouseholdRepository } from './household-repository';
 import type { HouseholdResolver } from './household-resolver';
+import { HouseholdSelfRemovalError } from './household-self-removal-error';
 
 /**
  * Exchange rates come only from the National Bank of Belarus, whose client supports BYN as the base currency only,
@@ -22,12 +26,13 @@ export type HouseholdServiceDependencies = {
 	createId?: () => string;
 	householdRepository: HouseholdRepository;
 	householdResolver: HouseholdResolver;
+	membershipRepository: Pick<HouseholdMembershipRepository, 'leave' | 'removeMember'>;
 	now?: () => Date;
 };
 
 /**
- * The caller's own household: read it, create one in onboarding, rename it as the owner. The household always
- * comes from the caller's membership, never from the request.
+ * The caller's own household: read it, create one in onboarding, rename it and remove members as the owner, leave it
+ * (Р6, Р7, flow 5.5). The household always comes from the caller's membership, never from the request.
  */
 export class HouseholdService {
 	private readonly createId: () => string;
@@ -72,6 +77,49 @@ export class HouseholdService {
 		await this.dependencies.householdRepository.rename(household.id, input.name, this.now());
 
 		return this.toDetails({ ...household, name: input.name });
+	}
+
+	/**
+	 * Removes another member of the caller's household and ends all their sessions (Р7). Only an owner, never
+	 * themselves. A user id that is not a member of this household (unknown, or of another household) is
+	 * `HouseholdMemberNotFoundError` in both cases.
+	 */
+	public async removeMember(userId: string, memberUserId: string): Promise<HouseholdDetails> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+
+		if (household.role !== 'owner') {
+			throw new HouseholdOwnerRequiredError();
+		}
+
+		if (memberUserId === userId) {
+			throw new HouseholdSelfRemovalError();
+		}
+
+		const removal = this.dependencies.membershipRepository.removeMember({
+			householdId: household.id,
+			memberUserId,
+			now: this.now(),
+			ownerUserId: userId
+		});
+
+		if (removal.kind !== 'removed') {
+			throw new HouseholdMemberNotFoundError();
+		}
+
+		return this.toDetails(household);
+	}
+
+	/**
+	 * The caller leaves their household and is in onboarding afterwards; the session stays. The last owner cannot
+	 * leave (`HouseholdLastOwnerError`).
+	 */
+	public async leave(userId: string): Promise<void> {
+		const household = await this.dependencies.householdResolver.requireForUser(userId);
+		const leaving = this.dependencies.membershipRepository.leave({ householdId: household.id, now: this.now(), userId });
+
+		if (leaving.kind !== 'left') {
+			throw new HouseholdLastOwnerError();
+		}
 	}
 
 	private async toDetails(household: HouseholdAccessRecord): Promise<HouseholdDetails> {

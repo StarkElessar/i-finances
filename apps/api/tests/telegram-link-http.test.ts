@@ -17,8 +17,9 @@ import {
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
 import { hashSessionToken } from '@/modules/auth';
+import { HOUSEHOLD_DATA_REFERENCES } from '@/modules/household';
 import type { TelegramUpdate } from '@/modules/telegram';
-import { HOUSEHOLD_DATA_REFERENCES, USER_AUTHORSHIP_REFERENCES } from '@/modules/telegram-auth';
+import { USER_AUTHORSHIP_REFERENCES } from '@/modules/telegram-auth';
 
 import Database from 'better-sqlite3';
 import { eq, getTableName } from 'drizzle-orm';

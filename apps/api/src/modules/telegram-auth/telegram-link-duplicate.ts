@@ -16,6 +16,8 @@ import {
 	webauthnChallenges,
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
+// The «empty household» rule is the household module's: the invitation acceptance (Р5) applies the same list.
+import { HOUSEHOLD_DATA_REFERENCES } from '@/modules/household';
 
 import { and, eq, isNull, ne, notExists, type SQL, sql } from 'drizzle-orm';
 import type { SQLiteColumn, SQLiteTable } from 'drizzle-orm/sqlite-core';
@@ -46,21 +48,6 @@ export const USER_AUTHORSHIP_REFERENCES: readonly Reference[] = [
 	{ column: transfers.createdByUserId, table: transfers },
 	{ column: transfers.updatedByUserId, table: transfers },
 	{ column: transfers.deletedByUserId, table: transfers }
-];
-
-/**
- * Every table with finance data of a household, by its `household_id` (the «empty household» of Р5: no accounts,
- * operations, transfers, receipts, contacts or categories). Deleting a household cascades into all of them, so a
- * household is deleted only when each of them is empty for it. Checked against the schema by the same test: every
- * table that references `households`, except the membership and the invitations, must be here.
- */
-export const HOUSEHOLD_DATA_REFERENCES: readonly Reference[] = [
-	{ column: accounts.householdId, table: accounts },
-	{ column: categories.householdId, table: categories },
-	{ column: contacts.householdId, table: contacts },
-	{ column: operations.householdId, table: operations },
-	{ column: receiptImports.householdId, table: receiptImports },
-	{ column: transfers.householdId, table: transfers }
 ];
 
 /**
