@@ -83,6 +83,7 @@ import {
 	TelegramUpdatesRunner
 } from './modules/telegram';
 import {
+	HouseholdMemberJoinedNotifier,
 	TelegramAccountRepository,
 	TelegramLinkRepository,
 	TelegramLinkService,
@@ -255,6 +256,12 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 		config: getHouseholdInvitationConfig(process.env),
 		householdResolver,
 		invitations: new HouseholdInvitationRepository(database),
+		// The inviter learns about a join through the bot (A9); with no bot token the notifier sends nothing.
+		memberJoinedNotifier: new HouseholdMemberJoinedNotifier({
+			accounts: new TelegramAccountRepository(database),
+			botClient: telegramBotClient,
+			messages: telegramMessages
+		}),
 		origin: authConfig.origin,
 		previewRateLimiter: new FixedWindowRateLimiter({ maxRequests: 30, windowMilliseconds: FIVE_MINUTES_MILLISECONDS })
 	});

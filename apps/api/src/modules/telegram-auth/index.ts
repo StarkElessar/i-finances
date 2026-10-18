@@ -2,6 +2,10 @@ export { buildTelegramDisplayName } from './build-telegram-display-name';
 export { describeLinkAccount, describeLinkLogin } from './describe-link-account';
 export { describeSignInDevice, describeSignInMoment } from './describe-sign-in-request';
 export {
+	HouseholdMemberJoinedNotifier,
+	type HouseholdMemberJoinedNotifierDependencies
+} from './household-member-joined-notifier';
+export {
 	type TelegramAccount,
 	TelegramAccountRepository,
 	type TelegramSignInInput,

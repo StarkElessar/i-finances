@@ -13,6 +13,10 @@ import {
 	HouseholdResolver,
 	HouseholdService
 } from '@/modules/household';
+import { loadTelegramMessages, type TelegramBotClient } from '@/modules/telegram';
+import { HouseholdMemberJoinedNotifier, TelegramAccountRepository } from '@/modules/telegram-auth';
+
+import { FakeTelegramBotClient } from './fake-telegram-bot-client';
 
 export const TEST_ORIGIN = 'http://localhost:5173';
 
@@ -44,10 +48,16 @@ export type TestRequest = {
 /**
  * The household and invitation routes on the real repositories, services, controllers and cookie sessions over the
  * given database. The clock of the household services is `clock.now` (sessions use the real time, so moving the clock
- * a week forward does not sign anyone out).
+ * a week forward does not sign anyone out). The bot is a `FakeTelegramBotClient` unless `botClient` is given: nothing
+ * reaches Telegram from a test.
  */
-export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = DEFAULT_INVITATION_TTL) {
+export function createHouseholdTestApp(
+	database: AppDatabase,
+	ttlMilliseconds = DEFAULT_INVITATION_TTL,
+	options: { botClient?: TelegramBotClient } = {}
+) {
 	const clock = { now: new Date('2026-10-18T10:00:00.000Z') };
+	const botClient = options.botClient ?? new FakeTelegramBotClient();
 	const now = () => clock.now;
 	const sessionRepository = new SessionRepository(database);
 	const sessionService = new SessionService(sessionRepository, { config: TEST_AUTH_CONFIG });
@@ -69,6 +79,12 @@ export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = 
 		config: { ttlMilliseconds },
 		householdResolver,
 		invitations: new HouseholdInvitationRepository(database),
+		memberJoinedNotifier: new HouseholdMemberJoinedNotifier({
+			accounts: new TelegramAccountRepository(database),
+			botClient,
+			messages: loadTelegramMessages(),
+			now
+		}),
 		now,
 		origin: TEST_ORIGIN,
 		previewRateLimiter
@@ -97,7 +113,7 @@ export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = 
 		});
 	}
 
-	return { acceptRateLimiter, app, call, clock, previewRateLimiter, signIn };
+	return { acceptRateLimiter, app, botClient, call, clock, previewRateLimiter, signIn };
 }
 
 export async function insertUser(database: AppDatabase, id: string, displayName: string): Promise<void> {
