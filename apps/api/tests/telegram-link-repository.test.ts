@@ -94,6 +94,27 @@ describe('TelegramLinkRepository.complete', () => {
 		expect(await database.select().from(telegramAccounts)).toEqual([]);
 	});
 
+	it('a merge statement that changes nothing rolls back the request too and answers 409, never «linked»', async () => {
+		await database.insert(users).values({
+			createdAt: CREATED, displayName: 'Анна', id: 'duplicate', isActive: true, passwordHash: null, updatedAt: CREATED,
+			username: 'tg-1001'
+		});
+		await database.insert(telegramAccounts).values({
+			chatId: '1001', firstName: 'Анна', lastName: null, lastSignInAt: CREATED, linkedAt: CREATED, telegramId: '1001',
+			updatedAt: CREATED, userId: 'duplicate', username: null
+		});
+		// Stands in for a rule the assessment does not know: the duplicate looks empty, but its row refuses to go.
+		connection.exec('CREATE TEMP TRIGGER keep_duplicate BEFORE DELETE ON users BEGIN SELECT RAISE(IGNORE); END');
+
+		expect(await links.complete({ linkUserId: 'sergei', now: LATER, requestId: 'link-request', secretHash: SECRET_HASH }))
+			.toEqual({ kind: 'telegram-linked-elsewhere' });
+		expect(statusOf('link-request')).toBe('confirmed');
+		expect(await database.select({ userId: telegramAccounts.userId }).from(telegramAccounts)).toEqual([{ userId: 'duplicate' }]);
+		expect(await database.select({ id: users.id }).from(users).orderBy(users.id)).toEqual([
+			{ id: 'duplicate' }, { id: 'olga' }, { id: 'sergei' }
+		]);
+	});
+
 	it('consumes nothing that is not confirmed', async () => {
 		database.update(telegramLoginRequests).set({ status: 'pending' }).where(eq(telegramLoginRequests.id, 'link-request')).run();
 
