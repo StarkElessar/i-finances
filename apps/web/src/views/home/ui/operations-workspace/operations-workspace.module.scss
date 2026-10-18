@@ -56,10 +56,12 @@
     }
 }
 
-// Sort field: an icon-sized control (caption hidden, `aria-label` stays on the
-// select) until `sort-label`, then a select with its caption. The select is the
-// real control in both modes, the icon only draws on top of it.
-.sort-field {
+// Sort has two markups, one of them hidden by the container query (`display: none`
+// also removes it from the accessibility tree). Below `sort-label` it is one
+// "Order" select: an item is a field and a direction at once, the arrow shows the
+// direction. From `sort-label` it is the direction button and the field select
+// with its caption (development/decisions/kit-open-questions.md, section 3).
+.sort-order {
     position: relative;
     display: inline-flex;
     flex: none;
@@ -67,21 +69,49 @@
     // On the wrapper, not on the select: below `sm` the select keeps the 16 px
     // floor from global.scss, otherwise iOS Safari zooms the page when it opens.
     font-size: var(--font-size-body-md);
+
+    @include mx.container-mn(sort-label) {
+        display: none;
+    }
+
+    // An order other than the default is visible on the closed control (the same
+    // look as a selected Chip), since there is no caption to say which field it is.
+    &:not(.sort-order-active) .sort-order-select:hover {
+        border-color: var(--color-primary);
+        background-color: var(--color-primary-soft);
+    }
 }
 
-.sort-select {
+.sort-order-active {
+    .sort-order-select {
+        border-color: var(--color-primary);
+        background-color: var(--color-primary-soft);
+    }
+
+    .sort-order-icon {
+        color: var(--color-primary);
+    }
+}
+
+// The select is the real control, the arrow is drawn on top of it. Its text is
+// transparent: only the options of the native list show it.
+.sort-order-select {
     cursor: pointer;
 
     inline-size: var(--control-size-sm);
     block-size: var(--control-size-sm);
     padding: 0;
-    border: 1px solid var(--color-border);
+    border: 1px solid var(--color-border-strong);
     border-radius: var(--radius-md);
 
     color: transparent;
 
     appearance: none;
     background-color: var(--color-surface);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
 
     option {
         color: var(--color-text-primary);
@@ -92,26 +122,65 @@
         outline-offset: 1px;
     }
 
-    @include mx.container-mn(sort-label) {
-        inline-size: fn.rem(140);
-        padding: var(--space-2) var(--space-3);
-        color: var(--color-text-primary);
-        appearance: auto;
+    // iOS zooms the page when a field under 16 px takes focus, on any touch screen width.
+    @include mx.pointer-coarse {
+        font-size: fn.rem(16);
     }
 }
 
-.sort-icon {
+.sort-order-icon {
     pointer-events: none;
 
     position: absolute;
     inset: 0;
 
-    margin: auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 
     color: var(--color-text-secondary);
+}
+
+.toolbar .sort-direction {
+    display: none;
 
     @include mx.container-mn(sort-label) {
-        display: none;
+        display: inline-flex;
+    }
+}
+
+.sort-field {
+    display: none;
+    flex: none;
+
+    // On the wrapper, not on the select, same as `.sort-order`.
+    font-size: var(--font-size-body-md);
+
+    @include mx.container-mn(sort-label) {
+        display: inline-flex;
+    }
+}
+
+.sort-select {
+    cursor: pointer;
+
+    inline-size: fn.rem(140);
+    block-size: var(--control-size-sm);
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    color: var(--color-text-primary);
+
+    background-color: var(--color-surface);
+
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    @include mx.pointer-coarse {
+        font-size: fn.rem(16);
     }
 }
 
