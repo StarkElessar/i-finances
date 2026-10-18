@@ -1,5 +1,5 @@
 import { createApiApp } from '@/app';
-import { createApiDependencies } from '@/composition-root';
+import { createApiDependencies, toApiAppDependencies } from '@/composition-root';
 
 import { serve } from '@hono/node-server';
 
@@ -15,12 +15,29 @@ dependencies.startReceiptProcessing().catch((error: unknown) => {
 	console.error('Failed to start receipt processing.', error);
 });
 
-serve(
+const app = createApiApp(toApiAppDependencies(dependencies));
+
+// Telegram: webhook registration or polling starts only once the server is up, and polling ends with the process.
+const telegramUpdatesRunner = dependencies.telegram.updatesRunner;
+
+const server = serve(
 	{
-		fetch: createApiApp(dependencies).fetch,
+		fetch: app.fetch,
 		port
 	},
 	(info) => {
 		console.warn(`API listening on http://localhost:${info.port}`);
+		telegramUpdatesRunner?.start();
 	}
 );
+
+for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+	process.once(signal, () => {
+		const finish = (): void => {
+			process.exit(0);
+		};
+
+		server.close();
+		(telegramUpdatesRunner?.stop() ?? Promise.resolve()).then(finish, finish);
+	});
+}

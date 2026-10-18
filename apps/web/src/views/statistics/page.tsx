@@ -2,6 +2,8 @@ import css from './statistics.module.scss';
 
 import { createRouteSearchParams } from '@/shared/routing/create-route-search-params';
 import { Container } from '@/shared/ui';
+import type { TabOption } from '@/shared/ui/tabs';
+import { Tabs } from '@/shared/ui/tabs';
 
 import { getCategories } from '@/entities/category';
 import { getCategoryStats, getMonthlyTrend, startOfPeriod } from '@/entities/operation';
@@ -22,9 +24,9 @@ import { MonthlyTrendChart } from './ui/monthly-trend-chart/monthly-trend-chart'
 
 type StatisticsTab = 'compare' | 'overview';
 
-const TABS: readonly { id: StatisticsTab; label: string }[] = [
-	{ id: 'overview', label: 'Обзор' },
-	{ id: 'compare', label: 'Сравнение' }
+const TABS: readonly TabOption<StatisticsTab>[] = [
+	{ value: 'overview', label: 'Обзор' },
+	{ value: 'compare', label: 'Сравнение' }
 ];
 
 function OverviewTab() {
@@ -92,19 +94,12 @@ function StatisticsContent() {
 						<ChartColumnBig aria-hidden='true' size={28}/>
 						<h1>Статистика</h1>
 					</div>
-					<div class={css.tabs} role='tablist'>
-						{TABS.map((item) => (
-							<button
-								aria-selected={tab() === item.id}
-								class={css.tab}
-								onClick={() => search.setParams({ tab: item.id })}
-								role='tab'
-								type='button'
-							>
-								{item.label}
-							</button>
-						))}
-					</div>
+					<Tabs
+						aria-label='Разделы статистики'
+						options={TABS}
+						value={tab()}
+						onChange={(value) => search.setParams({ tab: value })}
+					/>
 				</div>
 
 				<Switch>

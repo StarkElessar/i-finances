@@ -11,6 +11,7 @@ import { PasskeyHttpController } from './http/passkey-controller';
 import { ReceiptImportHttpController } from './http/receipt-import-controller';
 import { SecurityHttpController } from './http/security-controller';
 import { CookieSessionResolver } from './http/session-resolver';
+import { TelegramWebhookHttpController } from './http/telegram-webhook-controller';
 import { TransferHttpController } from './http/transfer-controller';
 import { type AppDatabase, db } from './infrastructure/database/client';
 import {
@@ -61,17 +62,27 @@ import {
 	startReceiptProcessingLoop
 } from './modules/receipt-import';
 import {
+	FetchTelegramBotClient,
+	getTelegramConfig,
+	IgnoringTelegramUpdateHandler,
+	loadTelegramMessages,
+	ProcessedUpdateIds,
+	type TelegramBotClient,
+	type TelegramConfig,
+	type TelegramMessages,
+	TelegramUpdateDispatcher,
+	TelegramUpdatesRunner
+} from './modules/telegram';
+import {
 	createTransferRepository,
 	createTransferService
 } from './modules/transfer';
+import type { ApiAppDependencies } from './app';
 
 /**
- * Builds the production object graph explicitly at the application boundary.
- *
- * `database` defaults to the configured shared connection; tests pass a fresh in-memory database so the real graph
- * runs per test (`household-isolation-http.test.ts`).
+ * The production object graph built by `createApiDependencies`.
  */
-export function createApiDependencies(database: AppDatabase = db): {
+export type ApiDependencies = {
 	authController: AuthHttpController;
 	accountController: AccountHttpController;
 	categoryController: CategoryHttpController;
@@ -84,9 +95,46 @@ export function createApiDependencies(database: AppDatabase = db): {
 	receiptImportService: ReceiptImportService;
 	securityController: SecurityHttpController;
 	startReceiptProcessing: () => Promise<ReceiptProcessingLoop | undefined>;
+	telegram: {
+		/** Undefined while no bot token is configured. */
+		botClient: TelegramBotClient | undefined;
+		config: TelegramConfig;
+		messages: TelegramMessages;
+		/** Present in `webhook` and `polling` modes; `start()` it after the server listens. */
+		updatesRunner: TelegramUpdatesRunner | undefined;
+		/** Present in `webhook` mode only; in the other modes the route does not exist. */
+		webhookController: TelegramWebhookHttpController | undefined;
+	};
 	transferController: TransferHttpController;
-} {
+};
+
+/**
+ * The controllers `createApiApp` registers, taken from the graph. `main.ts` and the route-coverage test of
+ * `household-isolation-http.test.ts` both use it, so a route the server registers cannot be missing from the test.
+ */
+export function toApiAppDependencies(dependencies: ApiDependencies): ApiAppDependencies {
+	return {
+		...dependencies,
+		telegramWebhookController: dependencies.telegram.webhookController
+	};
+}
+
+/**
+ * Builds the production object graph explicitly at the application boundary.
+ *
+ * `database` defaults to the configured shared connection; tests pass a fresh in-memory database so the real graph
+ * runs per test (`household-isolation-http.test.ts`).
+ */
+export function createApiDependencies(database: AppDatabase = db): ApiDependencies {
 	const authConfig = getAuthConfig();
+	// Throws, and so stops the start, when the Telegram environment is half configured or the bot texts are broken.
+	const telegramConfig = getTelegramConfig(process.env, authConfig.origin);
+	const telegramMessages = loadTelegramMessages();
+	const telegramBotClient = telegramConfig.botToken === undefined
+		? undefined
+		: new FetchTelegramBotClient({ token: telegramConfig.botToken });
+	// A3 replaces the stand-in with the sign-in handler.
+	const telegramDispatcher = new TelegramUpdateDispatcher(new IgnoringTelegramUpdateHandler(), new ProcessedUpdateIds());
 	const sessionRepository = new SessionRepository(database);
 	const sessionService = new SessionService(sessionRepository, {
 		config: authConfig
@@ -204,6 +252,20 @@ export function createApiDependencies(database: AppDatabase = db): {
 		});
 	};
 
+	const telegramUpdatesRunner = telegramBotClient !== undefined && telegramConfig.updatesMode !== 'off'
+		? new TelegramUpdatesRunner({
+			botClient: telegramBotClient,
+			dispatcher: telegramDispatcher,
+			mode: telegramConfig.updatesMode,
+			webhook: telegramConfig.webhookSecret !== undefined && telegramConfig.webhookUrl !== undefined
+				? { secret: telegramConfig.webhookSecret, url: telegramConfig.webhookUrl }
+				: undefined
+		})
+		: undefined;
+	const telegramWebhookController = telegramConfig.updatesMode === 'webhook' && telegramConfig.webhookSecret !== undefined
+		? new TelegramWebhookHttpController({ dispatcher: telegramDispatcher, secret: telegramConfig.webhookSecret })
+		: undefined;
+
 	return {
 		authController: new AuthHttpController(
 			passwordSignInService,
@@ -255,6 +317,13 @@ export function createApiDependencies(database: AppDatabase = db): {
 			authConfig
 		),
 		startReceiptProcessing,
+		telegram: {
+			botClient: telegramBotClient,
+			config: telegramConfig,
+			messages: telegramMessages,
+			updatesRunner: telegramUpdatesRunner,
+			webhookController: telegramWebhookController
+		},
 		transferController: new TransferHttpController(
 			transferService,
 			sessionResolver

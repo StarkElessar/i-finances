@@ -1,0 +1,86 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-chip`: 28 px, pill, 13 px medium; selected is filled with the soft primary colour.
+.chip {
+    display: inline-flex;
+    gap: var(--space-3);
+    align-items: center;
+
+    box-sizing: border-box;
+    block-size: fn.rem(28);
+    padding: 0 var(--space-4) 0 var(--space-5);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-pill);
+
+    font-family: inherit;
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-medium);
+    color: var(--color-text-primary);
+    white-space: nowrap;
+
+    background-color: var(--color-surface);
+
+    transition:
+        color var(--duration-fast) var(--ease-standard),
+        border-color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
+
+    // A chip is a toggle: a click changes its state, so it is never "already selected" in the
+    // sense of AGENTS.md. The focus ring shows in both states (it is a tab stop either way).
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: 1px;
+    }
+
+    // Hover and pointer: an unselected chip (click selects it) and a selected removable chip
+    // (click removes it). A plain selected chip stays quiet, like a selected segment.
+    &:not(:disabled):is(:not(.chip-selected), .chip-removable) {
+        cursor: pointer;
+
+        &:hover {
+            border-color: var(--color-primary);
+            background-color: var(--color-surface-subtle);
+        }
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+        opacity: 0.48;
+    }
+}
+
+.chip-selected {
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+}
+
+.dot {
+    flex: none;
+
+    inline-size: fn.rem(8);
+    block-size: fn.rem(8);
+    border-radius: var(--radius-round);
+
+    // Set from the component (`color` prop), so only the fallback is known here.
+    background-color: var(--chip-dot, currentcolor);
+}
+
+.icon {
+    display: inline-flex;
+    flex: none;
+    inline-size: fn.rem(14);
+    block-size: fn.rem(14);
+
+    svg {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chip {
+        transition: none;
+    }
+}

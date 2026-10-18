@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import type { createApiApp as CreateApiApp } from '@/app';
-import type { createApiDependencies as CreateApiDependencies } from '@/composition-root';
+import type {
+	createApiDependencies as CreateApiDependencies,
+	toApiAppDependencies as ToApiAppDependencies
+} from '@/composition-root';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import {
@@ -42,6 +45,7 @@ import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } 
 
 const ORIGIN = 'http://localhost:5173';
 const MCP_API_KEY = 'm'.repeat(48);
+const TELEGRAM_WEBHOOK_SECRET = 'isolation-webhook-secret-0123456789';
 const A_HOUSEHOLD = 'default-household';
 const B_HOUSEHOLD = 'beta-household';
 const A_OWNER = 'alpha-owner';
@@ -86,6 +90,8 @@ type Fixture = {
 type ProbeRequest = {
 	body?: unknown;
 	form?: () => Promise<FormData>;
+	/** Extra headers, e.g. the Telegram webhook secret. */
+	headers?: Record<string, string>;
 	path: string;
 };
 
@@ -688,7 +694,31 @@ const PROBES: Probe[] = [
 		route: 'POST /api/auth/passkey/registration/verification',
 		scope: 'user'
 	},
-	{ beta: [200], loner: [200], name: 'health', request: () => ({ path: '/api/health' }), route: 'GET /api/health', scope: 'public' }
+	{ beta: [200], loner: [200], name: 'health', request: () => ({ path: '/api/health' }), route: 'GET /api/health', scope: 'public' },
+
+	// Telegram webhook: called by Telegram, not by a user. It ignores the session cookie entirely, its credential is
+	// the secret header, and it reads or writes no household data (A2: updates go to the dispatcher only). A session
+	// of B or of the user without a household must neither open it nor let it touch household A.
+	{
+		beta: [401],
+		loner: [401],
+		name: 'a user session is not a webhook credential',
+		request: () => ({ body: { update_id: 1 }, path: '/api/telegram/webhook' }),
+		route: 'POST /api/telegram/webhook',
+		scope: 'public'
+	},
+	{
+		beta: [200],
+		loner: [200],
+		name: 'an authentic update does not touch household data',
+		request: () => ({
+			body: { update_id: 2 },
+			headers: { 'x-telegram-bot-api-secret-token': TELEGRAM_WEBHOOK_SECRET },
+			path: '/api/telegram/webhook'
+		}),
+		route: 'POST /api/telegram/webhook',
+		scope: 'public'
+	}
 ];
 
 /**
@@ -704,6 +734,7 @@ const KNOWN_EXCEPTIONS = [
 
 let createApp: typeof CreateApiApp;
 let createDependencies: typeof CreateApiDependencies;
+let toAppDependencies: typeof ToApiAppDependencies;
 let sessionCookieName: string;
 let imageRoot: string;
 let connection: Database.Database;
@@ -718,6 +749,12 @@ beforeAll(async () => {
 	vi.stubEnv('MCP_API_KEY', MCP_API_KEY);
 	vi.stubEnv('MCP_USER_ID', A_OWNER);
 	vi.stubEnv('RECEIPT_IMAGE_ROOT', imageRoot);
+	// Webhook mode registers POST /api/telegram/webhook, the most routes the server can have. The bot client is built
+	// but never called: the runner is not started and the stand-in update handler ignores updates; fetch is stubbed.
+	vi.stubEnv('TELEGRAM_UPDATES', 'webhook');
+	vi.stubEnv('TELEGRAM_BOT_TOKEN', '123456:isolation-test-token');
+	vi.stubEnv('TELEGRAM_BOT_USERNAME', 'i_finances_test_bot');
+	vi.stubEnv('TELEGRAM_WEBHOOK_SECRET', TELEGRAM_WEBHOOK_SECRET);
 	// The rate refresh calls the National Bank; tests must never reach the network.
 	vi.stubGlobal('fetch', async () => {
 		throw new Error('Network access is disabled in tests.');
@@ -727,7 +764,7 @@ beforeAll(async () => {
 
 	// Imported only after DATABASE_URL points to memory: the composition root opens the configured database.
 	({ createApiApp: createApp } = await import('@/app'));
-	({ createApiDependencies: createDependencies } = await import('@/composition-root'));
+	({ createApiDependencies: createDependencies, toApiAppDependencies: toAppDependencies } = await import('@/composition-root'));
 	sessionCookieName = (await import('@/modules/auth')).getAuthConfig().sessionCookieName;
 	receiptPng = await sharp({
 		create: { background: { b: 255, g: 255, r: 255 }, channels: 3, height: 8, width: 8 }
@@ -747,7 +784,8 @@ beforeEach(async () => {
 	connection.pragma('foreign_keys = ON');
 	database = drizzle(connection, { schema });
 	migrate(database, { migrationsFolder: './drizzle' });
-	app = createApp(createDependencies(database));
+	// Exactly how main.ts builds the server app, so a route registered only there is part of the coverage check.
+	app = createApp(toAppDependencies(createDependencies(database)));
 	fixture = await seed();
 });
 
@@ -771,12 +809,16 @@ async function call(userId: string | undefined, route: string, request: ProbeReq
 	const method = route.slice(0, route.indexOf(' '));
 
 	if (request.form !== undefined) {
-		return app.request(request.path, { body: await request.form(), headers: headersFor(userId, false), method });
+		return app.request(request.path, {
+			body: await request.form(),
+			headers: { ...headersFor(userId, false), ...request.headers },
+			method
+		});
 	}
 
 	return app.request(request.path, {
 		body: request.body === undefined ? undefined : JSON.stringify(request.body),
-		headers: headersFor(userId, request.body !== undefined),
+		headers: { ...headersFor(userId, request.body !== undefined), ...request.headers },
 		method
 	});
 }
@@ -1027,6 +1069,8 @@ describe('household isolation over every route', () => {
 			.map((route) => `${route.method} ${route.path}`))].sort();
 		const probed = [...new Set([...PROBES.map((probe) => probe.route), ...KNOWN_EXCEPTIONS])].sort();
 
+		// Guards the setup itself: the app is the full server app (every optional controller wired, as in main.ts).
+		expect(registered).toContain('POST /api/telegram/webhook');
 		expect(probed).toEqual(registered);
 	});
 

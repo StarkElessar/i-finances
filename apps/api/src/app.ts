@@ -11,6 +11,7 @@ import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
 import type { SecurityHttpController } from '@/http/security-controller';
 import { securityHeaders } from '@/http/security-headers';
+import type { TelegramWebhookHttpController } from '@/http/telegram-webhook-controller';
 import type { TransferHttpController } from '@/http/transfer-controller';
 import type { ApiEnvironment } from '@/http/types';
 
@@ -27,6 +28,7 @@ export type ApiAppDependencies = {
 	passkeyController?: PasskeyHttpController;
 	receiptImportController?: ReceiptImportHttpController;
 	securityController?: SecurityHttpController;
+	telegramWebhookController?: TelegramWebhookHttpController;
 	transferController?: TransferHttpController;
 };
 
@@ -152,6 +154,18 @@ export function createApiApp(
 		app.post('/api/transfers', transferController.create());
 		app.put('/api/transfers/:id', transferController.update());
 		app.post('/api/transfers/:id/delete', transferController.delete());
+	}
+
+	if (dependencies.telegramWebhookController !== undefined) {
+		const telegramWebhookController = dependencies.telegramWebhookController;
+
+		// Called by Telegram, not by a browser: no session and no Origin check, the secret header is the credential.
+		app.post(
+			'/api/telegram/webhook',
+			telegramWebhookController.verifySecret(),
+			telegramWebhookController.bodyLimit(),
+			telegramWebhookController.receive()
+		);
 	}
 
 	app.notFound((context) => context.json({

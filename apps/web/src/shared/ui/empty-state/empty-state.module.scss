@@ -1,0 +1,47 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-empty`: a centred column; the tile is 56 px with the xl radius, the text is capped
+// at 34ch so that a long description does not stretch over a wide card.
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: center;
+
+    padding: var(--space-9) var(--space-6);
+
+    color: var(--color-text-secondary);
+    text-align: center;
+}
+
+.art {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+
+    inline-size: fn.rem(56);
+    block-size: fn.rem(56);
+    border-radius: var(--radius-xl);
+
+    color: var(--color-primary);
+
+    background-color: var(--color-primary-soft);
+
+    svg {
+        inline-size: fn.rem(28);
+        block-size: fn.rem(28);
+    }
+}
+
+.title {
+    margin: 0;
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-bold);
+    color: var(--color-text-primary);
+}
+
+.description {
+    max-inline-size: 34ch;
+    margin: 0;
+    font-size: var(--font-size-caption);
+}
