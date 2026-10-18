@@ -102,3 +102,17 @@ $max-offset: 0.02px;
         @content;
     }
 }
+
+// Text hidden from the eye but kept for screen readers (mockup `.i-sr`).
+@mixin visually-hidden {
+    position: absolute;
+
+    overflow: hidden;
+
+    inline-size: 1px;
+    block-size: 1px;
+
+    white-space: nowrap;
+
+    clip-path: inset(50%);
+}

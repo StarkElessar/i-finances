@@ -22,9 +22,9 @@ type NavigationLink = {
 	label: string;
 };
 
-// Top navigation from `md`. Layout-Spec asks for it from `sm`, but logo, five links and the avatar need
-// about 735 px, so on 640-959 the bottom bar stays (see development/decisions/ui-breakpoints.md).
-const DESKTOP_NAVIGATION_QUERY = minWidthQuery('md');
+// Top navigation from `sm` (owner's variant A, development/decisions/kit-open-questions.md, section 4): on 640-959
+// the logo shrinks to its mark and the links get 12 px side padding, so everything fits in 585 px.
+const DESKTOP_NAVIGATION_QUERY = minWidthQuery('sm');
 
 const NAV_LINKS: NavigationLink[] = [
 	{ href: '/', icon: House, label: 'Главная' },
@@ -110,7 +110,7 @@ export function AppHeader(props: AppHeaderProps) {
 		<header class={css.root}>
 			<Container class={css.inner}>
 				<div class={css.topBar}>
-					<span class={css.logo}><AppLogo/> iFinances</span>
+					<span class={css.logo}><AppLogo/><span class={css.logoWord}>iFinances</span></span>
 					<Show when={navigationMode() === 'desktop'}>
 						<DesktopNavigation/>
 					</Show>
