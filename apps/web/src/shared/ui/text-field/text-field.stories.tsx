@@ -53,9 +53,9 @@ export const Sizes: Story = {
 export const WithAdornment: Story = {
 	args: {
 		label: 'Поиск',
-		placeholder: 'Найти операцию',
-		startContent: <Search size={16}/>
-	}
+		placeholder: 'Найти операцию'
+	},
+	render: (args) => <TextField {...args} startContent={<Search size={16}/>}/>
 };
 
 export const Hover: Story = {

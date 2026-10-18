@@ -49,18 +49,22 @@ export const Sizes: Story = {
 
 export const WithIcons: Story = {
 	args: {
-		children: 'Добавить операцию',
-		startIcon: <Plus/>
-	}
+		children: 'Добавить операцию'
+	},
+	render: (args) => <Button {...args} startIcon={<Plus/>}/>
 };
 
 export const IconOnly: Story = {
 	args: {
 		'aria-label': 'Удалить',
-		children: <Trash/>,
 		iconOnly: true,
 		variant: 'secondary'
-	}
+	},
+	render: (args) => (
+		<Button {...args}>
+			<Trash/>
+		</Button>
+	)
 };
 
 export const FullWidth: Story = {
