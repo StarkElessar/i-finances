@@ -5,7 +5,25 @@ export type RovingTargetOptions = {
 	current: number;
 	/** `true` at the position of every item that cannot be focused. */
 	disabled: readonly boolean[];
+	/**
+	 * Which arrow keys move the focus: `both` for a radiogroup (ArrowUp and ArrowDown work too),
+	 * `horizontal` for a horizontal tablist, where vertical arrows must keep scrolling the page.
+	 * Default `both`.
+	 */
+	axis?: 'horizontal' | 'both';
 };
+
+function resolveStep(key: string, axis: 'horizontal' | 'both'): -1 | 0 | 1 {
+	if (key === 'ArrowRight' || (axis === 'both' && key === 'ArrowDown')) {
+		return 1;
+	}
+
+	if (key === 'ArrowLeft' || (axis === 'both' && key === 'ArrowUp')) {
+		return -1;
+	}
+
+	return 0;
+}
 
 /**
  * Index of the item that arrow keys, Home and End move to in a roving-tabindex group
@@ -15,7 +33,7 @@ export type RovingTargetOptions = {
  * backward arrow to the last one.
  * Returns `undefined` for any other key or when no item can take focus.
  */
-export function resolveRovingTarget({ key, current, disabled }: RovingTargetOptions): number | undefined {
+export function resolveRovingTarget({ key, current, disabled, axis = 'both' }: RovingTargetOptions): number | undefined {
 	const count = disabled.length;
 
 	if (count === 0 || disabled.every(Boolean)) {
@@ -30,7 +48,7 @@ export function resolveRovingTarget({ key, current, disabled }: RovingTargetOpti
 		return disabled.findLastIndex((isDisabled) => !isDisabled);
 	}
 
-	const step = key === 'ArrowRight' || key === 'ArrowDown' ? 1 : key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 0;
+	const step = resolveStep(key, axis);
 
 	if (step === 0) {
 		return undefined;

@@ -46,6 +46,8 @@ export function Tabs<TValue extends string = string>(props: TabsProps<TValue>) {
 		const current = buttons.indexOf(event.target as HTMLButtonElement);
 		const target = resolveRovingTarget({
 			key: event.key,
+			// A horizontal tablist (APG) takes ArrowLeft and ArrowRight only; ArrowUp and ArrowDown keep scrolling the page.
+			axis: 'horizontal',
 			current,
 			disabled: props.options.map((option) => Boolean(option.disabled))
 		});

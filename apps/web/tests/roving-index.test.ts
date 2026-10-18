@@ -54,6 +54,15 @@ describe('resolveRovingTarget', () => {
 		expect(resolveRovingTarget({ key: 'ArrowRight', current: 0, disabled })).toBe(2);
 	});
 
+	it('ignores ArrowUp and ArrowDown on the horizontal axis, so the page keeps scrolling', () => {
+		expect(resolveRovingTarget({ key: 'ArrowDown', current: 1, disabled: none, axis: 'horizontal' })).toBeUndefined();
+		expect(resolveRovingTarget({ key: 'ArrowUp', current: 1, disabled: none, axis: 'horizontal' })).toBeUndefined();
+		expect(resolveRovingTarget({ key: 'ArrowRight', current: 1, disabled: none, axis: 'horizontal' })).toBe(2);
+		expect(resolveRovingTarget({ key: 'ArrowLeft', current: 1, disabled: none, axis: 'horizontal' })).toBe(0);
+		expect(resolveRovingTarget({ key: 'Home', current: 2, disabled: none, axis: 'horizontal' })).toBe(0);
+		expect(resolveRovingTarget({ key: 'End', current: 1, disabled: none, axis: 'horizontal' })).toBe(3);
+	});
+
 	it('ignores other keys', () => {
 		expect(resolveRovingTarget({ key: 'Enter', current: 1, disabled: none })).toBeUndefined();
 		expect(resolveRovingTarget({ key: 'a', current: 1, disabled: none })).toBeUndefined();
