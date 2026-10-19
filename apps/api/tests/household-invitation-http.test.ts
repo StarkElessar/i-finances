@@ -147,6 +147,13 @@ function snapshot(): string {
 	return JSON.stringify(tables.map((table) => connection.prepare(`SELECT * FROM ${table} ORDER BY 1, 2`).all()));
 }
 
+/** The body of an answer without its `reason`: what must stay identical for all four causes. */
+function withoutReason(text: string): string {
+	const { reason: _reason, ...rest } = JSON.parse(text) as Record<string, unknown>;
+
+	return JSON.stringify(rest);
+}
+
 async function deadInvitations(): Promise<Record<'expired' | 'revoked' | 'used', string>> {
 	const expired = await createInvitation();
 	const revoked = await createInvitation();
@@ -347,7 +354,7 @@ describe('listing and revoking', () => {
 		const response = await accept(NEWCOMER, token);
 
 		expect(response.status).toBe(404);
-		expect(await response.json()).toMatchObject({ errorCode: 'invitation-unavailable' });
+		expect(await response.json()).toMatchObject({ errorCode: 'invitation-unavailable', reason: 'revoked' });
 		expect(membershipOf(NEWCOMER)).toBeUndefined();
 	});
 });
@@ -371,18 +378,86 @@ describe('preview', () => {
 			.toEqual(['expiresAt', 'householdName', 'inviterName']);
 	});
 
-	it('answers an unknown, an expired, a used and a revoked token exactly alike', async () => {
+	it('tells an unknown, an expired, a used and a revoked token apart by `reason` only: nothing else differs', async () => {
 		const dead = await deadInvitations();
-		const answers = await Promise.all([UNKNOWN_TOKEN, dead.expired, dead.used, dead.revoked].map(async (token) => {
+		const answers = await Promise.all([
+			['unknown', UNKNOWN_TOKEN],
+			['expired', dead.expired],
+			['used', dead.used],
+			['revoked', dead.revoked]
+		].map(async ([reason, token]) => {
 			const response = await preview(token);
 
-			return `${response.status} ${response.headers.get('content-type')} ${await response.text()}`;
+			return { reason, status: response.status, text: await response.text(), type: response.headers.get('content-type') };
 		}));
 
-		expect(new Set(answers).size).toBe(1);
-		expect(answers[0]).toMatch(/^404 /u);
-		expect(answers[0]).toContain('invitation-unavailable');
-		expect(answers[0]).not.toMatch(/Семья|Сергей/u);
+		for (const answer of answers) {
+			expect(answer.status).toBe(404);
+			expect(JSON.parse(answer.text), answer.reason)
+				.toMatchObject({ errorCode: 'invitation-unavailable', ok: false, reason: answer.reason });
+			expect(invitationPreviewResultSchema.parse(JSON.parse(answer.text))).toMatchObject({ reason: answer.reason });
+			expect(answer.text).not.toMatch(/Семья|Сергей/u);
+		}
+
+		// Same status, same content type, same message and shape once the reason is set aside.
+		expect(new Set(answers.map((answer) => `${answer.status} ${answer.type} ${withoutReason(answer.text)}`)).size).toBe(1);
+		expect(new Set(answers.map((answer) => answer.text)).size).toBe(4);
+	});
+
+	it('does the same work for every cause: one lookup by hash, whether the token is unknown or dead', async () => {
+		const dead = await deadInvitations();
+		const statementsPerToken: number[] = [];
+		const prepare = vi.spyOn(connection, 'prepare');
+
+		for (const token of [UNKNOWN_TOKEN, dead.expired, dead.used, dead.revoked]) {
+			prepare.mockClear();
+			expect((await preview(token)).status).toBe(404);
+			statementsPerToken.push(prepare.mock.calls.length);
+		}
+
+		prepare.mockClear();
+
+		for (const token of [UNKNOWN_TOKEN, dead.expired, dead.used, dead.revoked]) {
+			const before = prepare.mock.calls.length;
+
+			expect((await accept(SECOND_NEWCOMER, token)).status).toBe(404);
+			statementsPerToken.push(prepare.mock.calls.length - before);
+		}
+
+		expect(new Set(statementsPerToken.slice(0, 4)).size, statementsPerToken.join()).toBe(1);
+		expect(new Set(statementsPerToken.slice(4)).size, statementsPerToken.join()).toBe(1);
+	});
+
+	it('gives `reason` to a well-formed token only: every other failure has none', async () => {
+		const malformed = await preview('short');
+		const foreign = await harness.app.request('/api/invitations/preview', {
+			body: JSON.stringify({ token: UNKNOWN_TOKEN }),
+			headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+			method: 'POST'
+		});
+		const missing = await harness.app.request('/api/invitations/preview', {
+			body: '{}',
+			headers: { 'content-type': 'application/json', origin: TEST_ORIGIN },
+			method: 'POST'
+		});
+		const unauthenticated = await harness.call('/api/invitations/accept', { body: { token: UNKNOWN_TOKEN } });
+		const malformedAccept = await accept(NEWCOMER, 'x'.repeat(42));
+
+		const failures = [[malformed, 400], [foreign, 403], [missing, 400], [unauthenticated, 401], [malformedAccept, 400]] as const;
+
+		for (const [response, status] of failures) {
+			expect(response.status).toBe(status);
+			expect(await response.json()).not.toHaveProperty('reason');
+		}
+
+		for (let index = 0; index < 30; index += 1) {
+			await preview(UNKNOWN_TOKEN);
+		}
+
+		const limited = await preview(UNKNOWN_TOKEN);
+
+		expect(limited.status).toBe(429);
+		expect(await limited.json()).not.toHaveProperty('reason');
 	});
 
 	it('an invitation stops working the moment it expires', async () => {
@@ -400,7 +475,10 @@ describe('preview', () => {
 		const malformed = await preview('short');
 
 		expect(malformed.status).toBe(400);
-		expect(await malformed.json()).toMatchObject({ errorCode: 'invalid-input' });
+		const malformedBody = await malformed.json();
+
+		expect(malformedBody).toMatchObject({ errorCode: 'invalid-input' });
+		expect(malformedBody).not.toHaveProperty('reason');
 
 		const foreign = await harness.app.request('/api/invitations/preview', {
 			body: JSON.stringify({ token: UNKNOWN_TOKEN }),
@@ -444,7 +522,7 @@ describe('accepting', () => {
 		expect(await household.json()).toMatchObject({ household: { id: FAMILY, role: 'member' } });
 	});
 
-	it('is one-time: a second acceptance gets the same answer as an unknown token and changes nothing', async () => {
+	it('is one-time: a second acceptance is `used`, otherwise the same answer as an unknown token, and changes nothing', async () => {
 		const { token } = await createInvitation();
 
 		await accept(NEWCOMER, token);
@@ -453,9 +531,31 @@ describe('accepting', () => {
 		const second = await accept(SECOND_NEWCOMER, token);
 		const unknown = await accept(SECOND_NEWCOMER, UNKNOWN_TOKEN);
 
+		const secondText = await second.text();
+		const unknownText = await unknown.text();
+
 		expect(second.status).toBe(404);
-		expect(`${second.status} ${await second.text()}`).toBe(`${unknown.status} ${await unknown.text()}`);
+		expect(JSON.parse(secondText)).toMatchObject({ errorCode: 'invitation-unavailable', reason: 'used' });
+		expect(JSON.parse(unknownText)).toMatchObject({ errorCode: 'invitation-unavailable', reason: 'unknown' });
+		expect(`${second.status} ${withoutReason(secondText)}`).toBe(`${unknown.status} ${withoutReason(unknownText)}`);
 		expect(membershipOf(SECOND_NEWCOMER)).toBeUndefined();
+		expect(snapshot()).toBe(before);
+	});
+
+	it('names the cause of a dead token on acceptance too, and changes nothing', async () => {
+		const dead = await deadInvitations();
+		const before = snapshot();
+
+		const causes = [['unknown', UNKNOWN_TOKEN], ['expired', dead.expired], ['used', dead.used], ['revoked', dead.revoked]];
+
+		for (const [reason, token] of causes) {
+			const response = await accept(SECOND_NEWCOMER, token);
+
+			expect(response.status, reason).toBe(404);
+			expect(acceptInvitationResultSchema.parse(await response.json()), reason)
+				.toMatchObject({ errorCode: 'invitation-unavailable', reason });
+		}
+
 		expect(snapshot()).toBe(before);
 	});
 
@@ -464,6 +564,10 @@ describe('accepting', () => {
 		const answers = await Promise.all([accept(NEWCOMER, token), accept(SECOND_NEWCOMER, token)]);
 
 		expect(answers.map((answer) => answer.status).sort()).toEqual([200, 404]);
+
+		const loser = answers.find((answer) => answer.status === 404);
+
+		expect(await loser?.json()).toMatchObject({ errorCode: 'invitation-unavailable', reason: 'used' });
 		expect(connection.prepare('SELECT count(*) AS count FROM household_members WHERE user_id IN (?, ?)').get(NEWCOMER, SECOND_NEWCOMER))
 			.toEqual({ count: 1 });
 	});
@@ -630,7 +734,7 @@ describe('HouseholdInvitationRepository conditions on their own', () => {
 			BEGIN SELECT RAISE(IGNORE); END`);
 
 		expect(repository.accept({ now, replaceEmptyHousehold: false, tokenHash: 'raced-hash', userId: NEWCOMER }))
-			.toEqual({ kind: 'unavailable' });
+			.toEqual({ kind: 'unavailable', reason: 'used' });
 		expect(membershipOf(NEWCOMER)).toBeUndefined();
 	});
 
@@ -699,21 +803,41 @@ describe('HouseholdInvitationRepository conditions on their own', () => {
 		expect(repository.revoke(FAMILY, 'to-revoke', OWNER, now)).toBe(true);
 	});
 
-	it('each condition of an active invitation holds on its own', () => {
+	it('each condition of an active invitation holds on its own, and each says why', async () => {
 		const repository = new HouseholdInvitationRepository(database);
 
 		insertInvitation('accepted', 'accepted-hash');
 		insertInvitation('revoked', 'revoked-hash');
 		insertInvitation('expired', 'expired-hash');
-		connection.prepare('UPDATE household_invitations SET accepted_at = 1, accepted_by_user_id = ? WHERE id = \'accepted\'').run(MEMBER);
-		connection.prepare('UPDATE household_invitations SET revoked_at = 1 WHERE id = \'revoked\'').run();
-		connection.prepare('UPDATE household_invitations SET expires_at = ? WHERE id = \'expired\'').run(now.getTime());
+		insertInvitation('accepted-expired', 'accepted-expired-hash');
+		insertInvitation('revoked-expired', 'revoked-expired-hash');
+		connection.prepare('UPDATE household_invitations SET accepted_at = 1, accepted_by_user_id = ? WHERE id IN (?, ?)')
+			.run(MEMBER, 'accepted', 'accepted-expired');
+		connection.prepare('UPDATE household_invitations SET revoked_at = 1 WHERE id IN (\'revoked\', \'revoked-expired\')').run();
+		connection.prepare('UPDATE household_invitations SET expires_at = ? WHERE id IN (?, ?, ?)')
+			.run(now.getTime(), 'expired', 'accepted-expired', 'revoked-expired');
 
-		for (const tokenHash of ['accepted-hash', 'revoked-hash', 'expired-hash', 'unknown-hash']) {
+		// Used and revoked win over expired; a hash nobody has is unknown.
+		const expected = [
+			['accepted-hash', 'used'],
+			['revoked-hash', 'revoked'],
+			['expired-hash', 'expired'],
+			['accepted-expired-hash', 'used'],
+			['revoked-expired-hash', 'revoked'],
+			['unknown-hash', 'unknown']
+		] as const;
+
+		for (const [tokenHash, reason] of expected) {
 			expect(repository.accept({ now, replaceEmptyHousehold: false, tokenHash, userId: NEWCOMER }), tokenHash)
-				.toEqual({ kind: 'unavailable' });
+				.toEqual({ kind: 'unavailable', reason });
+			expect(await repository.findPreview(tokenHash, now), tokenHash).toEqual({ kind: 'unavailable', reason });
 		}
 
+		insertInvitation('active', 'active-hash');
+		expect(await repository.findPreview('active-hash', now)).toMatchObject({ kind: 'active', record: { householdName: 'Семья' } });
+		// The deadline is exclusive: at `expires_at` the invitation is already expired.
+		expect(await repository.findPreview('active-hash', new Date(now.getTime() + DAY)))
+			.toEqual({ kind: 'unavailable', reason: 'expired' });
 		expect(membershipOf(NEWCOMER)).toBeUndefined();
 	});
 });
@@ -723,7 +847,7 @@ describe('HouseholdInvitationService checks the role itself', () => {
 		const invitations = {
 			accept: vi.fn(),
 			create: vi.fn(() => ({ kind: 'created' as const })),
-			findActivePreview: vi.fn(),
+			findPreview: vi.fn(),
 			listActive: vi.fn(async () => []),
 			revoke: vi.fn(() => true)
 		};

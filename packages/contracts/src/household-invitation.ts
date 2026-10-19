@@ -13,7 +13,9 @@ import { HOUSEHOLD_REQUIRED_ERROR_CODE, HOUSEHOLD_REQUIRED_MESSAGE, householdSum
  *
  * Guest:
  * - `POST /api/invitations/preview { token }` (no session needed): household name and inviter name of an active
- *   invitation. Unknown, expired, used and revoked tokens get one and the same answer (`invitation-unavailable`);
+ *   invitation. Unknown, expired, used and revoked tokens get the same answer in the same shape (404
+ *   `invitation-unavailable`), told apart only by the optional `reason` (decision of 2026-10-19: four states on the
+ *   board `Flow-Invite`), which is given for a well-formed token only;
  * - `POST /api/invitations/accept { token, replaceEmptyHousehold }` (browser session): joins as `member`.
  *
  * The token travels in request bodies only, never in an API path, so it does not land in access logs. The link is
@@ -105,6 +107,15 @@ export const householdInvitationErrorMessageByCode: Record<HouseholdInvitationEr
 	unexpected: 'Не удалось выполнить действие. Попробуйте ещё раз.'
 };
 
+/**
+ * Why a well-formed invitation token opens nothing (404 `invitation-unavailable`), for the four texts of the board
+ * `Flow-Invite`. `unknown` is a token no invitation has; `used` is also what the loser of two parallel acceptances
+ * gets. When several apply, `used` and `revoked` win over `expired`.
+ */
+export const householdInvitationUnavailableReasons = ['expired', 'used', 'revoked', 'unknown'] as const;
+
+export type HouseholdInvitationUnavailableReason = (typeof householdInvitationUnavailableReasons)[number];
+
 export const householdInvitationFailureSchema = z.object({
 	/**
 	 * The caller's own household, only with `already-in-household` and `empty-household-confirmation-required`, for
@@ -114,7 +125,12 @@ export const householdInvitationFailureSchema = z.object({
 	errorCode: z.enum(householdInvitationErrorCodes),
 	fieldErrors: z.record(z.string(), z.string()).optional(),
 	message: z.string(),
-	ok: z.literal(false)
+	ok: z.literal(false),
+	/**
+	 * Only with `invitation-unavailable` on `preview` and `accept`, and only when the token was well-formed (a
+	 * malformed one is `invalid-input` with no reason). Optional: the status, the code and the message do not change.
+	 */
+	reason: z.enum(householdInvitationUnavailableReasons).optional()
 });
 
 export type HouseholdInvitationFailure = z.infer<typeof householdInvitationFailureSchema>;

@@ -329,7 +329,7 @@ describe('a failed send never fails the acceptance', () => {
 					replacedHouseholdId: null
 				}),
 				create: () => ({ kind: 'created' }),
-				findActivePreview: async () => undefined,
+				findPreview: async () => ({ kind: 'unavailable' as const, reason: 'unknown' as const }),
 				listActive: async () => [],
 				revoke: () => true
 			},
