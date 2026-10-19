@@ -35,20 +35,20 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Доска (файл) | Что на ней | Код | Статус |
 |---|---|---|---|
-| `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index; токены disabled `--c-disabled-surface`, `-text`, `-border`, `-fill` (код `--color-disabled-*`); размеры контролов: точный указатель 40 и 32, касание 44 (Chip 36) | `shared/styles/tokens.scss` | частично, добивает IF-14; disabled-токены и размеры на тач нарисованы 2026-10-19, код IF-20 |
+| `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index; токены disabled `--c-disabled-surface`, `-text`, `-border`, `-fill` (код `--color-disabled-*`); размеры контролов: точный указатель 40 и 32, касание 44 (Chip 36) | `shared/styles/tokens.scss` | частично, добивает IF-14; disabled-токены (`--color-disabled-*`) и размеры на тач (`--control-size-sm/md` = 44 при `pointer: coarse`) нарисованы и сделаны в коде 2026-10-19 |
 | | типографика (компонент `Typography`) | `shared/ui/typography` | есть, есть история |
 | | контейнер страницы: ширина и боковые отступы | `shared/ui/container` | есть, есть история |
-| `Kit-Controls` | Button (строка Ghost icon sm, Ghost в disabled без фона) | `shared/ui/button` | есть, есть история; disabled цветом, а не `opacity` (решение 2026-10-19), IF-20 |
+| `Kit-Controls` | Button (строка Ghost icon sm, Ghost в disabled без фона) | `shared/ui/button` | есть, есть история; disabled цветом, а не `opacity` (решение 2026-10-19), в коде |
 | | поля ввода (text, textarea, сумма) | `shared/ui/text-field` | есть, есть история |
 | | телефон | `shared/ui/phone-field` | есть, есть история |
 | | Combobox | `shared/ui/combobox` | есть, есть история |
 | | Switch | `shared/ui/switch` | есть, есть история |
 | | цвет счёта | `shared/ui/color-picker` | есть, есть история |
-| | Segmented (строка состояний: hover, кольцо фокуса на дорожке, вариант и вся группа отключены, тач 44) | `shared/ui/segmented` (`radiogroup`, стрелки; в операциях, панели операции, сравнении статистики) | есть, есть история; состояния и disabled по доске 2026-10-19, IF-20 |
-| | Tabs (строка состояний: hover, кольцо на полосе с отступом 4 px, отключена, тач 44; на десктопе справа от заголовка, подчёркнутые, «таблеток» нет) | `shared/ui/tabs` (`tablist`, стрелки; вкладки статистики) | есть, есть история; раскладка шапки статистики IF-19, disabled IF-20 |
+| | Segmented (строка состояний: hover, кольцо фокуса на дорожке, вариант и вся группа отключены, тач 44) | `shared/ui/segmented` (`radiogroup`, стрелки; в операциях, панели операции, сравнении статистики) | есть, есть история; состояния и disabled по доске 2026-10-19, disabled и размеры в коде |
+| | Tabs (строка состояний: hover, кольцо на полосе с отступом 4 px, отключена, тач 44; на десктопе справа от заголовка, подчёркнутые, «таблеток» нет) | `shared/ui/tabs` (`tablist`, стрелки; вкладки статистики) | есть, есть история; раскладка шапки статистики IF-19; disabled и высота 40 (44 на тач) в коде |
 | | Chip (строка состояний из девяти, точка категории в disabled сохраняет цвет, тач 36) | `shared/ui/chip` (пресеты периода в `views/statistics/ui/period-range-picker`) | есть, есть история; состояния и disabled по доске 2026-10-19, IF-20 |
 | | Badge | `shared/ui/badge` (статусы чеков `views/receipts/ui/status-badge` ещё свои, IF-18) | есть, есть история |
-| | Checkbox, Switch, FAB (состояния и disabled; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, IF-20 |
+| | Checkbox, Switch, FAB (состояния и disabled; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
 | | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
 | | копии сегмента периода и навигатора | остаются в `views/categories/ui/category-summary-dialog` и `views/contacts/ui/contact-summary-dialog` до IF-39 | не переведены, IF-39 |
 | | Select, поле даты | нет в `shared/ui` (нативные в оболочке кита, часть 2 IF-20) | нет, IF-20 |
@@ -67,7 +67,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
 | | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
-| | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; по доске нижняя панель и FAB только ниже 640 px, с 640 верхняя шапка (код пока до 960, доработка IF-17), история Storybook в IF-20 |
+| | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; по доске нижняя панель и FAB только ниже 640 px, с 640 верхняя шапка (в коде с 640: знак 36 px на 640–959, ссылки 12 px), история Storybook у FAB есть |
 | | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, есть история, z-index не по шкале, IF-14 |
 | `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть, есть история |
