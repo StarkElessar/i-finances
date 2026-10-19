@@ -91,11 +91,11 @@ The releases are those of section 8.4 of the decision. Every deploy starts with 
 
 ### `Referrer-Policy` for `/invite`
 
-The invitation token is in the URL fragment, which a browser never sends, so it reaches neither the access log nor `Referer`. As a second line, nginx should answer the SPA page `/invite` with `Referrer-Policy: no-referrer`. The nginx config belongs to the homelab repository, not to this one, so this repository only records the requirement:
+The invitation token is in the URL fragment, which a browser never sends, so it reaches neither the access log nor `Referer`. As a second line, nginx answers the SPA page `/invite` with `Referrer-Policy: same-origin` (nothing leaves the site, and POST requests keep a real `Origin`: with `no-referrer` some browsers may send `Origin: null`, which the API rejects with 403 `invalid-origin`). The nginx config belongs to the homelab repository, not to this one, so this repository only records the requirement:
 
 ```nginx
 location = /invite {
-    add_header Referrer-Policy "no-referrer" always;
+    add_header Referrer-Policy "same-origin" always;
     try_files /index.html =404;
 }
 ```
