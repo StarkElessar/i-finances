@@ -1,9 +1,11 @@
 export { AccountIcon } from './account-icon';
-export { AppLogo } from './app-logo';
+export { AppLogo, type AppLogoSize } from './app-logo';
 export type { BadgeProps, BadgeTone } from './badge';
 export { Badge } from './badge';
-export type { ButtonProps, ButtonSize, ButtonVariant } from './button';
-export { Button } from './button';
+export type { BannerProps, BannerTone } from './banner';
+export { Banner } from './banner';
+export type { ButtonLinkProps, ButtonProps, ButtonSize, ButtonVariant } from './button';
+export { Button, ButtonLink } from './button';
 export type { CardExpiryFieldProps } from './card-expiry-field';
 export { CardExpiryField } from './card-expiry-field';
 export type { CardFaceProps, CardFaceSize } from './card-face';
