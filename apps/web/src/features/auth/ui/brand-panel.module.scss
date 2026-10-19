@@ -21,11 +21,15 @@
     display: flex;
     flex-direction: column;
     gap: var(--space-5);
-    max-inline-size: 34ch;
 
     @include mx.media-mn(sm) {
         gap: var(--space-6);
     }
+}
+
+// Mockup `D-SignIn`: the lead is capped at 34 characters, the title takes the whole half.
+.lead {
+    max-inline-size: 34ch;
 }
 
 .details {

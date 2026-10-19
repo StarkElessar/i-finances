@@ -17,7 +17,7 @@ describe('describeSignInCard (Auth-Telegram board)', () => {
 		expect(describeSignInCard({ kind: 'ready', link: LINK })).toEqual({
 			banners: [],
 			description: 'Подтвердите вход в Telegram одним нажатием. Пароль не нужен.',
-			hasDivider: true,
+			divider: 'after-telegram',
 			hasRegistrationHint: true,
 			isCancellable: false,
 			passkey: 'secondary',
@@ -40,7 +40,7 @@ describe('describeSignInCard (Auth-Telegram board)', () => {
 	it('3. waiting for the bot: open again or cancel, nothing else', () => {
 		expect(describeSignInCard({ connectionLost: false, kind: 'waiting', link: LINK })).toEqual({
 			banners: [{ icon: 'send', text: 'Откройте бота и нажмите «Войти». Заявка действует 10 минут.', tone: 'info' }],
-			hasDivider: false,
+			divider: 'none',
 			hasRegistrationHint: false,
 			isCancellable: true,
 			passkey: 'none',
@@ -81,7 +81,7 @@ describe('describeSignInCard (Auth-Telegram board)', () => {
 
 		expect(view.banners[0]).toMatchObject({ title: 'Аккаунт не найден.', tone: 'danger' });
 		expect(view.telegram).toEqual({ kind: 'none' });
-		expect(view.hasDivider).toBe(false);
+		expect(view.divider).toBe('none');
 		expect(view.passkey).toBe('secondary');
 		expect(view.password).toBe('ghost');
 	});
@@ -97,6 +97,7 @@ describe('describeSignInCard (Auth-Telegram board)', () => {
 	it('9. Telegram off on the server: no Telegram button at all', () => {
 		expect(describeSignInCard({ kind: 'unavailable' })).toMatchObject({
 			description: 'Используйте ключ доступа, сохранённый на этом или другом устройстве.',
+			divider: 'after-passkey',
 			hasRegistrationHint: false,
 			passkey: 'secondary',
 			password: 'secondary',

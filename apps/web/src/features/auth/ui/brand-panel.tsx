@@ -13,7 +13,7 @@ export function BrandPanel(props: { classRoot?: string }) {
 			<div class={css.intro}>
 				<AppLogo size='lg'/>
 				<Typography as='h1' variant='display'>Семейные финансы без лишнего</Typography>
-				<Typography tone='secondary' variant='body-lg'>
+				<Typography class={css.lead} tone='secondary' variant='body-lg'>
 					Счета, операции и бюджеты в одном приватном пространстве для вашей семьи.
 				</Typography>
 			</div>

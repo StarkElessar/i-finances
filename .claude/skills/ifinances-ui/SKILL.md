@@ -48,6 +48,8 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Tabs (строка состояний: hover, кольцо на полосе с отступом 4 px, отключена, тач 44; на десктопе справа от заголовка, подчёркнутые, «таблеток» нет) | `shared/ui/tabs` (`tablist`, стрелки; вкладки статистики) | есть, есть история; раскладка шапки статистики IF-19; disabled и высота 40 (44 на тач) в коде |
 | | Chip (строка состояний из девяти, точка категории в disabled сохраняет цвет, тач 36) | `shared/ui/chip` (пресеты периода в `views/statistics/ui/period-range-picker`) | есть, есть история; состояния и disabled по доске 2026-10-19, IF-20 |
 | | Badge | `shared/ui/badge` (статусы чеков `views/receipts/ui/status-badge` ещё свои, IF-18) | есть, есть история |
+| | Banner (`.i-banner`: neutral, info, ok, warn, err; жирное начало и текст) | `shared/ui/banner` (тона `neutral`, `info`, `success`, `warning`, `danger`; экран входа, онбординг) | есть, есть история |
+| | ссылка в виде кнопки (кнопка Telegram на входе) | `shared/ui/button` (`ButtonLink`, те же варианты и размеры, без disabled: пока адреса нет, показывать `Button`) | есть, есть история |
 | | Checkbox, Switch, FAB (состояния и disabled; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
 | | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
 | | копии сегмента периода и навигатора | остаются в `views/categories/ui/category-summary-dialog` и `views/contacts/ui/contact-summary-dialog` до IF-39 | не переведены, IF-39 |
@@ -79,9 +81,9 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
 | `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
 | `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |
-| `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` | нет, IF-10, IF-39 |
-| | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` | есть, есть история |
-| `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие (срок 7 дней, экран согласия на удаление пустого окружения, ссылка вида `/invite#токен`), участники окружения, тексты бота (редакция 2026-10-19, на проверку владельцем) | нет | нет, IF-10 |
+| `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` (`ui/sign-in-form`, `ui/sign-in-options`, состояния в `model/sign-in-card-view`, опрос в `model/telegram-sign-in-flow`; истории `Auth/SignInOptions`, `Auth/SignedInIdentity`) | есть (U1, 2026-10-19); не на доске: «Вход выполнен» после Telegram, «нет связи», ошибка сети на `start`, форма пароля в карточке |
+| | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` (`size='lg'` 48 px на входе) | есть, есть история |
+| `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие (срок 7 дней, экран согласия на удаление пустого окружения, ссылка вида `/invite#токен`), участники окружения, тексты бота (редакция 2026-10-19, на проверку владельцем) | маршрут `/onboarding` и переходы по доступу: `app/access` (U2); экран `views/onboarding` пока заглушка | онбординг U3, остальное нет, IF-10 |
 | `M-*` (390 px), `D-*` (1280 px) | экраны по одному | `views/home` (операции, счета, перевод), `views/receipts`, `views/categories`, `views/contacts`, `views/statistics`, `features/auth` (вход), `widgets/app-header` (навигация, меню профиля) | по задачам IF-15…IF-19 |
 
 Домашний слой: UI экранов живёт в `views/<экран>/page.tsx` и `views/<экран>/ui`. `features/*/api` это клиенты API; UI в `features` есть только у `account-details`, `auth`, `passkey-registration`.

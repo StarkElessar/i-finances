@@ -35,8 +35,11 @@ export type SignInTelegramAction =
 export type SignInCardView = {
 	banners: SignInBannerView[];
 	description?: string;
-	/** The «или» line between Telegram and the other ways. */
-	hasDivider: boolean;
+	/**
+	 * The «или» line: under Telegram, before the other ways (cards 1, 2); between the passkey and the password when
+	 * there is no Telegram (card 9).
+	 */
+	divider: 'after-passkey' | 'after-telegram' | 'none';
 	/** «Аккаунт создаётся при первом входе через Telegram.» under the card. */
 	hasRegistrationHint: boolean;
 	/** «Отмена» under the link while waiting. */
@@ -60,7 +63,7 @@ function mainCard(telegram: SignInTelegramAction, description: string): SignInCa
 	return {
 		banners: [],
 		description,
-		hasDivider: true,
+		divider: 'after-telegram',
 		hasRegistrationHint: true,
 		isCancellable: false,
 		passkey: 'secondary',
@@ -74,7 +77,7 @@ function mainCard(telegram: SignInTelegramAction, description: string): SignInCa
 function restartCard(banner: SignInBannerView, label: string): SignInCardView {
 	return {
 		banners: [banner],
-		hasDivider: false,
+		divider: 'none',
 		hasRegistrationHint: false,
 		isCancellable: false,
 		passkey: 'none',
@@ -88,7 +91,7 @@ function restartCard(banner: SignInBannerView, label: string): SignInCardView {
 function otherWaysCard(banner: SignInBannerView, telegram: SignInTelegramAction): SignInCardView {
 	return {
 		banners: [banner],
-		hasDivider: telegram.kind !== 'none',
+		divider: telegram.kind === 'none' ? 'none' : 'after-telegram',
 		hasRegistrationHint: false,
 		isCancellable: false,
 		passkey: 'secondary',
@@ -125,7 +128,7 @@ export function describeSignInCard(state: TelegramSignInState): SignInCardView {
 
 			return {
 				banners,
-				hasDivider: false,
+				divider: 'none',
 				hasRegistrationHint: false,
 				isCancellable: true,
 				passkey: 'none',
@@ -139,7 +142,7 @@ export function describeSignInCard(state: TelegramSignInState): SignInCardView {
 			// The card shows the signed-in identity instead (`SignedInIdentity`); this is only the frame around it.
 			return {
 				banners: [],
-				hasDivider: false,
+				divider: 'none',
 				hasRegistrationHint: false,
 				isCancellable: false,
 				passkey: 'none',
@@ -153,7 +156,7 @@ export function describeSignInCard(state: TelegramSignInState): SignInCardView {
 			return {
 				banners: [],
 				description: 'Используйте ключ доступа, сохранённый на этом или другом устройстве.',
-				hasDivider: true,
+				divider: 'after-passkey',
 				hasRegistrationHint: false,
 				isCancellable: false,
 				passkey: 'secondary',
@@ -208,7 +211,7 @@ export function describeSignInCard(state: TelegramSignInState): SignInCardView {
 							tone: 'danger'
 						}, { kind: 'disabled' }),
 						description: 'Подтвердите вход в Telegram одним нажатием.',
-						hasDivider: false
+						divider: 'none'
 					};
 				}
 

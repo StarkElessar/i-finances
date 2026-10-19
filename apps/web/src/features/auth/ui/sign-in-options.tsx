@@ -89,7 +89,7 @@ export function SignInOptions(props: SignInOptionsProps) {
 			<Show when={props.passkeyError}>
 				{(error) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{error()}</Banner>}
 			</Show>
-			<Show when={props.view.hasDivider}>
+			<Show when={props.view.divider === 'after-telegram'}>
 				<SignInDivider/>
 			</Show>
 			<Show when={props.view.passkey !== 'none'}>
@@ -103,6 +103,9 @@ export function SignInOptions(props: SignInOptionsProps) {
 				>
 					Войти с ключом доступа
 				</Button>
+			</Show>
+			<Show when={props.view.divider === 'after-passkey'}>
+				<SignInDivider/>
 			</Show>
 			<Show when={props.view.password !== 'none'}>
 				<Button
