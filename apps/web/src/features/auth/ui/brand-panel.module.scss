@@ -1,50 +1,42 @@
 @use "@/shared/styles/mixins" as mx;
 
+// Phone: only the intro, above the card. From 640: the left half of the card, the notes pushed to the bottom.
 .root {
+    display: flex;
     flex-direction: column;
-    justify-content: space-between;
-
+    gap: var(--space-6);
     min-inline-size: 0;
-    padding: var(--space-8);
-
-    background-color: var(--color-surface);
 
     @include mx.media-mn(sm) {
-        padding: var(--space-10);
+        padding: var(--space-9);
+        background-color: var(--color-primary-soft);
     }
 
     @include mx.media-mn(md) {
-        padding: var(--space-12);
+        padding: var(--space-11);
     }
 }
 
 .intro {
-    max-inline-size: 28rem;
-}
-
-.logo {
-    margin-block-end: var(--space-5);
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    max-inline-size: 34ch;
 
     @include mx.media-mn(sm) {
-        margin-block-end: var(--space-8);
+        gap: var(--space-6);
     }
-}
-
-.title {
-    margin-block-end: var(--space-4);
 }
 
 .details {
     display: none;
-    max-inline-size: 28rem;
 
     @include mx.media-mn(sm) {
-        display: block;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-6);
+        margin-block-start: auto;
     }
-}
-
-.privacy {
-    margin-block-end: var(--space-8);
 }
 
 .item {

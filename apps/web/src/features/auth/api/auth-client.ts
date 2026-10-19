@@ -19,6 +19,12 @@ import {
 	passwordSignInResultSchema,
 	type PasswordSignOutResult,
 	passwordSignOutResultSchema,
+	type TelegramSignInCancelResult,
+	telegramSignInCancelResultSchema,
+	type TelegramSignInCompleteResult,
+	telegramSignInCompleteResultSchema,
+	type TelegramSignInStartResult,
+	telegramSignInStartResultSchema,
 	type UpdateDisplayNameResult,
 	updateDisplayNameResultSchema
 } from '@i-finances/contracts';
@@ -69,6 +75,23 @@ export class AuthClient {
 
 			throw error;
 		}
+	}
+
+	/**
+	 * `POST /api/auth/telegram/start` (flow 5.1). The browser stores the request secret from the httpOnly cookie of the
+	 * answer by itself; a failure stays an `ApiHttpError` (its body is the contract failure, `Retry-After` on a 429).
+	 */
+	public startTelegramSignIn(): Promise<TelegramSignInStartResult> {
+		return this.client.post('/api/auth/telegram/start', {}, telegramSignInStartResultSchema);
+	}
+
+	/** One poll of `POST /api/auth/telegram/complete`; `confirmed` means the session cookie is set. */
+	public completeTelegramSignIn(code: string): Promise<TelegramSignInCompleteResult> {
+		return this.client.post('/api/auth/telegram/complete', { code }, telegramSignInCompleteResultSchema);
+	}
+
+	public cancelTelegramSignIn(code: string): Promise<TelegramSignInCancelResult> {
+		return this.client.post('/api/auth/telegram/cancel', { code }, telegramSignInCancelResultSchema);
 	}
 
 	public signOut(): Promise<PasswordSignOutResult> {

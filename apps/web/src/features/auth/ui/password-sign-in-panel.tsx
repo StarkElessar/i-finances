@@ -1,7 +1,7 @@
-import css from './password-sign-in-panel.module.scss';
+import css from './sign-in-card.module.scss';
 
 import { ApiHttpError } from '@/shared/api';
-import { Button, TextField, Typography } from '@/shared/ui';
+import { Banner, Button, TextField, Typography } from '@/shared/ui';
 
 import type { AuthClient } from '@/features/auth/api';
 
@@ -9,14 +9,13 @@ import {
 	passwordSignInErrorMessageByCode,
 	passwordSignInInputSchema
 } from '@i-finances/contracts';
+import { CircleAlert } from 'lucide-solid';
 import { createSignal, Show } from 'solid-js';
-
-import { IdentityBadge } from './identity-badge';
 
 export type PasswordSignInPanelProps = {
 	client: AuthClient;
 	onSignedIn: () => void;
-	onUsePasskey: () => void;
+	onBack: () => void;
 };
 
 type PasswordSignInFieldErrors = {
@@ -44,6 +43,7 @@ function createFieldErrors(issues: readonly { path: readonly PropertyKey[]; mess
 	return fieldErrors;
 }
 
+/** The password form inside the sign-in card, reached by «Войти по логину и паролю». */
 export function PasswordSignInPanel(props: PasswordSignInPanelProps) {
 	const [login, setLogin] = createSignal('');
 	const [password, setPassword] = createSignal('');
@@ -97,11 +97,12 @@ export function PasswordSignInPanel(props: PasswordSignInPanelProps) {
 
 	return (
 		<div class={css.root}>
-			<IdentityBadge/>
-			<Typography as='h2' class={css.title} variant='heading-1'>Войти в аккаунт</Typography>
-			<Typography class={css.description} variant='body-lg' tone='secondary'>
-				Используйте данные резервного входа. После авторизации можно создать ключ доступа.
-			</Typography>
+			<div class={css.header}>
+				<Typography as='h2' variant='heading-2'>Вход по логину и паролю</Typography>
+				<Typography tone='secondary' variant='body-md'>
+					Резервный способ входа. Пароль не сохраняется на устройстве.
+				</Typography>
+			</div>
 			<form class={css.form} onSubmit={handleSubmit}>
 				<TextField
 					autocomplete='username'
@@ -127,16 +128,14 @@ export function PasswordSignInPanel(props: PasswordSignInPanelProps) {
 					type='password'
 					value={password()}
 				/>
-				<Show when={formError()}>{(content) => <p class={css.error} role='alert'>{content()}</p>}</Show>
-				<Button type='submit' fullWidth loading={isPending()}>Войти</Button>
+				<Show when={formError()}>
+					{(content) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{content()}</Banner>}
+				</Show>
+				<Button fullWidth loading={isPending()} size='lg' type='submit'>Войти</Button>
 			</form>
-			<div class={css.or} data-text='или'/>
-			<Button type='button' fullWidth variant='secondary' disabled={isPending()} onClick={props.onUsePasskey}>
-				Вернуться к входу с ключом доступа
+			<Button disabled={isPending()} fullWidth onClick={() => props.onBack()} size='lg' variant='ghost'>
+				Другие способы входа
 			</Button>
-			<Typography class={css.notice} variant='body-sm' tone='secondary'>
-				Пароль не сохраняется на устройстве.
-			</Typography>
 		</div>
 	);
 }
