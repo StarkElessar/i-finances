@@ -6,6 +6,7 @@ import {
 	users
 } from '@/infrastructure/database/schema';
 
+import type { HouseholdInvitationUnavailableReason } from '@i-finances/contracts';
 import { and, asc, eq, exists, gt, isNull, ne, notExists, sql, TransactionRollbackError } from 'drizzle-orm';
 
 import { householdHasData, householdHasNoDataConditions } from './household-data-references';
@@ -48,6 +49,11 @@ export type HouseholdInvitationPreviewRecord = {
 	inviterName: string;
 };
 
+/** The answer of a lookup by token hash: an active invitation, or the reason why the hash opens nothing. */
+export type HouseholdInvitationPreviewLookup =
+	| { kind: 'active'; record: HouseholdInvitationPreviewRecord }
+	| { kind: 'unavailable'; reason: HouseholdInvitationUnavailableReason };
+
 export type AcceptHouseholdInvitationInput = {
 	now: Date;
 	/** Whether the caller agreed to lose their own empty household (Р5). */
@@ -67,8 +73,8 @@ export type HouseholdInvitationAcceptance =
 		memberDisplayName: string;
 		replacedHouseholdId: string | null;
 	}
-	/** Unknown, expired, used or revoked: one answer for all, nothing changed. */
-	| { kind: 'unavailable' }
+	/** Unknown, expired, used or revoked: one answer in one shape, told apart by `reason` only; nothing changed. */
+	| { kind: 'unavailable'; reason: HouseholdInvitationUnavailableReason }
 	/** The caller is already a member of the invited household, or of another one with data or other members. */
 	| { currentHouseholdName: string; kind: 'already-in-household' }
 	/** The caller is the only member of an empty household and has not agreed to lose it yet. */
@@ -83,6 +89,27 @@ function isActive(now: Date) {
 		isNull(householdInvitations.revokedAt),
 		gt(householdInvitations.expiresAt, now)
 	);
+}
+
+/**
+ * Why an invitation found by its hash is not active at `now`. An accepted one is `used`, a revoked one `revoked`; both
+ * win over `expired`, which is what is left. An invitation cannot be both accepted and revoked: each statement needs
+ * it active.
+ */
+function unavailableReason(
+	invitation: { acceptedAt: Date | null; revokedAt: Date | null },
+	expiresAt: Date,
+	now: Date
+): HouseholdInvitationUnavailableReason | undefined {
+	if (invitation.acceptedAt !== null) {
+		return 'used';
+	}
+
+	if (invitation.revokedAt !== null) {
+		return 'revoked';
+	}
+
+	return expiresAt.getTime() > now.getTime() ? undefined : 'expired';
 }
 
 /** The user is an owner of the household right now, as a condition of the statement itself. */
@@ -181,26 +208,47 @@ export class HouseholdInvitationRepository {
 		return revoked.changes === 1;
 	}
 
-	/** The two names and the deadline of an active invitation; `undefined` for any other token. */
-	public async findActivePreview(tokenHash: string, now: Date): Promise<HouseholdInvitationPreviewRecord | undefined> {
-		const [record] = await this.database.select({
+	/**
+	 * The two names and the deadline of an active invitation, or the reason why the hash opens nothing. One query
+	 * whatever the token: an unknown hash and a dead invitation cost the same, and `unknown` is only the absence of a
+	 * row. The caller has already checked that the token is well-formed.
+	 */
+	public async findPreview(tokenHash: string, now: Date): Promise<HouseholdInvitationPreviewLookup> {
+		const rows = await this.database.select({
+			acceptedAt: householdInvitations.acceptedAt,
 			expiresAt: householdInvitations.expiresAt,
 			householdName: households.name,
-			inviterName: users.displayName
+			inviterName: users.displayName,
+			revokedAt: householdInvitations.revokedAt
 		})
 			.from(householdInvitations)
 			.innerJoin(households, eq(householdInvitations.householdId, households.id))
 			.innerJoin(users, eq(householdInvitations.createdByUserId, users.id))
-			.where(and(eq(householdInvitations.tokenHash, tokenHash), isActive(now)))
+			.where(eq(householdInvitations.tokenHash, tokenHash))
 			.limit(1);
+		const row = rows.at(0);
 
-		return record;
+		if (row === undefined) {
+			return { kind: 'unavailable', reason: 'unknown' };
+		}
+
+		const reason = unavailableReason(row, row.expiresAt, now);
+
+		if (reason !== undefined) {
+			return { kind: 'unavailable', reason };
+		}
+
+		return {
+			kind: 'active',
+			record: { expiresAt: row.expiresAt, householdName: row.householdName, inviterName: row.inviterName }
+		};
 	}
 
 	/**
 	 * Accepts an invitation in one transaction (Р5):
 	 *
-	 * 1. the invitation must be active; otherwise `unavailable`, whatever the reason;
+	 * 1. the invitation must be active; otherwise `unavailable` with the reason (`unknown` for a hash nobody has, `used`
+	 *    for the loser of step 3);
 	 * 2. a caller who already belongs to a household: the invited one, or another one with data or with other
 	 *    members, gets `already-in-household`; the only member of an empty household gets `confirmation-required`
 	 *    unless they agreed, and then loses that household;
@@ -213,23 +261,32 @@ export class HouseholdInvitationRepository {
 	 * Any refusal after the first change rolls everything back, the invitation included.
 	 */
 	public accept(input: AcceptHouseholdInvitationInput): HouseholdInvitationAcceptance {
-		let refusal: HouseholdInvitationAcceptance = { kind: 'unavailable' };
+		let refusal: HouseholdInvitationAcceptance = { kind: 'unavailable', reason: 'used' };
 
 		try {
 			return this.database.transaction((transaction): HouseholdInvitationAcceptance => {
 				const invitation = transaction.select({
+					acceptedAt: householdInvitations.acceptedAt,
 					createdByUserId: householdInvitations.createdByUserId,
+					expiresAt: householdInvitations.expiresAt,
 					householdId: householdInvitations.householdId,
 					householdName: households.name,
-					id: householdInvitations.id
+					id: householdInvitations.id,
+					revokedAt: householdInvitations.revokedAt
 				})
 					.from(householdInvitations)
 					.innerJoin(households, eq(householdInvitations.householdId, households.id))
-					.where(and(eq(householdInvitations.tokenHash, input.tokenHash), isActive(input.now)))
+					.where(eq(householdInvitations.tokenHash, input.tokenHash))
 					.get();
 
 				if (invitation === undefined) {
-					return { kind: 'unavailable' };
+					return { kind: 'unavailable', reason: 'unknown' };
+				}
+
+				const reason = unavailableReason(invitation, invitation.expiresAt, input.now);
+
+				if (reason !== undefined) {
+					return { kind: 'unavailable', reason };
 				}
 
 				const current = transaction.select({ householdId: householdMembers.householdId, name: households.name })
@@ -256,7 +313,8 @@ export class HouseholdInvitationRepository {
 					.run();
 
 				if (consumed.changes !== 1) {
-					refusal = { kind: 'unavailable' };
+					// Another acceptance got there first: the loser of the race is told `used`.
+					refusal = { kind: 'unavailable', reason: 'used' };
 					transaction.rollback();
 				}
 

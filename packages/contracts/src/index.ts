@@ -183,6 +183,8 @@ export {
 	householdInvitationFailureSchema,
 	type HouseholdInvitationsResult,
 	householdInvitationsResultSchema,
+	type HouseholdInvitationUnavailableReason,
+	householdInvitationUnavailableReasons,
 	INVITATION_PAGE_PATH,
 	INVITATION_TOKEN_PATTERN,
 	type InvitationLinkLocation,
