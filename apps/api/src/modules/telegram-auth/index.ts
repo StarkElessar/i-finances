@@ -6,6 +6,20 @@ export {
 	type HouseholdMemberJoinedNotifierDependencies
 } from './household-member-joined-notifier';
 export {
+	parseResetUserTelegramArguments,
+	RESET_USER_TELEGRAM_USAGE,
+	type ResetUserTelegramArguments
+} from './parse-reset-user-telegram-arguments';
+export { ResetUserTelegramUsageError } from './reset-user-telegram-usage-error';
+export {
+	EXIT_FAILED,
+	EXIT_OK,
+	EXIT_USAGE,
+	type ResetUserTelegramTerminal,
+	runResetUserTelegram,
+	type RunResetUserTelegramInput
+} from './run-reset-user-telegram';
+export {
 	type TelegramAccount,
 	TelegramAccountRepository,
 	type TelegramSignInInput,
@@ -55,6 +69,8 @@ export {
 	hashTelegramLoginSecret,
 	telegramLoginSecretMatches
 } from './telegram-login-secret';
+export type { TelegramResetPlan, TelegramResetPlanAccount, TelegramResetResult } from './telegram-reset-plan';
+export { TelegramResetUserNotFoundError } from './telegram-reset-user-not-found-error';
 export {
 	type TelegramSignInCompleteOutcome,
 	type TelegramSignInMetadata,
@@ -63,3 +79,4 @@ export {
 	type TelegramSignInSimpleOutcome,
 	type TelegramSignInStartOutcome
 } from './telegram-sign-in-service';
+export { type ApplyTelegramResetInput, UserTelegramReset } from './user-telegram-reset';
