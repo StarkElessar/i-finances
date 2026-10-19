@@ -251,9 +251,10 @@
     background-color: var(--color-primary-soft);
 }
 
+// Disabled by colour, not opacity (kit-open-questions.md, section 2): a colour dot in a custom option keeps its colour.
 .option-disabled {
-    color: var(--color-text-tertiary);
-    opacity: 0.62;
+    cursor: not-allowed;
+    color: var(--color-disabled-text);
 }
 
 .option-content {

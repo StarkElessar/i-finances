@@ -133,10 +133,10 @@
         outline: none;
     }
 
+    // Disabled by colour, not opacity (kit-open-questions.md, section 2), a danger item included.
     &:disabled {
         cursor: not-allowed;
-        color: var(--color-text-tertiary);
-        opacity: 0.72;
+        color: var(--color-disabled-text);
     }
 }
 

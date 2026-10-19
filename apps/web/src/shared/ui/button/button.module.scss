@@ -31,10 +31,14 @@
         transform: translateY(1px);
     }
 
-    // Disabled is shown by colour, not by opacity (development/decisions/kit-open-questions.md, section 2):
-    // every variant looks the same, so a disabled Primary never reads as the "selected" soft blue.
     &:disabled {
         cursor: not-allowed;
+    }
+
+    // Disabled is shown by colour, not by opacity (development/decisions/kit-open-questions.md, section 2):
+    // every variant looks the same, so a disabled Primary never reads as the "selected" soft blue.
+    // A loading button is disabled too, but keeps its variant colours with the spinner (Kit-Controls `.is-loading`).
+    &:disabled:not(.loading) {
         border-color: transparent;
         color: var(--color-disabled-text);
         background-color: var(--color-disabled-surface);
@@ -106,7 +110,8 @@
     }
 
     // No grey plate in place of a "ghost" button: it would draw the eye to what is unavailable.
-    &:disabled {
+    // Same selector weight as the `.button` rule above, and later, so it wins.
+    &:disabled:not(.loading) {
         background-color: transparent;
     }
 }
