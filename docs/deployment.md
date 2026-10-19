@@ -85,7 +85,7 @@ The releases are those of section 8.4 of the decision. Every deploy starts with 
    3. The family member does the same.
    4. Only after both are linked, and on the owner's word, set `TELEGRAM_REGISTRATION_ENABLED=true` and restart `if-api`.
    If a duplicate was created anyway (registration turned on early), linking merges it only when it has no password, no passkey and an empty household; otherwise the answer is 409 and the owner decides by hand.
-3. **Release 3, households for other people.** Invitations, members, onboarding. Before it, a read-only query on the production database for the roles in `default-household`. There must be one owner: the head of the family, who is also `MCP_USER_ID`. A second `owner` (a leftover of the old resolver) can remove the owner and end their sessions; lowering that user to `member` is done only on the owner's word, after a backup. On the nginx side add `Referrer-Policy: no-referrer` for `/invite` (below).
+3. **Release 3, households for other people.** Invitations, members, onboarding. Before it, a read-only query on the production database for the roles in `default-household`. There must be one owner: the head of the family, who is also `MCP_USER_ID`. A second `owner` (a leftover of the old resolver) can remove the owner and end their sessions; lowering that user to `member` is done only on the owner's word, after a backup. On the nginx side add `Referrer-Policy: same-origin` for `/invite` (below).
 
 `TELEGRAM_UPDATES=webhook` goes on only when the sign-in and link screens are deployed: before that the bot would answer people for whom the site has no button.
 
