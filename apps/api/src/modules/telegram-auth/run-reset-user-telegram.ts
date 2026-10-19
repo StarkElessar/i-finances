@@ -4,7 +4,11 @@ import { parseResetUserTelegramArguments } from './parse-reset-user-telegram-arg
 import { ResetUserTelegramUsageError } from './reset-user-telegram-usage-error';
 import type { TelegramResetPlan } from './telegram-reset-plan';
 import { TelegramResetUserNotFoundError } from './telegram-reset-user-not-found-error';
+import { toSingleLine } from './to-single-line';
 import type { UserTelegramReset } from './user-telegram-reset';
+
+/** Longer than any name the application lets in; the cut only bounds what a crafted row could print. */
+const MAX_SHOWN_LENGTH = 200;
 
 /**
  * Terminal of the command: the script wires it to the process, tests to arrays.
@@ -104,7 +108,7 @@ export async function runResetUserTelegram(input: RunResetUserTelegramInput): Pr
 		return EXIT_FAILED;
 	}
 
-	const answer = await terminal.ask(`Type the username "${plan.username}" to confirm: `);
+	const answer = await terminal.ask(`Type the username "${shown(plan.username)}" to confirm: `);
 
 	if (answer === undefined || normalizeUsername(answer) !== plan.username) {
 		terminal.printError('The username does not match. Nothing was changed.');
@@ -131,8 +135,17 @@ export async function runResetUserTelegram(input: RunResetUserTelegramInput): Pr
 	return EXIT_OK;
 }
 
+/**
+ * A value from the database as it reaches the operator's terminal: one line, no control or formatting characters.
+ * A display name or a Telegram name is chosen by the user, and an escape sequence in it would otherwise be run by the
+ * terminal (clear the screen, move the cursor over the lockout warning, set the title or the clipboard).
+ */
+function shown(text: string): string {
+	return toSingleLine(text, MAX_SHOWN_LENGTH);
+}
+
 function describeTelegram(telegramId: string, username: string | null): string {
-	return username === null ? `id ${telegramId}` : `@${username}, id ${telegramId}`;
+	return username === null ? `id ${shown(telegramId)}` : `@${shown(username)}, id ${shown(telegramId)}`;
 }
 
 function describePlan(plan: TelegramResetPlan): string[] {
@@ -141,7 +154,7 @@ function describePlan(plan: TelegramResetPlan): string[] {
 		plan.passkeyCount > 0 ? `${plan.passkeyCount} passkey(s)` : undefined
 	].filter((method): method is string => method !== undefined);
 	const lines = [
-		`User: ${plan.username} (${plan.displayName}), ${plan.isActive ? 'active' : 'deactivated'}`,
+		`User: ${shown(plan.username)} (${shown(plan.displayName)}), ${plan.isActive ? 'active' : 'deactivated'}`,
 		`Other ways to sign in: ${methods.length === 0 ? 'none' : methods.join(', ')}`
 	];
 
@@ -150,7 +163,7 @@ function describePlan(plan: TelegramResetPlan): string[] {
 	}
 	else {
 		lines.push(
-			`Telegram: ${plan.telegram.firstName} (${describeTelegram(plan.telegram.telegramId, plan.telegram.username)}), `
+			`Telegram: ${shown(plan.telegram.firstName)} (${describeTelegram(plan.telegram.telegramId, plan.telegram.username)}), `
 			+ `linked ${plan.telegram.linkedAt.toISOString()}`
 		);
 	}

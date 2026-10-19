@@ -270,6 +270,20 @@ describe('--apply', () => {
 			expect(output).not.toContain('hash-anna');
 		}
 	});
+
+	it('prints names from the database without terminal escape sequences, line breaks or direction characters', async () => {
+		database.update(users).set({ displayName: 'Анна\u001B[2J\u001B]0;title\u0007‮\nX' }).where(eq(users.id, 'anna')).run();
+		database.update(telegramAccounts).set({ firstName: 'A\u001B[31m', username: 'anna\u001B[1A' })
+			.where(eq(telegramAccounts.userId, 'anna')).run();
+
+		const { transcript } = await run(['anna']);
+
+		for (const line of [...transcript.lines, ...transcript.errors, ...transcript.questions]) {
+			expect(line).not.toMatch(/[\p{Cc}\p{Cf}]/u);
+		}
+		expect(transcript.lines).toContain('User: anna (Анна [2J ]0;title X), active');
+		expect(transcript.lines.some((line) => line.startsWith('Telegram: A [31m (@anna [1A, id 1001)'))).toBe(true);
+	});
 });
 
 describe('a user who cannot be reset', () => {

@@ -104,7 +104,7 @@ Adapt it to how homelab serves the SPA, and remember that `add_header` inside a 
 
 ### Recovery of access: `reset-user-telegram`
 
-Used when a person lost the Telegram account that was linked (the account was deleted, so the new one has a new id) or a stranger's Telegram got linked by mistake (Р10, Р11). It removes **only the Telegram link** of one user and revokes their open login requests. It does not delete the user, the password, the passkeys, the membership or any data, it issues no password, and it prints no token, chat id or hash. Only on the owner's word.
+Used when a person lost the Telegram account that was linked (the account was deleted, so the new one has a new id) or a stranger's Telegram got linked by mistake (Р10, Р11). It removes **only the Telegram link** of one user and revokes their open login requests. It does not delete the user, the password, the passkeys, the membership or any data, it issues no password, and it prints no token or hash. It does print the linked Telegram's id and `@username` so that the operator can check the account with the person (for a private chat the Telegram id is also the chat id); names from the database are printed without control characters. Only on the owner's word.
 
 ```sh
 cd ~/sites/homelab
@@ -118,6 +118,8 @@ docker compose exec if-api ./node_modules/.bin/tsx scripts/reset-user-telegram.t
 It works on the database from `DATABASE_URL` and can run while the API is up. It needs a terminal for the confirmation (`docker compose exec` gives one). Locally: `pnpm --filter @i-finances/api telegram:reset <username>`.
 
 The person signs in with the password or passkey they still have and links the new Telegram in «Безопасность». A user with **no** password and **no** passkey would have no way in after the reset, so the script refuses them unless `--allow-lockout` is given. Such an account stays unreachable: the user row is never deleted, and a person who signs up through Telegram again becomes a different user. `seed-auth-user.ts` cannot give a password to a `tg-<id>` user (the prefix is reserved).
+
+A person who signed up through Telegram (no password, no passkey) and lost that Telegram account does not need the script: the new Telegram account is unknown, so with `TELEGRAM_REGISTRATION_ENABLED=true` it signs up as a new user. The owner removes the old account from the household in «Окружение» (that also ends its sessions) and invites the new one; the household's data stays with the household. `--allow-lockout` is for cutting a Telegram off an account on purpose, with `--end-sessions`, when nobody is to sign in to it any more.
 
 ### Warnings
 
