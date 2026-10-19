@@ -1,4 +1,16 @@
+import { notifyApiAccessFailure, readApiAccessFailure } from './api-access-failure';
 import { ApiHttpError } from './api-http-error';
+
+/** `Retry-After` in whole seconds; the HTTP-date form is not used by this API. */
+function readRetryAfterSeconds(headers: Headers): number | undefined {
+	const value = headers.get('retry-after');
+
+	if (value === null || !/^\d+$/.test(value.trim())) {
+		return undefined;
+	}
+
+	return Number(value.trim());
+}
 
 export type ApiResponseSchema<TResponse> = {
 	parse(value: unknown): TResponse;
@@ -95,7 +107,14 @@ export class ApiClient {
 		const responseBody = await this.readBody(response);
 
 		if (!response.ok) {
-			throw new ApiHttpError(response.status, responseBody, url);
+			const accessFailure = readApiAccessFailure(response.status, responseBody);
+
+			// Before the throw: the session layer leaves the page first, so the page never renders this failure.
+			if (accessFailure !== null) {
+				notifyApiAccessFailure(accessFailure);
+			}
+
+			throw new ApiHttpError(response.status, responseBody, url, readRetryAfterSeconds(response.headers));
 		}
 
 		return schema.parse(responseBody);

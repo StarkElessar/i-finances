@@ -1,6 +1,6 @@
 import css from './router.module.scss';
 
-import { CurrentViewerProvider } from '@/entities/viewer';
+import { CurrentViewerProvider, viewerFromSession } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
@@ -10,13 +10,18 @@ import { AppHeader } from '@/widgets/app-header';
 import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
 import { HomePage } from '@/views/home/page';
+import { OnboardingPage } from '@/views/onboarding/page';
 import { ReceiptsPage } from '@/views/receipts/page';
 import { StatisticsPage } from '@/views/statistics/page';
 
 import type { CurrentSessionResponse } from '@i-finances/contracts';
-import { Navigate, Route, Router } from '@solidjs/router';
+import type { RouteSectionProps } from '@solidjs/router';
+import { Navigate, query, Route, Router } from '@solidjs/router';
 import type { Accessor, JSX } from 'solid-js';
 import { createResource, Show } from 'solid-js';
+
+import { AccessFailureListener } from './access/access-failure-listener';
+import { AccessGuard } from './access/access-guard';
 
 export type AppRouterProps = {
 	authClient: AuthClient;
@@ -50,69 +55,75 @@ function SessionGate(props: SessionGateProps) {
 	);
 }
 
-type ProtectedRouteProps = {
+type MemberLayoutProps = RouteSectionProps & {
 	authClient: AuthClient;
-	children: JSX.Element;
 	onSignedOut: () => void;
-	session: CurrentSessionResponse | undefined;
 };
 
-function ProtectedRoute(props: ProtectedRouteProps) {
-	const session = props.session;
-
-	if (session === undefined || !session.authenticated) {
-		return <Navigate href='/sign-in'/>;
-	}
-
-	const viewer = () => session.user;
-
+/**
+ * The shell of the finance pages. It stays mounted while the member moves between them, so the header keeps its state.
+ */
+function MemberLayout(props: MemberLayoutProps) {
 	return (
-		<CurrentViewerProvider viewer={viewer}>
+		<AccessGuard access='member'>
 			<AppHeader authClient={props.authClient} onSignedOut={props.onSignedOut}/>
 			{props.children}
-		</CurrentViewerProvider>
+		</AccessGuard>
 	);
 }
 
 export function AppRouter(props: AppRouterProps) {
 	const [session, { refetch }] = createResource(() => props.authClient.currentSession());
 
-	const protectedPage = (children: JSX.Element) => (
-		<SessionGate
-			error={() => session.error}
-			isLoading={() => session.loading}
-			session={() => session()}
-		>
+	/**
+	 * A different user (or nobody) from now on: sign-in and sign-out. The whole tree under the session gate is rebuilt
+	 * on purpose, and cached query results of the previous user are dropped, so back and forward cannot show them.
+	 * Changes of the same user (display name, household) patch the viewer instead (`useSetCurrentViewer`).
+	 */
+	const reloadSession = (): void => {
+		query.clear();
+		void refetch();
+	};
+
+	const root = (rootProps: RouteSectionProps) => (
+		<SessionGate error={() => session.error} isLoading={() => session.loading} session={() => session()}>
 			{(currentSession) => (
-				<ProtectedRoute
-					authClient={props.authClient}
-					onSignedOut={refetch}
-					session={currentSession}
-				>
-					{children}
-				</ProtectedRoute>
+				<CurrentViewerProvider initialViewer={viewerFromSession(currentSession)}>
+					<AccessFailureListener/>
+					{rootProps.children}
+				</CurrentViewerProvider>
 			)}
 		</SessionGate>
 	);
 
 	return (
-		<Router>
+		<Router root={root}>
 			<Route
 				path='/sign-in'
 				component={() => (
-					<SessionGate error={() => session.error} isLoading={() => session.loading} session={() => session()}>
-						{(currentSession) => currentSession.authenticated
-							? <Navigate href='/'/>
-							: <SignInForm client={props.authClient} onSignedIn={refetch}/>
-						}
-					</SessionGate>
+					<AccessGuard access='anonymous'>
+						<SignInForm client={props.authClient} onSignedIn={reloadSession}/>
+					</AccessGuard>
 				)}
 			/>
-			<Route path='/' component={() => protectedPage(<HomePage/>)}/>
-			<Route path='/categories' component={() => protectedPage(<CategoriesPage/>)}/>
-			<Route path='/contacts' component={() => protectedPage(<ContactsPage/>)}/>
-			<Route path='/receipts' component={() => protectedPage(<ReceiptsPage/>)}/>
-			<Route path='/stats' component={() => protectedPage(<StatisticsPage/>)}/>
+			<Route
+				path='/onboarding'
+				component={() => (
+					<AccessGuard access='onboarding'>
+						<OnboardingPage authClient={props.authClient} onSignedOut={reloadSession}/>
+					</AccessGuard>
+				)}
+			/>
+			<Route
+				path='/'
+				component={(layoutProps) => <MemberLayout {...layoutProps} authClient={props.authClient} onSignedOut={reloadSession}/>}
+			>
+				<Route path='/' component={HomePage}/>
+				<Route path='/categories' component={CategoriesPage}/>
+				<Route path='/contacts' component={ContactsPage}/>
+				<Route path='/receipts' component={ReceiptsPage}/>
+				<Route path='/stats' component={StatisticsPage}/>
+			</Route>
 			<Route path='*404' component={() => <Navigate href='/'/>}/>
 		</Router>
 	);
