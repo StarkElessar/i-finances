@@ -14,6 +14,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 - Макет и код расходятся: правится макет, не код «по вкусу». Зафиксируй расхождение в `development/ui-mockup.md` или в задаче.
 - Не придумывай паттерн мимо кита. Не клади литералы (px, hex, z-index) вместо токенов.
 - SCSS: mobile-first, миксины `mx.media-mn`, без `!important`, правила интерактивных состояний из `AGENTS.md`.
+- **Шкала размеров (владелец, 2026-10-19):** размеры кратны 4 (или 2 для мелочи: 2, 4, 8, 12, 16, 20, 24 ...), нечётные и «ровные» не по шкале вроде 13, 57, 81 не использовать (исключения: ширина линии, `--radius-pill`, брейкпоинты и ширины панелей макета). Токены, уже стоящие не по шкале (`--font-size-caption` 13, `-body-md` 14, `-heading-2` 22, `-heading-3` 18, `--space-3` и `--radius-sm` 6), описаны в `development/decisions/size-scale.md` вместе с предложениями; без отдельной задачи их не менять. Шапка 60 px (`--header-block-size`).
 
 ## Где что лежит
 
@@ -35,7 +36,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Доска (файл) | Что на ней | Код | Статус |
 |---|---|---|---|
-| `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index; токены disabled `--c-disabled-surface`, `-text`, `-border`, `-fill` (код `--color-disabled-*`); размеры контролов: точный указатель 40 и 32, касание 44 (Chip 36) | `shared/styles/tokens.scss` | частично, добивает IF-14; disabled-токены (`--color-disabled-*`) и размеры на тач (`--control-size-sm/md` = 44 при `pointer: coarse`) нарисованы и сделаны в коде 2026-10-19 |
+| `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index; токены disabled `--c-disabled-surface`, `-text`, `-border`, `-fill` (код `--color-disabled-*`); размеры контролов: точный указатель 40 и 32, касание 44 (Chip 36); шапка 60 (`--header-h`, код `--header-block-size`) | `shared/styles/tokens.scss` | частично, добивает IF-14; disabled-токены (`--color-disabled-*`) и размеры на тач (`--control-size-sm/md` = 44 при `pointer: coarse`) нарисованы и сделаны в коде 2026-10-19 |
 | | типографика (компонент `Typography`) | `shared/ui/typography` | есть, есть история |
 | | контейнер страницы: ширина и боковые отступы | `shared/ui/container` | есть, есть история |
 | `Kit-Controls` | Button (строка Ghost icon sm, Ghost в disabled без фона) | `shared/ui/button` | есть, есть история; disabled цветом, а не `opacity` (решение 2026-10-19), в коде |
@@ -48,14 +49,14 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Tabs (строка состояний: hover, кольцо на полосе с отступом 4 px, отключена, тач 44; на десктопе справа от заголовка, подчёркнутые, «таблеток» нет) | `shared/ui/tabs` (`tablist`, стрелки; вкладки статистики) | есть, есть история; раскладка шапки статистики IF-19; disabled и высота 40 (44 на тач) в коде |
 | | Chip (строка состояний из девяти, точка категории в disabled сохраняет цвет, тач 36) | `shared/ui/chip` (пресеты периода в `views/statistics/ui/period-range-picker`) | есть, есть история; состояния и disabled по доске 2026-10-19, IF-20 |
 | | Badge | `shared/ui/badge` (статусы чеков `views/receipts/ui/status-badge` ещё свои, IF-18) | есть, есть история |
-| | Checkbox, Switch, FAB (состояния и disabled; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
+| | Checkbox, Switch, FAB (состояния и disabled; у выключенного Switch ручка и дорожка с рамкой `--c-disabled-border`, у пустого Checkbox рамка того же токена; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
 | | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
 | | копии сегмента периода и навигатора | остаются в `views/categories/ui/category-summary-dialog` и `views/contacts/ui/contact-summary-dialog` до IF-39 | не переведены, IF-39 |
 | | Select, поле даты | нет в `shared/ui` (нативные в оболочке кита, часть 2 IF-20) | нет, IF-20 |
 | `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/combobox` (есть), select и дата: нативные `<select>`, `type=date` в оболочке | оболочка нет, IF-20 |
 | | мультивыбор в popover, диапазон периода (статистика) | нет | нет, IF-19, IF-20 |
 | | выбор цвета категории (10 оттенков `k-1…k-10`, свой запрещён) | `shared/ui/color-picker` (6 цветов, hex) | не по доске, IF-19 |
-| `Kit-Surfaces` | Шапка: верхняя навигация на 640 (`.i-top.compact`: только знак 36 px, ссылки с отступом 12 px, замеры 585 из 640), 960 и 1280 | `widgets/app-header` | не по доске, доработка IF-17 |
+| `Kit-Surfaces` | Шапка: верхняя навигация на 640 (`.i-top.compact`: только знак 36 px, ссылки с отступом 12 px, замеры 585 из 640), 960 и 1280; высота 60 px на всех ширинах и на тач | `widgets/app-header` | высота 60 по доске в коде (2026-10-19); остальное доработка IF-17 |
 | | Dialog | `shared/ui/dialog` | есть, есть история |
 | | Menu / Popover | `shared/ui/context-menu` | есть, есть история |
 | | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
@@ -77,7 +78,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | иконка типа счёта (карта, наличные, сбережения, прочее) | `shared/ui/account-icon` | есть, есть история |
 | `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout`, `M-Ops-Sort` | раскладка операций, колонки по контейнеру, тулбар периода; узкая сортировка (ниже 700 px одна кнопка «Порядок», нативный select с десятью пунктами, иконка направления, активный вид не по умолчанию), тулбар на 1280 весь 40 px | `views/home/ui/operations-workspace` (контейнер, `mx.container-mn`, колонки и тулбар по ширине контейнера, IF-15) | тулбар и колонки по доске; раскладка (лента счетов, панель 340) не по доске, IF-16 |
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
-| `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
+| `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния; «Задать пароль» (аккаунт без пароля) остаётся на доске как будущий экран (v2), в коде его нет | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
 | `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |
 | `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` | нет, IF-10, IF-39 |
 | | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` | есть, есть история |
@@ -106,6 +107,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `--r-pill` | `--radius-pill` |
 | `--ctl-sm`, `--ctl`, `--ctl-lg` | `--control-size-sm`, `-md`, `-lg` |
 | `--ctl` в `.i-touch` (44 px на телефоне) | `--control-size-touch` (44 px), миксин `mx.pointer-coarse` (запрос `pointer: coarse`) |
+| `--header-h` (60 px, `.i-top`) | `--header-block-size` (60 px) |
 | `--fs-display`, `-h1`, `-h2`, `-h3`, `-lg`, `-md` | `--font-size-display`, `-heading-1`, `-2`, `-3`, `-body-lg`, `-body-md` |
 | `--fs-sm` (13 px) | `--font-size-caption` |
 | `--fs-label` (12 px) | `--font-size-label` |

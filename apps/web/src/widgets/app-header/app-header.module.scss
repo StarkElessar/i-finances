@@ -6,19 +6,25 @@
     // menu (popover and mobile sheet, --z-popover) at the header's level, and
     // the portaled bottom navigation (--z-nav) would cover the sheet.
     position: relative;
-    padding-block: var(--space-3);
+
+    // One height on every width and on touch screens: the 40 px control (44 on touch)
+    // is centred inside, so the padding does not decide the height.
+    display: flex;
+    align-items: center;
+
+    box-sizing: border-box;
+    block-size: var(--header-block-size);
     border-block-end: 1px solid var(--color-border);
+
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 
     @include mx.media-mn(sm) {
-        padding-block: var(--space-4);
         background-color: var(--color-surface);
     }
 }
 
 .inner {
     display: grid;
-    gap: var(--space-3);
 }
 
 .top-bar {

@@ -93,6 +93,8 @@ Additional SCSS rules:
 - kebab-case for raw SCSS class/id selectors
 - Double quotes in SCSS, logical properties (`csstools/use-logical`)
 - `declaration-no-important` enabled
+- Size scale: sizes (heights, widths, paddings, gaps, radii, font sizes) are multiples of 4, or 2 for fine details (2, 4, 8, 12, 16, 20, 24 ...); odd and off-scale values such as 13, 57, 81 are not used. Border widths (1, 1.5, 3), `--radius-pill` and breakpoint/panel widths set by the mockup are exempt. The off-scale tokens that already exist are listed in `development/decisions/size-scale.md`; do not change them without a separate task. The app header is 60 px (`--header-block-size`)
+- `touch-action: manipulation` is set on `html` and `body` (no double-tap zoom); pinch zoom stays, so never add `user-scalable=no` to the viewport
 - PostCSS sorts media queries `desktop-first` at build time
 
 ## UI design and kit

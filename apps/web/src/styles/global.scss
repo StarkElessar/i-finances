@@ -8,6 +8,9 @@
 }
 
 :where(html, body) {
+    // A double tap does not zoom the page and does not delay the click; scrolling and the pinch zoom
+    // stay (no `user-scalable=no` in the viewport: accessibility). Owner's decision 2026-10-19.
+    touch-action: manipulation;
     min-block-size: 100%;
 }
 
