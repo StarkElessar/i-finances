@@ -1,10 +1,10 @@
 @use "@/shared/styles/functions" as fn;
-@use "@/shared/styles/mixins" as mx;
 
 // Mockup `.i-seg`: the track is one control tall (40 px, 44 on touch), the option is
 // the track minus padding and border. The track size is a local variable so the touch
 // override changes one value.
 .root {
+    // 40 px, 44 on touch: the token itself changes (tokens.scss).
     --segmented-size: var(--control-size-md);
 
     display: inline-flex;
@@ -24,10 +24,11 @@
         border-color: var(--color-primary);
         box-shadow: 0 0 0 3px var(--color-focus-ring);
     }
+}
 
-    @include mx.pointer-coarse {
-        --segmented-size: var(--control-size-touch);
-    }
+// Every option is disabled: the selected plate loses its shadow too.
+.root:not(:has(.option:enabled)) .option-selected {
+    box-shadow: none;
 }
 
 .full-width {
@@ -82,7 +83,11 @@
 
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
+        color: var(--color-disabled-text);
+
+        .count {
+            color: var(--color-disabled-text);
+        }
     }
 }
 
@@ -90,6 +95,11 @@
     color: var(--color-text-primary);
     background-color: var(--color-surface);
     box-shadow: var(--shadow-sm);
+
+    // Selected and disabled: the white plate stays, the text goes grey.
+    &:disabled {
+        color: var(--color-disabled-text);
+    }
 
     // The track shows the focus (see `.root`), not the option itself.
     &:focus-visible {

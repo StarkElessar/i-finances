@@ -49,9 +49,12 @@
         background-color: var(--color-primary-active);
     }
 
+    // Same as a disabled Primary button: colour, not opacity.
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
+        color: var(--color-disabled-text);
+        background-color: var(--color-disabled-surface);
+        box-shadow: none;
     }
 
     svg {

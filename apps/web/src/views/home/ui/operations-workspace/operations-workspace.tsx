@@ -17,16 +17,22 @@ import {
 	ArrowDownWideNarrow,
 	ArrowLeftRight,
 	ArrowUpNarrowWide,
-	ListFilter,
 	Plus,
 	Search,
 	X
 } from 'lucide-solid';
-import { createSignal, Show } from 'solid-js';
+import { createSignal, For, Show } from 'solid-js';
 
 import { OperationsList } from '../operations-list/operations-list';
 import { OperationsTable } from '../operations-table/operations-table';
 
+import {
+	getSortOrderLabel,
+	isCustomSortOrder,
+	OPERATION_SORT_ORDER_OPTIONS,
+	parseSortOrderValue,
+	toSortOrderValue
+} from './lib/operation-sort-order';
 import { useOperationsView } from './lib/use-operations-view';
 
 const PERIOD_OPTIONS: SegmentedOption<OperationPeriodMode>[] = [
@@ -86,6 +92,14 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 		});
 	};
 
+	const handleSortOrderChange = (event: Event & { currentTarget: HTMLSelectElement }) => {
+		const sort = parseSortOrderValue(event.currentTarget.value);
+
+		if (sort) {
+			view.setSort(sort);
+		}
+	};
+
 	const handleOpenSearch = () => {
 		setIsSearchOpen(true);
 		queueMicrotask(() => searchInput?.focus());
@@ -129,10 +143,33 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 		<section aria-busy={view.isLoading()} aria-label='Операции счёта' class={css.root}>
 			<div class={css.toolbar}>
 				<div class={css.toolbarGroup}>
+					{/* Narrow area: one select, an item is a field and a direction at once. From `sort-label` the pair below. */}
+					<span class={cn(css.sortOrder, isCustomSortOrder(view.sort()) && css.sortOrderActive)}>
+						<select
+							aria-label='Порядок'
+							class={css.sortOrderSelect}
+							title={getSortOrderLabel(view.sort())}
+							onChange={handleSortOrderChange}
+						>
+							<For each={OPERATION_SORT_ORDER_OPTIONS}>
+								{(option) => (
+									<option selected={option.value === toSortOrderValue(view.sort())} value={option.value}>
+										{option.label}
+									</option>
+								)}
+							</For>
+						</select>
+						<span aria-hidden='true' class={css.sortOrderIcon}>
+							<Show fallback={<ArrowUpNarrowWide size={17}/>} when={view.sort().direction === 'desc'}>
+								<ArrowDownWideNarrow size={17}/>
+							</Show>
+						</span>
+					</span>
 					<Button
 						aria-label={view.sort().direction === 'desc' ? 'Показать в обратном порядке' : 'Показать в прямом порядке'}
+						class={css.sortDirection}
 						iconOnly
-						size='sm'
+						size='md'
 						title={view.sort().direction === 'desc' ? 'По убыванию' : 'По возрастанию'}
 						variant='secondary'
 						onClick={handleSortDirectionChange}
@@ -161,7 +198,6 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 							<option value='category'>По категории</option>
 							<option value='contact'>По контакту</option>
 						</select>
-						<ListFilter aria-hidden='true' class={css.sortIcon} size={16}/>
 					</span>
 					<Segmented
 						aria-label='Период'
@@ -184,18 +220,18 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 
 				<div class={cn(css.toolbarGroup, css.toolbarActions)}>
 					<Show when={!isSearchOpen()}>
-						<Button aria-label='Открыть поиск' iconOnly size='sm' variant='ghost' onClick={handleOpenSearch}>
+						<Button aria-label='Открыть поиск' iconOnly size='md' variant='ghost' onClick={handleOpenSearch}>
 							<Search size={18}/>
 						</Button>
 					</Show>
-					<Button aria-label='Добавить перевод' iconOnly size='sm' variant='secondary' onClick={props.onCreateTransfer}>
+					<Button aria-label='Добавить перевод' iconOnly size='md' variant='secondary' onClick={props.onCreateTransfer}>
 						<ArrowLeftRight size={18}/>
 					</Button>
 					<Button
 						aria-label='Добавить операцию'
 						class={css.addOperation}
 						iconOnly
-						size='sm'
+						size='md'
 						variant='primary'
 						onClick={props.onCreateOperation}
 					>
@@ -213,13 +249,13 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 						aria-label='Поиск операций'
 						class={css.searchField}
 						placeholder='Название, комментарий, категория, получатель или сумма'
-						size='sm'
+						size='md'
 						startContent={<Search size={16}/>}
 						value={view.searchQuery()}
 						onInput={(event) => view.setSearchQuery(event.currentTarget.value)}
 						onKeyDown={handleSearchKeyDown}
 					/>
-					<Button aria-label='Закрыть поиск' iconOnly size='sm' variant='ghost' onClick={handleCloseSearch}>
+					<Button aria-label='Закрыть поиск' iconOnly size='md' variant='ghost' onClick={handleCloseSearch}>
 						<X size={17}/>
 					</Button>
 				</div>

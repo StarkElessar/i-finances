@@ -14,6 +14,11 @@ export type PeriodNavigatorProps = {
 	nextLabel: string;
 	/** `false` at the end of the allowed range (the current period): the forward button is disabled. */
 	canMoveNext?: boolean;
+	/**
+	 * Button size: `md` (40 px, 44 on touch) in toolbars, `sm` (32, 44 on touch) only in a dense place such as
+	 * a card header with no neighbours of another size.
+	 */
+	size?: 'sm' | 'md';
 	onPrevious: () => void;
 	onNext: () => void;
 	class?: string;
@@ -27,7 +32,7 @@ export type PeriodNavigatorProps = {
 export function PeriodNavigator(props: PeriodNavigatorProps) {
 	return (
 		<div class={cn(css.root, props.class)}>
-			<Button aria-label={props.previousLabel} iconOnly size='sm' variant='ghost' onClick={() => props.onPrevious()}>
+			<Button aria-label={props.previousLabel} iconOnly size={props.size ?? 'md'} variant='ghost' onClick={() => props.onPrevious()}>
 				<ChevronLeft size={18}/>
 			</Button>
 			<span aria-live='polite' class={css.label}>{props.label}</span>
@@ -35,7 +40,7 @@ export function PeriodNavigator(props: PeriodNavigatorProps) {
 				aria-label={props.nextLabel}
 				disabled={props.canMoveNext === false}
 				iconOnly
-				size='sm'
+				size={props.size ?? 'md'}
 				variant='ghost'
 				onClick={() => props.onNext()}
 			>

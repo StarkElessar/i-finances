@@ -1,8 +1,15 @@
+@use "@/shared/styles/mixins" as mx;
+
 .root {
     display: flex;
     flex-wrap: wrap;
     gap: var(--space-2);
     align-items: center;
+
+    // 36 px chips on touch need gaps of 8 px or more (kit-open-questions.md, section 5).
+    @include mx.pointer-coarse {
+        gap: var(--space-4);
+    }
 }
 
 .label {

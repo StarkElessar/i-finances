@@ -236,9 +236,15 @@
         }
     }
 
+    // Same as a disabled kit field (kit-open-questions.md, section 2).
     &:disabled {
+        cursor: not-allowed;
         resize: none;
-        color: var(--color-text-tertiary);
+
+        border-color: var(--color-disabled-border);
+
+        color: var(--color-disabled-text);
+
         background-color: var(--color-surface-subtle);
     }
 }

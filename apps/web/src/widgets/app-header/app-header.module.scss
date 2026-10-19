@@ -10,7 +10,7 @@
     border-block-end: 1px solid var(--color-border);
     background-color: color-mix(in srgb, var(--color-surface) 92%, transparent);
 
-    @include mx.media-mn(md) {
+    @include mx.media-mn(sm) {
         padding-block: var(--space-4);
         background-color: var(--color-surface);
     }
@@ -41,13 +41,23 @@
     white-space: nowrap;
 }
 
+// On 640-959 only the mark stays: the word is hidden visually but kept for
+// screen readers (the logo is a span, not a link).
+.logo-word {
+    @include mx.media-mn-mx(sm, md) {
+        @include mx.visually-hidden;
+    }
+}
+
+// The links never shrink or wrap: at 640 px they need 421 px and there is room
+// for them. A sixth link would mean redrawing the board, not hiding links.
 .desktop-navigation {
     display: flex;
     gap: var(--space-3);
     align-items: center;
     justify-content: center;
 
-    min-inline-size: 0;
+    min-inline-size: min-content;
     margin-inline: auto;
 }
 
@@ -64,8 +74,8 @@
     gap: var(--space-1);
     align-items: stretch;
 
-    // 12 px from the edges on a phone; centred with a cap on a tablet (640-959 px).
-    inline-size: min(calc(100% - var(--space-5) * 2), fn.rem(640));
+    // The bar exists only below `sm`: 12 px from the edges.
+    inline-size: calc(100% - var(--space-5) * 2);
     block-size: var(--bottom-nav-block-size);
     margin-inline: auto;
     padding: var(--space-2);
@@ -133,7 +143,10 @@
 .nav-link {
     cursor: default;
 
-    padding: var(--space-4) var(--space-6);
+    // 12 px at the sides on 640-959, 16 px from `md` (kit-open-questions.md, section 4).
+    flex: none;
+
+    padding: var(--space-4) var(--space-5);
     border: fn.rem(1) solid transparent;
     border-radius: fn.rem(20);
 
@@ -145,6 +158,10 @@
     transition-timing-function: var(--ease-standard);
     transition-duration: var(--duration-fast);
     transition-property: color, border-color, background-color, box-shadow;
+
+    @include mx.media-mn(md) {
+        padding-inline: var(--space-6);
+    }
 
     &:not(.active-link) {
         cursor: pointer;

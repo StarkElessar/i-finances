@@ -37,11 +37,21 @@
         }
     }
 
+    // Disabled by colour (kit-open-questions.md, section 2): a grey track, a white knob without a shadow.
     &:disabled {
         cursor: not-allowed;
 
         + .control {
-            opacity: 0.6;
+            background-color: var(--color-disabled-surface);
+
+            &::before {
+                background-color: var(--color-text-inverse);
+                box-shadow: none;
+            }
+        }
+
+        &:checked + .control {
+            background-color: var(--color-disabled-fill);
         }
     }
 }

@@ -87,6 +87,14 @@ export const Disabled: Story = {
 					{ value: 'year', label: 'Год', disabled: true }
 				]}
 			/>
+			<Controlled
+				{...args}
+				options={[
+					{ value: 'week', label: 'Неделя' },
+					{ value: 'month', label: 'Месяц', disabled: true },
+					{ value: 'year', label: 'Год' }
+				]}
+			/>
 			<Controlled {...args} options={PERIODS.map((option) => ({ ...option, disabled: true }))}/>
 		</StoryStack>
 	)

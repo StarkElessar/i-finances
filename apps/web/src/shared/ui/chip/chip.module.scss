@@ -1,4 +1,5 @@
 @use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
 
 // Mockup `.i-chip`: 28 px, pill, 13 px medium; selected is filled with the soft primary colour.
 .chip {
@@ -25,6 +26,11 @@
         border-color var(--duration-fast) var(--ease-standard),
         background-color var(--duration-fast) var(--ease-standard);
 
+    // A dense filter list: 36 px on touch, not 44, so the gaps between chips must be 8 px or more.
+    @include mx.pointer-coarse {
+        block-size: fn.rem(36);
+    }
+
     // A chip is a toggle: a click changes its state, so it is never "already selected" in the
     // sense of AGENTS.md. The focus ring shows in both states (it is a tab stop either way).
     &:focus-visible {
@@ -43,9 +49,12 @@
         }
     }
 
+    // The category dot (`--chip-dot`) keeps its colour: it ties the chip to the chart, it is not a sign of availability.
     &:disabled {
         cursor: not-allowed;
-        opacity: 0.48;
+        border-color: var(--color-disabled-border);
+        color: var(--color-disabled-text);
+        background-color: var(--color-surface-subtle);
     }
 }
 
@@ -53,6 +62,12 @@
     border-color: var(--color-primary);
     color: var(--color-primary);
     background-color: var(--color-primary-soft);
+
+    &:disabled {
+        border-color: var(--color-disabled-border);
+        color: var(--color-disabled-text);
+        background-color: var(--color-disabled-surface);
+    }
 }
 
 .dot {

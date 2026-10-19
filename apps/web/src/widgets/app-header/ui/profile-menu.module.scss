@@ -1,9 +1,11 @@
 @use "@/shared/styles/functions" as fn;
 @use "@/shared/styles/mixins" as mx;
 
+// No auto margin: the top bar is `space-between` and the links centre themselves with
+// `margin-inline: auto`; a third auto margin here pushed them off the centre between
+// the logo and the avatar (Kit-Surfaces, «Шапка»).
 .root {
     flex: none;
-    margin-inline-start: auto;
 }
 
 .trigger {

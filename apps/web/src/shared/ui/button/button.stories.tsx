@@ -79,8 +79,20 @@ export const Focus: Story = {
 	parameters: { pseudo: { focusVisible: true } }
 };
 
+/** Disabled is shown by colour: every variant looks the same, the ghost ones have no plate. */
 export const Disabled: Story = {
-	args: { disabled: true }
+	args: { disabled: true },
+	render: (args) => (
+		<StoryStack>
+			<Button {...args}>Сохранить</Button>
+			<Button {...args} variant='secondary'>Отмена</Button>
+			<Button {...args} variant='danger'>Удалить</Button>
+			<Button {...args} variant='ghost'>Ещё</Button>
+			<Button {...args} iconOnly size='sm' variant='ghost'>
+				<Plus/>
+			</Button>
+		</StoryStack>
+	)
 };
 
 export const Loading: Story = {

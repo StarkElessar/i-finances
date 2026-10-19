@@ -147,9 +147,14 @@
 
 .disabled {
     cursor: not-allowed;
-    color: var(--color-text-tertiary);
-    opacity: 0.64;
-    background-color: var(--color-surface-strong);
+    border-color: var(--color-disabled-border);
+    color: var(--color-disabled-text);
+    background-color: var(--color-surface-subtle);
+
+    .input::placeholder,
+    .adornment {
+        color: var(--color-disabled-text);
+    }
 }
 
 .readonly {

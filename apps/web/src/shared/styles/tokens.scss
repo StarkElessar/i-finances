@@ -118,6 +118,13 @@
     --color-warning-soft: #fff3d9;
     --color-focus-ring: rgb(63 119 168 / 35%);
 
+    // "Unavailable" is shown by colour, never by opacity (decision 2026-10-19, development/decisions/kit-open-questions.md,
+    // section 2). Aliases of the theme tokens above, declared in both theme blocks so they resolve at the themed element.
+    --color-disabled-surface: var(--color-surface-strong); // button, unchecked box, switch track, selected disabled chip
+    --color-disabled-text: var(--color-text-tertiary); // text, icons, placeholder, chevrons
+    --color-disabled-border: var(--color-border); // fields, chip, unchecked box
+    --color-disabled-fill: var(--color-text-tertiary); // checked box and switch that is on
+
     // Category palette: 10 hues, lightness varies so they stay apart without
     // relying on hue alone (mockup --k-1..10, --k-other). Charts show the top
     // 8 and fold the rest into "other".
@@ -171,6 +178,12 @@
     --color-warning-soft: #42331c;
     --color-focus-ring: rgb(110 168 255 / 40%);
 
+    // Disabled aliases, same as in the light block.
+    --color-disabled-surface: var(--color-surface-strong); // button, unchecked box, switch track, selected disabled chip
+    --color-disabled-text: var(--color-text-tertiary); // text, icons, placeholder, chevrons
+    --color-disabled-border: var(--color-border); // fields, chip, unchecked box
+    --color-disabled-fill: var(--color-text-tertiary); // checked box and switch that is on
+
     // Category palette, dark steps
     --color-series-1: #5b9cf0;
     --color-series-2: #f0825a;
@@ -195,5 +208,15 @@
         --font-size-display: #{fn.rem(32)};
         --font-size-heading-1: #{fn.rem(28)};
         --space-12: #{fn.rem(64)};
+    }
+}
+
+// Touch screens: every standalone control is 44 px, `sm` and `md` alike (decision 2026-10-19,
+// kit-open-questions.md, section 5). `lg` stays 48. Precise pointer: 40 in toolbars, forms and headers,
+// 32 only in dense places. Declared after the theme blocks (same specificity as `[data-theme]`).
+:root {
+    @include mx.pointer-coarse {
+        --control-size-sm: var(--control-size-touch);
+        --control-size-md: var(--control-size-touch);
     }
 }
