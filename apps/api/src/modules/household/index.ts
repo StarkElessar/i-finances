@@ -18,6 +18,7 @@ export {
 	type HouseholdInvitationAcceptance,
 	type HouseholdInvitationCreation,
 	type HouseholdInvitationLimits,
+	type HouseholdInvitationPreviewLookup,
 	type HouseholdInvitationPreviewRecord,
 	HouseholdInvitationRepository,
 	type NewHouseholdInvitation

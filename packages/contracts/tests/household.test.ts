@@ -14,8 +14,11 @@ import {
 } from '../src/household';
 import {
 	acceptInvitationInputSchema,
+	acceptInvitationResultSchema,
 	householdInvitationErrorCodes,
 	householdInvitationErrorMessageByCode,
+	householdInvitationFailureSchema,
+	householdInvitationUnavailableReasons,
 	invitationPreviewResultSchema,
 	invitationTokenSchema,
 	readInvitationTokenFromLocation
@@ -125,6 +128,28 @@ describe('household invitation contracts', () => {
 			invitation: { expiresAt: '2026-10-25T10:00:00.000Z', householdName: 'Семья', inviterName: 'Сергей' },
 			ok: true
 		});
+	});
+
+	it('an unavailable invitation may name one of four reasons; the reason is optional', () => {
+		const failure = {
+			errorCode: 'invitation-unavailable',
+			message: householdInvitationErrorMessageByCode['invitation-unavailable'],
+			ok: false
+		};
+
+		expect([...householdInvitationUnavailableReasons]).toEqual(['expired', 'used', 'revoked', 'unknown']);
+
+		for (const reason of householdInvitationUnavailableReasons) {
+			expect(householdInvitationFailureSchema.parse({ ...failure, reason })).toEqual({ ...failure, reason });
+			expect(invitationPreviewResultSchema.parse({ ...failure, reason })).toEqual({ ...failure, reason });
+			expect(acceptInvitationResultSchema.parse({ ...failure, reason })).toEqual({ ...failure, reason });
+		}
+
+		// Additive: an answer without it (older server, malformed token) is still valid and gains no key.
+		expect(householdInvitationFailureSchema.parse(failure)).toEqual(failure);
+		expect(householdInvitationFailureSchema.safeParse({ ...failure, reason: 'not-found' }).success).toBe(false);
+		expect(householdInvitationFailureSchema.safeParse({ ...failure, reason: 'EXPIRED' }).success).toBe(false);
+		expect(householdInvitationFailureSchema.safeParse({ ...failure, reason: null }).success).toBe(false);
 	});
 
 	it('has a message for every error code', () => {

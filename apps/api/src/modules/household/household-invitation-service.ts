@@ -7,6 +7,7 @@ import {
 	type ActiveHouseholdInvitation,
 	type CreatedHouseholdInvitation,
 	type HouseholdInvitationErrorCode,
+	type HouseholdInvitationUnavailableReason,
 	type HouseholdSummary,
 	INVITATION_PAGE_PATH,
 	type InvitationPreview,
@@ -31,7 +32,7 @@ export type HouseholdInvitationServiceDependencies = {
 	createId?: () => string;
 	createToken?: () => string;
 	householdResolver: Pick<HouseholdResolver, 'requireForUser'>;
-	invitations: Pick<HouseholdInvitationRepository, 'accept' | 'create' | 'findActivePreview' | 'listActive' | 'revoke'>;
+	invitations: Pick<HouseholdInvitationRepository, 'accept' | 'create' | 'findPreview' | 'listActive' | 'revoke'>;
 	/**
 	 * Tells the inviter, after the acceptance is committed (A9). Started in the background: the answer to the guest does
 	 * not wait for it, and its failure never undoes the acceptance.
@@ -48,6 +49,8 @@ export type HouseholdInvitationFailureOutcome = {
 	currentHouseholdName?: string;
 	errorCode: HouseholdInvitationErrorCode;
 	ok: false;
+	/** Only with `invitation-unavailable`, for a well-formed token. */
+	reason?: HouseholdInvitationUnavailableReason;
 	retryAfterSeconds?: number;
 };
 
@@ -70,14 +73,21 @@ function failure(errorCode: HouseholdInvitationErrorCode, retryAfterSeconds?: nu
 	return { errorCode, ok: false, retryAfterSeconds };
 }
 
+function unavailable(reason: HouseholdInvitationUnavailableReason): HouseholdInvitationFailureOutcome {
+	return { errorCode: 'invitation-unavailable', ok: false, reason };
+}
+
 /**
  * Household invitations (Р5, flow 5.4). The owner creates, lists and revokes them from a browser session; a guest
  * previews one by its token and accepts it once signed in.
  *
  * The token is generated here, shown once inside the link and forgotten: only its SHA-256 goes further. A token that
- * does not open an active invitation is answered `invitation-unavailable` whatever the reason (unknown, expired, used,
- * revoked), on preview and on acceptance alike, so the answer tells nothing about invitations one does not hold. The
- * household of the caller always comes from their membership; the household joined always comes from the invitation.
+ * does not open an active invitation is answered 404 `invitation-unavailable` on preview and on acceptance alike, in
+ * one shape; the optional `reason` (expired, used, revoked, unknown) is told only for a well-formed token, which the
+ * HTTP layer has already checked, and comes from the same single lookup as the answer for an unknown token, so
+ * neither the work nor the status separates the four. A stranger cannot guess a 256-bit token, so the reason is
+ * seen only by someone who holds the link. The household of the caller always comes from their membership; the
+ * household joined always comes from the invitation.
  */
 export class HouseholdInvitationService {
 	private readonly createId: () => string;
@@ -170,17 +180,17 @@ export class HouseholdInvitationService {
 			return failure('rate-limited', limit.retryAfterSeconds);
 		}
 
-		const record = await this.dependencies.invitations.findActivePreview(hashHouseholdInvitationToken(token), now);
+		const lookup = await this.dependencies.invitations.findPreview(hashHouseholdInvitationToken(token), now);
 
-		if (record === undefined) {
-			return failure('invitation-unavailable');
+		if (lookup.kind === 'unavailable') {
+			return unavailable(lookup.reason);
 		}
 
 		return {
 			invitation: {
-				expiresAt: record.expiresAt.toISOString(),
-				householdName: record.householdName,
-				inviterName: record.inviterName
+				expiresAt: lookup.record.expiresAt.toISOString(),
+				householdName: lookup.record.householdName,
+				inviterName: lookup.record.inviterName
 			},
 			ok: true
 		};
@@ -207,7 +217,7 @@ export class HouseholdInvitationService {
 
 		switch (acceptance.kind) {
 			case 'unavailable':
-				return failure('invitation-unavailable');
+				return unavailable(acceptance.reason);
 			case 'already-in-household':
 				return { ...failure('already-in-household'), currentHouseholdName: acceptance.currentHouseholdName };
 			case 'confirmation-required':

@@ -198,7 +198,8 @@ export class HouseholdInvitationHttpController {
 			errorCode: outcome.errorCode,
 			fieldErrors,
 			message: householdInvitationErrorMessageByCode[outcome.errorCode],
-			ok: false
+			ok: false,
+			reason: outcome.errorCode === 'invitation-unavailable' ? outcome.reason : undefined
 		}, STATUS_BY_ERROR_CODE[outcome.errorCode]);
 	}
 }
