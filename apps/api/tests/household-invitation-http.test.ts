@@ -732,6 +732,7 @@ describe('HouseholdInvitationService checks the role itself', () => {
 			config: { ttlMilliseconds: DEFAULT_INVITATION_TTL },
 			householdResolver: { requireForUser: async () => ({ baseCurrency: 'BYN', id: FAMILY, name: 'Семья', role: 'member' }) },
 			invitations,
+			memberJoinedNotifier: { notifyMemberJoined: vi.fn(async () => undefined) },
 			origin: TEST_ORIGIN,
 			previewRateLimiter: { tryConsume: () => ({ allowed: true }) }
 		});

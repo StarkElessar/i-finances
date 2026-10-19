@@ -13,6 +13,10 @@ import {
 	HouseholdResolver,
 	HouseholdService
 } from '@/modules/household';
+import { loadTelegramMessages, type TelegramBotClient } from '@/modules/telegram';
+import { HouseholdMemberJoinedNotifier, TelegramAccountRepository } from '@/modules/telegram-auth';
+
+import { FakeTelegramBotClient } from './fake-telegram-bot-client';
 
 export const TEST_ORIGIN = 'http://localhost:5173';
 
@@ -44,10 +48,19 @@ export type TestRequest = {
 /**
  * The household and invitation routes on the real repositories, services, controllers and cookie sessions over the
  * given database. The clock of the household services is `clock.now` (sessions use the real time, so moving the clock
- * a week forward does not sign anyone out).
+ * a week forward does not sign anyone out). The bot is a `FakeTelegramBotClient` unless `botClient` is given (`null`: no
+ * bot token is configured): nothing reaches Telegram from a test.
+ *
+ * The notice about a joined member runs in the background of `accept` (A9); `notificationsSettled()` waits for every
+ * notice started so far, so a test checks what was sent without guessing how long to wait.
  */
-export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = DEFAULT_INVITATION_TTL) {
+export function createHouseholdTestApp(
+	database: AppDatabase,
+	ttlMilliseconds = DEFAULT_INVITATION_TTL,
+	options: { botClient?: TelegramBotClient | null } = {}
+) {
 	const clock = { now: new Date('2026-10-18T10:00:00.000Z') };
+	const botClient = options.botClient === null ? undefined : options.botClient ?? new FakeTelegramBotClient();
 	const now = () => clock.now;
 	const sessionRepository = new SessionRepository(database);
 	const sessionService = new SessionService(sessionRepository, { config: TEST_AUTH_CONFIG });
@@ -57,6 +70,13 @@ export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = 
 	const acceptRateLimiter = new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: 5 * 60 * 1000 });
 	const previewRateLimiter = new FixedWindowRateLimiter({ maxRequests: 30, windowMilliseconds: 5 * 60 * 1000 });
 	let nextHouseholdId = 0;
+	const pendingNotifications: Promise<void>[] = [];
+	const notifier = new HouseholdMemberJoinedNotifier({
+		accounts: new TelegramAccountRepository(database),
+		botClient,
+		messages: loadTelegramMessages(),
+		now
+	});
 	const householdService = new HouseholdService({
 		createId: () => `created-household-${++nextHouseholdId}`,
 		householdRepository,
@@ -69,6 +89,15 @@ export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = 
 		config: { ttlMilliseconds },
 		householdResolver,
 		invitations: new HouseholdInvitationRepository(database),
+		memberJoinedNotifier: {
+			notifyMemberJoined: (notice) => {
+				const notification = notifier.notifyMemberJoined(notice);
+
+				pendingNotifications.push(notification);
+
+				return notification;
+			}
+		},
 		now,
 		origin: TEST_ORIGIN,
 		previewRateLimiter
@@ -97,7 +126,11 @@ export function createHouseholdTestApp(database: AppDatabase, ttlMilliseconds = 
 		});
 	}
 
-	return { acceptRateLimiter, app, call, clock, previewRateLimiter, signIn };
+	async function notificationsSettled(): Promise<void> {
+		await Promise.allSettled(pendingNotifications);
+	}
+
+	return { acceptRateLimiter, app, botClient, call, clock, notificationsSettled, previewRateLimiter, signIn };
 }
 
 export async function insertUser(database: AppDatabase, id: string, displayName: string): Promise<void> {

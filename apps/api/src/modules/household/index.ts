@@ -27,6 +27,8 @@ export {
 	type HouseholdInvitationOutcome,
 	HouseholdInvitationService,
 	type HouseholdInvitationServiceDependencies,
+	type HouseholdMemberJoinedNotice,
+	type HouseholdMemberJoinedNotifier,
 	MAX_HOUSEHOLD_INVITATIONS_PER_DAY
 } from './household-invitation-service';
 export { generateHouseholdInvitationToken, hashHouseholdInvitationToken } from './household-invitation-token';

@@ -57,7 +57,16 @@ export type AcceptHouseholdInvitationInput = {
 };
 
 export type HouseholdInvitationAcceptance =
-	| { householdId: string; householdName: string; kind: 'joined'; replacedHouseholdId: string | null }
+	| {
+		householdId: string;
+		householdName: string;
+		/** `household_invitations.created_by_user_id`: whom the notice about the new member goes to. */
+		inviterUserId: string;
+		kind: 'joined';
+		/** The new member's `users.display_name`, for the notice. */
+		memberDisplayName: string;
+		replacedHouseholdId: string | null;
+	}
 	/** Unknown, expired, used or revoked: one answer for all, nothing changed. */
 	| { kind: 'unavailable' }
 	/** The caller is already a member of the invited household, or of another one with data or other members. */
@@ -209,6 +218,7 @@ export class HouseholdInvitationRepository {
 		try {
 			return this.database.transaction((transaction): HouseholdInvitationAcceptance => {
 				const invitation = transaction.select({
+					createdByUserId: householdInvitations.createdByUserId,
 					householdId: householdInvitations.householdId,
 					householdName: households.name,
 					id: householdInvitations.id
@@ -259,10 +269,17 @@ export class HouseholdInvitationRepository {
 					.values({ householdId: invitation.householdId, joinedAt: input.now, role: 'member', userId: input.userId })
 					.run();
 
+				const member = transaction.select({ displayName: users.displayName })
+					.from(users)
+					.where(eq(users.id, input.userId))
+					.get();
+
 				return {
 					householdId: invitation.householdId,
 					householdName: invitation.householdName,
+					inviterUserId: invitation.createdByUserId,
 					kind: 'joined',
+					memberDisplayName: member?.displayName ?? '',
 					replacedHouseholdId: current?.householdId ?? null
 				};
 			});

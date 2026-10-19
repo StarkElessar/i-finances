@@ -46,6 +46,27 @@ export class TelegramAccountRepository {
 			.get();
 	}
 
+	/** The linked Telegram of a user, if any: where the bot writes to them. */
+	public async findByUserId(userId: string): Promise<TelegramAccount | undefined> {
+		return this.database.select({
+			chatId: telegramAccounts.chatId,
+			telegramId: telegramAccounts.telegramId,
+			userId: telegramAccounts.userId,
+			username: telegramAccounts.username
+		})
+			.from(telegramAccounts)
+			.where(eq(telegramAccounts.userId, userId))
+			.get();
+	}
+
+	/** Set when the bot's message to this user answers 403: the user blocked the bot (`bot_blocked_at`). */
+	public async markBotBlocked(userId: string, now: Date): Promise<void> {
+		this.database.update(telegramAccounts)
+			.set({ botBlockedAt: now, updatedAt: now })
+			.where(eq(telegramAccounts.userId, userId))
+			.run();
+	}
+
 	/**
 	 * Finds the user of this Telegram account and refreshes what Telegram reported (name, username, chat; a person who
 	 * just pressed a button has not blocked the bot). An unknown account becomes a new user without a password and
