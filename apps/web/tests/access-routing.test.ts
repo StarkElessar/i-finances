@@ -43,10 +43,16 @@ describe('viewer access', () => {
 	it('keeps the household of the session in the viewer', () => {
 		expect(viewerFromSession(MEMBER_SESSION)).toEqual({
 			displayName: 'Сергей',
+			hasPassword: true,
 			household: { id: 'default-household', name: 'Семья', role: 'owner' },
 			id: 'user-1',
+			telegram: null,
 			username: 'sergei'
 		});
+	});
+
+	it('keeps the password and Telegram flags of the session for the «Безопасность» section', () => {
+		expect(viewerFromSession(ONBOARDING_SESSION)).toMatchObject({ hasPassword: false, telegram: { username: 'anna_k' } });
 	});
 });
 

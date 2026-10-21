@@ -15,8 +15,10 @@ export function viewerFromSession(session: CurrentSessionResponse): CurrentViewe
 
 	return {
 		displayName: session.user.displayName,
+		hasPassword: session.hasPassword,
 		household: session.household,
 		id: session.user.id,
+		telegram: session.telegram,
 		username: session.user.username
 	};
 }
