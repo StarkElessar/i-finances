@@ -1,6 +1,7 @@
 import { ApiHttpError } from '@/shared/api';
 
 import {
+	type CurrentSessionResponse,
 	type TelegramSignInCancelResult,
 	type TelegramSignInCompleteResult,
 	type TelegramSignInErrorCode,
@@ -30,9 +31,21 @@ const MILLISECONDS_PER_MINUTE = 60_000;
 
 const MILLISECONDS_PER_SECOND = 1_000;
 
+/** The shortest and the longest request lifetime the server allows (`TELEGRAM_LOGIN_TTL_MINUTES`, 1–60). */
+const MIN_LINK_LIFETIME_MS = MILLISECONDS_PER_MINUTE;
+
+const MAX_LINK_LIFETIME_MS = 60 * MILLISECONDS_PER_MINUTE;
+
+/** The default request lifetime, assumed when `expiresAt` makes no sense on this browser's clock. */
+const FALLBACK_LINK_LIFETIME_MS = 10 * MILLISECONDS_PER_MINUTE;
+
+const TELEGRAM_LINK_HOST = 't.me';
+
 export type TelegramSignInGateway = {
 	cancelTelegramSignIn(code: string): Promise<TelegramSignInCancelResult>;
 	completeTelegramSignIn(code: string): Promise<TelegramSignInCompleteResult>;
+	/** Read only when a confirmation may have been lost on the way (see `recoverLostConfirmation`). */
+	currentSession(): Promise<CurrentSessionResponse>;
 	startTelegramSignIn(): Promise<TelegramSignInStartResult>;
 };
 
@@ -79,6 +92,35 @@ function readTelegramFailure(error: unknown): TelegramFailure | null {
 	};
 }
 
+/**
+ * The link of the button is the server's answer, and only an `https://t.me/...` link may become an anchor: anything
+ * else (`javascript:`, a foreign host after a broken setting or a tampered answer) is refused.
+ */
+function isTelegramBotUrl(value: string): boolean {
+	try {
+		const url = new URL(value);
+
+		return url.protocol === 'https:' && url.hostname === TELEGRAM_LINK_HOST && url.port === '' && url.username === ''
+			&& url.password === '';
+	}
+	catch {
+		return false;
+	}
+}
+
+/**
+ * The request lifetime as measured from the answer of `start`. `expiresAt` is on the server's clock: on a browser
+ * whose clock is off by more than the lifetime, the raw difference is negative (the link would be replaced at once,
+ * again and again, until the `start` limit) or huge, so a value the server cannot have set gives way to the default.
+ */
+function readLinkLifetimeMs(expiresAt: string, receivedAtMs: number): number {
+	const lifetimeMs = Date.parse(expiresAt) - receivedAtMs;
+
+	return Number.isFinite(lifetimeMs) && lifetimeMs >= MIN_LINK_LIFETIME_MS && lifetimeMs <= MAX_LINK_LIFETIME_MS
+		? lifetimeMs
+		: FALLBACK_LINK_LIFETIME_MS;
+}
+
 function toFailedState(failure: TelegramFailure, ttlMinutes?: number): TelegramSignInState {
 	return {
 		kind: 'failed',
@@ -102,7 +144,11 @@ function toFailedState(failure: TelegramFailure, ttlMinutes?: number): TelegramS
  * - requests that set or clear the request cookie (`start`, `complete`, `cancel`) never overlap: the browser applies
  *   their `Set-Cookie` in arrival order, and a late «clear» of an old request would wipe the new request's cookie;
  * - a second tab that took over the cookie gets `browser-mismatch` here, which waits for the person's «Начать заново»
- *   rather than restarting by itself, so two tabs never take the cookie from each other in a loop.
+ *   rather than restarting by itself, so two tabs never take the cookie from each other in a loop;
+ * - the bot link is an `https://t.me/...` link from the answer of `start`, nothing else;
+ * - the request lifetime is measured on this browser's clock from the answer of `start`, so a clock that is off by
+ *   minutes neither replaces the link in a loop nor keeps it forever;
+ * - a confirmation whose answer was lost (no network, the timeout) is found through the session, not shown as expired.
  */
 export class TelegramSignInFlow {
 	private state: TelegramSignInState = { kind: 'idle' };
@@ -110,6 +156,12 @@ export class TelegramSignInFlow {
 	private generation = 0;
 	private disposed = false;
 	private pollInFlight = false;
+	/**
+	 * A poll of the current request got no answer (no network, the 15 s timeout, a cut body). Its answer may have been
+	 * `confirmed`: the server then used the request up, and the next poll says 410 (the answer was lost before its
+	 * headers) or 403 `browser-mismatch` (its headers arrived: the session cookie is set and the request cookie cleared).
+	 */
+	private pollAnswerLost = false;
 	/** The ready link expired while the page was hidden: replace it when the page is visible again. */
 	private linkStale = false;
 	/** The last request that may set or clear the request cookie, settled (never rejects). */
@@ -190,6 +242,7 @@ export class TelegramSignInFlow {
 
 		this.clearTimers();
 		this.linkStale = false;
+		this.pollAnswerLost = false;
 		this.generation += 1;
 
 		const generation = this.generation;
@@ -218,7 +271,13 @@ export class TelegramSignInFlow {
 				return;
 			}
 
-			const expiresAtMs = Date.parse(result.expiresAt);
+			if (!isTelegramBotUrl(result.botUrl)) {
+				this.setState({ kind: 'failed', message: telegramSignInErrorMessageByCode.unexpected, reason: 'unexpected' });
+				return;
+			}
+
+			const receivedAtMs = Date.now();
+			const expiresAtMs = receivedAtMs + readLinkLifetimeMs(result.expiresAt, receivedAtMs);
 			const link: TelegramSignInLink = {
 				appUrl: result.appUrl,
 				botUrl: result.botUrl,
@@ -322,6 +381,7 @@ export class TelegramSignInFlow {
 
 			if (failure === null) {
 				// No network or a proxy error page: the request may still be fine, keep asking.
+				this.pollAnswerLost = true;
 				this.setConnectionLost(true);
 				this.setTimer('poll', TELEGRAM_POLL_INTERVAL_MS, () => void this.poll());
 				return;
@@ -352,6 +412,40 @@ export class TelegramSignInFlow {
 
 		if (failure.errorCode === 'telegram-unavailable') {
 			this.setState({ kind: 'unavailable' });
+			return;
+		}
+
+		if (this.pollAnswerLost && (failure.errorCode === 'login-expired' || failure.errorCode === 'browser-mismatch')) {
+			void this.recoverLostConfirmation(failure, link);
+			return;
+		}
+
+		this.setState(toFailedState(failure, link.ttlMinutes));
+	}
+
+	/**
+	 * After a poll without an answer, 410 or `browser-mismatch` may mean «you are signed in, the answer was lost»: `used`
+	 * answers 410 like an expired request, and a cleared request cookie looks like another browser. The session decides:
+	 * signed in shows the identity card as after any confirmation (the person still sees whose account it is), otherwise
+	 * the failure stands as it is.
+	 */
+	private async recoverLostConfirmation(failure: TelegramFailure, link: TelegramSignInLink): Promise<void> {
+		const generation = this.generation;
+		let session: CurrentSessionResponse | undefined;
+
+		try {
+			session = await this.options.gateway.currentSession();
+		}
+		catch {
+			session = undefined;
+		}
+
+		if (this.isStale(generation) || this.state.kind !== 'waiting') {
+			return;
+		}
+
+		if (session?.authenticated === true) {
+			this.setState({ hasHousehold: session.household !== null, isNewUser: false, kind: 'confirmed' });
 			return;
 		}
 

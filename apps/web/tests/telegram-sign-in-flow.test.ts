@@ -24,7 +24,7 @@ const CODE_A = 'A'.repeat(32);
 
 const CODE_B = 'B'.repeat(32);
 
-function startResult(code: string, now = Date.now()): TelegramSignInStartResult {
+function startResult(code: string, now = Date.now()): Extract<TelegramSignInStartResult, { ok: true }> {
 	return {
 		appUrl: `tg://resolve?domain=i_finances_dev_bot&start=${code}`,
 		botUrl: `https://t.me/i_finances_dev_bot?start=${code}`,
@@ -49,6 +49,7 @@ type Harness = {
 	gateway: {
 		cancelTelegramSignIn: ReturnType<typeof vi.fn<TelegramSignInGateway['cancelTelegramSignIn']>>;
 		completeTelegramSignIn: ReturnType<typeof vi.fn<TelegramSignInGateway['completeTelegramSignIn']>>;
+		currentSession: ReturnType<typeof vi.fn<TelegramSignInGateway['currentSession']>>;
 		startTelegramSignIn: ReturnType<typeof vi.fn<TelegramSignInGateway['startTelegramSignIn']>>;
 	};
 	setVisible: (visible: boolean) => void;
@@ -63,6 +64,7 @@ function createHarness(): Harness {
 	const gateway = {
 		cancelTelegramSignIn: vi.fn<TelegramSignInGateway['cancelTelegramSignIn']>(async () => ({ ok: true })),
 		completeTelegramSignIn: vi.fn<TelegramSignInGateway['completeTelegramSignIn']>(async () => PENDING),
+		currentSession: vi.fn<TelegramSignInGateway['currentSession']>(async () => ({ authenticated: false })),
 		startTelegramSignIn: vi.fn<TelegramSignInGateway['startTelegramSignIn']>(async () => startResult(codes.shift() ?? CODE_B))
 	};
 	const flow = new TelegramSignInFlow({
@@ -136,6 +138,56 @@ describe('TelegramSignInFlow', () => {
 				}
 			});
 			expect(harness.gateway.completeTelegramSignIn).not.toHaveBeenCalled();
+		});
+
+		it('never starts twice at a time, also while the answer of start is on its way', async () => {
+			const harness = createHarness();
+			let answer: (result: TelegramSignInStartResult) => void = () => {};
+
+			harness.gateway.startTelegramSignIn.mockImplementationOnce(() => new Promise((resolve) => {
+				answer = resolve;
+			}));
+			harness.flow.start();
+			await flush();
+			harness.flow.start();
+			await flush();
+			answer(startResult(CODE_A));
+			await flush();
+
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenCalledTimes(1);
+			expect(harness.state()).toMatchObject({ kind: 'ready', link: { code: CODE_A } });
+		});
+
+		it('refuses a bot link that is not https://t.me', async () => {
+			const harness = createHarness();
+
+			harness.gateway.startTelegramSignIn.mockResolvedValueOnce({
+				...startResult(CODE_A),
+				botUrl: 'javascript:alert(1)//https://t.me/i_finances_dev_bot'
+			});
+			harness.flow.start();
+			await flush();
+
+			expect(harness.state()).toMatchObject({ kind: 'failed', reason: 'unexpected' });
+		});
+
+		it.each([
+			['ahead of the server by 11 minutes', NOW - 60_000],
+			['behind the server by a day', NOW + 24 * 60 * 60_000]
+		])('keeps one link for the default lifetime when the browser clock is %s', async (_clock, expiresAtMs) => {
+			const harness = createHarness();
+
+			harness.gateway.startTelegramSignIn.mockResolvedValueOnce({
+				...startResult(CODE_A),
+				expiresAt: new Date(expiresAtMs).toISOString()
+			});
+			harness.flow.start();
+			await flush();
+
+			expect(harness.state()).toMatchObject({ kind: 'ready', link: { expiresAtMs: NOW + TTL_MS, ttlMinutes: 10 } });
+
+			await vi.advanceTimersByTimeAsync(TTL_MS - TELEGRAM_LINK_REFRESH_MARGIN_MS - 1);
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenCalledTimes(1);
 		});
 
 		it('hides Telegram when the server has it switched off', async () => {
@@ -330,6 +382,48 @@ describe('TelegramSignInFlow', () => {
 			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
 			expect(harness.state()).toMatchObject({ connectionLost: false, kind: 'waiting' });
 			expect(harness.gateway.completeTelegramSignIn).toHaveBeenCalledTimes(3);
+		});
+
+		it.each([
+			[410, 'login-expired'],
+			[403, 'browser-mismatch']
+		] as const)('finds a confirmation whose answer was lost: %i %s after a poll without an answer', async (status, errorCode) => {
+			const harness = await waitingHarness();
+
+			harness.gateway.completeTelegramSignIn
+				.mockRejectedValueOnce(new DOMException('The operation timed out.', 'TimeoutError'))
+				.mockRejectedValueOnce(failure(status, errorCode));
+			harness.gateway.currentSession.mockResolvedValueOnce({
+				authenticated: true,
+				hasPassword: false,
+				household: null,
+				telegram: { username: 'anna_k' },
+				user: { displayName: 'Анна', id: 'user-1', username: 'tg_1' }
+			});
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS * 2);
+
+			expect(harness.gateway.currentSession).toHaveBeenCalledTimes(1);
+			expect(harness.state()).toEqual({ hasHousehold: false, isNewUser: false, kind: 'confirmed' });
+		});
+
+		it('says expired after a lost answer when there is no session, and does not ask without a lost answer', async () => {
+			const lost = await waitingHarness();
+
+			lost.gateway.completeTelegramSignIn
+				.mockRejectedValueOnce(new TypeError('Failed to fetch'))
+				.mockRejectedValueOnce(failure(410, 'login-expired'));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS * 2);
+
+			expect(lost.gateway.currentSession).toHaveBeenCalledTimes(1);
+			expect(lost.state()).toMatchObject({ kind: 'failed', reason: 'expired' });
+
+			const plain = await waitingHarness();
+
+			plain.gateway.completeTelegramSignIn.mockRejectedValueOnce(failure(410, 'login-expired'));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+
+			expect(plain.gateway.currentSession).not.toHaveBeenCalled();
+			expect(plain.state()).toMatchObject({ kind: 'failed', reason: 'expired' });
 		});
 
 		it('slows down after a 429 of complete instead of stopping', async () => {
