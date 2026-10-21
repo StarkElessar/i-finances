@@ -20,6 +20,11 @@
     --bottom-nav-block-size: #{fn.rem(64)};
     --bottom-nav-inset: max(var(--space-5), env(safe-area-inset-bottom));
     --bottom-nav-offset: calc(var(--bottom-nav-inset) + var(--bottom-nav-block-size));
+
+    // Application header (mockup Foundations, `.i-top`): 60 px with the bottom border, the same
+    // on every width and on touch screens (owner, 2026-10-19). A multiple of 4 on the size scale
+    // (development/decisions/size-scale.md).
+    --header-block-size: #{fn.rem(60)};
 }
 
 :root,

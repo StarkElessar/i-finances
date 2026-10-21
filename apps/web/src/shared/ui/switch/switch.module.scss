@@ -38,13 +38,17 @@
     }
 
     // Disabled by colour (kit-open-questions.md, section 2): a grey track, a white knob without a shadow.
+    // A thin border in --color-disabled-border keeps the white knob and the pale track readable in the
+    // light theme (decision 2026-10-19); the track's ring is inset so the knob keeps its position.
     &:disabled {
         cursor: not-allowed;
 
         + .control {
             background-color: var(--color-disabled-surface);
+            box-shadow: inset 0 0 0 1px var(--color-disabled-border);
 
             &::before {
+                border: 1px solid var(--color-disabled-border);
                 background-color: var(--color-text-inverse);
                 box-shadow: none;
             }
@@ -52,6 +56,7 @@
 
         &:checked + .control {
             background-color: var(--color-disabled-fill);
+            box-shadow: none;
         }
     }
 }
