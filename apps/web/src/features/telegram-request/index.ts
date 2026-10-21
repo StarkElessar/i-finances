@@ -15,3 +15,4 @@ export type {
 	TelegramRequestStartAnswer
 } from './model/telegram-request-protocol';
 export type { TelegramRequestCommonReason, TelegramRequestLink, TelegramRequestState } from './model/telegram-request-state';
+export { TELEGRAM_REQUEST_TIMEOUT_MS, telegramRequestInit } from './model/telegram-request-timeout';

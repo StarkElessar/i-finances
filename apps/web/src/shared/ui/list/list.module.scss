@@ -1,0 +1,78 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-list`: a card with a 1 px border and large radius; `overflow: hidden` clips the row lines to its corners.
+.root {
+    overflow: hidden;
+
+    margin: 0;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    list-style: none;
+
+    background-color: var(--color-surface);
+}
+
+// Mockup `.i-row`: 12 / 16 px padding, 12 px gap, a line under every row but the last, 64 px high.
+.row {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+
+    box-sizing: border-box;
+    min-inline-size: 0;
+    min-block-size: var(--row-height-comfortable);
+    padding: var(--space-5) var(--space-6);
+    border-block-end: 1px solid var(--color-border);
+
+    &:last-child {
+        border-block-end: 0;
+    }
+}
+
+// Mockup `.i-tile`: 36 px, md radius, the tint at 14 % over the surface with a 28 % ring of the same tint.
+.tile {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    inline-size: fn.rem(36);
+    block-size: fn.rem(36);
+    border: 1px solid color-mix(in srgb, var(--tint, var(--color-series-1)) 28%, transparent);
+    border-radius: var(--radius-md);
+
+    color: var(--tint, var(--color-series-1));
+
+    background-color: color-mix(in srgb, var(--tint, var(--color-series-1)) 14%, var(--color-surface));
+
+    svg {
+        display: block;
+        inline-size: fn.rem(20);
+        block-size: fn.rem(20);
+    }
+}
+
+.text {
+    flex: 1;
+    min-inline-size: 0;
+}
+
+.title {
+    font-weight: var(--font-weight-medium);
+    overflow-wrap: anywhere;
+}
+
+.meta {
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+    overflow-wrap: anywhere;
+}
+
+.trailing {
+    display: flex;
+    flex: none;
+    align-items: center;
+}

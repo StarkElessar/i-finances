@@ -1,4 +1,5 @@
-import { formatMinutesAccusative, formatMinutesGenitive } from '@/features/auth/model/format-minutes';
+import { formatMinutesAccusative, formatMinutesGenitive } from '@/shared/lib/format-minutes';
+
 import { describeSignInCard } from '@/features/auth/model/sign-in-card-view';
 import type { TelegramSignInLink } from '@/features/auth/model/telegram-sign-in-state';
 

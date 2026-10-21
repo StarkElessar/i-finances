@@ -1,0 +1,37 @@
+@use "@/shared/styles/mixins" as mx;
+
+// «Добавить ключ доступа» is full width on the sheet and as wide as its label on the dialog (mockup `block` / `align-self: flex-start`).
+.add {
+    inline-size: 100%;
+
+    @include mx.media-mn(sm) {
+        align-self: flex-start;
+        inline-size: auto;
+    }
+}
+
+// The loading card of `D-Security`: a card with two rows of an icon tile and two lines.
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface);
+}
+
+.skeleton-row {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+}
+
+.skeleton-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-4);
+}
