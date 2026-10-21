@@ -1,3 +1,5 @@
+@use "@/shared/styles/functions" as fn;
+
 .root {
     --size: 2.25rem;
 
@@ -14,4 +16,12 @@
     color: var(--color-on-primary);
 
     background-color: var(--color-primary);
+}
+
+// Mockup sign-in boards: 48 px, radius 12, 18 px letters.
+.size-lg {
+    --size: #{fn.rem(48)};
+
+    border-radius: var(--radius-lg);
+    font-size: var(--font-size-heading-3);
 }

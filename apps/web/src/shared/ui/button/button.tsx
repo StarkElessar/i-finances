@@ -1,19 +1,9 @@
-import css from './button.module.scss';
-
-import { cn } from '@/shared/lib';
-
 import type { JSX } from 'solid-js';
 import { children, Show, splitProps } from 'solid-js';
 
-/**
- * Visual hierarchy variants supported by the button.
- */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+import { buttonClass, buttonPartClass, type ButtonSize, type ButtonVariant } from './button-class';
 
-/**
- * Control heights shared with inputs and other interactive elements.
- */
-export type ButtonSize = 'sm' | 'md' | 'lg';
+export type { ButtonSize, ButtonVariant } from './button-class';
 
 /**
  * Button properties extending the native SolidJS button contract.
@@ -28,19 +18,6 @@ export type ButtonProps = Omit<JSX.ButtonHTMLAttributes<HTMLButtonElement>, 'chi
 	startIcon?: JSX.Element;
 	endIcon?: JSX.Element;
 	class?: string;
-};
-
-const variantClassByVariant: Record<ButtonVariant, string> = {
-	primary: css.variantPrimary,
-	secondary: css.variantSecondary,
-	ghost: css.variantGhost,
-	danger: css.variantDanger
-};
-
-const sizeClassBySize: Record<ButtonSize, string> = {
-	sm: css.sizeSm,
-	md: css.sizeMd,
-	lg: css.sizeLg
 };
 
 /**
@@ -77,29 +54,21 @@ export function Button(props: ButtonProps) {
 		<button
 			{...buttonProps}
 			aria-busy={local.loading || undefined}
-			class={cn(
-				css.button,
-				variantClassByVariant[local.variant ?? 'primary'],
-				sizeClassBySize[local.size ?? 'md'],
-				local.fullWidth && css.fullWidth,
-				local.iconOnly && css.iconOnly,
-				local.loading && css.loading,
-				local.class
-			)}
+			class={buttonClass(local)}
 			disabled={Boolean(local.disabled || local.loading)}
 			type={local.type ?? 'button'}
 		>
-			<span class={css.content}>
+			<span class={buttonPartClass.content}>
 				<Show keyed when={startIcon()}>
-					{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}
+					{(icon) => <span aria-hidden='true' class={buttonPartClass.icon}>{icon}</span>}
 				</Show>
-				<span class={css.label}>{local.children}</span>
+				<span class={buttonPartClass.label}>{local.children}</span>
 				<Show keyed when={endIcon()}>
-					{(icon) => <span aria-hidden='true' class={css.icon}>{icon}</span>}
+					{(icon) => <span aria-hidden='true' class={buttonPartClass.icon}>{icon}</span>}
 				</Show>
 			</span>
 			<Show when={local.loading}>
-				<span aria-hidden='true' class={css.spinner}/>
+				<span aria-hidden='true' class={buttonPartClass.spinner}/>
 			</Show>
 		</button>
 	);

@@ -1,1 +1,1 @@
-export { AppLogo } from './app-logo';
+export { AppLogo, type AppLogoSize } from './app-logo';

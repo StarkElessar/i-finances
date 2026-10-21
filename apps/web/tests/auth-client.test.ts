@@ -147,4 +147,25 @@ describe('AuthClient', () => {
 			optionsJSON: expect.objectContaining({ challenge: 'challenge-1' })
 		});
 	});
+	it('polls the Telegram sign-in with its code and a timeout, failures stay HTTP errors', async () => {
+		const code = 'A'.repeat(32);
+		const fetcher: typeof globalThis.fetch = async (input, init) => {
+			expect(input).toBe('/api/auth/telegram/complete');
+			expect(init?.method).toBe('POST');
+			expect(init?.signal).toBeInstanceOf(AbortSignal);
+			expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toEqual({ code });
+
+			return new Response(JSON.stringify({
+				errorCode: 'login-expired',
+				message: 'Ссылка устарела. Попробуйте снова.',
+				ok: false
+			}), { status: 410 });
+		};
+		const client = new AuthClient({ fetcher });
+
+		await expect(client.completeTelegramSignIn(code)).rejects.toMatchObject({
+			body: { errorCode: 'login-expired' },
+			status: 410
+		});
+	});
 });

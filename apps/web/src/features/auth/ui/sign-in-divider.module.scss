@@ -1,0 +1,17 @@
+// Mockup: a 1 px line on both sides of «или», 12 px gap, 13 px tertiary text.
+.root {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+
+    font-size: var(--font-size-caption);
+    color: var(--color-text-tertiary);
+
+    &::before,
+    &::after {
+        content: "";
+        flex: 1;
+        block-size: 1px;
+        background-color: var(--color-border);
+    }
+}

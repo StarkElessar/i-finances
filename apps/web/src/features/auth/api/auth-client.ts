@@ -19,6 +19,12 @@ import {
 	passwordSignInResultSchema,
 	type PasswordSignOutResult,
 	passwordSignOutResultSchema,
+	type TelegramSignInCancelResult,
+	telegramSignInCancelResultSchema,
+	type TelegramSignInCompleteResult,
+	telegramSignInCompleteResultSchema,
+	type TelegramSignInStartResult,
+	telegramSignInStartResultSchema,
 	type UpdateDisplayNameResult,
 	updateDisplayNameResultSchema
 } from '@i-finances/contracts';
@@ -32,6 +38,16 @@ import {
 export type AuthClientOptions = ApiClientOptions & {
 	client?: ApiClient;
 };
+
+/**
+ * The Telegram sign-in sends one request at a time and waits for it before the next (the request cookie, the poll),
+ * so a request the server never answers would stall the whole sign-in. It is given up after this long instead.
+ */
+export const TELEGRAM_REQUEST_TIMEOUT_MS = 15_000;
+
+function telegramRequestInit(): Pick<RequestInit, 'signal'> {
+	return { signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS) };
+}
 
 export class AuthClient {
 	private readonly client: ApiClient;
@@ -69,6 +85,23 @@ export class AuthClient {
 
 			throw error;
 		}
+	}
+
+	/**
+	 * `POST /api/auth/telegram/start` (flow 5.1). The browser stores the request secret from the httpOnly cookie of the
+	 * answer by itself; a failure stays an `ApiHttpError` (its body is the contract failure, `Retry-After` on a 429).
+	 */
+	public startTelegramSignIn(): Promise<TelegramSignInStartResult> {
+		return this.client.post('/api/auth/telegram/start', {}, telegramSignInStartResultSchema, telegramRequestInit());
+	}
+
+	/** One poll of `POST /api/auth/telegram/complete`; `confirmed` means the session cookie is set. */
+	public completeTelegramSignIn(code: string): Promise<TelegramSignInCompleteResult> {
+		return this.client.post('/api/auth/telegram/complete', { code }, telegramSignInCompleteResultSchema, telegramRequestInit());
+	}
+
+	public cancelTelegramSignIn(code: string): Promise<TelegramSignInCancelResult> {
+		return this.client.post('/api/auth/telegram/cancel', { code }, telegramSignInCancelResultSchema, telegramRequestInit());
 	}
 
 	public signOut(): Promise<PasswordSignOutResult> {

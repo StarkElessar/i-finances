@@ -1,0 +1,63 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-banner`: 12 px gap, 12 / 16 px padding, md radius, 13 px text at 1.4, a 16 px icon one pixel lower.
+.root {
+    display: flex;
+    gap: var(--space-5);
+    align-items: flex-start;
+
+    padding: var(--space-5) var(--space-6);
+    border-radius: var(--radius-md);
+
+    font-size: var(--font-size-caption);
+    line-height: 1.4;
+    text-align: start;
+}
+
+.icon {
+    display: inline-flex;
+    flex: none;
+
+    inline-size: fn.rem(16);
+    block-size: fn.rem(16);
+    margin-block-start: 1px;
+
+    svg {
+        display: block;
+        inline-size: 100%;
+        block-size: 100%;
+    }
+}
+
+.text {
+    min-inline-size: 0;
+}
+
+.title {
+    font-weight: var(--font-weight-semibold);
+}
+
+.tone-neutral {
+    color: var(--color-text-secondary);
+    background-color: var(--color-surface-subtle);
+}
+
+.tone-info {
+    color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+}
+
+.tone-success {
+    color: var(--color-success);
+    background-color: var(--color-success-soft);
+}
+
+.tone-warning {
+    color: var(--color-warning);
+    background-color: var(--color-warning-soft);
+}
+
+.tone-danger {
+    color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+}

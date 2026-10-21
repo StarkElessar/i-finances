@@ -1,42 +1,82 @@
+@use "@/shared/styles/functions" as fn;
 @use "@/shared/styles/mixins" as mx;
 
+// Mockup `M-SignIn` (390): brand on top, the card at the bottom of the screen, the hint under it.
+// Mockup `D-SignIn` (1280): one card of 980 x 540 in the middle, two halves, the sign-in on the right.
 .page {
     overflow-y: auto;
-    display: grid;
+    display: flex;
+    flex-direction: column;
     flex-grow: 1;
-    place-items: start center;
 
     min-block-size: 0;
 
     @include mx.media-mn(sm) {
-        place-items: center;
-        padding-block: var(--space-9);
+        align-items: center;
+        justify-content: center;
+        padding: var(--space-9) var(--space-6);
     }
 }
 
-.wrapper {
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: 1px;
+.frame {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    gap: var(--space-9);
 
-    min-block-size: 100dvh;
+    padding: var(--space-11) var(--space-8) var(--space-9);
 
     @include mx.media-mn(sm) {
-        grid-template-columns: minmax(0, 52fr) minmax(0, 48fr);
+        overflow: hidden;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        flex-grow: 0;
+        gap: 0;
 
-        min-block-size: 39.875rem;
+        inline-size: 100%;
+        max-inline-size: fn.rem(980);
+        min-block-size: fn.rem(540);
+        padding: 0;
         border: 1px solid var(--color-border);
-        border-radius: var(--radius-xl);
+        border-radius: var(--radius-lg);
 
-        background-color: var(--color-border);
+        background-color: var(--color-surface);
+        box-shadow: var(--shadow-md);
     }
 }
 
-.welcome {
-    display: none;
+.aside {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+    margin-block-start: auto;
 
     @include mx.media-mn(sm) {
-        display: flex;
+        justify-content: center;
+        margin-block-start: 0;
+        padding: var(--space-9);
     }
+
+    @include mx.media-mn(md) {
+        padding: var(--space-11);
+    }
+}
+
+// Phone: the card itself. From 640 the right half of the big card is the card, so no frame of its own.
+.card {
+    padding: var(--space-7);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background-color: var(--color-surface);
+
+    @include mx.media-mn(sm) {
+        padding: 0;
+        border: 0;
+        border-radius: 0;
+        background-color: transparent;
+    }
+}
+
+.hint {
+    text-align: center;
 }
