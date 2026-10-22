@@ -26,6 +26,11 @@ export { TelegramMessages } from './telegram-messages';
 export { TelegramMessagesError } from './telegram-messages-error';
 export { TelegramNetworkError } from './telegram-network-error';
 export { TelegramRateLimitedError } from './telegram-rate-limited-error';
+export {
+	createTelegramRetryConnection,
+	type TelegramFetchDispatcher,
+	type TelegramRetryConnection
+} from './telegram-retry-connection';
 export { TelegramSecret } from './telegram-secret';
 export { TelegramTimeoutError } from './telegram-timeout-error';
 export { type TelegramDispatchOutcome, TelegramUpdateDispatcher } from './telegram-update-dispatcher';
