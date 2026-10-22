@@ -1,10 +1,15 @@
-/** A user-facing message for a browser-side WebAuthn registration error. */
+/**
+ * A user-facing message for a browser-side WebAuthn registration error. `startRegistration` of simplewebauthn wraps the
+ * browser's `DOMException` into its own error and keeps the original name, so the name is read from any `Error`.
+ */
 export function describePasskeyRegistrationError(error: unknown): string {
-	if (error instanceof DOMException && (error.name === 'NotAllowedError' || error.name === 'AbortError')) {
+	const name = error instanceof Error ? error.name : undefined;
+
+	if (name === 'NotAllowedError' || name === 'AbortError') {
 		return 'Создание ключа доступа отменено.';
 	}
 
-	if (error instanceof DOMException && error.name === 'InvalidStateError') {
+	if (name === 'InvalidStateError') {
 		return 'Ключ доступа для этого устройства уже добавлен.';
 	}
 
