@@ -13,6 +13,8 @@ export type TelegramLinkBannerView = {
 };
 
 export type TelegramLinkAction =
+	/** The person explicitly begins linking before a request is created. */
+	| { kind: 'start' }
 	/** The bot link (`ButtonLink`): pressing it starts the waiting. */
 	| { botUrl: string; kind: 'link'; label: string; variant: 'primary' | 'secondary' }
 	/** The link is being prepared: a disabled button with a spinner. */
@@ -47,18 +49,19 @@ function failed(banner: TelegramLinkBannerView, action: TelegramLinkAction = { k
 }
 
 /**
- * The view of the Telegram block for one state of the flow, or `null` when the block must not be shown at all: Telegram
- * is switched off on the server, so there is nothing to link (and `confirmed` is shown by its own panel).
+ * The view of the Telegram block for one state of the flow; `confirmed` is shown by its own panel.
  */
 export function describeTelegramLink(state: TelegramLinkState): TelegramLinkView | null {
 	switch (state.kind) {
 		case 'idle':
+			return { action: { kind: 'start' }, banners: [], isCancellable: false, showForwardHint: false };
+
 		case 'preparing':
 			return { action: { kind: 'loading' }, banners: [], isCancellable: false, showForwardHint: false };
 
 		case 'ready':
 			return {
-				action: { botUrl: state.link.botUrl, kind: 'link', label: LINK_BUTTON_LABEL, variant: 'primary' },
+				action: { botUrl: state.link.botUrl, kind: 'link', label: 'Открыть Telegram', variant: 'primary' },
 				banners: [],
 				isCancellable: false,
 				showForwardHint: true
@@ -90,8 +93,10 @@ export function describeTelegramLink(state: TelegramLinkState): TelegramLinkView
 		}
 
 		case 'confirmed':
-		case 'unavailable':
 			return null;
+
+		case 'unavailable':
+			return failed({ icon: 'alert', text: 'Привязка Telegram сейчас недоступна.', tone: 'neutral' });
 
 		case 'failed':
 			switch (state.reason) {

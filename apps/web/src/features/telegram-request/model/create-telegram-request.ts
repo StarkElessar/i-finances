@@ -18,11 +18,12 @@ export type TelegramRequestPageOptions<TConfirmed extends object, TReason extend
 >;
 
 /**
- * Binds a Telegram request flow to the component that owns it: one `start` on mount, polling resumed on
+ * Binds a Telegram request flow to the component that owns it: optional `start` on mount, polling resumed on
  * `visibilitychange`, everything stopped on cleanup (leaving the page or closing the dialog).
  */
 export function createTelegramRequest<TConfirmed extends object, TReason extends string>(
-	createFlow: (page: TelegramRequestPageOptions<TConfirmed, TReason>) => TelegramRequestFlow<TConfirmed, TReason>
+	createFlow: (page: TelegramRequestPageOptions<TConfirmed, TReason>) => TelegramRequestFlow<TConfirmed, TReason>,
+	options: { startOnMount?: boolean } = {}
 ): TelegramRequest<TConfirmed, TReason> {
 	const [state, setState] = createSignal<TelegramRequestState<TConfirmed, TReason>>({ kind: 'idle' });
 	const flow = createFlow({
@@ -36,7 +37,10 @@ export function createTelegramRequest<TConfirmed extends object, TReason extends
 
 	onMount(() => {
 		document.addEventListener('visibilitychange', handleVisibilityChange);
-		flow.start();
+
+		if (options.startOnMount ?? true) {
+			flow.start();
+		}
 	});
 	onCleanup(() => {
 		document.removeEventListener('visibilitychange', handleVisibilityChange);

@@ -7,7 +7,7 @@ import {
 import { describePasskey } from '@/features/security/model/describe-passkey';
 import { describePasskeyRegistrationError } from '@/features/security/model/describe-passkey-registration-error';
 import { describeSession, sortSessions, UNKNOWN_DEVICE_TITLE } from '@/features/security/model/describe-session';
-import { describeTelegramLink, LINK_BUTTON_LABEL } from '@/features/security/model/describe-telegram-link';
+import { describeTelegramLink } from '@/features/security/model/describe-telegram-link';
 import { describeThisDevice } from '@/features/security/model/describe-this-device';
 import { capitalizeFirst, formatSecurityDay } from '@/features/security/model/format-security-date';
 import {
@@ -266,10 +266,16 @@ describe('describeTelegramLink', () => {
 		ttlMinutes: 10
 	};
 
+	it('offers an explicit start without a link or the forward warning', () => {
+		expect(describeTelegramLink({ kind: 'idle' })).toEqual({
+			action: { kind: 'start' }, banners: [], isCancellable: false, showForwardHint: false
+		});
+	});
+
 	it('prepares, offers the link with the forward warning, and waits with cancel', () => {
-		expect(describeTelegramLink({ kind: 'idle' })).toMatchObject({ action: { kind: 'loading' }, banners: [] });
+		expect(describeTelegramLink({ kind: 'preparing' })).toMatchObject({ action: { kind: 'loading' }, banners: [] });
 		expect(describeTelegramLink({ kind: 'ready', link })).toMatchObject({
-			action: { botUrl: link.botUrl, kind: 'link', label: LINK_BUTTON_LABEL, variant: 'primary' },
+			action: { botUrl: link.botUrl, kind: 'link', label: 'Открыть Telegram', variant: 'primary' },
 			isCancellable: false,
 			showForwardHint: true
 		});
@@ -292,8 +298,16 @@ describe('describeTelegramLink', () => {
 		expect(waiting?.banners.map((banner) => banner.tone)).toEqual(['info', 'warning']);
 	});
 
-	it('hides the block when Telegram is off and leaves the success to its own panel', () => {
-		expect(describeTelegramLink({ kind: 'unavailable' })).toBeNull();
+	it('explains that Telegram is unavailable without a button, cancellation or a forward warning', () => {
+		expect(describeTelegramLink({ kind: 'unavailable' })).toEqual({
+			action: { kind: 'none' },
+			banners: [{ icon: 'alert', text: 'Привязка Telegram сейчас недоступна.', tone: 'neutral' }],
+			isCancellable: false,
+			showForwardHint: false
+		});
+	});
+
+	it('leaves the success to its own panel', () => {
 		expect(describeTelegramLink({ kind: 'confirmed', telegram: { username: 'alexey' } })).toBeNull();
 	});
 

@@ -33,9 +33,9 @@ const BANNER_ICONS: Record<TelegramLinkBannerIcon, () => JSX.Element> = {
 
 /**
  * Linking Telegram to an account that has none (flow 5.3, decision Р9; mockup `D-Security`: waiting and two errors). The
- * request starts when the block appears; the link is an `https://t.me/...` anchor the browser follows by itself, and the
- * browser polls until the bot answers. Everything stops when the dialog is closed. After the success the linked name is
- * shown large. The block is not shown at all when Telegram is switched off on the server.
+ * request starts only when the person presses «Привязать Telegram»; the link is an `https://t.me/...` anchor the browser
+ * follows by itself, then polls until the bot answers. Everything stops when the dialog is closed. The linked name is
+ * shown large. If Telegram is switched off, the block explains that linking is unavailable without an action button.
  */
 export function TelegramLinkSection(props: TelegramLinkSectionProps) {
 	const link = createTelegramLink(props.gateway, untrack(() => props.userId));
@@ -45,7 +45,6 @@ export function TelegramLinkSection(props: TelegramLinkSectionProps) {
 
 		return state.kind === 'confirmed' ? state : undefined;
 	};
-	const isUnavailable = () => link.state().kind === 'unavailable';
 
 	createEffect(on(confirmed, (state) => {
 		if (state !== undefined) {
@@ -54,74 +53,77 @@ export function TelegramLinkSection(props: TelegramLinkSectionProps) {
 	}));
 
 	return (
-		<Show when={!isUnavailable()}>
-			<SecuritySection title='Telegram'>
-				<Show
-					fallback={(
-						<Show when={view()}>
-							{(current) => (
-								<>
-									<List aria-label='Telegram'>
-										<ListRow comfortable leading={<IconTile><Send/></IconTile>} meta='Не привязан' title='Telegram'/>
-									</List>
-									<For each={current().banners}>
-										{(banner) => (
-											<Banner
-												icon={BANNER_ICONS[banner.icon]()}
-												role={banner.tone === 'danger' ? 'alert' : 'status'}
-												title={banner.title}
-												tone={banner.tone}
-											>
-												{banner.text}
-											</Banner>
-										)}
-									</For>
-									<Show when={current().action.kind !== 'none' || current().isCancellable}>
-										<div class={css.actions}>
-											<Switch>
-												<Match when={current().action.kind === 'link' ? current().action : undefined} keyed>
-													{(action) => action.kind === 'link' && (
-														<ButtonLink
-															class={css.primary}
-															href={action.botUrl}
-															rel='noopener noreferrer'
-															startIcon={<Send/>}
-															target='_blank'
-															variant={action.variant}
-															onClick={() => link.openTelegram()}
-														>
-															{action.label}
-														</ButtonLink>
-													)}
-												</Match>
-												<Match when={current().action.kind === 'loading'}>
-													<Button class={css.primary} loading startIcon={<Send/>}>{LINK_BUTTON_LABEL}</Button>
-												</Match>
-												<Match when={current().action.kind === 'restart' ? current().action : undefined} keyed>
-													{(action) => action.kind === 'restart' && (
-														<Button class={css.primary} startIcon={<RefreshCw/>} onClick={() => link.start()}>
-															{action.label}
-														</Button>
-													)}
-												</Match>
-											</Switch>
-											<Show when={current().isCancellable}>
-												<Button variant='ghost' onClick={() => link.cancel()}>Отмена</Button>
-											</Show>
-										</div>
-									</Show>
-									<Show when={current().showForwardHint}>
-										<Typography tone='tertiary' variant='caption'>{LINK_FORWARD_HINT}</Typography>
-									</Show>
-								</>
-							)}
-						</Show>
-					)}
-					when={confirmed()}
-				>
-					{(state) => <TelegramLinkConfirmation username={state().telegram.username}/>}
-				</Show>
-			</SecuritySection>
-		</Show>
+		<SecuritySection title='Telegram'>
+			<Show
+				fallback={(
+					<Show when={view()}>
+						{(current) => (
+							<>
+								<List aria-label='Telegram'>
+									<ListRow comfortable leading={<IconTile><Send/></IconTile>} meta='Не привязан' title='Telegram'/>
+								</List>
+								<For each={current().banners}>
+									{(banner) => (
+										<Banner
+											icon={BANNER_ICONS[banner.icon]()}
+											role={banner.tone === 'danger' ? 'alert' : 'status'}
+											title={banner.title}
+											tone={banner.tone}
+										>
+											{banner.text}
+										</Banner>
+									)}
+								</For>
+								<Show when={current().action.kind !== 'none' || current().isCancellable}>
+									<div class={css.actions}>
+										<Switch>
+											<Match when={current().action.kind === 'link' ? current().action : undefined} keyed>
+												{(action) => action.kind === 'link' && (
+													<ButtonLink
+														class={css.primary}
+														href={action.botUrl}
+														rel='noopener noreferrer'
+														startIcon={<Send/>}
+														target='_blank'
+														variant={action.variant}
+														onClick={() => link.openTelegram()}
+													>
+														{action.label}
+													</ButtonLink>
+												)}
+											</Match>
+											<Match when={current().action.kind === 'start'}>
+												<Button class={css.primary} startIcon={<Send/>} onClick={() => link.start()}>
+													{LINK_BUTTON_LABEL}
+												</Button>
+											</Match>
+											<Match when={current().action.kind === 'loading'}>
+												<Button class={css.primary} loading startIcon={<Send/>}>{LINK_BUTTON_LABEL}</Button>
+											</Match>
+											<Match when={current().action.kind === 'restart' ? current().action : undefined} keyed>
+												{(action) => action.kind === 'restart' && (
+													<Button class={css.primary} startIcon={<RefreshCw/>} onClick={() => link.start()}>
+														{action.label}
+													</Button>
+												)}
+											</Match>
+										</Switch>
+										<Show when={current().isCancellable}>
+											<Button variant='ghost' onClick={() => link.cancel()}>Отмена</Button>
+										</Show>
+									</div>
+								</Show>
+								<Show when={current().showForwardHint}>
+									<Typography tone='tertiary' variant='caption'>{LINK_FORWARD_HINT}</Typography>
+								</Show>
+							</>
+						)}
+					</Show>
+				)}
+				when={confirmed()}
+			>
+				{(state) => <TelegramLinkConfirmation username={state().telegram.username}/>}
+			</Show>
+		</SecuritySection>
 	);
 }
