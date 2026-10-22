@@ -19,10 +19,12 @@ function jsonResponse(body: unknown, status = 200): Response {
 	return new Response(JSON.stringify(body), { headers: { 'content-type': 'application/json' }, status });
 }
 
+/** Retries are off here: these tests look at one attempt; the retries have their own file. */
 function createClient(fetchMock: FetchMock, requestTimeoutMilliseconds?: number): FetchTelegramBotClient {
 	return new FetchTelegramBotClient({
 		baseUrl: BASE_URL,
 		fetch: fetchMock,
+		maxRetries: 0,
 		requestTimeoutMilliseconds,
 		token: new TelegramSecret(TOKEN)
 	});
