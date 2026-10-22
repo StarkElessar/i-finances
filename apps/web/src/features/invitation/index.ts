@@ -1,6 +1,7 @@
 export { InvitationClient, type InvitationClientOptions } from './api/invitation-client';
 export { claimInvitationTokenFromAddress } from './model/claim-invitation-token';
 export { describeInvitationScreen, type InvitationScreen } from './model/describe-invitation-screen';
+export { installInvitationAddressClaim } from './model/install-invitation-address-claim';
 export { InvitationFlow, type InvitationGateway } from './model/invitation-flow';
 export type { InvitationFlowState } from './model/invitation-state';
 export { parseInvitationLink } from './model/parse-invitation-link';

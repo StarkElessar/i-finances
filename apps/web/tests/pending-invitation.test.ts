@@ -1,4 +1,8 @@
 import { claimInvitationTokenFromAddress } from '@/features/invitation/model/claim-invitation-token';
+import {
+	installInvitationAddressClaim,
+	type InvitationAddressWindow
+} from '@/features/invitation/model/install-invitation-address-claim';
 import { parseInvitationLink } from '@/features/invitation/model/parse-invitation-link';
 import {
 	PENDING_INVITATION_STORAGE_KEY,
@@ -271,6 +275,63 @@ describe('claimInvitationTokenFromAddress', () => {
 			.toBeUndefined();
 		expect(replaceAddress).not.toHaveBeenCalled();
 		expect(store.read()).toBe(TOKEN);
+	});
+});
+
+function createWindow(pathname: string, hash: string) {
+	const listeners: Array<() => void> = [];
+	const target = {
+		addEventListener: (_type: 'hashchange', listener: () => void) => {
+			listeners.push(listener);
+		},
+		history: {
+			replaceState: vi.fn((_state: unknown, _unused: string, url?: string | URL | null) => {
+				target.location.pathname = String(url);
+				target.location.hash = '';
+			}),
+			state: { router: 'state' }
+		},
+		location: { hash, pathname, reload: vi.fn() }
+	} satisfies InvitationAddressWindow;
+
+	return { fireHashChange: () => listeners.forEach((listener) => listener()), target };
+}
+
+describe('installInvitationAddressClaim', () => {
+	it('takes the token out of the address at the start, before any session check', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+		const { target } = createWindow('/invite', `#${TOKEN}`);
+
+		installInvitationAddressClaim(target, store);
+
+		expect(target.location).toMatchObject({ hash: '', pathname: '/invite' });
+		expect(target.history.replaceState).toHaveBeenCalledExactlyOnceWith({ router: 'state' }, '', '/invite');
+		expect(store.read()).toBe(TOKEN);
+		expect(target.location.reload).not.toHaveBeenCalled();
+	});
+
+	it('leaves other pages alone', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+		const { fireHashChange, target } = createWindow('/stats', '#section');
+
+		installInvitationAddressClaim(target, store);
+		fireHashChange();
+
+		expect(target.history.replaceState).not.toHaveBeenCalled();
+		expect(target.location.reload).not.toHaveBeenCalled();
+	});
+
+	it('takes a link pasted into an open invitation page out of the address and reloads the page for it', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+		const { fireHashChange, target } = createWindow('/invite', '');
+
+		installInvitationAddressClaim(target, store);
+		target.location.hash = `#${OTHER_TOKEN}`;
+		fireHashChange();
+
+		expect(target.location.hash).toBe('');
+		expect(store.read()).toBe(OTHER_TOKEN);
+		expect(target.location.reload).toHaveBeenCalledTimes(1);
 	});
 });
 
