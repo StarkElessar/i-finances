@@ -1,5 +1,7 @@
 export { AccountIcon } from './account-icon';
 export { AppLogo, type AppLogoSize } from './app-logo';
+export type { AvatarProps, AvatarSize } from './avatar';
+export { Avatar } from './avatar';
 export type { BadgeProps, BadgeTone } from './badge';
 export { Badge } from './badge';
 export type { BannerProps, BannerTone } from './banner';
@@ -16,6 +18,8 @@ export type { CheckboxProps } from './checkbox';
 export { Checkbox } from './checkbox';
 export type { ChipProps } from './chip';
 export { Chip } from './chip';
+export type { ChoiceCardGroupProps, ChoiceCardProps } from './choice-card';
+export { ChoiceCard, ChoiceCardGroup } from './choice-card';
 export type { ColorPickerOption, ColorPickerProps } from './color-picker';
 export { ColorPicker } from './color-picker';
 export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
@@ -63,6 +67,8 @@ export type { EmptyStateHeadingLevel, EmptyStateProps } from './empty-state';
 export { EmptyState } from './empty-state';
 export type { FabProps } from './fab';
 export { Fab } from './fab';
+export type { FlatCardProps } from './flat-card';
+export { FlatCard } from './flat-card';
 export type {
 	GridCellTemplateContext,
 	GridCellValue,
@@ -73,6 +79,14 @@ export type {
 	GridSortState
 } from './grid';
 export { Grid } from './grid';
+export type { IconTileProps, IconTileTone } from './icon-tile';
+export { IconTile } from './icon-tile';
+export type { InlineConfirmProps } from './inline-confirm';
+export { InlineConfirm } from './inline-confirm';
+export type { ListProps, ListRowProps } from './list';
+export { List, ListRow } from './list';
+export type { PageCardProps } from './page-card';
+export { PageCard } from './page-card';
 export type { PeriodNavigatorProps } from './period-navigator';
 export { PeriodNavigator } from './period-navigator';
 export type { PhoneFieldProps } from './phone-field';

@@ -17,6 +17,7 @@ export {
 } from './card';
 export type { ClassValue } from './cn';
 export { cn } from './cn';
+export { copyText } from './copy-text';
 export type { CurrencyCodeValue } from './currency-code';
 export { CURRENCY_CODES, CurrencyCode } from './currency-code';
 export type { CurrencyExchangeRates, MoneyAmount } from './currency-converter';
@@ -31,6 +32,9 @@ export {
 	resolveDisplayMode,
 	writeStoredDisplayModePreference
 } from './display-mode-preference';
+export type { FormatMomentOptions } from './format-moment';
+export { formatDayWithYear, formatDeadline, formatTimeLeft } from './format-moment';
+export { getInitials } from './initials';
 export {
 	amountToMinorUnits,
 	convertMinorUnitsByExchangeRate,
@@ -71,6 +75,7 @@ export {
 	readFirstSearchParamValue,
 	serializeRouteSearchParams
 } from './search-params';
+export { getSessionStorage } from './session-storage';
 export type { DisplayModePreferenceControls } from './use-display-mode-preference';
 export { useDisplayModePreference } from './use-display-mode-preference';
 export { useMediaQuery } from './use-media-query';

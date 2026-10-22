@@ -1,0 +1,55 @@
+@use "@/shared/styles/mixins" as mx;
+
+// Boards `M-Household`, `D-Household`: sections 24 px apart, a heading with a count on each.
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    min-inline-size: 0;
+}
+
+.section {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+    min-inline-size: 0;
+}
+
+.section-header {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+    justify-content: space-between;
+}
+
+.rename-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    min-inline-size: 0;
+}
+
+.rename-save {
+    align-self: flex-start;
+}
+
+.create-invitation {
+    align-self: stretch;
+
+    @include mx.media-mn(sm) {
+        align-self: flex-start;
+    }
+}
+
+.leave {
+    display: flex;
+    flex-direction: column;
+}
+
+.leave-button {
+    align-self: stretch;
+
+    @include mx.media-mn(sm) {
+        align-self: flex-start;
+    }
+}

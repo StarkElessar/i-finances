@@ -114,3 +114,8 @@
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+// A programmatic focus target (`focusOnMount`), not a control: the browser would otherwise outline it.
+.focus-target:focus {
+    outline: none;
+}

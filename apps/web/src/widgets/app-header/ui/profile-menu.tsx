@@ -1,11 +1,13 @@
 import css from './profile-menu.module.scss';
 
+import { getInitials } from '@/shared/lib';
 import { ContextMenu } from '@/shared/ui';
 
 import type { CurrentViewer } from '@/entities/viewer';
 import { useCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
+import { HouseholdDialog } from '@/features/household';
 import { PasskeyRegistrationMenuItem } from '@/features/passkey-registration';
 
 import { createSignal, Show } from 'solid-js';
@@ -17,28 +19,6 @@ import { ProfileSettingsDialog } from './profile-settings-dialog';
  */
 function getViewerName(viewer: CurrentViewer | null | undefined): string {
 	return viewer?.displayName || viewer?.username || 'Пользователь';
-}
-
-/**
- * Creates compact initials for the round profile trigger.
- */
-function createViewerInitials(viewer: CurrentViewer | null | undefined): string {
-	const name = getViewerName(viewer).trim();
-	const parts = name.split(/\s+/).filter(Boolean);
-
-	if (!parts.length) {
-		return 'ID';
-	}
-
-	if (parts.length === 1) {
-		return Array.from(parts[0] ?? 'ID').slice(0, 2).join('').toUpperCase();
-	}
-
-	return parts
-		.slice(0, 2)
-		.map((part) => Array.from(part)[0])
-		.join('')
-		.toUpperCase();
 }
 
 export type ProfileMenuProps = {
@@ -61,6 +41,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 	const [isSigningOut, setIsSigningOut] = createSignal(false);
 	const [signOutError, setSignOutError] = createSignal<string>();
 	const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
+	const [isHouseholdOpen, setIsHouseholdOpen] = createSignal(false);
 
 	const handleSignOut = async (): Promise<void> => {
 		setSignOutError(undefined);
@@ -82,7 +63,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 		<>
 			<ContextMenu.Root class={css.root} triggerMode='click'>
 				<ContextMenu.Trigger aria-label={triggerLabel()} class={css.trigger}>
-					{createViewerInitials(viewer())}
+					{getInitials(getViewerName(viewer()))}
 				</ContextMenu.Trigger>
 				<ContextMenu.Content align='end' class={css.content}>
 					<ContextMenu.Label class={css.viewer}>
@@ -101,6 +82,14 @@ export function ProfileMenu(props: ProfileMenuProps) {
 					>
 						Профиль
 					</ContextMenu.Item>
+					<ContextMenu.Item
+						onSelect={() => {
+							// Deferred like the profile dialog above, for the same focus race.
+							setTimeout(() => setIsHouseholdOpen(true), 0);
+						}}
+					>
+						Окружение
+					</ContextMenu.Item>
 					<ContextMenu.Item disabled title='Раздел безопасности будет добавлен позже'>
 						Безопасность
 					</ContextMenu.Item>
@@ -118,6 +107,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 					</ContextMenu.Item>
 				</ContextMenu.Content>
 			</ContextMenu.Root>
+			<HouseholdDialog open={isHouseholdOpen()} onOpenChange={setIsHouseholdOpen}/>
 			<ProfileSettingsDialog
 				authClient={props.authClient}
 				open={isSettingsOpen()}

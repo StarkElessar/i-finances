@@ -1,0 +1,19 @@
+// Board `D-Household`, «Приглашение создано»: a card with a banner, the link, two small buttons and a warning.
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+
+    min-inline-size: 0;
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+}

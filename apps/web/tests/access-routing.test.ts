@@ -28,6 +28,7 @@ function createEffects() {
 	return {
 		clearCache: vi.fn(),
 		clearCurrentViewer: vi.fn(),
+		rememberLostHousehold: vi.fn<(householdName: string) => void>(),
 		setCurrentViewer: vi.fn<(patch: Partial<CurrentViewer>) => void>()
 	};
 }
@@ -83,6 +84,27 @@ describe('route redirects', () => {
 		}
 	});
 
+	it('keeps everyone on a route for any access: the invitation page', () => {
+		for (const access of ACCESSES) {
+			expect(resolveRouteRedirect('any', access)).toBeNull();
+			expect(resolveRouteRedirect('any', access, { hasPendingInvitation: true })).toBeNull();
+		}
+	});
+
+	it('leads a person who has just signed in back to the invitation that waits in the tab', () => {
+		expect(resolveRouteRedirect('anonymous', 'onboarding', { hasPendingInvitation: true })).toBe('/invite');
+		expect(resolveRouteRedirect('anonymous', 'member', { hasPendingInvitation: true })).toBe('/invite');
+		// Without a waiting token the entry page of the access, as before.
+		expect(resolveRouteRedirect('anonymous', 'onboarding', { hasPendingInvitation: false })).toBe('/onboarding');
+		expect(resolveRouteRedirect('anonymous', 'member')).toBe('/');
+	});
+
+	it('does not take the invitation into account on any other route', () => {
+		expect(resolveRouteRedirect('onboarding', 'member', { hasPendingInvitation: true })).toBe('/');
+		expect(resolveRouteRedirect('member', 'onboarding', { hasPendingInvitation: true })).toBe('/onboarding');
+		expect(resolveRouteRedirect('member', 'anonymous', { hasPendingInvitation: true })).toBe('/sign-in');
+	});
+
 	it('shows a finance page to a member only', () => {
 		const allowed = ACCESSES.filter((access) => resolveRouteRedirect('member', access) === null);
 
@@ -100,10 +122,21 @@ describe('applyAccessFailure', () => {
 		expect(effects.setCurrentViewer).toHaveBeenCalledWith({ household: null });
 		expect(effects.clearCache).toHaveBeenCalledTimes(1);
 		expect(effects.clearCurrentViewer).not.toHaveBeenCalled();
+		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('Семья');
 
 		// The next requests of the same page fail the same way, after the patch.
 		applyAccessFailure('household-required', viewerFromSession(ONBOARDING_SESSION), effects);
 		expect(effects.setCurrentViewer).toHaveBeenCalledTimes(1);
+		expect(effects.rememberLostHousehold).toHaveBeenCalledTimes(1);
+	});
+
+	it('remembers the household a removed member lost with the 401 that ends their session (Р7)', () => {
+		const effects = createEffects();
+
+		applyAccessFailure('unauthenticated', viewerFromSession(MEMBER_SESSION), effects);
+
+		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('Семья');
+		expect(effects.clearCurrentViewer).toHaveBeenCalledTimes(1);
 	});
 
 	it('forgets the viewer on 401', () => {
@@ -114,6 +147,8 @@ describe('applyAccessFailure', () => {
 		expect(effects.clearCurrentViewer).toHaveBeenCalledTimes(1);
 		expect(effects.clearCache).toHaveBeenCalledTimes(1);
 		expect(effects.setCurrentViewer).not.toHaveBeenCalled();
+		// Nobody to remember: this user had no household.
+		expect(effects.rememberLostHousehold).not.toHaveBeenCalled();
 	});
 
 	it('does nothing for a guest: a failed password sign-in is a 401 too', () => {
@@ -125,5 +160,6 @@ describe('applyAccessFailure', () => {
 		expect(effects.clearCurrentViewer).not.toHaveBeenCalled();
 		expect(effects.setCurrentViewer).not.toHaveBeenCalled();
 		expect(effects.clearCache).not.toHaveBeenCalled();
+		expect(effects.rememberLostHousehold).not.toHaveBeenCalled();
 	});
 });

@@ -53,6 +53,11 @@ export type TypographyProps = {
 	class?: string;
 	id?: string;
 	title?: string;
+	/**
+	 * Moves keyboard and screen-reader focus to this text when it appears: the title of a card that replaces another
+	 * one (a step of the onboarding, the answer to a request). Not a tab stop, so no focus ring is drawn.
+	 */
+	focusOnMount?: boolean;
 };
 
 const defaultElementByVariant: Record<TypographyVariant, TypographyElement> = {
@@ -101,6 +106,10 @@ const alignClassByAlign: Record<TypographyAlign, string> = {
 	end: css.alignEnd
 };
 
+function focusElement(element: HTMLElement): void {
+	queueMicrotask(() => element.focus({ preventScroll: true }));
+}
+
 /**
  * Renders semantic text using the shared type scale and color tokens.
  */
@@ -120,9 +129,12 @@ export function Typography(props: TypographyProps) {
 				props.weight && weightClassByWeight[props.weight],
 				props.align && alignClassByAlign[props.align],
 				props.truncate && css.truncate,
+				props.focusOnMount && css.focusTarget,
 				props.class
 			)}
 			id={props.id}
+			ref={props.focusOnMount ? focusElement : undefined}
+			tabIndex={props.focusOnMount ? -1 : undefined}
 			title={props.title}
 		>
 			{props.children}

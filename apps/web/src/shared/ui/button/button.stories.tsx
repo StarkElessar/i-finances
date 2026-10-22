@@ -14,7 +14,7 @@ const meta = {
 		size: 'md'
 	},
 	argTypes: {
-		variant: { control: 'inline-radio', options: ['primary', 'secondary', 'ghost', 'danger'] },
+		variant: { control: 'inline-radio', options: ['primary', 'secondary', 'ghost', 'danger', 'danger-ghost'] },
 		size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] }
 	}
 } satisfies Meta<typeof Button>;
@@ -35,6 +35,10 @@ export const Ghost: Story = {
 
 export const Danger: Story = {
 	args: { variant: 'danger', children: 'Удалить' }
+};
+
+export const DangerGhost: Story = {
+	args: { variant: 'danger-ghost', children: 'Покинуть окружение' }
 };
 
 export const Sizes: Story = {

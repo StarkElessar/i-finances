@@ -1,0 +1,11 @@
+@use "@/shared/styles/functions" as fn;
+
+// Board `D-Household`: the dialog is 560 px wide (mockup `.i-dialog`); on a phone the kit makes it a sheet.
+.dialog {
+    --dialog-inline-size: #{fn.rem(560)};
+}
+
+// The footer-less dialog needs room under the last block; the focus ring of the inputs needs room at the sides.
+.body {
+    padding-block: var(--space-6) var(--space-8);
+}

@@ -1,14 +1,17 @@
-import { resolveViewerAccess, useCurrentViewer, type ViewerAccess } from '@/entities/viewer';
+import { resolveViewerAccess, useCurrentViewer } from '@/entities/viewer';
+
+import { pendingInvitation } from '@/features/invitation';
 
 import { Navigate } from '@solidjs/router';
 import type { JSX } from 'solid-js';
 import { createMemo, Show } from 'solid-js';
 
+import type { RouteAccess } from './route-redirect';
 import { resolveRouteRedirect } from './route-redirect';
 
 export type AccessGuardProps = {
 	/** The access this route serves; every other viewer is sent to the entry page of their own access. */
-	access: ViewerAccess;
+	access: RouteAccess;
 	children: JSX.Element;
 };
 
@@ -18,7 +21,11 @@ export type AccessGuardProps = {
  */
 export function AccessGuard(props: AccessGuardProps) {
 	const viewer = useCurrentViewer();
-	const redirect = createMemo(() => resolveRouteRedirect(props.access, resolveViewerAccess(viewer())));
+	const redirect = createMemo(() => resolveRouteRedirect(
+		props.access,
+		resolveViewerAccess(viewer()),
+		{ hasPendingInvitation: pendingInvitation.has() }
+	));
 
 	return (
 		<Show fallback={props.children} keyed when={redirect()}>

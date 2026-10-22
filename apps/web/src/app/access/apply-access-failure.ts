@@ -6,6 +6,8 @@ export type AccessFailureEffects = {
 	/** Forgets cached query results, so nothing loaded for the previous access shows up again (back, forward). */
 	clearCache: () => void;
 	clearCurrentViewer: () => void;
+	/** Remembers the name of the household the viewer was in, for «Вы больше не участник окружения «X»» after a new sign-in. */
+	rememberLostHousehold: (householdName: string) => void;
 	setCurrentViewer: (patch: Partial<CurrentViewer>) => void;
 };
 
@@ -21,6 +23,10 @@ export function applyAccessFailure(
 ): void {
 	if (viewer === null || viewer === undefined) {
 		return;
+	}
+
+	if (viewer.household !== null) {
+		effects.rememberLostHousehold(viewer.household.name);
 	}
 
 	if (failure === 'unauthenticated') {

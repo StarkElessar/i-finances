@@ -60,6 +60,7 @@ import {
 	getTransfer,
 	updateTransferAction
 } from '@/entities/transfer';
+import { useCurrentViewer } from '@/entities/viewer';
 
 import { ACCOUNT_DETAILS_REGISTRY } from '@/features/account-details';
 
@@ -187,15 +188,21 @@ type AccountsEmptyStateProps = {
 };
 
 function AccountsEmptyState(props: AccountsEmptyStateProps) {
+	const viewer = useCurrentViewer();
+	const householdName = () => viewer()?.household?.name;
+
 	return (
 		<section class={css.accountsEmpty}>
 			<WalletCards aria-hidden='true' size={38} strokeWidth={1.8}/>
 			<div class={css.accountsEmptyContent}>
-				<h1>Счетов пока нет</h1>
-				<p>Создайте первый счет, чтобы начать вести операции и считать общий баланс.</p>
+				<h1>Добавьте первый счёт</h1>
+				<p>
+					{householdName() === undefined ? 'В окружении' : `В окружении «${householdName()}»`} пока нет счетов.
+					Добавьте первый, чтобы вести операции и считать общий баланс.
+				</p>
 			</div>
 			<Button startIcon={<Plus size={18}/>} type='button' onClick={props.onCreate}>
-				Создать счет
+				Добавить счёт
 			</Button>
 		</section>
 	);

@@ -1,6 +1,6 @@
 import { subscribeToApiAccessFailures } from '@/shared/api';
 
-import { useClearCurrentViewer, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
+import { householdLossNotice, useClearCurrentViewer, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import { query } from '@solidjs/router';
 import { onCleanup, onMount } from 'solid-js';
@@ -21,6 +21,7 @@ export function AccessFailureListener() {
 			applyAccessFailure(failure, viewer(), {
 				clearCache: () => query.clear(),
 				clearCurrentViewer,
+				rememberLostHousehold: (householdName) => householdLossNotice.save(householdName),
 				setCurrentViewer
 			});
 		});

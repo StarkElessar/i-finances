@@ -12,6 +12,10 @@ import { SignInDivider } from './sign-in-divider';
 
 export type SignInOptionsProps = {
 	view: SignInCardView;
+	/** Replaces the title and the description of the view; the banners under them stay. */
+	header?: JSX.Element;
+	/** Drops the «или» line (the guest card of the invitation). */
+	hideDivider?: boolean;
 	/** The bot link of this browser's own request, while there is one. */
 	botUrl?: string;
 	passkeyError?: string;
@@ -37,12 +41,19 @@ const BANNER_ICONS: Record<SignInBannerIcon, () => JSX.Element> = {
 export function SignInOptions(props: SignInOptionsProps) {
 	return (
 		<div class={css.root}>
-			<div class={css.header}>
-				<Typography as='h2' variant='heading-2'>{props.view.title}</Typography>
-				<Show when={props.view.description}>
-					{(description) => <Typography tone='secondary' variant='body-md'>{description()}</Typography>}
-				</Show>
-			</div>
+			<Show
+				fallback={(
+					<div class={css.header}>
+						<Typography as='h2' variant='heading-2'>{props.view.title}</Typography>
+						<Show when={props.view.description}>
+							{(description) => <Typography tone='secondary' variant='body-md'>{description()}</Typography>}
+						</Show>
+					</div>
+				)}
+				when={props.header}
+			>
+				{props.header}
+			</Show>
 			<For each={props.view.banners}>
 				{(banner) => (
 					<Banner
@@ -89,7 +100,7 @@ export function SignInOptions(props: SignInOptionsProps) {
 			<Show when={props.passkeyError}>
 				{(error) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{error()}</Banner>}
 			</Show>
-			<Show when={props.view.divider === 'after-telegram'}>
+			<Show when={props.view.divider === 'after-telegram' && !props.hideDivider}>
 				<SignInDivider/>
 			</Show>
 			<Show when={props.view.passkey !== 'none'}>
@@ -104,7 +115,7 @@ export function SignInOptions(props: SignInOptionsProps) {
 					Войти с ключом доступа
 				</Button>
 			</Show>
-			<Show when={props.view.divider === 'after-passkey'}>
+			<Show when={props.view.divider === 'after-passkey' && !props.hideDivider}>
 				<SignInDivider/>
 			</Show>
 			<Show when={props.view.password !== 'none'}>

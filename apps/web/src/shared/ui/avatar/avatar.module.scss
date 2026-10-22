@@ -1,0 +1,30 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-avatar`: 36 px circle, soft primary background, bold caption-size initials, a 1 px border.
+.root {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-round);
+
+    font-weight: var(--font-weight-bold);
+    color: var(--color-primary);
+
+    background-color: var(--color-primary-soft);
+}
+
+.size-md {
+    inline-size: fn.rem(36);
+    block-size: fn.rem(36);
+    font-size: var(--font-size-caption);
+}
+
+.size-lg {
+    inline-size: fn.rem(48);
+    block-size: fn.rem(48);
+    font-size: var(--font-size-body-lg);
+}

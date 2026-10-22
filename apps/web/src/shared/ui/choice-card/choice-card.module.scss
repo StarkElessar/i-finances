@@ -1,0 +1,108 @@
+@use "@/shared/styles/functions" as fn;
+@use "@/shared/styles/mixins" as mx;
+
+// Mockup `.i-type`: a 1 px card with a 12 px padding, 64 px high at least; the chosen one has a primary border and
+// a soft primary background. The radio is the whole card, hidden but focusable.
+.root {
+    position: relative;
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    box-sizing: border-box;
+    min-block-size: var(--row-height-comfortable);
+    padding: var(--space-5);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+
+    background-color: var(--color-surface);
+
+    transition:
+        border-color var(--duration-fast) var(--ease-standard),
+        background-color var(--duration-fast) var(--ease-standard);
+
+    &:not(.checked, .disabled) {
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--color-surface-subtle);
+        }
+    }
+
+    &:has(.input:focus-visible) {
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+}
+
+.checked {
+    border-color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+}
+
+.disabled {
+    cursor: not-allowed;
+    color: var(--color-disabled-text);
+    background-color: var(--color-disabled-surface);
+}
+
+.input {
+    position: absolute;
+    inset: 0;
+
+    margin: 0;
+
+    appearance: none;
+    opacity: 0;
+}
+
+.title {
+    display: flex;
+    gap: var(--space-4);
+    align-items: center;
+
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-semibold);
+}
+
+.icon {
+    display: inline-flex;
+    flex: none;
+
+    svg {
+        inline-size: fn.rem(16);
+        block-size: fn.rem(16);
+    }
+}
+
+.description {
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+}
+
+.group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+
+    min-inline-size: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+.legend {
+    position: absolute;
+
+    overflow: hidden;
+
+    inline-size: 1px;
+    block-size: 1px;
+    margin: -1px;
+    padding: 0;
+    border: 0;
+
+    white-space: nowrap;
+
+    clip-path: inset(50%);
+}

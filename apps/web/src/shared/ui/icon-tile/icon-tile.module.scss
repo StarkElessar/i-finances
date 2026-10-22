@@ -1,0 +1,32 @@
+@use "@/shared/styles/functions" as fn;
+
+// Mockup `.i-tile`: 36 px, md radius, the tint at 14 % over the surface, a border of the tint at 28 %.
+.root {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    box-sizing: border-box;
+    inline-size: fn.rem(36);
+    block-size: fn.rem(36);
+    border: 1px solid color-mix(in srgb, var(--tile-tint) 28%, transparent);
+    border-radius: var(--radius-md);
+
+    color: var(--tile-tint);
+
+    background-color: color-mix(in srgb, var(--tile-tint) 14%, var(--color-surface));
+
+    svg {
+        inline-size: fn.rem(20);
+        block-size: fn.rem(20);
+    }
+}
+
+.tone-primary {
+    --tile-tint: var(--color-series-1);
+}
+
+.tone-neutral {
+    --tile-tint: var(--color-series-10);
+}

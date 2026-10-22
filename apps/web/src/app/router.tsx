@@ -1,6 +1,6 @@
 import css from './router.module.scss';
 
-import { CurrentViewerProvider, viewerFromSession } from '@/entities/viewer';
+import { CurrentViewerProvider, householdLossNotice, viewerFromSession } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
@@ -10,6 +10,7 @@ import { AppHeader } from '@/widgets/app-header';
 import { CategoriesPage } from '@/views/categories/page';
 import { ContactsPage } from '@/views/contacts/page';
 import { HomePage } from '@/views/home/page';
+import { InvitePage } from '@/views/invite/page';
 import { OnboardingPage } from '@/views/onboarding/page';
 import { ReceiptsPage } from '@/views/receipts/page';
 import { StatisticsPage } from '@/views/statistics/page';
@@ -18,7 +19,7 @@ import type { CurrentSessionResponse } from '@i-finances/contracts';
 import type { RouteSectionProps } from '@solidjs/router';
 import { Navigate, query, Route, Router } from '@solidjs/router';
 import type { Accessor, JSX } from 'solid-js';
-import { createResource, Show } from 'solid-js';
+import { createResource, onMount, Show } from 'solid-js';
 
 import { AccessFailureListener } from './access/access-failure-listener';
 import { AccessGuard } from './access/access-guard';
@@ -64,6 +65,9 @@ type MemberLayoutProps = RouteSectionProps & {
  * The shell of the finance pages. It stays mounted while the member moves between them, so the header keeps its state.
  */
 function MemberLayout(props: MemberLayoutProps) {
+	// A member is in a household: the notice «Вы больше не участник…» of an earlier loss is out of date.
+	onMount(() => householdLossNotice.clear());
+
 	return (
 		<AccessGuard access='member'>
 			<AppHeader authClient={props.authClient} onSignedOut={props.onSignedOut}/>
@@ -111,6 +115,14 @@ export function AppRouter(props: AppRouterProps) {
 				component={() => (
 					<AccessGuard access='onboarding'>
 						<OnboardingPage authClient={props.authClient} onSignedOut={reloadSession}/>
+					</AccessGuard>
+				)}
+			/>
+			<Route
+				path='/invite'
+				component={() => (
+					<AccessGuard access='any'>
+						<InvitePage authClient={props.authClient} onSignedIn={reloadSession}/>
 					</AccessGuard>
 				)}
 			/>
