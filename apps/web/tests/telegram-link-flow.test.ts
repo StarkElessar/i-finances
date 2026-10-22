@@ -136,7 +136,7 @@ describe('TelegramLinkFlow', () => {
 			expect(state()).toMatchObject({ kind: 'failed', reason: 'unexpected' });
 		});
 
-		it('hides the block when Telegram is off on the server (404)', async () => {
+		it('reports unavailable when Telegram is off on the server (404), without retrying', async () => {
 			const { flow, gateway, state } = createHarness();
 
 			gateway.startTelegramLink.mockRejectedValue(failure(404, 'telegram-unavailable'));
@@ -144,6 +144,9 @@ describe('TelegramLinkFlow', () => {
 			await flush();
 
 			expect(state()).toEqual({ kind: 'unavailable' });
+			await vi.advanceTimersByTimeAsync(TTL_MS * 2);
+			expect(gateway.startTelegramLink).toHaveBeenCalledTimes(1);
+			expect(gateway.completeTelegramLink).not.toHaveBeenCalled();
 		});
 
 		it('says the account already has a Telegram (409) without offering a retry', async () => {
