@@ -3,7 +3,7 @@ import { ApiHttpError } from '@/shared/api';
 import { TelegramLinkFlow } from '@/features/security/model/telegram-link-flow';
 import type { TelegramLinkGateway } from '@/features/security/model/telegram-link-protocol';
 import type { TelegramLinkState } from '@/features/security/model/telegram-link-state';
-import { TELEGRAM_POLL_INTERVAL_MS } from '@/features/telegram-request';
+import { resetTelegramCookieQueue, TELEGRAM_POLL_INTERVAL_MS } from '@/features/telegram-request';
 
 import {
 	type CurrentSessionResponse,
@@ -95,6 +95,7 @@ async function waitingHarness() {
 
 describe('TelegramLinkFlow', () => {
 	beforeEach(() => {
+		resetTelegramCookieQueue();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 	});
@@ -186,6 +187,32 @@ describe('TelegramLinkFlow', () => {
 				message: telegramLinkErrorMessageByCode.unexpected,
 				reason: 'network'
 			});
+		});
+	});
+
+	describe('the request cookie across flows', () => {
+		it('starts a new flow only after the request of a closed one has settled, so a late answer cannot replace its cookie', async () => {
+			const first = createHarness();
+			let releaseFirst: () => void = () => undefined;
+
+			first.gateway.startTelegramLink.mockImplementationOnce(() => new Promise((resolve) => {
+				releaseFirst = () => resolve(startResult(CODE_A));
+			}));
+			first.flow.start();
+			await flush();
+			first.flow.dispose();
+
+			const second = createHarness();
+
+			second.flow.start();
+			await flush();
+			expect(second.gateway.startTelegramLink).not.toHaveBeenCalled();
+
+			releaseFirst();
+			await flush();
+			expect(second.gateway.startTelegramLink).toHaveBeenCalledTimes(1);
+			expect(second.state().kind).toBe('ready');
+			expect(first.state().kind).toBe('preparing');
 		});
 	});
 

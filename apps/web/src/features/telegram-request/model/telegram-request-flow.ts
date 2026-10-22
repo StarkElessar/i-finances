@@ -1,3 +1,4 @@
+import { afterTelegramCookieRequests, trackTelegramCookieRequest } from './telegram-request-cookie-queue';
 import {
 	isTelegramBotUrl,
 	MILLISECONDS_PER_MINUTE,
@@ -36,8 +37,9 @@ type TimerName = 'deadline' | 'poll' | 'refresh' | 'retry';
  * - polling is one request at a time, every 2 seconds, at once when the page becomes visible again, paused while it
  *   is hidden, and stops on the request's expiry, on any final answer and on `dispose` (limit: 300 per 5 minutes);
  * - the code is only the one this browser's own `start` answered;
- * - requests that set or clear the request cookie (`start`, `complete`, `cancel`) never overlap: the browser applies
- *   their `Set-Cookie` in arrival order, and a late «clear» of an old request would wipe the new request's cookie;
+ * - requests that set or clear the request cookie (`start`, `complete`, `cancel`) never overlap, also across flows (a
+ *   block closed and opened again, the sign-in screen): the browser applies their `Set-Cookie` in arrival order, and a
+ *   late answer of an old request would replace the new request's cookie (`telegram-request-cookie-queue.ts`);
  * - a second tab that took over the cookie gets `browser-mismatch` here, which waits for the person's «Начать заново»
  *   rather than restarting by itself, so two tabs never take the cookie from each other in a loop;
  * - the bot link is an `https://t.me/...` link from the answer of `start`, nothing else;
@@ -59,8 +61,6 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 	private pollAnswerLost = false;
 	/** The ready link expired while the page was hidden: replace it when the page is visible again. */
 	private linkStale = false;
-	/** The last request that may set or clear the request cookie, settled (never rejects). */
-	private cookieRequest: Promise<void> = Promise.resolve();
 	private readonly timers = new Map<TimerName, ReturnType<typeof setTimeout>>();
 
 	public constructor(private readonly options: TelegramRequestFlowOptions<TConfirmed, TReason>) {}
@@ -146,7 +146,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 
 		this.setState({ kind: 'preparing' });
 
-		await this.cookieRequest;
+		await afterTelegramCookieRequests();
 
 		if (cancelCode !== undefined) {
 			await this.track(protocol.cancel(cancelCode)).catch(() => undefined);
@@ -373,9 +373,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 	}
 
 	private track<TResult>(request: Promise<TResult>): Promise<TResult> {
-		this.cookieRequest = request.then(() => undefined, () => undefined);
-
-		return request;
+		return trackTelegramCookieRequest(request);
 	}
 
 	private isStale(generation: number): boolean {

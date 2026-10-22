@@ -1,4 +1,5 @@
 export { createTelegramRequest, type TelegramRequest, type TelegramRequestPageOptions } from './model/create-telegram-request';
+export { resetTelegramCookieQueue } from './model/telegram-request-cookie-queue';
 export { TelegramRequestFlow, type TelegramRequestFlowOptions } from './model/telegram-request-flow';
 export {
 	isTelegramBotUrl,
