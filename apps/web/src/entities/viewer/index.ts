@@ -1,3 +1,4 @@
+export { applyHouseholdChange, type HouseholdChangeEffects } from './model/apply-household-change';
 export type { ClearCurrentViewer, CurrentViewerAccessor, SetCurrentViewer } from './model/current-viewer-context';
 export {
 	CurrentViewerProvider,

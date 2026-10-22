@@ -1,6 +1,6 @@
 import { PageCard } from '@/shared/ui';
 
-import { resolveViewerAccess, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
+import { applyHouseholdChange, resolveViewerAccess, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { createSignInMethods } from '@/features/auth';
@@ -22,7 +22,7 @@ import {
 } from '@/features/invitation';
 
 import { Title } from '@solidjs/meta';
-import { useNavigate } from '@solidjs/router';
+import { query, useNavigate } from '@solidjs/router';
 import { createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
 
 export type InvitePageProps = {
@@ -60,7 +60,7 @@ export function InvitePage(props: InvitePageProps) {
 	const [state, setState] = createSignal<InvitationFlowState>({ kind: 'loading' });
 	const flow = new InvitationFlow({
 		gateway: new InvitationClient(),
-		onAccepted: (household) => setCurrentViewer({ household }),
+		onAccepted: (household) => applyHouseholdChange(household, { clearCache: () => query.clear(), setCurrentViewer }),
 		onChange: setState,
 		store: pendingInvitation
 	});

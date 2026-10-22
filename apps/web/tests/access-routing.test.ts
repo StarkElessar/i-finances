@@ -1,4 +1,4 @@
-import { type CurrentViewer, resolveViewerAccess, type ViewerAccess, viewerFromSession } from '@/entities/viewer';
+import { applyHouseholdChange, type CurrentViewer, resolveViewerAccess, type ViewerAccess, viewerFromSession } from '@/entities/viewer';
 
 import { applyAccessFailure } from '@/app/access/apply-access-failure';
 import { ENTRY_PATH_BY_ACCESS, resolveRouteRedirect } from '@/app/access/route-redirect';
@@ -161,5 +161,30 @@ describe('applyAccessFailure', () => {
 		expect(effects.setCurrentViewer).not.toHaveBeenCalled();
 		expect(effects.clearCache).not.toHaveBeenCalled();
 		expect(effects.rememberLostHousehold).not.toHaveBeenCalled();
+	});
+});
+
+describe('applyHouseholdChange', () => {
+	it('drops the cache before the viewer moves to another household, without a session refetch (review of U4)', () => {
+		const calls: string[] = [];
+		const household = { id: 'family', name: 'Семья', role: 'member' as const };
+
+		applyHouseholdChange(household, {
+			clearCache: () => calls.push('clear-cache'),
+			setCurrentViewer: (patch) => calls.push(`patch:${JSON.stringify(patch)}`)
+		});
+
+		expect(calls).toEqual(['clear-cache', `patch:${JSON.stringify({ household })}`]);
+	});
+
+	it('drops the cache when the viewer leaves the household too', () => {
+		const calls: string[] = [];
+
+		applyHouseholdChange(null, {
+			clearCache: () => calls.push('clear-cache'),
+			setCurrentViewer: (patch) => calls.push(`patch:${JSON.stringify(patch)}`)
+		});
+
+		expect(calls).toEqual(['clear-cache', 'patch:{"household":null}']);
 	});
 });

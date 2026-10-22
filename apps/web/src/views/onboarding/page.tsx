@@ -1,6 +1,6 @@
 import { PageCard } from '@/shared/ui';
 
-import { householdLossNotice, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
+import { applyHouseholdChange, householdLossNotice, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import {
@@ -16,7 +16,7 @@ import { parseInvitationLink, pendingInvitation } from '@/features/invitation';
 
 import { INVITATION_PAGE_PATH } from '@i-finances/contracts';
 import { Title } from '@solidjs/meta';
-import { useNavigate } from '@solidjs/router';
+import { query, useNavigate } from '@solidjs/router';
 import { createSignal, Match, Switch } from 'solid-js';
 
 export type OnboardingPageProps = {
@@ -117,7 +117,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 			const session = await props.authClient.currentSession();
 
 			if (session.authenticated && session.household !== null) {
-				setCurrentViewer({ household: session.household });
+				applyHouseholdChange(session.household, { clearCache: () => query.clear(), setCurrentViewer });
 				return;
 			}
 		}
@@ -139,7 +139,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 			switch (outcome.kind) {
 				case 'created':
 					householdLossNotice.clear();
-					setCurrentViewer({ household: outcome.household });
+					applyHouseholdChange(outcome.household, { clearCache: () => query.clear(), setCurrentViewer });
 					navigate('/', { replace: true });
 					return;
 

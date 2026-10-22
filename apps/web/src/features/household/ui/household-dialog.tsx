@@ -2,7 +2,7 @@ import css from './household-dialog.module.scss';
 
 import { Dialog } from '@/shared/ui';
 
-import { useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
+import { applyHouseholdChange, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import { query } from '@solidjs/router';
 import { createSignal, onCleanup, onMount } from 'solid-js';
@@ -36,8 +36,7 @@ function HouseholdDialogContent(props: HouseholdDialogContentProps) {
 		onChange: setState,
 		onLeft: () => {
 			// The person is out: the patch sends the app to the onboarding, and what was loaded for the household goes.
-			setCurrentViewer({ household: null });
-			query.clear();
+			applyHouseholdChange(null, { clearCache: () => query.clear(), setCurrentViewer });
 			props.onClose();
 		},
 		onRenamed: (household) => setCurrentViewer({ household })
