@@ -48,8 +48,10 @@ no secrets. A wrong value stops the API at start with a message that names the v
 | `TELEGRAM_WEBHOOK_SECRET` | yes | `webhook` only. 1-256 characters of `A-Za-z0-9_-`, at least 32 in production. Generate with `openssl rand -hex 32`. |
 | `TELEGRAM_WEBHOOK_URL` | no | `webhook` only. Default `${AUTH_ORIGIN}/api/telegram/webhook`; must be https in production. |
 | `TELEGRAM_LOGIN_TTL_MINUTES` | no | Lifetime of a sign-in or link request, 1-60, default 10. |
-| `TELEGRAM_REGISTRATION_ENABLED` | no | `false` (default): an unknown Telegram account is refused. `true`: it creates a user. See the order below. |
+| `TELEGRAM_REGISTRATION_ENABLED` | no | `false` (default, and the owner's decision of 2026-10-22): an unknown Telegram account is refused unless the person came with a live invitation link. `true`: any unknown Telegram account creates a user. |
 | `HOUSEHOLD_INVITATION_TTL_HOURS` | no | Lifetime of an invitation link, 1-168, default 168 (7 days). |
+| `PLATFORM_ADMIN_USERNAMES` | no | Logins (`users.username`, not display names) of the platform administrators, separated by commas; on production `stark`. Only they create invitations into the application. Empty: nobody. An entry that cannot be a login stops the start. |
+| `APP_INVITATION_TTL_HOURS` | no | Lifetime of an invitation into the application, 1-168, default 168 (7 days). |
 | `DEV_TELEGRAM_LOGIN` | no | Local development only. **Never in production**: the API refuses to start with it when `NODE_ENV=production`. |
 | `TRUSTED_PROXY_COUNT` | no | Number of reverse proxies in front of the API. `1` behind the homelab nginx; production refuses to start without it. |
 | `MCP_USER_ID` | no | Must be the id of the household owner (a member of the household), otherwise MCP gets 403 `household-required`. |
@@ -88,6 +90,16 @@ The releases are those of section 8.4 of the decision. Every deploy starts with 
 3. **Release 3, households for other people.** Invitations, members, onboarding. Before it, a read-only query on the production database for the roles in `default-household`. There must be one owner: the head of the family, who is also `MCP_USER_ID`. A second `owner` (a leftover of the old resolver) can remove the owner and end their sessions; lowering that user to `member` is done only on the owner's word, after a backup. On the nginx side add `Referrer-Policy: same-origin` for `/invite` (below).
 
 `TELEGRAM_UPDATES=webhook` goes on only when the sign-in and link screens are deployed: before that the bot would answer people for whom the site has no button.
+
+### Invitations into the application (migration 0017)
+
+Design, threat model and decisions: `development/decisions/app-invitations-v1.md`. Registration stays closed (`TELEGRAM_REGISTRATION_ENABLED=false`); a person signs up only with a live invitation link: into a household (any owner creates it) or into the application (only a platform administrator). Order of the deploy:
+
+1. **Backup** through the `backup` container, as in `schema-migrations-v1.md`, 5.2 (directory `pre-deploy-app-invitations-$TS`), and note the row counts of `users`, `household_invitations`, `telegram_login_requests`.
+2. **Env.** Add `PLATFORM_ADMIN_USERNAMES=stark` to `~/sites/homelab/env/i-finances.env` (copy the file with `cp -p` first). `APP_INVITATION_TTL_HOURS` may stay unset (7 days). Keep `TELEGRAM_REGISTRATION_ENABLED=false`.
+3. **Trial run on the copy** from step 1, exactly as `schema-migrations-v1.md`, 5.3, with the new image. Expected: `Database migrations applied.`, `integrity ok`, `fk violations 0`, the same row counts; the new table `app_invitations` is empty. 0017 only adds (`CREATE TABLE app_invitations` and two `ALTER TABLE ... ADD` of nullable columns), it rebuilds no table and touches no row.
+4. **Deploy API and web together** (the session answer has `isPlatformAdmin`, the preview has `kind`): `docker compose up -d if-api`, wait for `healthy`, `docker compose run --rm if-web`, smoke `/api/health`. Then, signed in as `stark`, `GET /api/auth/session` says `isPlatformAdmin: true`; as anybody else `false`.
+5. **Rollback** is a code rollback (`git revert` of the merge, the usual pull and rebuild). The code before 0017 works on the schema after it: it does not know the new table and columns and never reads them; its migrator applies nothing. What is lost by going back: invitations into the application stop working (their links say «unknown»), people already registered by them stay. Restoring the database from the backup is for a broken database only and loses everything written after it (`schema-migrations-v1.md`, 6).
 
 ### `Referrer-Policy` for `/invite`
 
