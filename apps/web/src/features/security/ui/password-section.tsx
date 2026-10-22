@@ -15,6 +15,7 @@ import {
 	type PasswordFieldErrors,
 	validateChangePassword
 } from '../model/change-password-outcome';
+import { createRetryLock } from '../model/create-retry-lock';
 
 import { SecuritySection } from './security-section';
 
@@ -27,8 +28,6 @@ export type PasswordSectionProps = {
 };
 
 const SECONDS_PER_MINUTE = 60;
-
-const MILLISECONDS_PER_SECOND = 1_000;
 
 const CHANGE_FAILED = 'Не удалось сменить пароль. Попробуйте ещё раз.';
 
@@ -53,14 +52,8 @@ export function PasswordSection(props: PasswordSectionProps) {
 	const [isPending, setIsPending] = createSignal(false);
 	const [isLocked, setIsLocked] = createSignal(false);
 	const [retryAfterSeconds, setRetryAfterSeconds] = createSignal<number>();
-	let unlockTimer: ReturnType<typeof setTimeout> | undefined;
-
-	const clearLock = (): void => {
-		if (unlockTimer !== undefined) {
-			clearTimeout(unlockTimer);
-			unlockTimer = undefined;
-		}
-	};
+	// The answer may come after the dialog was closed: no wait starts then (`dispose` on cleanup).
+	const retryLock = createRetryLock();
 
 	const handleSubmit = async (event: SubmitEvent): Promise<void> => {
 		event.preventDefault();
@@ -98,13 +91,13 @@ export function PasswordSection(props: PasswordSectionProps) {
 			}
 			else if (next.kind === 'rate-limited' && response.retryAfterSeconds !== undefined) {
 				// The server named a wait: the form rests that long. Without a number there is nothing honest to wait for.
-				setRetryAfterSeconds(response.retryAfterSeconds);
-				setIsLocked(true);
-				clearLock();
-				unlockTimer = setTimeout(() => {
+				const locked = retryLock.lockFor(response.retryAfterSeconds, () => {
 					setIsLocked(false);
 					setRetryAfterSeconds(undefined);
-				}, response.retryAfterSeconds * MILLISECONDS_PER_SECOND);
+				});
+
+				setRetryAfterSeconds(response.retryAfterSeconds);
+				setIsLocked(locked);
 			}
 		}
 		catch {
@@ -133,7 +126,7 @@ export function PasswordSection(props: PasswordSectionProps) {
 		return seconds === undefined ? 'Повторите позже.' : `Повторите ${formatRetryAfter(seconds)}.`;
 	};
 
-	onCleanup(clearLock);
+	onCleanup(() => retryLock.dispose());
 
 	return (
 		<SecuritySection title='Пароль'>
