@@ -20,7 +20,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Что | Где |
 |---|---|
-| **Макет и кит** (Claude Design, 47 досок, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
+| **Макет и кит** (Claude Design, 50 досок, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
 | Решения владельца, состав холста | `development/ui-mockup.md` |
 | Аудит дефектов (A1…C6) | `development/ui-audit.md` |
 | Токены в коде (эталон) | `apps/web/src/shared/styles/tokens.scss` |
@@ -89,6 +89,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` (`ui/sign-in-form`, `ui/sign-in-options`, состояния в `model/sign-in-card-view`, опрос в `model/telegram-sign-in-flow`; истории `Auth/SignInOptions`, `Auth/SignedInIdentity`) | есть (U1, 2026-10-19); не на доске: «Вход выполнен» после Telegram, «нет связи», ошибка сети на `start`, форма пароля в карточке |
 | | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` (`size='lg'` 48 px на входе) | есть, есть история |
 | `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие (срок 7 дней, экран согласия на удаление пустого окружения, ссылка вида `/invite#токен`), участники окружения, тексты бота (редакция 2026-10-19, на проверку владельцем) | `views/onboarding` и `features/household/ui` (онбординг, диалог «Окружение» из меню профиля), `views/invite` и `features/invitation/ui` (приглашение), `app/access` (маршруты, U2); истории `Household/*`, `Invitation/Cards` | есть (U3, U4, U5, 2026-10-22); отступления в `development/ui-mockup.md`; не сделано: тексты бота (IF-10), уведомление об удалении |
+| `Flow-AppInvite`, `M-AppInvitations`, `D-AppInvitations`, `M-Profile`, `D-Profile` | приглашение в приложение (вид «в приложение»: человек входит через Telegram и создаёт своё окружение): страница гостя на 9 состояний, диалог администратора «Приглашения в приложение» (sheet и диалог 560, 20 активных, ссылка один раз, отзыв внутри диалога), пункты меню профиля «Окружение» и «Приглашения в приложение» (только администратору приложения, логин `stark`); `Flow-Invite` теперь с регистрацией через Telegram по ссылке окружения (2026-10-22, на приёмку владельцем) | `views/invite`, `features/invitation/ui`, `widgets/app-header/ui/profile-menu.tsx` | нет, ждёт приёмки владельцем и API; до приёмки код не начинать |
 | `M-*` (390 px), `D-*` (1280 px) | экраны по одному | `views/home` (операции, счета, перевод), `views/receipts`, `views/categories`, `views/contacts`, `views/statistics`, `features/auth` (вход), `widgets/app-header` (навигация, меню профиля) | по задачам IF-15…IF-19 |
 
 Домашний слой: UI экранов живёт в `views/<экран>/page.tsx` и `views/<экран>/ui`. `features/*/api` это клиенты API; UI в `features` есть у `account-details`, `auth`, `household`, `invitation`, `security`. `features/telegram-request` общий поток заявки Telegram (вход и привязка): состояния, опрос, проверка ссылки `https://t.me`; правки потока делай там, а не в `auth` или `security`.
