@@ -7,7 +7,7 @@ import type { ViewerTelegram } from '@/entities/viewer';
 
 import { CircleAlert, Clock, RefreshCw, Send, WifiOff } from 'lucide-solid';
 import type { JSX } from 'solid-js';
-import { createEffect, createMemo, For, Match, on, Show, Switch } from 'solid-js';
+import { createEffect, createMemo, For, Match, on, Show, Switch, untrack } from 'solid-js';
 
 import { createTelegramLink } from '../model/create-telegram-link';
 import { describeTelegramLink, LINK_BUTTON_LABEL, LINK_FORWARD_HINT, type TelegramLinkBannerIcon } from '../model/describe-telegram-link';
@@ -20,6 +20,8 @@ export type TelegramLinkSectionProps = {
 	gateway: TelegramLinkGateway;
 	/** Telegram was linked: the viewer snapshot is patched in place (no session refetch, memory `viewer-refetch-remount-bug`). */
 	onLinked: (telegram: ViewerTelegram) => void;
+	/** The signed-in account that links Telegram (read once, when the block appears). */
+	userId: string;
 };
 
 const BANNER_ICONS: Record<TelegramLinkBannerIcon, () => JSX.Element> = {
@@ -36,7 +38,7 @@ const BANNER_ICONS: Record<TelegramLinkBannerIcon, () => JSX.Element> = {
  * shown large. The block is not shown at all when Telegram is switched off on the server.
  */
 export function TelegramLinkSection(props: TelegramLinkSectionProps) {
-	const link = createTelegramLink(props.gateway);
+	const link = createTelegramLink(props.gateway, untrack(() => props.userId));
 	const view = createMemo(() => describeTelegramLink(link.state()));
 	const confirmed = () => {
 		const state = link.state();

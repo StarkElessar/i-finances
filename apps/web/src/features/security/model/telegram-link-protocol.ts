@@ -61,9 +61,14 @@ function readLinkFailure(error: unknown): TelegramRequestFailure | null {
  * The link side of a Telegram request (flow 5.3): `link/start`, `link/complete` and `cancel`, and the session as the
  * lost-answer check. A `link/complete` whose answer was lost has already linked Telegram on the server and cleared the
  * request cookie, so the next poll says `browser-mismatch` or 410; the session then shows the linked Telegram.
+ *
+ * `userId` is the account that started the link. The session is read with whatever cookie the browser holds now, and
+ * another tab may have signed in as somebody else meanwhile (their `link/complete` also says `browser-mismatch`), so
+ * the session counts only when it is still that account.
  */
 export function createTelegramLinkProtocol(
-	gateway: TelegramLinkGateway
+	gateway: TelegramLinkGateway,
+	userId: string
 ): TelegramRequestProtocol<TelegramLinkConfirmed, TelegramLinkFailureReason> {
 	return {
 		cancel: (code) => gateway.cancelTelegramLink(code),
@@ -89,7 +94,9 @@ export function createTelegramLinkProtocol(
 		recoverConfirmation: async () => {
 			const session = await gateway.currentSession();
 
-			return session.authenticated && session.telegram !== null ? { telegram: session.telegram } : undefined;
+			return session.authenticated && session.user.id === userId && session.telegram !== null
+				? { telegram: session.telegram }
+				: undefined;
 		},
 		start: () => gateway.startTelegramLink()
 	};

@@ -43,7 +43,8 @@ const meta = {
 	args: {
 		gateway: createGateway(),
 		onLinked: () => undefined,
-		telegram: null
+		telegram: null,
+		userId: 'u-1'
 	}
 } satisfies Meta<typeof TelegramSection>;
 

@@ -55,6 +55,7 @@ export function SecurityDialog(props: SecurityDialogProps) {
 					<TelegramSection
 						gateway={telegramGateway}
 						telegram={viewer()?.telegram ?? null}
+						userId={viewer()?.id ?? ''}
 						onLinked={(telegram) => setCurrentViewer({ telegram })}
 					/>
 					<PasskeysSection

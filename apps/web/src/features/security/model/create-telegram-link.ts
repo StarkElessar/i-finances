@@ -10,6 +10,6 @@ export type TelegramLink = TelegramRequest<TelegramLinkConfirmed, TelegramLinkFa
  * Binds the Telegram link flow to the block that owns it: one `start` when the block appears, polling resumed on
  * `visibilitychange`, everything stopped when the block goes away (the dialog is closed).
  */
-export function createTelegramLink(gateway: TelegramLinkGateway): TelegramLink {
-	return createTelegramRequest((page) => new TelegramLinkFlow({ gateway, ...page }));
+export function createTelegramLink(gateway: TelegramLinkGateway, userId: string): TelegramLink {
+	return createTelegramRequest((page) => new TelegramLinkFlow({ gateway, userId, ...page }));
 }

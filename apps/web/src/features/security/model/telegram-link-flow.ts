@@ -5,6 +5,8 @@ import type { TelegramLinkConfirmed, TelegramLinkFailureReason } from './telegra
 
 export type TelegramLinkFlowOptions = {
 	gateway: TelegramLinkGateway;
+	/** The account that starts the link: a lost answer is looked up in the session only while it is still this account. */
+	userId: string;
 	/** `document.visibilityState === 'visible'`; polling pauses while the page is hidden. */
 	isPageVisible: () => boolean;
 	onChange: TelegramRequestFlowOptions<TelegramLinkConfirmed, TelegramLinkFailureReason>['onChange'];
@@ -19,7 +21,7 @@ export class TelegramLinkFlow extends TelegramRequestFlow<TelegramLinkConfirmed,
 		super({
 			isPageVisible: options.isPageVisible,
 			onChange: options.onChange,
-			protocol: createTelegramLinkProtocol(options.gateway)
+			protocol: createTelegramLinkProtocol(options.gateway, options.userId)
 		});
 	}
 }

@@ -44,13 +44,13 @@ const PENDING: TelegramLinkCompleteResult = { ok: true, status: 'pending' };
 
 const LINKED: TelegramLinkCompleteResult = { ok: true, status: 'linked', telegram: { username: 'alexey' } };
 
-function session(telegram: { username: string | null } | null): CurrentSessionResponse {
+function session(telegram: { username: string | null } | null, userId = 'u'): CurrentSessionResponse {
 	return {
 		authenticated: true,
 		hasPassword: true,
 		household: { id: 'h', name: 'Семья', role: 'owner' },
 		telegram,
-		user: { displayName: 'Сергей', id: 'u', username: 'sergei' }
+		user: { displayName: 'Сергей', id: userId, username: 'sergei' }
 	};
 }
 
@@ -64,7 +64,7 @@ function createHarness() {
 		currentSession: vi.fn<TelegramLinkGateway['currentSession']>(async () => ({ authenticated: false })),
 		startTelegramLink: vi.fn<TelegramLinkGateway['startTelegramLink']>(async () => startResult(codes.shift() ?? CODE_B))
 	};
-	const flow = new TelegramLinkFlow({ gateway, isPageVisible: () => visible, onChange: (state) => states.push(state) });
+	const flow = new TelegramLinkFlow({ gateway, isPageVisible: () => visible, onChange: (state) => states.push(state), userId: 'u' });
 
 	return {
 		flow,
@@ -388,6 +388,20 @@ describe('TelegramLinkFlow', () => {
 			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
 
 			expect(state()).toMatchObject({ kind: 'failed', reason: 'browser-mismatch' });
+		});
+
+		it('keeps the failure when the session is now another account (another tab signed in as someone else)', async () => {
+			const { gateway, state, states } = await waitingHarness();
+
+			gateway.completeTelegramLink.mockRejectedValueOnce(new TypeError('Failed to fetch'));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+			gateway.completeTelegramLink.mockRejectedValueOnce(failure(403, 'browser-mismatch'));
+			gateway.currentSession.mockResolvedValueOnce(session({ username: 'someone_else' }, 'b'));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+
+			expect(gateway.currentSession).toHaveBeenCalledTimes(1);
+			expect(state()).toMatchObject({ kind: 'failed', reason: 'browser-mismatch' });
+			expect(states.some((entry) => entry.kind === 'confirmed')).toBe(false);
 		});
 
 		it('keeps the failure when the session cannot be read either', async () => {

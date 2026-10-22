@@ -13,6 +13,8 @@ export type TelegramSectionProps = {
 	/** What the session says now. */
 	telegram: ViewerTelegram | null;
 	onLinked: (telegram: ViewerTelegram) => void;
+	/** The signed-in account. */
+	userId: string;
 };
 
 /**
@@ -25,7 +27,7 @@ export function TelegramSection(props: TelegramSectionProps) {
 
 	return (
 		<Show
-			fallback={<TelegramLinkSection gateway={props.gateway} onLinked={props.onLinked}/>}
+			fallback={<TelegramLinkSection gateway={props.gateway} userId={props.userId} onLinked={props.onLinked}/>}
 			when={hadTelegram ? props.telegram : undefined}
 		>
 			{(telegram) => (
