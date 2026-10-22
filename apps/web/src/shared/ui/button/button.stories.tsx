@@ -37,7 +37,7 @@ export const Danger: Story = {
 	args: { variant: 'danger', children: 'Удалить' }
 };
 
-export const DangerGhost: Story = {
+export const DangerGhostText: Story = {
 	args: { variant: 'danger-ghost', children: 'Покинуть окружение' }
 };
 
@@ -68,6 +68,26 @@ export const IconOnly: Story = {
 		<Button {...args}>
 			<Trash/>
 		</Button>
+	)
+};
+
+/** A quiet destructive action inside a row, such as deleting a passkey (mockup `danger-ghost icon`). */
+export const DangerGhost: Story = {
+	args: {
+		'aria-label': 'Удалить ключ доступа',
+		iconOnly: true,
+		size: 'sm',
+		variant: 'danger-ghost'
+	},
+	render: (args) => (
+		<StoryStack>
+			<Button {...args}>
+				<Trash/>
+			</Button>
+			<Button {...args} disabled>
+				<Trash/>
+			</Button>
+		</StoryStack>
 	)
 };
 

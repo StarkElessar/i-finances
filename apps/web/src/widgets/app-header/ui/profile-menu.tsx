@@ -8,7 +8,7 @@ import { useCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { HouseholdDialog } from '@/features/household';
-import { PasskeyRegistrationMenuItem } from '@/features/passkey-registration';
+import { SecurityDialog } from '@/features/security';
 
 import { createSignal, Show } from 'solid-js';
 
@@ -42,6 +42,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 	const [signOutError, setSignOutError] = createSignal<string>();
 	const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
 	const [isHouseholdOpen, setIsHouseholdOpen] = createSignal(false);
+	const [isSecurityOpen, setIsSecurityOpen] = createSignal(false);
 
 	const handleSignOut = async (): Promise<void> => {
 		setSignOutError(undefined);
@@ -70,7 +71,6 @@ export function ProfileMenu(props: ProfileMenuProps) {
 						<span class={css.viewerName}>{viewerName()}</span>
 						<span class={css.viewerMeta}>{viewerMeta()}</span>
 					</ContextMenu.Label>
-					<PasskeyRegistrationMenuItem/>
 					<ContextMenu.Item
 						onSelect={() => {
 							// Deferred by one tick so this runs after ContextMenu's own
@@ -90,7 +90,12 @@ export function ProfileMenu(props: ProfileMenuProps) {
 					>
 						Окружение
 					</ContextMenu.Item>
-					<ContextMenu.Item disabled title='Раздел безопасности будет добавлен позже'>
+					<ContextMenu.Item
+						onSelect={() => {
+							// Deferred like «Профиль»: the dialog takes focus after the menu has given it back to the trigger.
+							setTimeout(() => setIsSecurityOpen(true), 0);
+						}}
+					>
 						Безопасность
 					</ContextMenu.Item>
 					<ContextMenu.Separator/>
@@ -113,6 +118,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 				open={isSettingsOpen()}
 				onOpenChange={setIsSettingsOpen}
 			/>
+			<SecurityDialog authClient={props.authClient} open={isSecurityOpen()} onOpenChange={setIsSecurityOpen}/>
 		</>
 	);
 }

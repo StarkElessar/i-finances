@@ -1,6 +1,6 @@
+import { formatMinutesAccusative, formatMinutesGenitive } from '@/shared/lib';
 import type { BannerTone } from '@/shared/ui';
 
-import { formatMinutesAccusative, formatMinutesGenitive } from './format-minutes';
 import type { TelegramSignInState } from './telegram-sign-in-state';
 
 const SECONDS_PER_MINUTE = 60;

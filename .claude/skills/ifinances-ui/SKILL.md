@@ -39,7 +39,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Foundations` | цвет обеих тем, палитра категорий, типографика, отступы, радиусы, брейкпоинты, z-index; токены disabled `--c-disabled-surface`, `-text`, `-border`, `-fill` (код `--color-disabled-*`); размеры контролов: точный указатель 40 и 32, касание 44 (Chip 36); шапка 60 (`--header-h`, код `--header-block-size`) | `shared/styles/tokens.scss` | частично, добивает IF-14; disabled-токены (`--color-disabled-*`) и размеры на тач (`--control-size-sm/md` = 44 при `pointer: coarse`) нарисованы и сделаны в коде 2026-10-19 |
 | | типографика (компонент `Typography`) | `shared/ui/typography` | есть, есть история |
 | | контейнер страницы: ширина и боковые отступы | `shared/ui/container` | есть, есть история |
-| `Kit-Controls` | Button (строка Ghost icon sm, Ghost в disabled без фона; вариант `danger-ghost` для тихого удаления) | `shared/ui/button` | есть, есть история; disabled цветом, а не `opacity` (решение 2026-10-19), в коде |
+| `Kit-Controls` | Button (строка Ghost icon sm, Ghost в disabled без фона; тихое опасное действие `danger-ghost`: удалить ключ, участника, покинуть окружение) | `shared/ui/button` | есть, есть история; disabled цветом, а не `opacity` (решение 2026-10-19), в коде |
 | | поля ввода (text, textarea, сумма) | `shared/ui/text-field` | есть, есть история |
 | | телефон | `shared/ui/phone-field` | есть, есть история |
 | | Combobox | `shared/ui/combobox` | есть, есть история |
@@ -51,7 +51,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Badge | `shared/ui/badge` (статусы чеков `views/receipts/ui/status-badge` ещё свои, IF-18) | есть, есть история |
 | | Banner (`.i-banner`: neutral, info, ok, warn, err; жирное начало и текст) | `shared/ui/banner` (тона `neutral`, `info`, `success`, `warning`, `danger`; экран входа, онбординг) | есть, есть история |
 | | ссылка в виде кнопки (кнопка Telegram на входе) | `shared/ui/button` (`ButtonLink`, те же варианты и размеры, без disabled: пока адреса нет, показывать `Button`) | есть, есть история |
-| | Avatar, IconTile, List и ListRow (участники, приглашения, причины), ChoiceCard (выбор «Создать окружение / У меня есть приглашение»), FlatCard, InlineConfirm (подтверждение внутри диалога), PageCard (страница-карточка 480) | `shared/ui/avatar`, `icon-tile`, `list`, `choice-card`, `flat-card`, `inline-confirm`, `page-card` | есть, есть истории (U3, U4, U5); на досках экранов `Flow-*`, `M-Household`, `D-Household`, отдельной доски кита нет |
+| | Avatar, IconTile, List и ListRow (участники, приглашения, причины), ChoiceCard (выбор «Создать окружение / У меня есть приглашение»), FlatCard, PageCard (страница-карточка 480) | `shared/ui/avatar`, `icon-tile`, `list`, `choice-card`, `flat-card`, `page-card` | есть, есть истории (U3, U4, U5); на досках экранов `Flow-*`, `M-Household`, `D-Household`, отдельной доски кита нет |
 | | Checkbox, Switch, FAB (состояния и disabled; у выключенного Switch ручка и дорожка с рамкой `--c-disabled-border`, у пустого Checkbox рамка того же токена; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
 | | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
 | | копии сегмента периода и навигатора | остаются в `views/categories/ui/category-summary-dialog` и `views/contacts/ui/contact-summary-dialog` до IF-39 | не переведены, IF-39 |
@@ -67,9 +67,12 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Empty state | `shared/ui/empty-state` (сравнение статистики) | есть, есть история |
-| | Toast, Skeleton | нет | нет, IF-20 |
-| `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | нет | нет, IF-20 |
-| | подтверждение удаления внутри диалога | `shared/ui/dialog` (режим подтверждения не сделан) | нет, IF-21 |
+| | Toast | нет | нет, IF-20 |
+| | Skeleton (`.i-skel`, плитка и строка, тише при `prefers-reduced-motion`) | `shared/ui/skeleton` | есть, есть история |
+| `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | Skeleton: `shared/ui/skeleton`; остальное нет | Skeleton есть, остальное нет, IF-20 |
+| | подтверждение удаления внутри диалога (плоская карточка: вопрос, «Отмена» и «Удалить»; фокус на «Отмена», Escape закрывает только вопрос) | `shared/ui/confirm-panel` | есть, есть история; режим подтверждения самого `Dialog` не сделан, IF-21 |
+| | список строк с плиткой-значком (`.i-list`, `.i-row`, `.i-tile`): ключи, сеансы, привязанный аккаунт | `shared/ui/list` (`List`, `ListRow` со слотом `leading`: `IconTile` или `Avatar`, флаг `comfortable` 64 px); подтверждение внутри диалога: `shared/ui/confirm-panel` (`ConfirmPanel`, с `error`) | есть, есть история |
+| | поле пароля с глазом (показать, скрыть) | `shared/ui/password-field` | есть, есть история |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
 | | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; по доске нижняя панель и FAB только ниже 640 px, с 640 верхняя шапка (в коде с 640: знак 36 px на 640–959, ссылки 12 px), история Storybook у FAB есть |
 | | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, есть история, z-index не по шкале, IF-14 |
@@ -81,14 +84,14 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | иконка типа счёта (карта, наличные, сбережения, прочее) | `shared/ui/account-icon` | есть, есть история |
 | `Layout-Spec`, `Ops-C-1280/1024/768`, `OpsLayout`, `M-Ops-Sort` | раскладка операций, колонки по контейнеру, тулбар периода; узкая сортировка (ниже 700 px одна кнопка «Порядок», нативный select с десятью пунктами, иконка направления, активный вид не по умолчанию), тулбар на 1280 весь 40 px | `views/home/ui/operations-workspace` (контейнер, `mx.container-mn`, колонки и тулбар по ширине контейнера, IF-15) | тулбар и колонки по доске; раскладка (лента счетов, панель 340) не по доске, IF-16 |
 | `Sheet-Lab` | правило листов S4 | диалоги: `views/home/ui/*-dialog`, `shared/ui/dialog` | не по правилу, IF-21 |
-| `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния; «Задать пароль» (аккаунт без пароля) остаётся на доске как будущий экран (v2), в коде его нет | `features/passkey-registration` (добавление ключа), остальное новое | нет, IF-33, IF-41 |
-| `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню), диалога нет | нет, IF-5, IF-7…IF-9 |
+| `M-Security`, `D-Security` | раздел «Безопасность»: Telegram, ключи, пароль, сеансы и состояния; «Задать пароль» (аккаунт без пароля) остаётся на доске как будущий экран (v2), в коде его нет | `features/security` (`ui/security-dialog`: sheet ниже 640 и диалог 560; секции Telegram, ключей, пароля, сеансов; клиенты `api/security-client`, `api/telegram-link-client`; опрос привязки через `features/telegram-request`); пункт включён в `widgets/app-header/ui/profile-menu.tsx`; истории `Security/*` | есть (IF-33, U6, 2026-10-21); не на доске: непривязанный Telegram, крупный `@username` после привязки, подпись «Привязан» без даты, см. `development/ui-mockup.md` |
+| `M-ProfileEdit`, `D-Profile` | диалог «Профиль»: имя, тема, валюта отображения, Telegram, push | `widgets/app-header/ui/profile-menu.tsx` (меню, пункт «Безопасность» включён), диалога нет | нет, IF-5, IF-7…IF-9 |
 | `Auth-Telegram`, `M-SignIn`, `D-SignIn` | вход через Telegram первым, 9 состояний | `features/auth` (`ui/sign-in-form`, `ui/sign-in-options`, состояния в `model/sign-in-card-view`, опрос в `model/telegram-sign-in-flow`; истории `Auth/SignInOptions`, `Auth/SignedInIdentity`) | есть (U1, 2026-10-19); не на доске: «Вход выполнен» после Telegram, «нет связи», ошибка сети на `start`, форма пароля в карточке |
 | | логотип «iF» на панели входа и в шапке | `shared/ui/app-logo` (`size='lg'` 48 px на входе) | есть, есть история |
 | `Flow-Onboarding`, `Flow-Invite`, `M-Household`, `D-Household`, `Bot-Telegram` | онбординг, приглашение и принятие (срок 7 дней, экран согласия на удаление пустого окружения, ссылка вида `/invite#токен`), участники окружения, тексты бота (редакция 2026-10-19, на проверку владельцем) | `views/onboarding` и `features/household/ui` (онбординг, диалог «Окружение» из меню профиля), `views/invite` и `features/invitation/ui` (приглашение), `app/access` (маршруты, U2); истории `Household/*`, `Invitation/Cards` | есть (U3, U4, U5, 2026-10-22); отступления в `development/ui-mockup.md`; не сделано: тексты бота (IF-10), уведомление об удалении |
 | `M-*` (390 px), `D-*` (1280 px) | экраны по одному | `views/home` (операции, счета, перевод), `views/receipts`, `views/categories`, `views/contacts`, `views/statistics`, `features/auth` (вход), `widgets/app-header` (навигация, меню профиля) | по задачам IF-15…IF-19 |
 
-Домашний слой: UI экранов живёт в `views/<экран>/page.tsx` и `views/<экран>/ui`. `features/*/api` это клиенты API; UI в `features` есть только у `account-details`, `auth`, `passkey-registration`.
+Домашний слой: UI экранов живёт в `views/<экран>/page.tsx` и `views/<экран>/ui`. `features/*/api` это клиенты API; UI в `features` есть у `account-details`, `auth`, `household`, `invitation`, `security`. `features/telegram-request` общий поток заявки Telegram (вход и привязка): состояния, опрос, проверка ссылки `https://t.me`; правки потока делай там, а не в `auth` или `security`.
 
 ## Токены: имена макета и кода
 

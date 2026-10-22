@@ -26,3 +26,8 @@
 - Заголовки SPA в nginx и `limit_req` на вход (IF-47, пп. 3–4).
 - Включение Telegram (`TELEGRAM_UPDATES=webhook`) и регистрации: релиз 2, после UI входа и привязки.
 - `DEV_TELEGRAM_LOGIN` на сервере не включать никогда.
+
+## Запись в боевую базу (урок выкатки 2026-10-22)
+- Контейнер `backup` монтирует `/if-data` **только на чтение** (`:ro`): он годится для чтения и `.backup`, запись даёт `attempt to write a readonly database`.
+- Точечные правки данных делаются через контейнер `if-api` (база доступна на запись): `ssh stark@<хост> 'cd ~/sites/homelab && docker compose exec -T if-api node -' < скрипт.js`, скрипт использует `better-sqlite3`, `PRAGMA foreign_keys=ON`, `BEGIN IMMEDIATE`, проверки числа строк с откатом и выводит состояние до и после.
+- Выполнено 2026-10-22: удалён тестовый пользователь `sergei` («Sergei Test», авторства данных не было), `vicotya` понижена до `member`; `stark` единственный owner, `integrity_check` ok, нарушений внешних ключей нет.

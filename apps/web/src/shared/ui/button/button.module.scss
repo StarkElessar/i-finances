@@ -125,8 +125,8 @@
     }
 }
 
-// Mockup `.i-btn.danger-ghost`: a quiet destructive action (delete a member, leave a household). Like the ghost
-// button it has no grey plate when disabled.
+// Mockup `.i-btn.danger-ghost`: a quiet destructive action (delete a key or a member, leave a household); the plate
+// appears on hover only, and like the ghost button it has no grey plate when disabled.
 .variant-danger-ghost {
     color: var(--color-danger);
     background-color: transparent;

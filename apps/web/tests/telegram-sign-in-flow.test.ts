@@ -1,12 +1,8 @@
 import { ApiHttpError } from '@/shared/api';
 
-import {
-	TELEGRAM_LINK_REFRESH_MARGIN_MS,
-	TELEGRAM_POLL_INTERVAL_MS,
-	TelegramSignInFlow,
-	type TelegramSignInGateway
-} from '@/features/auth/model/telegram-sign-in-flow';
+import { TelegramSignInFlow, type TelegramSignInGateway } from '@/features/auth/model/telegram-sign-in-flow';
 import type { TelegramSignInState } from '@/features/auth/model/telegram-sign-in-state';
+import { resetTelegramCookieQueue, TELEGRAM_LINK_REFRESH_MARGIN_MS, TELEGRAM_POLL_INTERVAL_MS } from '@/features/telegram-request';
 
 import {
 	type TelegramSignInCompleteResult,
@@ -109,6 +105,7 @@ async function waitingHarness(): Promise<Harness> {
 
 describe('TelegramSignInFlow', () => {
 	beforeEach(() => {
+		resetTelegramCookieQueue();
 		vi.useFakeTimers();
 		vi.setSystemTime(NOW);
 	});

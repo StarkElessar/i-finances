@@ -32,6 +32,7 @@ export {
 	resolveDisplayMode,
 	writeStoredDisplayModePreference
 } from './display-mode-preference';
+export { formatMinutesAccusative, formatMinutesGenitive } from './format-minutes';
 export type { FormatMomentOptions } from './format-moment';
 export { formatDayWithYear, formatDeadline, formatTimeLeft } from './format-moment';
 export { getInitials } from './initials';

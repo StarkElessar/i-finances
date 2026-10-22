@@ -24,6 +24,8 @@ export type { ColorPickerOption, ColorPickerProps } from './color-picker';
 export { ColorPicker } from './color-picker';
 export type { ComboboxOptionRenderState, ComboboxProps } from './combobox';
 export { Combobox } from './combobox';
+export type { ConfirmPanelProps } from './confirm-panel';
+export { ConfirmPanel } from './confirm-panel';
 export { Container } from './container';
 export type {
 	ContextMenuAlign,
@@ -81,18 +83,20 @@ export type {
 export { Grid } from './grid';
 export type { IconTileProps, IconTileTone } from './icon-tile';
 export { IconTile } from './icon-tile';
-export type { InlineConfirmProps } from './inline-confirm';
-export { InlineConfirm } from './inline-confirm';
 export type { ListProps, ListRowProps } from './list';
 export { List, ListRow } from './list';
 export type { PageCardProps } from './page-card';
 export { PageCard } from './page-card';
+export type { PasswordFieldProps } from './password-field';
+export { PasswordField } from './password-field';
 export type { PeriodNavigatorProps } from './period-navigator';
 export { PeriodNavigator } from './period-navigator';
 export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
 export type { SegmentedOption, SegmentedProps } from './segmented';
 export { Segmented } from './segmented';
+export type { SkeletonProps } from './skeleton';
+export { Skeleton } from './skeleton';
 export type { SwitchProps } from './switch';
 export { Switch } from './switch';
 export type { TabOption, TabsProps } from './tabs';

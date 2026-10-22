@@ -1,6 +1,6 @@
 import css from './household-panel.module.scss';
 
-import { Badge, Banner, Button, InlineConfirm, TextField, Typography } from '@/shared/ui';
+import { Badge, Banner, Button, ConfirmPanel, TextField, Typography } from '@/shared/ui';
 
 import { CircleAlert, LoaderCircle, LogOut, Pencil, RefreshCw, Users } from 'lucide-solid';
 import { createEffect, createSignal, Match, Show, Switch } from 'solid-js';
@@ -117,7 +117,7 @@ export function HouseholdPanelView(props: HouseholdPanelViewProps) {
 							</Show>
 							<Show when={removeTarget()}>
 								{(member) => (
-									<InlineConfirm
+									<ConfirmPanel
 										confirmLabel='Удалить участника'
 										description={REMOVE_CONSEQUENCE}
 										error={props.state.confirmError}
@@ -163,7 +163,7 @@ export function HouseholdPanelView(props: HouseholdPanelViewProps) {
 									)}
 									when={confirmation()?.kind === 'leave'}
 								>
-									<InlineConfirm
+									<ConfirmPanel
 										confirmLabel='Покинуть'
 										description='Вы потеряете доступ к его данным. Вернуться можно только по новому приглашению.'
 										error={props.state.confirmError}
