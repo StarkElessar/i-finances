@@ -4,6 +4,7 @@ import { CurrentViewerProvider, householdLossNotice, viewerFromSession } from '@
 
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
+import { pendingInvitation } from '@/features/invitation';
 
 import { AppHeader } from '@/widgets/app-header';
 
@@ -89,6 +90,15 @@ export function AppRouter(props: AppRouterProps) {
 		void refetch();
 	};
 
+	/**
+	 * An explicit sign-out: the invitation waiting in the tab belonged to the person who leaves, so the next one to sign
+	 * in here must not get it (review of U4).
+	 */
+	const handleSignedOut = (): void => {
+		pendingInvitation.clear();
+		reloadSession();
+	};
+
 	const root = (rootProps: RouteSectionProps) => (
 		<SessionGate error={() => session.error} isLoading={() => session.loading} session={() => session()}>
 			{(currentSession) => (
@@ -114,7 +124,7 @@ export function AppRouter(props: AppRouterProps) {
 				path='/onboarding'
 				component={() => (
 					<AccessGuard access='onboarding'>
-						<OnboardingPage authClient={props.authClient} onSignedOut={reloadSession}/>
+						<OnboardingPage authClient={props.authClient} onSignedOut={handleSignedOut}/>
 					</AccessGuard>
 				)}
 			/>
@@ -128,7 +138,7 @@ export function AppRouter(props: AppRouterProps) {
 			/>
 			<Route
 				path='/'
-				component={(layoutProps) => <MemberLayout {...layoutProps} authClient={props.authClient} onSignedOut={reloadSession}/>}
+				component={(layoutProps) => <MemberLayout {...layoutProps} authClient={props.authClient} onSignedOut={handleSignedOut}/>}
 			>
 				<Route path='/' component={HomePage}/>
 				<Route path='/categories' component={CategoriesPage}/>

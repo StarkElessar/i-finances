@@ -75,7 +75,7 @@ export function InvitePage(props: InvitePageProps) {
 		location: window.location,
 		replaceAddress: (path) => window.history.replaceState(window.history.state, '', path),
 		store: pendingInvitation
-	}) ?? pendingInvitation.read();
+	}) ?? pendingInvitation.read(viewer()?.id);
 
 	const goHome = (): void => {
 		navigate('/', { replace: true });

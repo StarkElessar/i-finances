@@ -24,7 +24,7 @@ export function AccessGuard(props: AccessGuardProps) {
 	const redirect = createMemo(() => resolveRouteRedirect(
 		props.access,
 		resolveViewerAccess(viewer()),
-		{ hasPendingInvitation: pendingInvitation.has() }
+		{ hasPendingInvitation: pendingInvitation.has(viewer()?.id) }
 	));
 
 	return (

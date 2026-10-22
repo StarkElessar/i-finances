@@ -103,7 +103,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 			}
 
 			// The invitation page takes the token from the store; the address stays clean.
-			pendingInvitation.save(current.token);
+			pendingInvitation.save(current.token, viewer()?.id);
 			navigate(INVITATION_PAGE_PATH);
 		}
 		finally {

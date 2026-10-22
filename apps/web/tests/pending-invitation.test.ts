@@ -52,7 +52,7 @@ describe('PendingInvitationStore', () => {
 
 		store.save(TOKEN);
 
-		expect(storage.values.get(PENDING_INVITATION_STORAGE_KEY)).toBe(TOKEN);
+		expect(JSON.parse(storage.values.get(PENDING_INVITATION_STORAGE_KEY) ?? 'null')).toEqual({ token: TOKEN });
 		expect(store.read()).toBe(TOKEN);
 		expect(store.has()).toBe(true);
 
@@ -100,6 +100,55 @@ describe('PendingInvitationStore', () => {
 		expect(new PendingInvitationStore(storage).read()).toBeUndefined();
 	});
 
+	it('gives a guest\'s token to the first user who signs in, and from then on only to that user (review of U4)', () => {
+		const storage = createMemoryStorage();
+		const store = new PendingInvitationStore(storage);
+
+		store.save(TOKEN);
+
+		// The guest who opened the link signs in as Анна: the token is hers now.
+		expect(store.read('anna')).toBe(TOKEN);
+		expect(JSON.parse(storage.values.get(PENDING_INVITATION_STORAGE_KEY) ?? 'null')).toEqual({ token: TOKEN, userId: 'anna' });
+		expect(new PendingInvitationStore(storage).read('anna')).toBe(TOKEN);
+
+		// Анна's session ends: a guest at the keyboard sees nothing, the token waits for her.
+		expect(store.read()).toBeUndefined();
+		expect(store.has()).toBe(false);
+		expect(store.read('anna')).toBe(TOKEN);
+	});
+
+	it('never gives a user\'s token to another user in the same tab, and forgets it', () => {
+		const storage = createMemoryStorage();
+		const store = new PendingInvitationStore(storage);
+
+		store.save(TOKEN, 'anna');
+
+		expect(store.has('boris')).toBe(false);
+		expect(store.read('boris')).toBeUndefined();
+		expect(storage.values.size).toBe(0);
+		// Gone for Анна too: the tab has changed hands.
+		expect(store.read('anna')).toBeUndefined();
+	});
+
+	it('binds the token to the user who saved it from the onboarding', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+
+		store.save(TOKEN, 'anna');
+
+		expect(store.read()).toBeUndefined();
+		expect(store.read('anna')).toBe(TOKEN);
+	});
+
+	it('does not trust a stored entry of the wrong shape', () => {
+		const storage = createMemoryStorage();
+
+		storage.setItem(PENDING_INVITATION_STORAGE_KEY, JSON.stringify({ token: 'short', userId: 'anna' }));
+		expect(new PendingInvitationStore(storage).read('anna')).toBeUndefined();
+
+		storage.setItem(PENDING_INVITATION_STORAGE_KEY, TOKEN);
+		expect(new PendingInvitationStore(storage).read()).toBeUndefined();
+	});
+
 	it('works from memory when the browser refuses storage', () => {
 		const store = new PendingInvitationStore(createBrokenStorage());
 
@@ -107,7 +156,10 @@ describe('PendingInvitationStore', () => {
 
 		store.save(TOKEN);
 		expect(store.read()).toBe(TOKEN);
+		expect(store.read('anna')).toBe(TOKEN);
+		expect(store.read('boris')).toBeUndefined();
 
+		store.save(TOKEN);
 		store.clear();
 		expect(store.read()).toBeUndefined();
 	});
