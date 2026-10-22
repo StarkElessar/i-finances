@@ -34,7 +34,6 @@ export {
 } from './household-invitation-service';
 export { generateHouseholdInvitationToken, hashHouseholdInvitationToken } from './household-invitation-token';
 export { HouseholdLastOwnerError } from './household-last-owner-error';
-export { invitationUnavailableReason } from './invitation-unavailable-reason';
 export { HouseholdMemberNotFoundError } from './household-member-not-found-error';
 export {
 	type HouseholdLeaving,
@@ -57,3 +56,4 @@ export {
 	type HouseholdServiceDependencies,
 	NEW_HOUSEHOLD_BASE_CURRENCY
 } from './household-service';
+export { invitationUnavailableReason } from './invitation-unavailable-reason';

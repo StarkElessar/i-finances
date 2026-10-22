@@ -213,7 +213,13 @@ describe('TelegramAccountRepository.signIn', () => {
 	it('never creates a user when registration is closed', async () => {
 		const accounts = new TelegramAccountRepository(database);
 
-		const resolution = await accounts.signIn({ allowRegistration: false, identity: ANNA, invitationTokenHash: null, newUserId: 'user-a', now: NOW });
+		const resolution = await accounts.signIn({
+			allowRegistration: false,
+			identity: ANNA,
+			invitationTokenHash: null,
+			newUserId: 'user-a',
+			now: NOW
+		});
 
 		expect(resolution).toEqual({ kind: 'not-found' });
 		expect(await database.select().from(users)).toEqual([]);

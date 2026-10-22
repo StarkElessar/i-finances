@@ -1,6 +1,6 @@
 import { AccountHttpController } from './http/account-controller';
-import { AppInvitationHttpController } from './http/app-invitation-controller';
 import { ApiKeySessionResolver } from './http/api-key-session-resolver';
+import { AppInvitationHttpController } from './http/app-invitation-controller';
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
 import { CompositeSessionResolver } from './http/composite-session-resolver';
