@@ -248,12 +248,28 @@ describe('claimInvitationTokenFromAddress', () => {
 		expect(store.read()).toBeUndefined();
 	});
 
-	it('keeps an older stored token when the new fragment is not a token', () => {
+	it('forgets an older stored token when the new fragment is damaged: the page must not open the older invitation', () => {
 		const store = new PendingInvitationStore(createMemoryStorage());
+		const replaceAddress = vi.fn<(path: string) => void>();
 
 		store.save(TOKEN);
-		claimInvitationTokenFromAddress({ location: { hash: '#junk', pathname: '/invite' }, replaceAddress: () => {}, store });
 
+		const claimed = claimInvitationTokenFromAddress({ location: { hash: '#junk', pathname: '/invite' }, replaceAddress, store });
+
+		expect(claimed).toBeUndefined();
+		expect(store.read()).toBeUndefined();
+		expect(replaceAddress).toHaveBeenCalledExactlyOnceWith('/invite');
+	});
+
+	it('leaves other pages and their fragments alone', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+		const replaceAddress = vi.fn<(path: string) => void>();
+
+		store.save(TOKEN);
+
+		expect(claimInvitationTokenFromAddress({ location: { hash: `#${OTHER_TOKEN}`, pathname: '/stats' }, replaceAddress, store }))
+			.toBeUndefined();
+		expect(replaceAddress).not.toHaveBeenCalled();
 		expect(store.read()).toBe(TOKEN);
 	});
 });
