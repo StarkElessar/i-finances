@@ -49,9 +49,10 @@ function GuestSignIn(props: GuestSignInProps) {
  * viewer: a guest sees who invites them and signs in on the card, a person without a household or with an empty one
  * accepts, a member is told they are already in a household.
  *
- * The token is read from the address once and only through `readInvitationTokenFromLocation`, moved to `sessionStorage`
- * and the address is replaced with `/invite` at once, so the token stays neither in the address bar nor in the history
- * entry. After a sign-in the session reload rebuilds this page; the token comes back from `sessionStorage`.
+ * The token is taken out of the address at app start (`installInvitationAddressClaim` in `main.tsx`, before the session
+ * check) and only through `readInvitationTokenFromLocation`, moved to `sessionStorage`, and the address is replaced with
+ * `/invite`, so the token stays neither in the address bar nor in the history entry; the claim here only repeats it.
+ * After a sign-in the session reload rebuilds this page; the token comes back from `sessionStorage`, for this user only.
  */
 export function InvitePage(props: InvitePageProps) {
 	const viewer = useCurrentViewer();
