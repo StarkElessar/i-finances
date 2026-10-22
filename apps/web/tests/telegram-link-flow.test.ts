@@ -326,6 +326,41 @@ describe('TelegramLinkFlow', () => {
 			await vi.advanceTimersByTimeAsync(1_000);
 			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(2);
 		});
+		it('keeps the Retry-After of a 429 when the page becomes visible again meanwhile', async () => {
+			const { flow, gateway, setVisible } = await waitingHarness();
+
+			gateway.completeTelegramLink.mockRejectedValueOnce(failure(429, 'rate-limited', 20));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(1);
+
+			setVisible(false);
+			flow.handleVisibilityChange();
+			await vi.advanceTimersByTimeAsync(5_000);
+			setVisible(true);
+			flow.handleVisibilityChange();
+			await flush();
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(1);
+
+			await vi.advanceTimersByTimeAsync(14_000);
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(1);
+			await vi.advanceTimersByTimeAsync(1_000);
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(2);
+		});
+
+		it('polls at once on visibilitychange when the wait of a 429 is over, even if the page was hidden then', async () => {
+			const { flow, gateway, setVisible } = await waitingHarness();
+
+			gateway.completeTelegramLink.mockRejectedValueOnce(failure(429, 'rate-limited', 20));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+			setVisible(false);
+			await vi.advanceTimersByTimeAsync(25_000);
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(1);
+
+			setVisible(true);
+			flow.handleVisibilityChange();
+			await flush();
+			expect(gateway.completeTelegramLink).toHaveBeenCalledTimes(2);
+		});
 	});
 
 	describe('final failures', () => {

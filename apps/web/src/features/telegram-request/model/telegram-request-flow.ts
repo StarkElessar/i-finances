@@ -36,6 +36,7 @@ type TimerName = 'deadline' | 'poll' | 'refresh' | 'retry';
  *   never twice at a time (limit: 10 per 5 minutes);
  * - polling is one request at a time, every 2 seconds, at once when the page becomes visible again, paused while it
  *   is hidden, and stops on the request's expiry, on any final answer and on `dispose` (limit: 300 per 5 minutes);
+ *   after a 429 the next poll waits for its `Retry-After`, even when the page becomes visible meanwhile;
  * - the code is only the one this browser's own `start` answered;
  * - requests that set or clear the request cookie (`start`, `complete`, `cancel`) never overlap, also across flows (a
  *   block closed and opened again, the sign-in screen): the browser applies their `Set-Cookie` in arrival order, and a
@@ -59,6 +60,8 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 	 * headers) or 403 `browser-mismatch` (its headers arrived: the cookie is set and the request cookie cleared).
 	 */
 	private pollAnswerLost = false;
+	/** A 429 of a poll named a wait: no poll before this moment, not even on `visibilitychange`. */
+	private nextPollAllowedAtMs = 0;
 	/** The ready link expired while the page was hidden: replace it when the page is visible again. */
 	private linkStale = false;
 	private readonly timers = new Map<TimerName, ReturnType<typeof setTimeout>>();
@@ -140,6 +143,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 		this.clearTimers();
 		this.linkStale = false;
 		this.pollAnswerLost = false;
+		this.nextPollAllowedAtMs = 0;
 		this.generation += 1;
 
 		const generation = this.generation;
@@ -242,6 +246,17 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 	}
 
 	private async poll(): Promise<void> {
+		const waitMs = this.nextPollAllowedAtMs - Date.now();
+
+		if (waitMs > 0) {
+			// Back from the bot before the `Retry-After` of a 429 ran out: the poll waits for it.
+			if (this.state.kind === 'waiting' && !this.timers.has('poll')) {
+				this.setTimer('poll', waitMs, () => void this.poll());
+			}
+
+			return;
+		}
+
 		this.clearTimer('poll');
 
 		const state = this.state;
@@ -305,6 +320,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 		if (kind === 'rate-limited') {
 			const retryAfterSeconds = failure.retryAfterSeconds ?? POLL_RETRY_FALLBACK_SECONDS;
 
+			this.nextPollAllowedAtMs = Date.now() + retryAfterSeconds * MILLISECONDS_PER_SECOND;
 			this.setTimer('poll', retryAfterSeconds * MILLISECONDS_PER_SECOND, () => void this.poll());
 			return;
 		}
