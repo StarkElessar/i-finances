@@ -160,6 +160,27 @@ describe('SecurityClient', () => {
 			expect(listener).toHaveBeenCalledTimes(reports);
 		});
 
+		it('reports a 401 held during a change that was refused, even when the refusal came with a 2xx', async () => {
+			const listener = vi.fn();
+
+			unsubscribers.push(subscribeToApiAccessFailures(listener));
+
+			let answerPassword: (response: Response) => void = () => undefined;
+			const fetcher: typeof globalThis.fetch = (url) => (typeof url === 'string' && url.endsWith('/password')
+				? new Promise<Response>((resolve) => {
+					answerPassword = resolve;
+				})
+				: Promise.resolve(new Response(JSON.stringify(FAILURE('unauthenticated')), { status: 401 })));
+			const client = new SecurityClient({ fetcher });
+			const change = client.changePassword(input);
+
+			await client.listSessions();
+			expect(listener).not.toHaveBeenCalled();
+			answerPassword(new Response(JSON.stringify(FAILURE('invalid-current-password')), { status: 200 }));
+			await change;
+			expect(listener).toHaveBeenCalledWith('unauthenticated');
+		});
+
 		it('ignores a 401 of another request that was in flight during a successful change', async () => {
 			const listener = vi.fn();
 
