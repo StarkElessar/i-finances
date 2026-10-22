@@ -31,6 +31,7 @@ const FAILURE_REASON_BY_ERROR_CODE: Partial<Record<string, TelegramLinkFailureRe
 };
 
 const FAILURE_KIND_BY_ERROR_CODE: Partial<Record<string, TelegramRequestFailureKind>> = {
+	'account-has-telegram': 'already-confirmed',
 	'browser-mismatch': 'browser-mismatch',
 	'link-expired': 'expired',
 	'rate-limited': 'rate-limited',

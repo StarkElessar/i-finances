@@ -225,6 +225,11 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 			return;
 		}
 
+		if (kind === 'already-confirmed') {
+			void this.recoverConfirmation(failure, 'preparing');
+			return;
+		}
+
 		if (kind === 'rate-limited') {
 			const retryAfterSeconds = failure.retryAfterSeconds ?? START_RETRY_FALLBACK_SECONDS;
 
@@ -317,8 +322,8 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 			return;
 		}
 
-		if (this.pollAnswerLost && (kind === 'expired' || kind === 'browser-mismatch')) {
-			void this.recoverLostConfirmation(failure, link);
+		if (kind === 'already-confirmed' || (this.pollAnswerLost && (kind === 'expired' || kind === 'browser-mismatch'))) {
+			void this.recoverConfirmation(failure, 'waiting', link.ttlMinutes);
 			return;
 		}
 
@@ -327,11 +332,16 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 
 	/**
 	 * After a poll without an answer, 410 or `browser-mismatch` may mean «it went through, the answer was lost»: `used`
-	 * answers 410 like an expired request, and a cleared request cookie looks like another browser. The server decides:
-	 * if it shows the confirmation, the flow ends as after any confirmation (the person still sees the result),
-	 * otherwise the failure stands as it is.
+	 * answers 410 like an expired request, and a cleared request cookie looks like another browser. `already-confirmed`
+	 * says so outright (an answer that came after the block was closed). The server decides: if it shows the
+	 * confirmation, the flow ends as after any confirmation (the person still sees the result), otherwise the failure
+	 * stands as it is.
 	 */
-	private async recoverLostConfirmation(failure: TelegramRequestFailure, link: TelegramRequestLink): Promise<void> {
+	private async recoverConfirmation(
+		failure: TelegramRequestFailure,
+		during: 'preparing' | 'waiting',
+		ttlMinutes?: number
+	): Promise<void> {
 		const generation = this.generation;
 		let confirmed: TConfirmed | undefined;
 
@@ -342,7 +352,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 			confirmed = undefined;
 		}
 
-		if (this.isStale(generation) || this.state.kind !== 'waiting') {
+		if (this.isStale(generation) || this.state.kind !== during) {
 			return;
 		}
 
@@ -351,7 +361,7 @@ export class TelegramRequestFlow<TConfirmed extends object, TReason extends stri
 			return;
 		}
 
-		this.setState(this.toFailedState(failure, link.ttlMinutes));
+		this.setState(this.toFailedState(failure, ttlMinutes));
 	}
 
 	private toFailedState(failure: TelegramRequestFailure, ttlMinutes?: number): TelegramRequestState<TConfirmed, TReason> {

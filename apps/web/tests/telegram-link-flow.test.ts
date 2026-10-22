@@ -416,6 +416,51 @@ describe('TelegramLinkFlow', () => {
 			expect(state()).toMatchObject({ kind: 'failed', reason: 'expired' });
 		});
 
+		it('shows the Telegram that was linked by an answer which came after the block was closed (start answers 409)', async () => {
+			const closed = await waitingHarness();
+			let answerLate: (result: TelegramLinkCompleteResult) => void = () => undefined;
+
+			closed.gateway.completeTelegramLink.mockImplementationOnce(() => new Promise((resolve) => {
+				answerLate = resolve;
+			}));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+			closed.flow.dispose();
+			answerLate(LINKED);
+			await flush();
+			expect(closed.states.some((entry) => entry.kind === 'confirmed')).toBe(false);
+
+			const reopened = createHarness();
+
+			reopened.gateway.startTelegramLink.mockRejectedValueOnce(failure(409, 'account-has-telegram'));
+			reopened.gateway.currentSession.mockResolvedValueOnce(session({ username: 'alexey' }));
+			reopened.flow.start();
+			await flush();
+
+			expect(reopened.gateway.currentSession).toHaveBeenCalledTimes(1);
+			expect(reopened.state()).toEqual({ kind: 'confirmed', telegram: { username: 'alexey' } });
+		});
+
+		it('asks the session on a 409 account-has-telegram of a poll too, without a lost answer', async () => {
+			const { gateway, state } = await waitingHarness();
+
+			gateway.completeTelegramLink.mockRejectedValueOnce(failure(409, 'account-has-telegram'));
+			gateway.currentSession.mockResolvedValueOnce(session({ username: null }));
+			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+
+			expect(state()).toEqual({ kind: 'confirmed', telegram: { username: null } });
+		});
+
+		it('keeps account-has-telegram when the session is another account', async () => {
+			const { flow, gateway, state } = createHarness();
+
+			gateway.startTelegramLink.mockRejectedValueOnce(failure(409, 'account-has-telegram'));
+			gateway.currentSession.mockResolvedValueOnce(session({ username: 'someone_else' }, 'b'));
+			flow.start();
+			await flush();
+
+			expect(state()).toMatchObject({ kind: 'failed', reason: 'account-has-telegram' });
+		});
+
 		it('never asks the session when no answer was lost: a plain 410 stays expired', async () => {
 			const { gateway, state } = await waitingHarness();
 

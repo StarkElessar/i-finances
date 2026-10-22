@@ -16,6 +16,11 @@ export type TelegramRequestCompleteAnswer<TConfirmed extends object> =
 
 /** How the flow treats a failure code; the rest of the codes are final failures shown to the person. */
 export type TelegramRequestFailureKind =
+	/**
+	 * The server says the result is already there (link: the account already has a Telegram, for example linked by an
+	 * answer that came after the block was closed, or in another tab): the session shows it, the failure only if not.
+	 */
+	| 'already-confirmed'
 	/** The request was started by another browser, or its cookie is gone. */
 	| 'browser-mismatch'
 	/** 410: the request ran out (or was used up). */
@@ -46,7 +51,10 @@ export type TelegramRequestProtocol<TConfirmed extends object, TReason extends s
 	readFailure(error: unknown): TelegramRequestFailure | null;
 	/** The reason shown for a failure code; `unexpected` for a code the board has no picture for. */
 	reasonOf(errorCode: string): TReason | 'unexpected';
-	/** Read only when a confirmation may have been lost on the way: the confirmed value if the server shows it, else `undefined`. */
+	/**
+	 * Read only when a confirmation may have been lost on the way, or the server says it is already there
+	 * (`already-confirmed`): the confirmed value if the server shows it, else `undefined`.
+	 */
 	recoverConfirmation(): Promise<TConfirmed | undefined>;
 	start(): Promise<TelegramRequestStartAnswer>;
 };

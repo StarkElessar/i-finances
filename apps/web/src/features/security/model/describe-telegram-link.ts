@@ -113,7 +113,7 @@ export function describeTelegramLink(state: TelegramLinkState): TelegramLinkView
 					return failed({ icon: 'alert', text: state.message, tone: 'danger' }, { kind: 'restart', label: TRY_AGAIN });
 
 				case 'account-has-telegram':
-					// The viewer is out of date (Telegram was linked in another tab): nothing to retry.
+					// The session did not show the linked Telegram either (the flow asked it first): nothing to retry.
 					return failed({ icon: 'alert', text: state.message, tone: 'danger' });
 
 				case 'rate-limited': {
