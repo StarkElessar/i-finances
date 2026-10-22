@@ -382,6 +382,25 @@ describe('FetchTelegramBotClient retries', () => {
 			expect(fetchMock).toHaveBeenCalledTimes(2);
 			expect(Date.now() - startedAt).toBeLessThan(70 + 80);
 		});
+
+		it('a pause that ends after the budget reports the last error, not a RangeError of a negative timeout', async () => {
+			vi.useFakeTimers();
+
+			const fetchMock = scriptedFetch(rateLimited(0));
+			const pending = catchError(send(createClient(fetchMock, {
+				// The event loop stalls right before the pause: the clock jumps past the whole budget.
+				log: () => {
+					vi.setSystemTime(Date.now() + 2000);
+				},
+				retryBackoffMilliseconds: [5, 5],
+				totalBudgetMilliseconds: 1000
+			}).client));
+
+			await vi.advanceTimersByTimeAsync(5);
+
+			expect(await pending).toBeInstanceOf(TelegramRateLimitedError);
+			expect(fetchMock).toHaveBeenCalledTimes(1);
+		});
 	});
 
 	describe('a retry gets a new connection', () => {

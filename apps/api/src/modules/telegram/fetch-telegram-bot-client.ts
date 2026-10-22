@@ -193,15 +193,24 @@ export class FetchTelegramBotClient implements TelegramBotClient {
 	/** An ordinary method: the retry loop around `#attempt`. */
 	async #call<T>(method: string, body: object, resultSchema: z.ZodType<T>): Promise<T> {
 		const startedAt = Date.now();
+		let lastError: unknown;
 
 		for (let attempt = 1; ; attempt += 1) {
+			const remaining = this.#remaining(startedAt);
+
+			// A pause that ended late (a busy event loop) may have eaten the rest of the budget. `AbortSignal.timeout`
+			// throws a RangeError on a negative delay, so the caller gets the error of the last attempt instead.
+			if (attempt > 1 && remaining <= 0) {
+				throw lastError;
+			}
+
 			// The first attempt uses the shared keep-alive pool; every retry gets a pool of its own.
 			const connection = attempt === 1 ? undefined : this.#createRetryConnection();
 
 			try {
 				return await this.#attempt(method, body, resultSchema, {
 					dispatcher: connection?.dispatcher,
-					timeoutMilliseconds: Math.min(this.#requestTimeoutMilliseconds, this.#remaining(startedAt))
+					timeoutMilliseconds: Math.min(this.#requestTimeoutMilliseconds, remaining)
 				});
 			}
 			catch (error) {
@@ -210,6 +219,8 @@ export class FetchTelegramBotClient implements TelegramBotClient {
 				if (delay === undefined) {
 					throw error;
 				}
+
+				lastError = error;
 
 				this.#log(this.#describeRetry(method, attempt, error, delay));
 				await sleep(delay);
