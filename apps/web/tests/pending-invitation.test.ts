@@ -149,6 +149,18 @@ describe('PendingInvitationStore', () => {
 		expect(new PendingInvitationStore(storage).read()).toBeUndefined();
 	});
 
+	it('clears a token only while the store still holds it', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+
+		store.save(TOKEN);
+		store.save(OTHER_TOKEN);
+		store.clearToken(TOKEN);
+		expect(store.read()).toBe(OTHER_TOKEN);
+
+		store.clearToken(OTHER_TOKEN);
+		expect(store.read()).toBeUndefined();
+	});
+
 	it('works from memory when the browser refuses storage', () => {
 		const store = new PendingInvitationStore(createBrokenStorage());
 

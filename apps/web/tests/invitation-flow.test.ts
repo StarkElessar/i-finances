@@ -369,6 +369,45 @@ describe('InvitationFlow accept', () => {
 		expect(states).toHaveLength(seen);
 	});
 
+	it('does not wipe a newer invitation when an old page learns late that its link is dead (review of U4)', async () => {
+		const { flow, gateway, store } = setup();
+		const newer = `${'Zq9'.repeat(14)}z`;
+		let resolve: (result: InvitationPreviewResult) => void = () => {};
+
+		gateway.preview.mockReturnValue(new Promise<InvitationPreviewResult>((done) => {
+			resolve = done;
+		}));
+
+		const pending = flow.load(TOKEN);
+
+		// The person left that page and opened another invitation in the same tab meanwhile.
+		flow.dispose();
+		store.save(newer);
+		resolve(unavailable('expired'));
+		await pending;
+
+		expect(store.read()).toBe(newer);
+	});
+
+	it('does not wipe a newer invitation when an old accept finishes late', async () => {
+		const { flow, gateway, store } = await readyFlow();
+		const newer = `${'Zq9'.repeat(14)}z`;
+		let resolve: (result: AcceptInvitationResult) => void = () => {};
+
+		gateway.accept.mockReturnValue(new Promise<AcceptInvitationResult>((done) => {
+			resolve = done;
+		}));
+
+		const pending = flow.accept(false);
+
+		flow.dispose();
+		store.save(newer);
+		resolve({ household: JOINED, ok: true });
+		await pending;
+
+		expect(store.read()).toBe(newer);
+	});
+
 	it('never puts the token into a state it reports', async () => {
 		const { flow, gateway, states } = setup();
 

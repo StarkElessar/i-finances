@@ -132,8 +132,7 @@ export class InvitationFlow {
 
 	/** «Отмена», «Понятно»: the person leaves the invitation, the token is forgotten. */
 	public dismiss(): void {
-		this.token = undefined;
-		this.options.store.clear();
+		this.forgetToken();
 	}
 
 	/** The page is gone: answers that arrive later change nothing. */
@@ -169,8 +168,7 @@ export class InvitationFlow {
 
 	private applyAccept(result: AcceptInvitationResult, preview: InvitationPreview, replacing: OwnEmptyHousehold | undefined): void {
 		if (result.ok) {
-			this.token = undefined;
-			this.options.store.clear();
+			this.forgetToken();
 			this.setState({ household: result.household, kind: 'accepted' });
 			this.options.onAccepted(result.household);
 			return;
@@ -218,9 +216,22 @@ export class InvitationFlow {
 	}
 
 	private setUnavailable(cause: InvitationUnavailableCause): void {
-		this.token = undefined;
-		this.options.store.clear();
+		this.forgetToken();
 		this.setState({ cause, kind: 'unavailable' });
+	}
+
+	/**
+	 * Forgets this page's token, in the store too, but only while the store still holds it: an answer that comes after
+	 * the person has opened another invitation in the tab must not wipe the newer one.
+	 */
+	private forgetToken(): void {
+		const token = this.token;
+
+		this.token = undefined;
+
+		if (token !== undefined) {
+			this.options.store.clearToken(token);
+		}
 	}
 
 	private setState(state: InvitationFlowState): void {

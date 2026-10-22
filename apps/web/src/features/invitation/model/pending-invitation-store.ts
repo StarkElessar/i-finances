@@ -112,6 +112,16 @@ export class PendingInvitationStore {
 		}
 	}
 
+	/**
+	 * Clears the store only while it still holds `token`: a late answer about an older invitation must not wipe a newer
+	 * one that was saved meanwhile (review of U4).
+	 */
+	public clearToken(token: string): void {
+		if (this.readEntry()?.token === token) {
+			this.clear();
+		}
+	}
+
 	private write(entry: PendingInvitationEntry): void {
 		this.memoryEntry = entry;
 
