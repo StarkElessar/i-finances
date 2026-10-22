@@ -517,38 +517,8 @@
 .accounts-empty {
     display: grid;
     flex: 1 1 0;
-    gap: var(--space-5);
     align-content: center;
-    justify-items: start;
-
-    max-inline-size: fn.rem(460);
     min-block-size: 0;
-    margin-inline: auto;
-
-    color: var(--color-text-secondary);
-
-    svg {
-        color: var(--color-surface);
-    }
-}
-
-.accounts-empty-content {
-    display: grid;
-    gap: var(--space-2);
-
-    h1,
-    p {
-        margin: 0;
-    }
-
-    h1 {
-        font-size: var(--font-size-heading-2);
-        color: var(--color-text-primary);
-    }
-
-    p {
-        line-height: var(--line-height-body-lg);
-    }
 }
 
 .load-error-root {

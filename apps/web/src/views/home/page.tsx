@@ -12,7 +12,7 @@ import {
 	sumMoney
 } from '@/shared/lib';
 import { createRouteSearchParams } from '@/shared/routing';
-import { AccountIcon, Button, Container } from '@/shared/ui';
+import { AccountIcon, Button, Container, EmptyState } from '@/shared/ui';
 
 import type { Account, PersistedAccount } from '@/entities/account';
 import {
@@ -190,20 +190,25 @@ type AccountsEmptyStateProps = {
 function AccountsEmptyState(props: AccountsEmptyStateProps) {
 	const viewer = useCurrentViewer();
 	const householdName = () => viewer()?.household?.name;
+	const description = () => {
+		const where = householdName() === undefined ? 'В окружении' : `В окружении «${householdName()}»`;
+
+		return `${where} пока нет счетов. Добавьте первый, чтобы вести операции и считать общий баланс.`;
+	};
 
 	return (
 		<section class={css.accountsEmpty}>
-			<WalletCards aria-hidden='true' size={38} strokeWidth={1.8}/>
-			<div class={css.accountsEmptyContent}>
-				<h1>Добавьте первый счёт</h1>
-				<p>
-					{householdName() === undefined ? 'В окружении' : `В окружении «${householdName()}»`} пока нет счетов.
-					Добавьте первый, чтобы вести операции и считать общий баланс.
-				</p>
-			</div>
-			<Button startIcon={<Plus size={18}/>} type='button' onClick={props.onCreate}>
-				Добавить счёт
-			</Button>
+			<EmptyState
+				action={(
+					<Button size='sm' startIcon={<Plus/>} type='button' onClick={props.onCreate}>
+						Добавить счёт
+					</Button>
+				)}
+				description={description()}
+				headingLevel={2}
+				icon={<WalletCards/>}
+				title='Добавьте первый счёт'
+			/>
 		</section>
 	);
 }

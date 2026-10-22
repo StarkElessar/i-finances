@@ -3,6 +3,7 @@ import css from './typography.module.scss';
 import { cn } from '@/shared/lib';
 
 import type { JSX } from 'solid-js';
+import { createUniqueId, onMount } from 'solid-js';
 import { Dynamic } from 'solid-js/web';
 
 /**
@@ -106,10 +107,6 @@ const alignClassByAlign: Record<TypographyAlign, string> = {
 	end: css.alignEnd
 };
 
-function focusElement(element: HTMLElement): void {
-	queueMicrotask(() => element.focus({ preventScroll: true }));
-}
-
 /**
  * Renders semantic text using the shared type scale and color tokens.
  */
@@ -118,6 +115,15 @@ export function Typography(props: TypographyProps) {
 	 * Resolves the active preset while keeping prop reads reactive.
 	 */
 	const variant = () => props.variant ?? 'body-md';
+	const generatedId = createUniqueId();
+	// `Dynamic` does not apply `ref`, so the element to focus is found by its id once it is in the page.
+	const elementId = () => props.id ?? (props.focusOnMount ? generatedId : undefined);
+
+	onMount(() => {
+		if (props.focusOnMount) {
+			setTimeout(() => document.getElementById(elementId() ?? '')?.focus({ preventScroll: true }), 0);
+		}
+	});
 
 	return (
 		<Dynamic
@@ -132,8 +138,7 @@ export function Typography(props: TypographyProps) {
 				props.focusOnMount && css.focusTarget,
 				props.class
 			)}
-			id={props.id}
-			ref={props.focusOnMount ? focusElement : undefined}
+			id={elementId()}
 			tabIndex={props.focusOnMount ? -1 : undefined}
 			title={props.title}
 		>

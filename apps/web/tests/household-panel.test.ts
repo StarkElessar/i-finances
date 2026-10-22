@@ -1,5 +1,6 @@
 import { HouseholdPanel, type HouseholdPanelGateway, NETWORK_MESSAGE } from '@/features/household/model/household-panel';
 import type { HouseholdPanelState } from '@/features/household/model/household-panel-state';
+import { sortMembers } from '@/features/household/model/sort-members';
 
 import type {
 	ActiveHouseholdInvitation,
@@ -389,5 +390,22 @@ describe('HouseholdPanel confirmations', () => {
 		await loading;
 
 		expect(states).toHaveLength(seen);
+	});
+});
+
+describe('sortMembers', () => {
+	it('puts owners first, then orders by the day they joined and by name', () => {
+		const vera = { ...ANNA, displayName: 'Вера', userId: 'user-3' };
+		const boris = { ...ANNA, displayName: 'Борис', joinedAt: '2026-10-19T09:00:00.000Z', userId: 'user-4' };
+
+		expect(sortMembers([vera, ANNA, boris, OWNER]).map((member) => member.displayName)).toEqual(['Алексей', 'Анна', 'Вера', 'Борис']);
+	});
+
+	it('does not change the list it was given', () => {
+		const members = [ANNA, OWNER];
+
+		sortMembers(members);
+
+		expect(members).toEqual([ANNA, OWNER]);
 	});
 });

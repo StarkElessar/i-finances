@@ -5,6 +5,8 @@ import type { HouseholdMember } from '@i-finances/contracts';
 import { Trash } from 'lucide-solid';
 import { For, Show } from 'solid-js';
 
+import { sortMembers } from '../model/sort-members';
+
 export type HouseholdMembersProps = {
 	members: HouseholdMember[];
 	/** The id of the person looking: their row says «(вы)» and has no delete button. */
@@ -31,7 +33,7 @@ function describeMember(member: HouseholdMember): string {
 export function HouseholdMembers(props: HouseholdMembersProps) {
 	return (
 		<List aria-label='Участники окружения'>
-			<For each={props.members}>
+			<For each={sortMembers(props.members)}>
 				{(member) => (
 					<ListRow
 						comfortable

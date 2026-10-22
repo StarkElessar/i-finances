@@ -24,6 +24,7 @@ export function OnboardingCreateCard(props: OnboardingCreateCardProps) {
 	return (
 		<form
 			class={css.form}
+			noValidate
 			onSubmit={(event) => {
 				event.preventDefault();
 
