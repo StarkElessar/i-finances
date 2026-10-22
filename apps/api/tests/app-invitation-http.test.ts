@@ -548,6 +548,45 @@ describe('sign-up with a household invitation, registration closed', () => {
 		expect(householdInvitationRow(id)).toMatchObject({ acceptedAt: expect.any(Date), acceptedByUserId: maria?.id });
 	});
 
+	it('two sign-ups racing with one household link: exactly one account takes its sign-up', async () => {
+		const harness = boot();
+		const { id, token } = await createHouseholdInvitation(harness);
+		const first = new Browser(harness);
+		const second = new Browser(harness);
+		const firstCode = await first.start(token);
+		const secondCode = await second.start(token);
+
+		await confirmInBot(harness, firstCode, MARIA);
+		await confirmInBot(harness, secondCode, PETR);
+
+		const answers = await Promise.all([first.complete(firstCode), second.complete(secondCode)]);
+
+		expect(answers.map((answer) => answer.response.status).sort()).toEqual([200, 403]);
+		expect([userOfTelegram(MARIA), userOfTelegram(PETR)].filter((user) => user !== undefined)).toHaveLength(1);
+		expect(householdInvitationRow(id)?.registeredUserId).toBe((userOfTelegram(MARIA) ?? userOfTelegram(PETR))?.id);
+	});
+
+	it('the household sign-up slot is taken in the transaction that creates the user: taken meanwhile, no user stays', async () => {
+		const harness = boot();
+		const { id, token } = await createHouseholdInvitation(harness);
+		const guest = new Browser(harness);
+		const code = await guest.start(token);
+
+		await confirmInBot(harness, code, MARIA);
+		// Another sign-up takes the slot right after this one has inserted its user, inside its transaction.
+		connection.exec(`CREATE TEMP TRIGGER steal_household_slot AFTER INSERT ON telegram_accounts BEGIN
+			UPDATE household_invitations SET registered_user_id = '${MEMBER}' WHERE id = '${id}';
+		END`);
+
+		const answer = await guest.complete(code);
+
+		expect(answer.response.status).toBe(403);
+		expect(answer.body).toMatchObject({ errorCode: 'registration-closed' });
+		expect(userOfTelegram(MARIA)).toBeUndefined();
+		expect(await database.select().from(telegramAccounts)).toEqual([]);
+		expect(householdInvitationRow(id)).toMatchObject({ acceptedAt: null, registeredUserId: null });
+	});
+
 	it('a household invitation that is no longer active registers nobody', async () => {
 		const harness = boot();
 		const { id, token } = await createHouseholdInvitation(harness);
@@ -766,6 +805,9 @@ describe('managing invitations into the application', () => {
 	});
 
 	it(`allows at most ${MAX_ACTIVE_APP_INVITATIONS} active and ${MAX_APP_INVITATIONS_PER_DAY} a day`, async () => {
+		// The numbers of the decision, pinned on their own: changing the constants must break this test.
+		expect([MAX_ACTIVE_APP_INVITATIONS, MAX_APP_INVITATIONS_PER_DAY]).toEqual([20, 50]);
+
 		const harness = boot();
 		const admin = new Browser(harness, ADMIN);
 		const created: string[] = [];
@@ -832,6 +874,8 @@ describe('managing invitations into the application', () => {
 		const answer = await new Browser(harness, ADMIN).post('/api/app-invitations', {});
 
 		expect(`${answer.response.status} ${answer.text}`).toBe(`${missing.response.status} ${missing.text}`);
+		// The headers too, all of them: a header that only the masked route adds would tell the route exists.
+		expect([...answer.response.headers.entries()].sort()).toEqual([...missing.response.headers.entries()].sort());
 		expect((await new Browser(harness, ADMIN).request('GET', '/api/auth/session')).body).toMatchObject({ isPlatformAdmin: false });
 	});
 

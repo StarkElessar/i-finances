@@ -1620,6 +1620,7 @@ describe('existing users keep working', () => {
 		const before = readDatabaseState();
 		const missingRoute = await call(A_MEMBER, 'POST /api/no-such-route', { body: {}, path: '/api/no-such-route' });
 		const missingText = `${missingRoute.status} ${await missingRoute.text()}`;
+		const missingHeaders = [...missingRoute.headers.entries()].sort();
 		const requests: Array<[string, string]> = [
 			['POST', '/api/app-invitations'],
 			['GET', '/api/app-invitations'],
@@ -1644,6 +1645,9 @@ describe('existing users keep working', () => {
 
 				expect(`${plain.status} ${await plain.text()}`, `${userId} ${method} ${path}`).toBe(missingText);
 				expect(`${foreignOrigin.status} ${await foreignOrigin.text()}`, `${userId} ${method} ${path}`).toBe(missingText);
+				// Every header too: one that only the masked route adds would tell the route exists.
+				expect([...plain.headers.entries()].sort(), `${userId} ${method} ${path}`).toEqual(missingHeaders);
+				expect([...foreignOrigin.headers.entries()].sort(), `${userId} ${method} ${path}`).toEqual(missingHeaders);
 			}
 		}
 
