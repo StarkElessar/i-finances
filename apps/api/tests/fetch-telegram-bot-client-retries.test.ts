@@ -285,7 +285,8 @@ describe('FetchTelegramBotClient retries', () => {
 		it('a retry_after above the limit is not waited out: TelegramRateLimitedError at once', async () => {
 			const fetchMock = scriptedFetch(rateLimited(6));
 			const startedAt = Date.now();
-			const error = await catchError(send(createClient(fetchMock).client));
+			// The budget is large on purpose: only the limit on retry_after may stop the retry.
+			const error = await catchError(send(createClient(fetchMock, { totalBudgetMilliseconds: 60_000 }).client));
 
 			expect(error).toBeInstanceOf(TelegramRateLimitedError);
 			expect(error).toMatchObject({ retryAfterSeconds: 6 });
