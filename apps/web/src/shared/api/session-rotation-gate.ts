@@ -7,9 +7,12 @@ import { type ApiAccessFailure, notifyApiAccessFailure } from './api-access-fail
  *
  * Every request takes a number when it leaves. While a change is in flight, 401s are held back; when the change
  * succeeds, the held ones (and any later 401 of a request that left earlier) are dropped; when it fails, the held ones
- * are reported as usual.
+ * are reported as usual. A change is never held longer than `SESSION_ROTATION_HOLD_LIMIT_MS`: after that it counts as
+ * failed, so a request that never answers cannot hide a real end of the session.
  */
-type HeldFailure = { failure: ApiAccessFailure; startedAt: number };
+
+/** The longest a change may hold 401s back; the change request itself gives up earlier (`security-client.ts`). */
+export const SESSION_ROTATION_HOLD_LIMIT_MS = 30_000;
 
 let requestCounter = 0;
 
@@ -18,7 +21,11 @@ let rotatedAt = 0;
 
 let inFlightRotations = 0;
 
-let held: HeldFailure[] = [];
+/**
+ * The latest number among the held 401s, `undefined` when none is held. One number is enough: a held 401 is either
+ * dropped (it left before a successful change) or reported once, and the latest one decides whether any is left to report.
+ */
+let latestHeldStartedAt: number | undefined;
 
 export function markApiRequestStart(): number {
 	requestCounter += 1;
@@ -30,7 +37,7 @@ export function markApiRequestStart(): number {
 export function reportApiAccessFailure(failure: ApiAccessFailure, startedAt: number): void {
 	if (failure === 'unauthenticated') {
 		if (inFlightRotations > 0) {
-			held.push({ failure, startedAt });
+			latestHeldStartedAt = Math.max(latestHeldStartedAt ?? startedAt, startedAt);
 			return;
 		}
 
@@ -44,36 +51,42 @@ export function reportApiAccessFailure(failure: ApiAccessFailure, startedAt: num
 
 /**
  * Call right before sending the password change. The returned function settles it: `rotated` when the server accepted
- * the new password (the browser now holds the new cookie), `failed` otherwise.
+ * the new password (the browser now holds the new cookie), `failed` otherwise. A change not settled within
+ * `SESSION_ROTATION_HOLD_LIMIT_MS` settles itself as `failed`.
  */
 export function beginSessionRotation(): (outcome: 'failed' | 'rotated') => void {
 	inFlightRotations += 1;
 
 	let settled = false;
+	// The callback runs after `settle` below exists.
+	const holdLimit = setTimeout(() => settle('failed'), SESSION_ROTATION_HOLD_LIMIT_MS);
 
-	return (outcome) => {
+	const settle = (outcome: 'failed' | 'rotated'): void => {
 		if (settled) {
 			return;
 		}
 
 		settled = true;
+		clearTimeout(holdLimit);
 		inFlightRotations -= 1;
 
 		if (outcome === 'rotated') {
 			rotatedAt = markApiRequestStart();
-			held = held.filter((entry) => entry.startedAt >= rotatedAt);
-		}
 
-		if (inFlightRotations === 0) {
-			const toReport = held;
-
-			held = [];
-
-			for (const entry of toReport) {
-				reportApiAccessFailure(entry.failure, entry.startedAt);
+			if (latestHeldStartedAt !== undefined && latestHeldStartedAt < rotatedAt) {
+				latestHeldStartedAt = undefined;
 			}
 		}
+
+		if (inFlightRotations === 0 && latestHeldStartedAt !== undefined) {
+			const startedAt = latestHeldStartedAt;
+
+			latestHeldStartedAt = undefined;
+			reportApiAccessFailure('unauthenticated', startedAt);
+		}
 	};
+
+	return settle;
 }
 
 /** For tests: forget every held failure and every rotation. */
@@ -81,5 +94,5 @@ export function resetSessionRotationGate(): void {
 	requestCounter = 0;
 	rotatedAt = 0;
 	inFlightRotations = 0;
-	held = [];
+	latestHeldStartedAt = undefined;
 }

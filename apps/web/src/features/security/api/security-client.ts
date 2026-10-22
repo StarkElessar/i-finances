@@ -4,6 +4,7 @@ import {
 	type ChangePasswordInput,
 	type ChangePasswordResult,
 	changePasswordResultSchema,
+	currentSessionResponseSchema,
 	type DeleteSecurityPasskeyResult,
 	deleteSecurityPasskeyResultSchema,
 	type RevokeOtherSecuritySessionsResult,
@@ -21,6 +22,12 @@ export type ChangePasswordResponse = {
 	result: ChangePasswordResult;
 	retryAfterSeconds?: number;
 };
+
+/**
+ * The change request gives up after this long (Argon2 takes well under a second), so the 401s held back meanwhile are
+ * settled soon; it stays below `SESSION_ROTATION_HOLD_LIMIT_MS`.
+ */
+export const CHANGE_PASSWORD_TIMEOUT_MS = 20_000;
 
 export type SecurityClientOptions = ApiClientOptions & {
 	client?: ApiClient;
@@ -62,24 +69,45 @@ export class SecurityClient {
 		const settle = beginSessionRotation();
 
 		try {
-			const result = await this.client.post('/api/security/password', input, changePasswordResultSchema);
+			const result = await this.client.post('/api/security/password', input, changePasswordResultSchema, {
+				signal: AbortSignal.timeout(CHANGE_PASSWORD_TIMEOUT_MS)
+			});
 
 			settle(result.ok ? 'rotated' : 'failed');
 
 			return { result };
 		}
 		catch (error: unknown) {
-			settle('failed');
-
 			if (error instanceof ApiHttpError) {
+				settle('failed');
+
 				const parsed = changePasswordResultSchema.safeParse(error.body);
 
 				if (parsed.success) {
 					return { result: parsed.data, retryAfterSeconds: error.retryAfterSeconds };
 				}
+
+				throw error;
 			}
 
+			// No answer (the timeout, no network): the change may have gone through. The session decides: if the cookie the
+			// browser holds now still works, the 401s held meanwhile were of the old cookie; otherwise they are reported.
+			settle(await this.isSessionAlive() ? 'rotated' : 'failed');
+
 			throw error;
+		}
+	}
+
+	private async isSessionAlive(): Promise<boolean> {
+		try {
+			const session = await this.client.get('/api/auth/session', currentSessionResponseSchema, {
+				signal: AbortSignal.timeout(CHANGE_PASSWORD_TIMEOUT_MS)
+			});
+
+			return session.authenticated;
+		}
+		catch {
+			return false;
 		}
 	}
 

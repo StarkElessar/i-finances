@@ -4,6 +4,7 @@ import {
 	ApiHttpError,
 	beginSessionRotation,
 	resetSessionRotationGate,
+	SESSION_ROTATION_HOLD_LIMIT_MS,
 	subscribeToApiAccessFailures
 } from '@/shared/api';
 
@@ -115,6 +116,55 @@ describe('session rotation gate', () => {
 		await request;
 		expect(listener).toHaveBeenCalledWith('household-required');
 		settle('failed');
+	});
+
+	it('never holds longer than the limit: a change that does not settle counts as failed and the 401 is reported', async () => {
+		vi.useFakeTimers();
+
+		try {
+			const { answer, fetcher } = createControlledFetcher();
+
+			beginSessionRotation();
+
+			const request = new ApiClient({ fetcher }).get('/api/accounts', parseAny).catch((error: unknown) => error);
+
+			answer(0, 401, UNAUTHENTICATED);
+			await request;
+			await vi.advanceTimersByTimeAsync(SESSION_ROTATION_HOLD_LIMIT_MS - 1);
+			expect(listener).not.toHaveBeenCalled();
+
+			await vi.advanceTimersByTimeAsync(1);
+			expect(listener).toHaveBeenCalledTimes(1);
+			expect(listener).toHaveBeenCalledWith('unauthenticated');
+		}
+		finally {
+			vi.useRealTimers();
+		}
+	});
+
+	it('reports many held 401s once, and a later settle of the timed-out change changes nothing', async () => {
+		vi.useFakeTimers();
+
+		try {
+			const { answer, fetcher } = createControlledFetcher();
+			const client = new ApiClient({ fetcher });
+			const settle = beginSessionRotation();
+			const requests = [0, 1, 2].map(() => client.get('/api/accounts', parseAny).catch((error: unknown) => error));
+
+			for (const index of [0, 1, 2]) {
+				answer(index, 401, UNAUTHENTICATED);
+			}
+
+			await Promise.all(requests);
+			await vi.advanceTimersByTimeAsync(SESSION_ROTATION_HOLD_LIMIT_MS);
+			expect(listener).toHaveBeenCalledTimes(1);
+
+			settle('rotated');
+			expect(listener).toHaveBeenCalledTimes(1);
+		}
+		finally {
+			vi.useRealTimers();
+		}
 	});
 
 	it('settles once: a second call changes nothing', async () => {

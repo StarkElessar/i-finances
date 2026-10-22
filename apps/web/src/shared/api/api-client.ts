@@ -40,9 +40,11 @@ export class ApiClient {
 
 	public async get<TResponse>(
 		path: string,
-		schema: ApiResponseSchema<TResponse>
+		schema: ApiResponseSchema<TResponse>,
+		/** `signal`, for example `AbortSignal.timeout(...)`, for a request that must not hang forever. */
+		init?: Pick<RequestInit, 'signal'>
 	): Promise<TResponse> {
-		return this.request(path, schema, { method: 'GET' });
+		return this.request(path, schema, { method: 'GET', signal: init?.signal });
 	}
 
 	public async post<TResponse>(

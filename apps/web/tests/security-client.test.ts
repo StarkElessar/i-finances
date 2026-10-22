@@ -113,6 +113,53 @@ describe('SecurityClient', () => {
 			expect(listener).toHaveBeenCalledWith('unauthenticated');
 		});
 
+		it('gives the change a timeout, so the 401s held meanwhile are settled soon', async () => {
+			const fetcher = respond(200, { ok: true, revokedSessionCount: 0 });
+
+			await new SecurityClient({ fetcher }).changePassword(input);
+			expect(fetcher.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
+		});
+
+		it.each([
+			[true, 0],
+			[false, 1]
+		])('after a change without an answer asks the session (alive: %s) before reporting the held 401s', async (alive, reports) => {
+			const listener = vi.fn();
+
+			unsubscribers.push(subscribeToApiAccessFailures(listener));
+
+			let failPassword: (error: Error) => void = () => undefined;
+			const fetcher = vi.fn<typeof globalThis.fetch>((url) => {
+				if (typeof url === 'string' && url.endsWith('/password')) {
+					return new Promise<Response>((_resolve, reject) => {
+						failPassword = reject;
+					});
+				}
+
+				if (typeof url === 'string' && url.endsWith('/api/auth/session')) {
+					return Promise.resolve(new Response(JSON.stringify(alive
+						? {
+							authenticated: true,
+							hasPassword: true,
+							household: null,
+							telegram: null,
+							user: { displayName: 'Сергей', id: 'u', username: 'sergei' }
+						}
+						: { authenticated: false }), { status: 200 }));
+				}
+
+				return Promise.resolve(new Response(JSON.stringify(FAILURE('unauthenticated')), { status: 401 }));
+			});
+			const client = new SecurityClient({ fetcher });
+			const change = client.changePassword(input).catch((error: unknown) => error);
+
+			await client.listSessions();
+			failPassword(new DOMException('The operation timed out.', 'TimeoutError'));
+			expect(await change).toBeInstanceOf(DOMException);
+			expect(fetcher.mock.calls.some(([url]) => url === '/api/auth/session')).toBe(true);
+			expect(listener).toHaveBeenCalledTimes(reports);
+		});
+
 		it('ignores a 401 of another request that was in flight during a successful change', async () => {
 			const listener = vi.fn();
 
