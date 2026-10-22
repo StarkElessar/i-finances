@@ -18,6 +18,11 @@ import { HOUSEHOLD_REQUIRED_ERROR_CODE, HOUSEHOLD_REQUIRED_MESSAGE, householdSum
  *   board `Flow-Invite`), which is given for a well-formed token only;
  * - `POST /api/invitations/accept { token, replaceEmptyHousehold }` (browser session): joins as `member`.
  *
+ * The same link and the same `preview` serve the invitations into the application (`app-invitation.ts`,
+ * `development/decisions/app-invitations-v1.md`): the server tells the kind by the token's hash, and the preview answers
+ * `kind: 'app'` with the inviter's name and no household. Such a link is used by signing up through Telegram with it,
+ * never by `accept` (409 `app-invitation-not-acceptable`).
+ *
  * The token travels in request bodies only, never in an API path, so it does not land in access logs. The link is
  * `<origin>/invite#<token>` (review decision A6, Р5): the fragment is never sent by the browser, so the token reaches
  * neither the nginx access log of the page nor any `Referer`. The page moves it to `sessionStorage` and replaces the
@@ -86,6 +91,7 @@ export const householdInvitationErrorCodes = [
 	'invitation-unavailable',
 	'already-in-household',
 	'empty-household-confirmation-required',
+	'app-invitation-not-acceptable',
 	'unexpected'
 ] as const;
 
@@ -104,6 +110,7 @@ export const householdInvitationErrorMessageByCode: Record<HouseholdInvitationEr
 	'invitation-unavailable': 'Ссылка приглашения недействительна: она устарела, уже использована или отозвана. Попросите новую.',
 	'already-in-household': 'Вы уже состоите в окружении. Чтобы перейти, сначала покиньте его.',
 	'empty-household-confirmation-required': 'Ваше пустое окружение будет удалено, и вы перейдёте по приглашению.',
+	'app-invitation-not-acceptable': 'Это приглашение в приложение, а не в окружение: создайте своё окружение.',
 	unexpected: 'Не удалось выполнить действие. Попробуйте ещё раз.'
 };
 
@@ -181,12 +188,29 @@ export const revokeHouseholdInvitationResultSchema = z.discriminatedUnion('ok', 
 
 export type RevokeHouseholdInvitationResult = z.infer<typeof revokeHouseholdInvitationResultSchema>;
 
-/** What a guest sees before signing in: nothing beyond the two names and the deadline (Р5). */
+/** The two kinds of invitation one link can be: into a household (Р5) or into the application. */
+export const invitationKinds = ['household', 'app'] as const;
+
+export type InvitationKind = (typeof invitationKinds)[number];
+
+/**
+ * What a guest sees before signing in, and nothing beyond it (Р5): the inviter's name and the deadline, plus the
+ * household's name for an invitation into a household. An invitation into the application has no household, so it
+ * has no `householdName`.
+ *
+ * The API always sends `kind`. It is optional in the schema, and `householdName` is optional, only so that clients and
+ * fixtures written before application invitations keep compiling; an answer without `kind` is a household invitation.
+ * The refinement keeps the two consistent: `householdName` is present exactly when the kind is not `app`.
+ */
 export const invitationPreviewSchema = z.object({
 	expiresAt: z.string().min(1),
-	householdName: z.string(),
-	inviterName: z.string()
-});
+	householdName: z.string().optional(),
+	inviterName: z.string(),
+	kind: z.enum(invitationKinds).optional()
+}).refine(
+	(preview) => (preview.kind === 'app') === (preview.householdName === undefined),
+	'An application invitation has no household name; a household invitation has one.'
+);
 
 export type InvitationPreview = z.infer<typeof invitationPreviewSchema>;
 

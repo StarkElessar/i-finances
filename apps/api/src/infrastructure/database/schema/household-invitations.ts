@@ -25,7 +25,13 @@ export const householdInvitations = sqliteTable(
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 		acceptedAt: integer('accepted_at', { mode: 'timestamp_ms' }),
 		acceptedByUserId: text('accepted_by_user_id').references(() => users.id),
-		revokedAt: integer('revoked_at', { mode: 'timestamp_ms' })
+		revokedAt: integer('revoked_at', { mode: 'timestamp_ms' }),
+		/**
+		 * The user that signed up through Telegram while holding this invitation, with registration closed
+		 * (`app-invitations-v1.md`). One sign-up per invitation: a leaked household link must not create any number of
+		 * accounts. It does not consume the invitation: joining is still `accept`, by that person or anybody else.
+		 */
+		registeredUserId: text('registered_user_id').references(() => users.id)
 	},
 	(table) => [
 		index('household_invitations_household_id_idx').on(table.householdId)

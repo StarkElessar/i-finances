@@ -1,4 +1,5 @@
 import type { AccountHttpController } from '@/http/account-controller';
+import type { AppInvitationHttpController } from '@/http/app-invitation-controller';
 import type { AuthHttpController } from '@/http/auth-controller';
 import type { CategoryHttpController } from '@/http/category-controller';
 import type { ContactHttpController } from '@/http/contact-controller';
@@ -7,6 +8,7 @@ import { HealthController } from '@/http/health-controller';
 import type { HouseholdHttpController } from '@/http/household-controller';
 import type { HouseholdInvitationHttpController } from '@/http/household-invitation-controller';
 import { respondToHouseholdAccessError } from '@/http/household-required-response';
+import { respondNotFound } from '@/http/not-found-response';
 import type { OperationHttpController } from '@/http/operation-controller';
 import type { PasskeyHttpController } from '@/http/passkey-controller';
 import type { ReceiptImportHttpController } from '@/http/receipt-import-controller';
@@ -23,6 +25,7 @@ import { Hono } from 'hono';
 
 export type ApiAppDependencies = {
 	accountController?: AccountHttpController;
+	appInvitationController?: AppInvitationHttpController;
 	authController?: AuthHttpController;
 	categoryController?: CategoryHttpController;
 	contactController?: ContactHttpController;
@@ -166,6 +169,26 @@ export function createApiApp(
 		app.post('/api/invitations/accept', invitationController.bodyLimit(), invitationController.accept());
 	}
 
+	if (dependencies.appInvitationController !== undefined) {
+		const appInvitationController = dependencies.appInvitationController;
+
+		// `adminOnly()` first, before the body limit: to anyone but a platform administrator these routes look like
+		// routes that do not exist (app-invitations-v1.md).
+		app.post(
+			'/api/app-invitations',
+			appInvitationController.adminOnly(),
+			appInvitationController.bodyLimit(),
+			appInvitationController.create()
+		);
+		app.get('/api/app-invitations', appInvitationController.adminOnly(), appInvitationController.list());
+		app.post(
+			'/api/app-invitations/:id/revoke',
+			appInvitationController.adminOnly(),
+			appInvitationController.bodyLimit(),
+			appInvitationController.revoke()
+		);
+	}
+
 	if (dependencies.operationController !== undefined) {
 		const operationController = dependencies.operationController;
 
@@ -217,13 +240,7 @@ export function createApiApp(
 		);
 	}
 
-	app.notFound((context) => context.json({
-		error: {
-			code: 'not_found',
-			message: 'The requested resource was not found.'
-		},
-		ok: false
-	}, 404));
+	app.notFound((context) => respondNotFound(context));
 
 	app.onError((error, context) => {
 		// The single mapping of «no household» for every household-scoped route (Р8): controllers let it through.

@@ -369,13 +369,14 @@ describe('preview', () => {
 			invitation: {
 				expiresAt: new Date(harness.clock.now.getTime() + DEFAULT_INVITATION_TTL).toISOString(),
 				householdName: 'Семья',
-				inviterName: 'Сергей'
+				inviterName: 'Сергей',
+				kind: 'household'
 			},
 			ok: true
 		});
 		// Nothing beyond the contract: no ids, no member list.
 		expect(Object.keys(((await response.json()) as { invitation: object }).invitation).sort())
-			.toEqual(['expiresAt', 'householdName', 'inviterName']);
+			.toEqual(['expiresAt', 'householdName', 'inviterName', 'kind']);
 	});
 
 	it('tells an unknown, an expired, a used and a revoked token apart by `reason` only: nothing else differs', async () => {
@@ -853,6 +854,7 @@ describe('HouseholdInvitationService checks the role itself', () => {
 		};
 		const service = new HouseholdInvitationService({
 			acceptRateLimiter: { tryConsume: () => ({ allowed: true }) },
+			appInvitations: { findPreview: async () => ({ kind: 'unavailable' as const, reason: 'unknown' as const }) },
 			config: { ttlMilliseconds: DEFAULT_INVITATION_TTL },
 			householdResolver: { requireForUser: async () => ({ baseCurrency: 'BYN', id: FAMILY, name: 'Семья', role: 'member' }) },
 			invitations,

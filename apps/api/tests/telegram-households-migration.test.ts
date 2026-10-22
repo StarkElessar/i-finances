@@ -13,9 +13,11 @@ import { copyMigrationsBefore } from './support/copy-migrations-before';
 /**
  * DB-1, DB-2 and DB-3 of development/decisions/telegram-auth-and-households-v1.md, run the way
  * production runs them: a database at the last released migration, filled with data, then
- * `applyMigrations` (the same helper and folder as scripts/migrate-db.ts).
+ * `applyMigrations` (the same helper as scripts/migrate-db.ts). The release stops before 0017 (invitations into the
+ * application), which has its own test (`app-invitations-migration.test.ts`): this one pins exactly what 0014-0016 do.
  */
 const FIRST_NEW_MIGRATION = '0014_telegram_auth_and_invitations';
+const FIRST_LATER_MIGRATION = '0017_app_invitations';
 const DEFAULT_HOUSEHOLD_ID = 'default-household';
 const OTHER_HOUSEHOLD_ID = 'household-2';
 const T = 1_790_000_000_000;
@@ -25,6 +27,8 @@ type SchemaObject = { name: string; sql: string | null; tbl_name: string; type: 
 
 let connection: Database.Database;
 let folderBefore: string;
+/** `./drizzle` up to and including 0016. */
+let folderRelease: string;
 
 /**
  * Argon2id PHC string with a per-user hash part, so every user row stays distinguishable.
@@ -210,7 +214,7 @@ function countAppliedMigrations(): number {
 }
 
 function countJournalEntries(): number {
-	return (JSON.parse(readFileSync('./drizzle/meta/_journal.json', 'utf8')) as { entries: unknown[] }).entries.length;
+	return (JSON.parse(readFileSync(`${folderRelease}/meta/_journal.json`, 'utf8')) as { entries: unknown[] }).entries.length;
 }
 
 function migrateToRelease(mainHouseholdId = DEFAULT_HOUSEHOLD_ID) {
@@ -244,6 +248,7 @@ function membershipsOf(userId: string): Row[] {
 
 beforeEach(() => {
 	folderBefore = copyMigrationsBefore(FIRST_NEW_MIGRATION);
+	folderRelease = copyMigrationsBefore(FIRST_LATER_MIGRATION);
 	connection = new Database(':memory:');
 	connection.pragma('foreign_keys = ON');
 });
@@ -251,6 +256,7 @@ beforeEach(() => {
 afterEach(() => {
 	connection.close();
 	rmSync(folderBefore, { force: true, recursive: true });
+	rmSync(folderRelease, { force: true, recursive: true });
 });
 
 describe('telegram auth and households migrations on a populated database', () => {
@@ -259,7 +265,7 @@ describe('telegram auth and households migrations on a populated database', () =
 		const before = dumpTables();
 		const startedAt = Date.now();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const after = dumpTables();
 
@@ -295,7 +301,7 @@ describe('telegram auth and households migrations on a populated database', () =
 		const before = readSchemaObjects();
 		const usersColumnsBefore = connection.pragma('table_info(users)') as Row[];
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const after = readSchemaObjects();
 		const changed = new Set(['household_members_user_id_idx', 'users']);
@@ -334,7 +340,7 @@ describe('telegram auth and households migrations on a populated database', () =
 	it('creates the new tables with the foreign keys and delete rules of the decision', () => {
 		const database = migrateToRelease();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const foreignKeys = (table: string) => (connection.pragma(`foreign_key_list(${table})`) as Row[])
 			.map((key) => `${key.from}->${key.table}.${key.to} ${key.on_delete}`)
@@ -403,7 +409,7 @@ describe('telegram auth and households migrations on a populated database', () =
 	it('enforces the new constraints after the migration', () => {
 		const database = migrateToRelease();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		// DB-2: a Telegram user without a password; the username stays required and unique.
 		insertRows('users', [user('zoe', { password_hash: null, username: 'tg-777' })]);
@@ -455,7 +461,7 @@ describe('telegram auth and households migrations on a populated database', () =
 	it('does not invent memberships when default-household does not exist', () => {
 		const database = migrateToRelease('household-1');
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		expect(membershipsOf('alice')).toEqual([{ household_id: 'household-1', role: 'owner' }]);
 		expect(membershipsOf('bob')).toEqual([]);
@@ -466,7 +472,7 @@ describe('telegram auth and households migrations on a populated database', () =
 	it('keeps existing roles and households of members', () => {
 		const database = migrateToRelease();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		expect(membershipsOf('alice')).toEqual([{ household_id: DEFAULT_HOUSEHOLD_ID, role: 'owner' }]);
 		expect(membershipsOf('erin')).toEqual([{ household_id: DEFAULT_HOUSEHOLD_ID, role: 'member' }]);
@@ -496,7 +502,7 @@ describe('telegram auth and households migrations on a populated database', () =
 		const schemaBefore = readSchemaObjects();
 		const appliedBefore = countAppliedMigrations();
 
-		const failure = captureError(() => applyMigrations(database, connection, './drizzle'));
+		const failure = captureError(() => applyMigrations(database, connection, folderRelease));
 
 		// Drizzle names the failed statement; the SQLite error with the reason is its cause (both reach the log).
 		expect(failure.message).toContain('CREATE UNIQUE INDEX `household_members_user_id_unique`');

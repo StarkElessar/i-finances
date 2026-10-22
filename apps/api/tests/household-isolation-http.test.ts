@@ -22,6 +22,7 @@ import { hashSessionToken } from '@/modules/auth';
 import { hashHouseholdInvitationToken } from '@/modules/household';
 
 import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import sharp from 'sharp';
@@ -77,6 +78,13 @@ const A_USED_INVITATION_TOKEN = 'd'.repeat(43);
 /** A well-formed invitation token that no invitation has. */
 const UNKNOWN_INVITATION_TOKEN = 'n'.repeat(43);
 
+/** Well-formed tokens of invitations into the application, created by A's owner (the administrator), that open nothing. */
+const APP_EXPIRED_INVITATION_TOKEN = 'E'.repeat(43);
+
+const APP_REVOKED_INVITATION_TOKEN = 'R'.repeat(43);
+
+const APP_USED_INVITATION_TOKEN = 'D'.repeat(43);
+
 type Actor = 'beta' | 'loner';
 type Scope = 'household' | 'onboarding' | 'user' | 'public';
 
@@ -86,6 +94,9 @@ type Fixture = {
 	alpha: {
 		account: Entity;
 		account2: Entity;
+		/** An active invitation into the application, created over HTTP by A's owner, the platform administrator. */
+		appInvitationId: string;
+		appInvitationToken: string;
 		category: Entity;
 		contact: Entity;
 		/** The active invitation of household A, created by its owner over HTTP. */
@@ -833,6 +844,18 @@ const PROBES: Probe[] = [
 		route: 'POST /api/auth/telegram/start',
 		scope: 'public'
 	},
+	...[
+		['a live A household', (f: Fixture) => f.alpha.invitationToken],
+		['a live application', (f: Fixture) => f.alpha.appInvitationToken],
+		['an unknown', () => UNKNOWN_INVITATION_TOKEN]
+	].map(([label, token]): Probe => ({
+		beta: [200],
+		loner: [200],
+		name: `starts a sign-in with ${label as string} invitation token, answering the same and spending nothing`,
+		request: (f) => ({ body: { invitationToken: (token as (f: Fixture) => string)(f) }, path: '/api/auth/telegram/start' }),
+		route: 'POST /api/auth/telegram/start',
+		scope: 'public'
+	})),
 	{
 		beta: [403],
 		loner: [403],
@@ -873,6 +896,63 @@ const PROBES: Probe[] = [
 		}),
 		route: 'POST /api/dev/telegram/confirm',
 		scope: 'public'
+	},
+
+	// Invitations into the application (app-invitations-v1.md): only the platform administrator (A's owner here) has
+	// these routes; to everybody else they answer like routes that do not exist.
+	{
+		beta: [404],
+		loner: [404],
+		name: 'a non-administrator cannot create an invitation into the application: the route does not exist for them',
+		request: () => ({ body: { note: 'Захват' }, path: '/api/app-invitations' }),
+		route: 'POST /api/app-invitations',
+		scope: 'user'
+	},
+	{
+		beta: [404],
+		loner: [404],
+		name: 'a non-administrator cannot list invitations into the application',
+		request: () => ({ path: '/api/app-invitations' }),
+		route: 'GET /api/app-invitations',
+		scope: 'user'
+	},
+	{
+		beta: [404],
+		loner: [404],
+		name: 'a non-administrator cannot revoke the administrator\'s invitation',
+		request: (f) => ({ path: `/api/app-invitations/${f.alpha.appInvitationId}/revoke` }),
+		route: 'POST /api/app-invitations/:id/revoke',
+		scope: 'user'
+	},
+	...[
+		['an expired application', APP_EXPIRED_INVITATION_TOKEN],
+		['a revoked application', APP_REVOKED_INVITATION_TOKEN],
+		['a used application', APP_USED_INVITATION_TOKEN]
+	].flatMap(([label, token]): Probe[] => [
+		{
+			beta: [404],
+			loner: [404],
+			name: `preview of ${label} invitation reveals nothing`,
+			request: () => ({ body: { token }, path: '/api/invitations/preview' }),
+			route: 'POST /api/invitations/preview',
+			scope: 'public'
+		},
+		{
+			beta: [404],
+			loner: [404],
+			name: `cannot accept ${label} invitation`,
+			request: () => ({ body: { replaceEmptyHousehold: true, token }, path: '/api/invitations/accept' }),
+			route: 'POST /api/invitations/accept',
+			scope: 'onboarding'
+		}
+	]),
+	{
+		beta: [409],
+		loner: [409],
+		name: 'a live invitation into the application is never joined through accept, and nothing changes',
+		request: (f) => ({ body: { replaceEmptyHousehold: true, token: f.alpha.appInvitationToken }, path: '/api/invitations/accept' }),
+		route: 'POST /api/invitations/accept',
+		scope: 'onboarding'
 	},
 
 	// Telegram link (A4): the caller's own account only, from the session; no household data is read or written. The
@@ -922,6 +1002,8 @@ beforeAll(async () => {
 	vi.stubEnv('AUTH_ORIGIN', ORIGIN);
 	vi.stubEnv('MCP_API_KEY', MCP_API_KEY);
 	vi.stubEnv('MCP_USER_ID', A_OWNER);
+	// A's owner is also the platform administrator, as on production (the owner `stark` is MCP_USER_ID).
+	vi.stubEnv('PLATFORM_ADMIN_USERNAMES', A_OWNER);
 	vi.stubEnv('RECEIPT_IMAGE_ROOT', imageRoot);
 	// Webhook mode registers POST /api/telegram/webhook and the dev confirmation POST /api/dev/telegram/confirm: the
 	// most routes the server can have. The bot client is the fake one (`createApiDependencies` option); the runner is
@@ -1111,6 +1193,29 @@ async function seed(): Promise<Fixture> {
 		deadInvitation('alpha-invitation-revoked', A_REVOKED_INVITATION_TOKEN, { revokedAt: at }),
 		deadInvitation('alpha-invitation-used', A_USED_INVITATION_TOKEN, { acceptedAt: at, acceptedByUserId: A_MEMBER })
 	]);
+	const appInvitationResponse = await call(A_OWNER, 'POST /api/app-invitations', {
+		body: { note: 'Альфа заметка' },
+		path: '/api/app-invitations'
+	});
+	const appInvitationJson = await appInvitationResponse.json() as { invitation: { id: string; link: string } };
+
+	expect(appInvitationResponse.status, JSON.stringify(appInvitationJson)).toBe(201);
+
+	const deadAppInvitation = (id: string, token: string, extra: Record<string, unknown>) => ({
+		createdAt: at,
+		createdByUserId: A_OWNER,
+		expiresAt: new Date(NOW + DAY),
+		id,
+		note: 'Альфа мёртвая',
+		tokenHash: hashHouseholdInvitationToken(token),
+		...extra
+	});
+
+	await database.insert(schema.appInvitations).values([
+		deadAppInvitation('alpha-app-invitation-expired', APP_EXPIRED_INVITATION_TOKEN, { expiresAt: new Date(NOW - DAY) }),
+		deadAppInvitation('alpha-app-invitation-revoked', APP_REVOKED_INVITATION_TOKEN, { revokedAt: at }),
+		deadAppInvitation('alpha-app-invitation-used', APP_USED_INVITATION_TOKEN, { acceptedAt: at, acceptedByUserId: A_MEMBER })
+	]);
 	const receiptResponse = await call(A_OWNER, 'POST /api/receipt-imports', { form: receiptForm, path: '/api/receipt-imports' });
 	const receiptJson = await receiptResponse.json() as { receiptImport: { id: string } };
 
@@ -1123,6 +1228,8 @@ async function seed(): Promise<Fixture> {
 		alpha: {
 			account: alphaAccount,
 			account2: alphaAccount2,
+			appInvitationId: appInvitationJson.invitation.id,
+			appInvitationToken: appInvitationJson.invitation.link.split('#').at(-1) as string,
 			category: alphaCategory,
 			contact: alphaContact,
 			invitationId: invitationJson.invitation.id,
@@ -1245,6 +1352,8 @@ function sendsAlphaIds(probe: Probe): boolean {
 		alpha: {
 			account: alpha,
 			account2: alpha,
+			appInvitationId: ALPHA_PLACEHOLDER_ID,
+			appInvitationToken: 'placeholder-token',
 			category: alpha,
 			contact: alpha,
 			invitationId: ALPHA_PLACEHOLDER_ID,
@@ -1489,7 +1598,7 @@ describe('existing users keep working', () => {
 		});
 
 		expect(await previewed.json()).toEqual({
-			invitation: { expiresAt: expect.any(String), householdName: 'Альфа Семья', inviterName: 'Альфа Владелец' },
+			invitation: { expiresAt: expect.any(String), householdName: 'Альфа Семья', inviterName: 'Альфа Владелец', kind: 'household' },
 			ok: true
 		});
 
@@ -1504,6 +1613,66 @@ describe('existing users keep working', () => {
 		const accounts = await call(LONER, 'GET /api/accounts', { path: '/api/accounts' });
 
 		expect((await accounts.json() as { items: unknown[] }).items).toHaveLength(2);
+	});
+
+	it('invitations into the application: the MCP key gets 401, a non-administrator the very answer of a missing route', async () => {
+		const bearer = { authorization: `Bearer ${MCP_API_KEY}`, 'content-type': 'application/json', origin: ORIGIN };
+		const before = readDatabaseState();
+		const missingRoute = await call(A_MEMBER, 'POST /api/no-such-route', { body: {}, path: '/api/no-such-route' });
+		const missingText = `${missingRoute.status} ${await missingRoute.text()}`;
+		const requests: Array<[string, string]> = [
+			['POST', '/api/app-invitations'],
+			['GET', '/api/app-invitations'],
+			['POST', `/api/app-invitations/${fixture.alpha.appInvitationId}/revoke`]
+		];
+
+		for (const [method, path] of requests) {
+			// MCP_USER_ID is A's owner, the administrator: the key still manages nothing here.
+			const viaKey = await app.request(path, { body: method === 'GET' ? undefined : '{}', headers: bearer, method });
+
+			expect(viaKey.status, `${method} ${path}`).toBe(401);
+			expect(await viaKey.json()).toMatchObject({ errorCode: 'unauthenticated', ok: false });
+
+			// The member of A, B's owner and the user without a household: whatever the origin and the body size.
+			for (const userId of [A_MEMBER, B_OWNER, LONER]) {
+				const plain = await call(userId, `${method} ${path}`, { body: method === 'GET' ? undefined : {}, path });
+				const foreignOrigin = await app.request(path, {
+					body: method === 'GET' ? undefined : JSON.stringify({ note: 'x'.repeat(5000) }),
+					headers: { ...headersFor(userId, method !== 'GET'), origin: 'https://evil.example' },
+					method
+				});
+
+				expect(`${plain.status} ${await plain.text()}`, `${userId} ${method} ${path}`).toBe(missingText);
+				expect(`${foreignOrigin.status} ${await foreignOrigin.text()}`, `${userId} ${method} ${path}`).toBe(missingText);
+			}
+		}
+
+		expect(readDatabaseState()).toEqual(before);
+	});
+
+	it('the session tells the platform administrator only: by login, never by display name or household role', async () => {
+		// B's owner takes the administrator's login as a display name: that changes nothing.
+		await database.update(users).set({ displayName: A_OWNER }).where(eq(users.id, B_OWNER));
+
+		for (const [userId, isPlatformAdmin] of [[A_OWNER, true], [A_MEMBER, false], [B_OWNER, false], [LONER, false]] as const) {
+			const response = await call(userId, 'GET /api/auth/session', { path: '/api/auth/session' });
+
+			expect(await response.json(), userId).toMatchObject({ isPlatformAdmin });
+		}
+
+		const asB = await call(B_OWNER, 'GET /api/app-invitations', { path: '/api/app-invitations' });
+
+		expect(asB.status).toBe(404);
+
+		const asAdmin = await call(A_OWNER, 'GET /api/app-invitations', { path: '/api/app-invitations' });
+
+		expect(asAdmin.status).toBe(200);
+		expect(await asAdmin.json()).toMatchObject({
+			invitations: [
+				{ id: fixture.alpha.appInvitationId, note: 'Альфа заметка', status: 'active' },
+				{ acceptedBy: { displayName: 'Альфа Участница', telegramUsername: 'alfa_member' }, status: 'accepted' }
+			]
+		});
 	});
 
 	it('a user without a household is never added to one implicitly', async () => {

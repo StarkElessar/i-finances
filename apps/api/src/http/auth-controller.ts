@@ -3,6 +3,7 @@ import type { PasswordSignInService } from '@/modules/auth';
 import {
 	type AuthConfig,
 	getAuthConfig,
+	type PlatformAdminPolicy,
 	type SignInMethodsPort
 } from '@/modules/auth';
 import type { HouseholdResolver } from '@/modules/household';
@@ -43,6 +44,7 @@ export class AuthHttpController {
 		private readonly passwordUserRepository: PasswordUserRepository,
 		private readonly householdResolver: HouseholdResolver,
 		private readonly signInMethods: SignInMethodsPort,
+		private readonly platformAdmins: Pick<PlatformAdminPolicy, 'isPlatformAdmin'>,
 		config: AuthConfig = getAuthConfig()
 	) {
 		this.config = config;
@@ -65,6 +67,9 @@ export class AuthHttpController {
 				household: household === undefined
 					? null
 					: { id: household.id, name: household.name, role: household.role },
+				// By the login of this session only (PLATFORM_ADMIN_USERNAMES); for a bearer (MCP) session too, harmless:
+				// the administrator's routes take the browser cookie only.
+				isPlatformAdmin: this.platformAdmins.isPlatformAdmin(session.user),
 				telegram: methods?.telegram ?? null,
 				user: {
 					displayName: session.user.displayName,

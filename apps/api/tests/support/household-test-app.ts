@@ -4,6 +4,7 @@ import { HouseholdInvitationHttpController } from '@/http/household-invitation-c
 import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import { householdMembers, households, users } from '@/infrastructure/database/schema';
+import { AppInvitationRepository } from '@/modules/app-invitation';
 import { type AuthConfig, FixedWindowRateLimiter, SessionRepository, SessionService } from '@/modules/auth';
 import {
 	HouseholdInvitationRepository,
@@ -86,6 +87,7 @@ export function createHouseholdTestApp(
 	});
 	const invitationService = new HouseholdInvitationService({
 		acceptRateLimiter,
+		appInvitations: new AppInvitationRepository(database),
 		config: { ttlMilliseconds },
 		householdResolver,
 		invitations: new HouseholdInvitationRepository(database),

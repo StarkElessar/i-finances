@@ -1,8 +1,9 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import { telegramAccounts, users } from '@/infrastructure/database/schema';
+import { findActiveInvitationKind, reserveRegistrationInvitation } from '@/modules/app-invitation';
 import { TELEGRAM_USERNAME_PREFIX } from '@/modules/auth';
 
-import { eq } from 'drizzle-orm';
+import { eq, TransactionRollbackError } from 'drizzle-orm';
 
 import { buildTelegramDisplayName } from './build-telegram-display-name';
 import type { TelegramIdentity } from './telegram-identity';
@@ -15,9 +16,17 @@ export type TelegramAccount = {
 };
 
 export type TelegramSignInInput = {
-	/** `TELEGRAM_REGISTRATION_ENABLED`: an unknown Telegram account creates a user only when this is true. */
+	/**
+	 * `TELEGRAM_REGISTRATION_ENABLED`: an unknown Telegram account creates a user when this is true, or when the
+	 * request carries an invitation that is still active (`invitationTokenHash`).
+	 */
 	allowRegistration: boolean;
 	identity: TelegramIdentity;
+	/**
+	 * SHA-256 of the invitation token bound to the login request at `start` (`app-invitations-v1.md`), or `null`. Only
+	 * a sign-up looks at it; a known Telegram account signs in as usual and the invitation is left alone.
+	 */
+	invitationTokenHash: string | null;
 	/** Id for the user created by a sign-up; unused otherwise. */
 	newUserId: string;
 	now: Date;
@@ -75,9 +84,28 @@ export class TelegramAccountRepository {
 	 *
 	 * One synchronous transaction: two sign-ins of the same new Telegram account cannot both create a user, and the
 	 * unique `telegram_id` would refuse the second one anyway.
+	 *
+	 * With registration closed, a sign-up needs an invitation bound to the request (`app-invitations-v1.md`). Whether it
+	 * is still active is decided here, inside the transaction that creates the user, and the same transaction spends
+	 * it (`reserveRegistrationInvitation`: an invitation into the application is consumed, a household invitation only
+	 * loses its one sign-up). If that conditional update changes nothing, everything is rolled back, the user included,
+	 * and the answer is `not-found` as for no invitation at all: of two sign-ups with one link exactly one succeeds.
 	 */
 	public async signIn(input: TelegramSignInInput): Promise<TelegramSignInResolution> {
-		const { identity, now } = input;
+		try {
+			return this.signInInTransaction(input);
+		}
+		catch (error: unknown) {
+			if (error instanceof TransactionRollbackError) {
+				return { kind: 'not-found' };
+			}
+
+			throw error;
+		}
+	}
+
+	private signInInTransaction(input: TelegramSignInInput): TelegramSignInResolution {
+		const { identity, invitationTokenHash, now } = input;
 
 		return this.database.transaction((transaction): TelegramSignInResolution => {
 			const existing = transaction.select({ isActive: users.isActive, userId: telegramAccounts.userId })
@@ -105,7 +133,11 @@ export class TelegramAccountRepository {
 				return { isActive: existing.isActive, kind: 'existing', userId: existing.userId };
 			}
 
-			if (!input.allowRegistration) {
+			const invitationKind = invitationTokenHash === null
+				? undefined
+				: findActiveInvitationKind(transaction, invitationTokenHash, now);
+
+			if (!input.allowRegistration && invitationKind === undefined) {
 				return { kind: 'not-found' };
 			}
 
@@ -129,6 +161,21 @@ export class TelegramAccountRepository {
 				userId: input.newUserId,
 				username: identity.username
 			}).run();
+
+			// After the user exists (the invitation points at it). With the flag on the invitation is spent if it can be,
+			// and the sign-up does not depend on it.
+			if (invitationKind !== undefined && invitationTokenHash !== null) {
+				const reserved = reserveRegistrationInvitation(transaction, {
+					kind: invitationKind,
+					now,
+					tokenHash: invitationTokenHash,
+					userId: input.newUserId
+				});
+
+				if (!reserved && !input.allowRegistration) {
+					transaction.rollback();
+				}
+			}
 
 			return { kind: 'registered', userId: input.newUserId };
 		});

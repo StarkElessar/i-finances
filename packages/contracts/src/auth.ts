@@ -67,6 +67,11 @@ export const currentSessionResponseSchema = z.discriminatedUnion('authenticated'
 		hasPassword: z.boolean(),
 		/** `null` while the user has no household yet (onboarding). */
 		household: householdSummarySchema.nullable(),
+		/**
+		 * Whether the user is a platform administrator (`PLATFORM_ADMIN_USERNAMES`) and so may invite people into the
+		 * application. The API always sends it; optional in the schema only for clients and fixtures written before it.
+		 */
+		isPlatformAdmin: z.boolean().optional(),
 		/** `null` while no Telegram account is linked. */
 		telegram: authSessionTelegramSchema.nullable(),
 		user: authSessionUserSchema

@@ -18,6 +18,8 @@ export type TelegramLoginRequest = {
 	id: string;
 	/** Who confirmed it in the bot; `null` until then. */
 	identity: TelegramIdentity | null;
+	/** SHA-256 of the invitation token the sign-in started with, if that invitation was active then; never the token. */
+	invitationTokenHash: string | null;
 	ipAddress: string | null;
 	linkUserId: string | null;
 	purpose: TelegramLoginRequestPurpose;
@@ -32,6 +34,8 @@ export type NewTelegramLoginRequest = {
 	createdAt: Date;
 	expiresAt: Date;
 	id: string;
+	/** Only for `sign-in`, and only the hash of an invitation that was active at `start`. */
+	invitationTokenHash?: string;
 	ipAddress?: string;
 	/** Only for `link` (A4): the signed-in user Telegram is linked to. */
 	linkUserId?: string;
@@ -58,6 +62,7 @@ function mapRequest(record: TelegramLoginRequestRecord): TelegramLoginRequest {
 		expiresAt: record.expiresAt,
 		id: record.id,
 		identity,
+		invitationTokenHash: record.invitationTokenHash,
 		ipAddress: record.ipAddress,
 		linkUserId: record.linkUserId,
 		purpose: record.purpose,

@@ -1,6 +1,7 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import {
 	accounts,
+	appInvitations,
 	categories,
 	contacts,
 	householdInvitations,
@@ -37,10 +38,14 @@ type Reference = { column: SQLiteColumn; table: SQLiteTable };
  */
 export const USER_AUTHORSHIP_REFERENCES: readonly Reference[] = [
 	{ column: accounts.createdByUserId, table: accounts },
+	{ column: appInvitations.createdByUserId, table: appInvitations },
+	// The account an invitation into the application created: a trace of who let the person in, kept (app-invitations-v1.md).
+	{ column: appInvitations.acceptedByUserId, table: appInvitations },
 	{ column: categories.createdByUserId, table: categories },
 	{ column: contacts.createdByUserId, table: contacts },
 	{ column: householdInvitations.createdByUserId, table: householdInvitations },
 	{ column: householdInvitations.acceptedByUserId, table: householdInvitations },
+	{ column: householdInvitations.registeredUserId, table: householdInvitations },
 	{ column: operations.createdByUserId, table: operations },
 	{ column: operations.updatedByUserId, table: operations },
 	{ column: operations.deletedByUserId, table: operations },

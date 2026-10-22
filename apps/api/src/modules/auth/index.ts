@@ -26,6 +26,8 @@ export {
 	uint8ArrayToBase64Url
 } from './passkey-encoding';
 export { PasswordService } from './password-service';
+export { getPlatformAdminPolicy, parsePlatformAdminUsernames } from './platform-admin-config';
+export { PlatformAdminPolicy } from './platform-admin-policy';
 export {
 	type LoginRateLimitPort,
 	type PasswordSignInMetadata,

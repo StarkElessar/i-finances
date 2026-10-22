@@ -1,6 +1,7 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
 import { sessions, telegramLoginRequests, users } from '@/infrastructure/database/schema';
+import { RegistrationInvitationLookup } from '@/modules/app-invitation';
 import { FixedWindowRateLimiter, SessionRepository, SessionService } from '@/modules/auth';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 import { loadTelegramMessages } from '@/modules/telegram';
@@ -154,6 +155,7 @@ describe('TelegramSignInService.complete under a race', () => {
 				siteHost: 'localhost:5173'
 			},
 			households: new HouseholdResolver(new HouseholdRepository(database)),
+			invitations: new RegistrationInvitationLookup(database),
 			// No bot here: link requests never reach this test.
 			link: {
 				confirmFromBot: async () => {
@@ -199,8 +201,8 @@ describe('TelegramAccountRepository.signIn', () => {
 	it('creates the user once even when two sign-ins of the same new Telegram race', async () => {
 		const accounts = new TelegramAccountRepository(database);
 		const [first, second] = await Promise.all([
-			accounts.signIn({ allowRegistration: true, identity: ANNA, newUserId: 'user-a', now: NOW }),
-			accounts.signIn({ allowRegistration: true, identity: ANNA, newUserId: 'user-b', now: NOW })
+			accounts.signIn({ allowRegistration: true, identity: ANNA, invitationTokenHash: null, newUserId: 'user-a', now: NOW }),
+			accounts.signIn({ allowRegistration: true, identity: ANNA, invitationTokenHash: null, newUserId: 'user-b', now: NOW })
 		]);
 
 		expect(first).toEqual({ kind: 'registered', userId: 'user-a' });
@@ -211,7 +213,7 @@ describe('TelegramAccountRepository.signIn', () => {
 	it('never creates a user when registration is closed', async () => {
 		const accounts = new TelegramAccountRepository(database);
 
-		const resolution = await accounts.signIn({ allowRegistration: false, identity: ANNA, newUserId: 'user-a', now: NOW });
+		const resolution = await accounts.signIn({ allowRegistration: false, identity: ANNA, invitationTokenHash: null, newUserId: 'user-a', now: NOW });
 
 		expect(resolution).toEqual({ kind: 'not-found' });
 		expect(await database.select().from(users)).toEqual([]);

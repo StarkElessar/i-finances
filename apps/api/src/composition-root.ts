@@ -1,4 +1,5 @@
 import { AccountHttpController } from './http/account-controller';
+import { AppInvitationHttpController } from './http/app-invitation-controller';
 import { ApiKeySessionResolver } from './http/api-key-session-resolver';
 import { AuthHttpController } from './http/auth-controller';
 import { CategoryHttpController } from './http/category-controller';
@@ -23,8 +24,15 @@ import {
 	AccountService
 } from './modules/account';
 import {
+	AppInvitationRepository,
+	AppInvitationService,
+	getAppInvitationConfig,
+	RegistrationInvitationLookup
+} from './modules/app-invitation';
+import {
 	FixedWindowRateLimiter,
 	getAuthConfig,
+	getPlatformAdminPolicy,
 	LoginRateLimiter,
 	PasswordService,
 	PasswordSignInService,
@@ -102,6 +110,8 @@ import type { ApiAppDependencies } from './app';
 export type ApiDependencies = {
 	authController: AuthHttpController;
 	accountController: AccountHttpController;
+	/** Invitations into the application, platform administrator only (app-invitations-v1.md). */
+	appInvitationController: AppInvitationHttpController;
 	categoryController: CategoryHttpController;
 	contactController: ContactHttpController;
 	exchangeRateController: ExchangeRateHttpController;
@@ -170,6 +180,9 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 	// production included) or the bot texts are broken.
 	const telegramConfig = getTelegramConfig(process.env, authConfig.origin);
 	const telegramMessages = loadTelegramMessages();
+	// Throws, and so stops the start, on an entry of PLATFORM_ADMIN_USERNAMES that cannot be a login. Empty: nobody.
+	const platformAdmins = getPlatformAdminPolicy(process.env);
+	const appInvitationRepository = new AppInvitationRepository(database);
 	const telegramBotClient = options.telegramBotClient ?? (telegramConfig.botToken === undefined
 		? undefined
 		: new FetchTelegramBotClient({ token: telegramConfig.botToken }));
@@ -238,6 +251,7 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 		completeRateLimiter: telegramCompleteRateLimiter,
 		config: telegramConfig,
 		households: householdResolver,
+		invitations: new RegistrationInvitationLookup(database),
 		link: telegramLinkService,
 		messages: telegramMessages,
 		requests: telegramLoginRequests,
@@ -252,6 +266,7 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 	});
 	const householdInvitationService = new HouseholdInvitationService({
 		acceptRateLimiter: new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS }),
+		appInvitations: appInvitationRepository,
 		// Throws, and so stops the start, on a HOUSEHOLD_INVITATION_TTL_HOURS outside 1-168.
 		config: getHouseholdInvitationConfig(process.env),
 		householdResolver,
@@ -264,6 +279,13 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 		}),
 		origin: authConfig.origin,
 		previewRateLimiter: new FixedWindowRateLimiter({ maxRequests: 30, windowMilliseconds: FIVE_MINUTES_MILLISECONDS })
+	});
+	const appInvitationService = new AppInvitationService({
+		// Throws, and so stops the start, on an APP_INVITATION_TTL_HOURS outside 1-168.
+		config: getAppInvitationConfig(process.env),
+		invitations: appInvitationRepository,
+		origin: authConfig.origin,
+		platformAdmins
 	});
 	const categoryService = new CategoryService({
 		categoryRepository: new CategoryRepository(database),
@@ -362,11 +384,20 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 			passwordUserRepository,
 			householdResolver,
 			signInMethods,
+			platformAdmins,
 			authConfig
 		),
 		accountController: new AccountHttpController(
 			accountService,
 			sessionResolver,
+			authConfig
+		),
+		// Browser cookie only, like every route that changes who may sign in: a leaked MCP key (whose user may well be
+		// the administrator) must not let anybody into the application.
+		appInvitationController: new AppInvitationHttpController(
+			appInvitationService,
+			cookieSessionResolver,
+			platformAdmins,
 			authConfig
 		),
 		categoryController: new CategoryHttpController(
