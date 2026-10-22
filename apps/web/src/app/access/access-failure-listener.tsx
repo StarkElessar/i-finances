@@ -21,7 +21,7 @@ export function AccessFailureListener() {
 			applyAccessFailure(failure, viewer(), {
 				clearCache: () => query.clear(),
 				clearCurrentViewer,
-				rememberLostHousehold: (householdName) => householdLossNotice.save(householdName),
+				rememberLostHousehold: (userId, householdName) => householdLossNotice.save(userId, householdName),
 				setCurrentViewer
 			});
 		});

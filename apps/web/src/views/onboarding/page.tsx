@@ -43,7 +43,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 	const setCurrentViewer = useSetCurrentViewer();
 	const navigate = useNavigate();
 	const householdClient = new HouseholdClient();
-	const lostHouseholdName = householdLossNotice.read();
+	const lostHouseholdName = householdLossNotice.read(viewer()?.id);
 	const [step, setStep] = createSignal<Step>('welcome');
 	const [displayName, setDisplayName] = createSignal(viewer()?.displayName ?? '');
 	const [isNameTouched, setIsNameTouched] = createSignal(false);

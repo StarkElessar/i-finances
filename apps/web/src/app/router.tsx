@@ -92,10 +92,11 @@ export function AppRouter(props: AppRouterProps) {
 
 	/**
 	 * An explicit sign-out: the invitation waiting in the tab belonged to the person who leaves, so the next one to sign
-	 * in here must not get it (review of U4).
+	 * in here must not get it (review of U4); the same for the notice about a lost household.
 	 */
 	const handleSignedOut = (): void => {
 		pendingInvitation.clear();
+		householdLossNotice.clear();
 		reloadSession();
 	};
 

@@ -28,7 +28,7 @@ function createEffects() {
 	return {
 		clearCache: vi.fn(),
 		clearCurrentViewer: vi.fn(),
-		rememberLostHousehold: vi.fn<(householdName: string) => void>(),
+		rememberLostHousehold: vi.fn<(userId: string, householdName: string) => void>(),
 		setCurrentViewer: vi.fn<(patch: Partial<CurrentViewer>) => void>()
 	};
 }
@@ -122,7 +122,7 @@ describe('applyAccessFailure', () => {
 		expect(effects.setCurrentViewer).toHaveBeenCalledWith({ household: null });
 		expect(effects.clearCache).toHaveBeenCalledTimes(1);
 		expect(effects.clearCurrentViewer).not.toHaveBeenCalled();
-		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('Семья');
+		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('user-1', 'Семья');
 
 		// The next requests of the same page fail the same way, after the patch.
 		applyAccessFailure('household-required', viewerFromSession(ONBOARDING_SESSION), effects);
@@ -135,7 +135,7 @@ describe('applyAccessFailure', () => {
 
 		applyAccessFailure('unauthenticated', viewerFromSession(MEMBER_SESSION), effects);
 
-		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('Семья');
+		expect(effects.rememberLostHousehold).toHaveBeenCalledExactlyOnceWith('user-1', 'Семья');
 		expect(effects.clearCurrentViewer).toHaveBeenCalledTimes(1);
 	});
 

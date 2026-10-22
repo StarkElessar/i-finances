@@ -100,16 +100,36 @@ describe('HouseholdLossNoticeStore', () => {
 		};
 	}
 
-	it('keeps the name of the lost household until it is cleared', () => {
+	it('keeps the name of the lost household for its user until it is cleared', () => {
 		const store = new HouseholdLossNoticeStore(createStorage());
 
-		expect(store.read()).toBeUndefined();
+		expect(store.read('anna')).toBeUndefined();
 
-		store.save('Семья');
-		expect(store.read()).toBe('Семья');
+		store.save('anna', 'Семья');
+		expect(store.read('anna')).toBe('Семья');
+		// Nobody signed in yet: nothing to show, the notice waits.
+		expect(store.read(undefined)).toBeUndefined();
+		expect(store.read('anna')).toBe('Семья');
 
 		store.clear();
-		expect(store.read()).toBeUndefined();
+		expect(store.read('anna')).toBeUndefined();
+	});
+
+	it('never shows the lost household to another account in the same tab, and forgets it (review of U3)', () => {
+		const storage = createStorage();
+		const store = new HouseholdLossNoticeStore(storage);
+
+		store.save('anna', 'Семья');
+
+		expect(store.read('boris')).toBeUndefined();
+		expect(store.read('anna')).toBeUndefined();
+	});
+
+	it('does not trust a stored value of the wrong shape', () => {
+		const storage = createStorage();
+
+		storage.setItem('i-finances.lost-household', 'Семья');
+		expect(new HouseholdLossNoticeStore(storage).read('anna')).toBeUndefined();
 	});
 
 	it('survives a browser without storage', () => {
@@ -126,8 +146,8 @@ describe('HouseholdLossNoticeStore', () => {
 		};
 
 		for (const store of [new HouseholdLossNoticeStore(broken), new HouseholdLossNoticeStore(undefined)]) {
-			expect(() => store.save('Семья')).not.toThrow();
-			expect(store.read()).toBeUndefined();
+			expect(() => store.save('anna', 'Семья')).not.toThrow();
+			expect(store.read('anna')).toBeUndefined();
 			expect(() => store.clear()).not.toThrow();
 		}
 	});
