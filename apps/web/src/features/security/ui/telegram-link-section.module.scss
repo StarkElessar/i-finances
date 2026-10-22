@@ -1,0 +1,21 @@
+@use "@/shared/styles/mixins" as mx;
+
+.actions {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+
+    @include mx.media-mn(sm) {
+        flex-flow: row wrap;
+        align-items: center;
+    }
+}
+
+// Full width on the sheet and as wide as its label on the dialog (mockup `block` / `align-self: flex-start`).
+.primary {
+    inline-size: 100%;
+
+    @include mx.media-mn(sm) {
+        inline-size: auto;
+    }
+}

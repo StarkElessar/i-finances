@@ -1,0 +1,29 @@
+// Mockup `.i-card.flat`: the subtle surface without a border, 12 px gap, 16 px padding.
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+
+    padding: var(--space-6);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface-subtle);
+}
+
+.title {
+    font-weight: var(--font-weight-semibold);
+    overflow-wrap: anywhere;
+}
+
+.description {
+    margin-block-start: var(--space-1);
+    font-size: var(--font-size-caption);
+    color: var(--color-text-secondary);
+}
+
+.actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    justify-content: flex-end;
+}

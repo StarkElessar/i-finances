@@ -1,0 +1,46 @@
+@use "@/shared/styles/mixins" as mx;
+
+// Full width on the sheet and as wide as its label on the dialog (mockup `block` / `align-self: flex-start`).
+.action {
+    inline-size: 100%;
+
+    @include mx.media-mn(sm) {
+        align-self: flex-start;
+        inline-size: auto;
+    }
+}
+
+.current-badge {
+    vertical-align: 1px;
+}
+
+.empty {
+    margin: 0;
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+}
+
+.skeleton {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface);
+}
+
+.skeleton-row {
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+}
+
+.skeleton-text {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: var(--space-4);
+}

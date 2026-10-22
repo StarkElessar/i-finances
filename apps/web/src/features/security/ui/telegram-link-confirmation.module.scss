@@ -1,0 +1,35 @@
+.root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+}
+
+// The linked name is the point of this block, so it is the largest text of the section.
+.identity {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    padding: var(--space-6);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+
+    background-color: var(--color-surface);
+}
+
+.caption {
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+}
+
+.username {
+    font-size: var(--font-size-heading-1);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-heading);
+    overflow-wrap: anywhere;
+}
+
+.no-name {
+    font-size: var(--font-size-body-lg);
+    font-weight: var(--font-weight-semibold);
+}

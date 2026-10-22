@@ -14,7 +14,7 @@ const meta = {
 		size: 'md'
 	},
 	argTypes: {
-		variant: { control: 'inline-radio', options: ['primary', 'secondary', 'ghost', 'danger'] },
+		variant: { control: 'inline-radio', options: ['primary', 'secondary', 'ghost', 'danger', 'danger-ghost'] },
 		size: { control: 'inline-radio', options: ['sm', 'md', 'lg'] }
 	}
 } satisfies Meta<typeof Button>;
@@ -64,6 +64,26 @@ export const IconOnly: Story = {
 		<Button {...args}>
 			<Trash/>
 		</Button>
+	)
+};
+
+/** A quiet destructive action inside a row, such as deleting a passkey (mockup `danger-ghost icon`). */
+export const DangerGhost: Story = {
+	args: {
+		'aria-label': 'Удалить ключ доступа',
+		iconOnly: true,
+		size: 'sm',
+		variant: 'danger-ghost'
+	},
+	render: (args) => (
+		<StoryStack>
+			<Button {...args}>
+				<Trash/>
+			</Button>
+			<Button {...args} disabled>
+				<Trash/>
+			</Button>
+		</StoryStack>
 	)
 };
 

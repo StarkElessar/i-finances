@@ -1,0 +1,14 @@
+@use "@/shared/styles/functions" as fn;
+
+// Dialog 560 from `sm`; below it the dialog is a bottom sheet (rule S4, mockup `D-Security` / `M-Security`).
+.content {
+    --dialog-inline-size: #{fn.rem(560)};
+}
+
+// Mockup: 24 px between the blocks, 24 px under the last one; the focus gutter keeps rings from being clipped by the scroll area.
+.sections {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-8);
+    padding-block: var(--space-focus-gutter) var(--space-8);
+}

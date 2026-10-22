@@ -4,6 +4,8 @@ import {
 	ApiHttpError
 } from '@/shared/api';
 
+import { telegramRequestInit } from '@/features/telegram-request';
+
 import {
 	type CurrentSessionResponse,
 	currentSessionResponseSchema,
@@ -38,16 +40,6 @@ import {
 export type AuthClientOptions = ApiClientOptions & {
 	client?: ApiClient;
 };
-
-/**
- * The Telegram sign-in sends one request at a time and waits for it before the next (the request cookie, the poll),
- * so a request the server never answers would stall the whole sign-in. It is given up after this long instead.
- */
-export const TELEGRAM_REQUEST_TIMEOUT_MS = 15_000;
-
-function telegramRequestInit(): Pick<RequestInit, 'signal'> {
-	return { signal: AbortSignal.timeout(TELEGRAM_REQUEST_TIMEOUT_MS) };
-}
 
 export class AuthClient {
 	private readonly client: ApiClient;

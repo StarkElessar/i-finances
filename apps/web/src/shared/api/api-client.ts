@@ -1,5 +1,6 @@
-import { notifyApiAccessFailure, readApiAccessFailure } from './api-access-failure';
+import { readApiAccessFailure } from './api-access-failure';
 import { ApiHttpError } from './api-http-error';
+import { markApiRequestStart, reportApiAccessFailure } from './session-rotation-gate';
 
 /** `Retry-After` in whole seconds; the HTTP-date form is not used by this API. */
 function readRetryAfterSeconds(headers: Headers): number | undefined {
@@ -39,9 +40,11 @@ export class ApiClient {
 
 	public async get<TResponse>(
 		path: string,
-		schema: ApiResponseSchema<TResponse>
+		schema: ApiResponseSchema<TResponse>,
+		/** `signal`, for example `AbortSignal.timeout(...)`, for a request that must not hang forever. */
+		init?: Pick<RequestInit, 'signal'>
 	): Promise<TResponse> {
-		return this.request(path, schema, { method: 'GET' });
+		return this.request(path, schema, { method: 'GET', signal: init?.signal });
 	}
 
 	public async post<TResponse>(
@@ -67,6 +70,13 @@ export class ApiClient {
 			body,
 			method: 'POST'
 		});
+	}
+
+	public async delete<TResponse>(
+		path: string,
+		schema: ApiResponseSchema<TResponse>
+	): Promise<TResponse> {
+		return this.request(path, schema, { method: 'DELETE' });
 	}
 
 	public async put<TResponse>(
@@ -101,6 +111,7 @@ export class ApiClient {
 			requestHeaders.set('content-type', 'application/json');
 		}
 
+		const startedAt = markApiRequestStart();
 		const response = await this.fetcher(url, {
 			...requestInit,
 			body: serializedBody,
@@ -114,7 +125,7 @@ export class ApiClient {
 
 			// Before the throw: the session layer leaves the page first, so the page never renders this failure.
 			if (accessFailure !== null) {
-				notifyApiAccessFailure(accessFailure);
+				reportApiAccessFailure(accessFailure, startedAt);
 			}
 
 			throw new ApiHttpError(response.status, responseBody, url, readRetryAfterSeconds(response.headers));

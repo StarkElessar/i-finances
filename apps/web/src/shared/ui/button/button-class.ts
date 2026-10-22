@@ -5,7 +5,7 @@ import { cn } from '@/shared/lib';
 /**
  * Visual hierarchy variants supported by the button.
  */
-export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
+export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'danger-ghost';
 
 /**
  * Control heights shared with inputs and other interactive elements.
@@ -25,7 +25,8 @@ const variantClassByVariant: Record<ButtonVariant, string> = {
 	primary: css.variantPrimary,
 	secondary: css.variantSecondary,
 	ghost: css.variantGhost,
-	danger: css.variantDanger
+	danger: css.variantDanger,
+	'danger-ghost': css.variantDangerGhost
 };
 
 const sizeClassBySize: Record<ButtonSize, string> = {

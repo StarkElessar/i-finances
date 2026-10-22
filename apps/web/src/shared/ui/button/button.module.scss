@@ -125,6 +125,20 @@
     }
 }
 
+// Mockup `.i-btn.danger-ghost`: a quiet destructive action in a row (delete a key); the plate appears on hover only.
+.variant-danger-ghost {
+    color: var(--color-danger);
+    background-color: transparent;
+
+    &:hover:not(:disabled) {
+        background-color: var(--color-danger-soft);
+    }
+
+    &:disabled:not(.loading) {
+        background-color: transparent;
+    }
+}
+
 .size-sm {
     gap: var(--space-3);
     min-block-size: var(--control-size-sm);

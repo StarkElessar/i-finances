@@ -31,6 +31,7 @@ export {
 	resolveDisplayMode,
 	writeStoredDisplayModePreference
 } from './display-mode-preference';
+export { formatMinutesAccusative, formatMinutesGenitive } from './format-minutes';
 export {
 	amountToMinorUnits,
 	convertMinorUnitsByExchangeRate,
