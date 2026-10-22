@@ -30,6 +30,10 @@ case "$MODE" in
 esac
 
 cd "$WORKTREE"
+if [ "$MODE" = work ]; then
+	# Dependencies are installed here (outside the sandbox, from the local pnpm store) so Codex can run tests.
+	pnpm install --frozen-lockfile --offline >/dev/null 2>&1 || echo "warning: offline pnpm install failed" >&2
+fi
 "$CODEX" exec --skip-git-repo-check -s "$SANDBOX" --ephemeral -m "$MODEL" -c "model_reasoning_effort=$EFFORT" "$(cat "$PROMPT_FILE")" </dev/null >"$OUT" 2>&1 || true
 
 echo "worktree: $WORKTREE"
