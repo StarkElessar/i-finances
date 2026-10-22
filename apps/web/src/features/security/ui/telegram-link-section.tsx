@@ -76,38 +76,40 @@ export function TelegramLinkSection(props: TelegramLinkSectionProps) {
 											</Banner>
 										)}
 									</For>
-									<div class={css.actions}>
-										<Switch>
-											<Match when={current().action.kind === 'link' ? current().action : undefined} keyed>
-												{(action) => action.kind === 'link' && (
-													<ButtonLink
-														class={css.primary}
-														href={action.botUrl}
-														rel='noopener noreferrer'
-														startIcon={<Send/>}
-														target='_blank'
-														variant={action.variant}
-														onClick={() => link.openTelegram()}
-													>
-														{action.label}
-													</ButtonLink>
-												)}
-											</Match>
-											<Match when={current().action.kind === 'loading'}>
-												<Button class={css.primary} loading startIcon={<Send/>}>{LINK_BUTTON_LABEL}</Button>
-											</Match>
-											<Match when={current().action.kind === 'restart' ? current().action : undefined} keyed>
-												{(action) => action.kind === 'restart' && (
-													<Button class={css.primary} startIcon={<RefreshCw/>} onClick={() => link.start()}>
-														{action.label}
-													</Button>
-												)}
-											</Match>
-										</Switch>
-										<Show when={current().isCancellable}>
-											<Button variant='ghost' onClick={() => link.cancel()}>Отмена</Button>
-										</Show>
-									</div>
+									<Show when={current().action.kind !== 'none' || current().isCancellable}>
+										<div class={css.actions}>
+											<Switch>
+												<Match when={current().action.kind === 'link' ? current().action : undefined} keyed>
+													{(action) => action.kind === 'link' && (
+														<ButtonLink
+															class={css.primary}
+															href={action.botUrl}
+															rel='noopener noreferrer'
+															startIcon={<Send/>}
+															target='_blank'
+															variant={action.variant}
+															onClick={() => link.openTelegram()}
+														>
+															{action.label}
+														</ButtonLink>
+													)}
+												</Match>
+												<Match when={current().action.kind === 'loading'}>
+													<Button class={css.primary} loading startIcon={<Send/>}>{LINK_BUTTON_LABEL}</Button>
+												</Match>
+												<Match when={current().action.kind === 'restart' ? current().action : undefined} keyed>
+													{(action) => action.kind === 'restart' && (
+														<Button class={css.primary} startIcon={<RefreshCw/>} onClick={() => link.start()}>
+															{action.label}
+														</Button>
+													)}
+												</Match>
+											</Switch>
+											<Show when={current().isCancellable}>
+												<Button variant='ghost' onClick={() => link.cancel()}>Отмена</Button>
+											</Show>
+										</div>
+									</Show>
 									<Show when={current().showForwardHint}>
 										<Typography tone='tertiary' variant='caption'>{LINK_FORWARD_HINT}</Typography>
 									</Show>
