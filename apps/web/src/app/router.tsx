@@ -24,6 +24,7 @@ import { createResource, onMount, Show } from 'solid-js';
 
 import { AccessFailureListener } from './access/access-failure-listener';
 import { AccessGuard } from './access/access-guard';
+import { forgetSignedOutUser } from './access/forget-signed-out-user';
 
 export type AppRouterProps = {
 	authClient: AuthClient;
@@ -95,8 +96,7 @@ export function AppRouter(props: AppRouterProps) {
 	 * in here must not get it (review of U4); the same for the notice about a lost household.
 	 */
 	const handleSignedOut = (): void => {
-		pendingInvitation.clear();
-		householdLossNotice.clear();
+		forgetSignedOutUser({ householdLossNotice, pendingInvitation });
 		reloadSession();
 	};
 

@@ -1,6 +1,10 @@
 import { applyHouseholdChange, type CurrentViewer, resolveViewerAccess, type ViewerAccess, viewerFromSession } from '@/entities/viewer';
+import { HouseholdLossNoticeStore } from '@/entities/viewer/model/household-loss-notice-store';
+
+import { PendingInvitationStore } from '@/features/invitation/model/pending-invitation-store';
 
 import { applyAccessFailure } from '@/app/access/apply-access-failure';
+import { forgetSignedOutUser } from '@/app/access/forget-signed-out-user';
 import { ENTRY_PATH_BY_ACCESS, resolveRouteRedirect } from '@/app/access/route-redirect';
 
 import type { CurrentSessionResponse } from '@i-finances/contracts';
@@ -186,5 +190,32 @@ describe('applyHouseholdChange', () => {
 		});
 
 		expect(calls).toEqual(['clear-cache', 'patch:{"household":null}']);
+	});
+});
+
+describe('forgetSignedOutUser', () => {
+	it('drops the waiting invitation and the lost-household notice of the person who signs out (review of U3, U4)', () => {
+		const values = new Map<string, string>();
+		const storage = {
+			getItem: (key: string) => values.get(key) ?? null,
+			removeItem: (key: string) => {
+				values.delete(key);
+			},
+			setItem: (key: string, value: string) => {
+				values.set(key, value);
+			}
+		};
+		const pendingInvitation = new PendingInvitationStore(storage);
+		const householdLossNotice = new HouseholdLossNoticeStore(storage);
+
+		pendingInvitation.save(`${'aB3_-'.repeat(8)}xyz`, 'user-1');
+		householdLossNotice.save('user-1', 'Семья');
+
+		forgetSignedOutUser({ householdLossNotice, pendingInvitation });
+
+		// Even the same person coming back finds nothing.
+		expect(pendingInvitation.read('user-1')).toBeUndefined();
+		expect(householdLossNotice.read('user-1')).toBeUndefined();
+		expect(values.size).toBe(0);
 	});
 });
