@@ -711,6 +711,41 @@ describe('cancel', () => {
 	});
 });
 
+describe('cancel of another request', () => {
+	it('keeps the cookie of the request this browser started later, and that request still completes', async () => {
+		const harness = boot();
+		const browser = new Browser(harness);
+		const older = await browser.start();
+		const newer = await browser.start();
+		const newerSecret = browser.cookies.get(TG_COOKIE);
+
+		const cancelled = await browser.post('/api/auth/telegram/cancel', { code: older });
+
+		expect(cancelled.body).toEqual({ ok: true });
+		expect(cancelled.response.headers.getSetCookie()).toEqual([]);
+		expect(browser.cookies.get(TG_COOKIE)).toBe(newerSecret);
+
+		await deliver(harness, startMessage(ANNA, `/start ${newer}`));
+		await deliver(harness, buttonPress(ANNA, lastButtons(harness.bot).confirm));
+
+		const { body, response } = await browser.complete(newer);
+
+		expect(response.status, JSON.stringify(body)).toBe(200);
+		expect(body).toMatchObject({ status: 'confirmed' });
+	});
+
+	it('keeps the cookie when the code is unknown', async () => {
+		const browser = new Browser(boot());
+
+		await browser.start();
+
+		const cancelled = await browser.post('/api/auth/telegram/cancel', { code: UNKNOWN_CODE });
+
+		expect(cancelled.body).toEqual({ ok: true });
+		expect(cancelled.response.headers.getSetCookie()).toEqual([]);
+	});
+});
+
 describe('request checks', () => {
 	it.each(['/api/auth/telegram/start', '/api/auth/telegram/complete', '/api/auth/telegram/cancel'])(
 		'%s refuses a cross-origin request before doing anything',

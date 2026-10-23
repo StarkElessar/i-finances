@@ -85,6 +85,14 @@ export type TelegramSignInSimpleOutcome =
 	| { ok: true }
 	| { errorCode: TelegramSignInErrorCode; ok: false; retryAfterSeconds?: number };
 
+export type TelegramSignInCancelOutcome =
+	| {
+		/** The cookie was the secret of the cancelled request: it can go. Otherwise it belongs to another request. */
+		endsBrowserRequest: boolean;
+		ok: true;
+	}
+	| { errorCode: TelegramSignInErrorCode; ok: false; retryAfterSeconds?: number };
+
 export type TelegramSignInServiceDependencies = {
 	accounts: Pick<TelegramAccountRepository, 'findByTelegramId' | 'signIn'>;
 	/** Undefined while no bot token is configured; the bot side then stays silent. */
@@ -292,12 +300,15 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 		};
 	}
 
-	/** The starting browser gives up. Answers the same whether or not anything was cancelled. */
+	/**
+	 * The starting browser gives up. The public answer is the same whether or not anything was cancelled; only
+	 * `endsBrowserRequest` (never sent) tells the controller whether the cookie is the secret of this request and may go.
+	 */
 	public async cancel(
 		input: unknown,
 		secret: string | undefined,
 		metadata: TelegramSignInMetadata
-	): Promise<TelegramSignInSimpleOutcome> {
+	): Promise<TelegramSignInCancelOutcome> {
 		const limit = this.dependencies.completeRateLimiter.tryConsume(addressKey(metadata), this.now().getTime());
 
 		if (!limit.allowed) {
@@ -312,11 +323,15 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 
 		const request = await this.dependencies.requests.findByCode(parsedInput.data.code);
 
-		if (request !== undefined && telegramLoginSecretMatches(request.secretHash, secret)) {
-			await this.dependencies.requests.cancel({ id: request.id, secretHash: hashTelegramLoginSecret(secret ?? '') });
+		// The cookie holds the secret of the request this browser started last. Cancelling an older one (or an unknown
+		// code) must leave that cookie alone, or the live request would end in `browser-mismatch`.
+		if (request === undefined || !telegramLoginSecretMatches(request.secretHash, secret)) {
+			return { endsBrowserRequest: false, ok: true };
 		}
 
-		return { ok: true };
+		await this.dependencies.requests.cancel({ id: request.id, secretHash: hashTelegramLoginSecret(secret ?? '') });
+
+		return { endsBrowserRequest: true, ok: true };
 	}
 
 	/**
