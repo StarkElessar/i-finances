@@ -9,6 +9,8 @@ import {
 import { currentSessionResponseSchema } from '../src/auth';
 import {
 	createHouseholdInputSchema,
+	HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE,
+	HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
 	HOUSEHOLD_NAME_MAX_LENGTH,
 	HOUSEHOLD_REQUIRED_ERROR_CODE,
 	householdErrorCodes,
@@ -250,5 +252,37 @@ describe('start and session', () => {
 
 		expect(currentSessionResponseSchema.parse(session)).toEqual(session);
 		expect(currentSessionResponseSchema.safeParse({ ...session, isPlatformAdmin: 'yes' }).success).toBe(false);
+	});
+
+	it('the session carries canCreateHousehold, a boolean; a missing one (older fixtures) still parses', () => {
+		const session = {
+			authenticated: true,
+			canCreateHousehold: false,
+			hasPassword: false,
+			household: null,
+			isPlatformAdmin: false,
+			telegram: { username: null },
+			user: { displayName: 'Мария', id: 'maria', username: 'tg-3001' }
+		};
+		const { canCreateHousehold: _canCreateHousehold, ...older } = session;
+
+		expect(currentSessionResponseSchema.parse(session)).toEqual(session);
+		expect(currentSessionResponseSchema.parse(older)).toEqual(older);
+		expect(currentSessionResponseSchema.safeParse({ ...session, canCreateHousehold: 'no' }).success).toBe(false);
+	});
+});
+
+describe('the right to found a household', () => {
+	it('POST /api/household may answer household-creation-not-allowed with its own text', () => {
+		expect(householdErrorCodes).toContain(HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE);
+		expect(HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE).toBe('household-creation-not-allowed');
+		expect(householdErrorMessageByCode[HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE]).toBe(HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE);
+		expect(householdResultSchema.parse({
+			errorCode: 'household-creation-not-allowed',
+			message: HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
+			ok: false
+		})).toMatchObject({ errorCode: 'household-creation-not-allowed', ok: false });
+		// It is not the onboarding answer of the household routes.
+		expect(isHouseholdRequiredFailure({ errorCode: 'household-creation-not-allowed', message: 'нет', ok: false })).toBe(false);
 	});
 });

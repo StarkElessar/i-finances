@@ -14,7 +14,7 @@ import {
 	SessionService,
 	SignInMethodsRepository
 } from '@/modules/auth';
-import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
+import { HouseholdCreationPolicy, HouseholdRepository, HouseholdResolver } from '@/modules/household';
 
 import {
 	currentSessionResponseSchema,
@@ -105,6 +105,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 		new HouseholdResolver(new HouseholdRepository(database)),
 		new SignInMethodsRepository(database),
 		new PlatformAdminPolicy(new Set(['sergei'])),
+		new HouseholdCreationPolicy(database, new PlatformAdminPolicy(new Set(['sergei']))),
 		options.config ?? AUTH_CONFIG
 	);
 
@@ -144,6 +145,8 @@ describe('password session API', () => {
 
 		expect(currentSessionResponseSchema.parse(currentBody)).toEqual({
 			authenticated: true,
+			// The administrator may found a household.
+			canCreateHousehold: true,
 			hasPassword: false,
 			household: null,
 			isPlatformAdmin: true,
@@ -454,6 +457,8 @@ describe('update display name API', () => {
 
 		expect(currentSessionResponseSchema.parse(await currentResponse.json())).toEqual({
 			authenticated: true,
+			// The administrator may found a household.
+			canCreateHousehold: true,
 			hasPassword: false,
 			household: null,
 			isPlatformAdmin: true,

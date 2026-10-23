@@ -6,7 +6,7 @@ import {
 	type PlatformAdminPolicy,
 	type SignInMethodsPort
 } from '@/modules/auth';
-import type { HouseholdResolver } from '@/modules/household';
+import type { HouseholdCreationPolicy, HouseholdResolver } from '@/modules/household';
 
 import {
 	type CurrentSessionResponse,
@@ -48,6 +48,7 @@ export class AuthHttpController {
 		private readonly householdResolver: HouseholdResolver,
 		private readonly signInMethods: SignInMethodsPort,
 		private readonly platformAdmins: Pick<PlatformAdminPolicy, 'isPlatformAdmin'>,
+		private readonly householdCreation: Pick<HouseholdCreationPolicy, 'canCreateHousehold'>,
 		config: AuthConfig = getAuthConfig()
 	) {
 		this.config = config;
@@ -66,6 +67,8 @@ export class AuthHttpController {
 			const methods = await this.signInMethods.read(session.user.id);
 			const response: CurrentSessionResponse = {
 				authenticated: true,
+				// The same rule as `POST /api/household`, read on every call like the household.
+				canCreateHousehold: this.householdCreation.canCreateHousehold(session.user),
 				hasPassword: methods?.hasPassword ?? false,
 				household: household === undefined
 					? null

@@ -3,8 +3,11 @@ export {
 	DEFAULT_HOUSEHOLD_ID,
 	DEFAULT_HOUSEHOLD_NAME
 } from './default-household';
+export { hasHouseholdCreationRight } from './has-household-creation-right';
 export { HouseholdAccessRequiredError } from './household-access-required-error';
 export { HouseholdAlreadyJoinedError } from './household-already-joined-error';
+export { HouseholdCreationNotAllowedError } from './household-creation-not-allowed-error';
+export { HouseholdCreationPolicy } from './household-creation-policy';
 export {
 	HOUSEHOLD_DATA_REFERENCES,
 	type HouseholdDataReference,
@@ -46,6 +49,7 @@ export { HouseholdOwnerRequiredError } from './household-owner-required-error';
 export {
 	type CreateHouseholdWithOwnerInput,
 	type HouseholdAccessRecord,
+	type HouseholdCreation,
 	type HouseholdMemberView,
 	HouseholdRepository
 } from './household-repository';

@@ -24,6 +24,7 @@ import type { TelegramUpdate } from '@/modules/telegram';
 import {
 	appInvitationsResultSchema,
 	createAppInvitationResultSchema,
+	householdErrorMessageByCode,
 	invitationPreviewResultSchema,
 	MAX_ACTIVE_APP_INVITATIONS,
 	MAX_APP_INVITATIONS_PER_DAY
@@ -335,7 +336,8 @@ describe('sign-up with an invitation into the application, registration closed',
 		expect(appInvitationRow(id)).toMatchObject({ acceptedAt: expect.any(Date), acceptedByUserId: maria?.id, revokedAt: null });
 
 		// Onboarding: no household, not an administrator; then her own household, as its owner.
-		expect((await guest.request('GET', '/api/auth/session')).body).toMatchObject({ household: null, isPlatformAdmin: false });
+		expect((await guest.request('GET', '/api/auth/session')).body)
+			.toMatchObject({ canCreateHousehold: true, household: null, isPlatformAdmin: false });
 
 		const created = await guest.post('/api/household', { name: 'Дом Марии' });
 
@@ -887,6 +889,167 @@ describe('managing invitations into the application', () => {
 			.toMatchObject({ isPlatformAdmin: false, user: { displayName: ADMIN } });
 		expect((await member.post('/api/app-invitations', {})).response.status).toBe(404);
 		expect((await new Browser(harness, ADMIN).request('GET', '/api/auth/session')).body).toMatchObject({ isPlatformAdmin: true });
+	});
+});
+
+describe('the right to found a household (owner\'s decision 2026-10-23)', () => {
+	/** A new person signed up through Telegram with the household link of «Семья»; not joined yet. */
+	async function signUpWithHouseholdLink(harness: Harness, person: TelegramPerson): Promise<{ browser: Browser; token: string }> {
+		const { token } = await createHouseholdInvitation(harness);
+		const browser = new Browser(harness);
+		const code = await browser.start(token);
+
+		await confirmInBot(harness, code, person);
+		expect((await browser.complete(code)).body).toMatchObject({ hasHousehold: false, isNewUser: true, status: 'confirmed' });
+
+		return { browser, token };
+	}
+
+	/** A new person signed up through Telegram with an invitation into the application. */
+	async function signUpWithAppLink(harness: Harness, person: TelegramPerson): Promise<Browser> {
+		const { token } = await createAppInvitation(harness);
+		const browser = new Browser(harness);
+		const code = await browser.start(token);
+
+		await confirmInBot(harness, code, person);
+		expect((await browser.complete(code)).body).toMatchObject({ isNewUser: true, status: 'confirmed' });
+
+		return browser;
+	}
+
+	function householdCount(): number {
+		return database.select().from(households).all().length;
+	}
+
+	it('signed up with a household link and not joined: 403, the session says so, and joining by the link works', async () => {
+		const harness = boot();
+		const { browser, token } = await signUpWithHouseholdLink(harness, MARIA);
+
+		expect((await browser.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: false, household: null });
+
+		const refused = await browser.post('/api/household', { name: 'Дом Марии' });
+
+		expect(refused.response.status).toBe(403);
+		expect(refused.body).toEqual({
+			errorCode: 'household-creation-not-allowed',
+			message: householdErrorMessageByCode['household-creation-not-allowed'],
+			ok: false
+		});
+		expect(householdCount()).toBe(1);
+
+		const accepted = await browser.post('/api/invitations/accept', { token });
+
+		expect(accepted.response.status, accepted.text).toBe(200);
+		expect(accepted.body).toEqual({ household: { id: FAMILY, name: 'Семья', role: 'member' }, ok: true });
+	});
+
+	it('signed up with a household link, joined and left: still 403', async () => {
+		const harness = boot();
+		const { browser, token } = await signUpWithHouseholdLink(harness, MARIA);
+
+		expect((await browser.post('/api/invitations/accept', { token })).response.status).toBe(200);
+		expect((await browser.post('/api/household/leave')).response.status).toBe(200);
+		expect((await browser.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: false, household: null });
+
+		const refused = await browser.post('/api/household', { name: 'Дом Марии' });
+
+		expect(refused.response.status).toBe(403);
+		expect(refused.body).toMatchObject({ errorCode: 'household-creation-not-allowed' });
+		expect(householdCount()).toBe(1);
+	});
+
+	it('an existing member who accepted a household invitation and left: 403', async () => {
+		const harness = boot();
+		const member = new Browser(harness, MEMBER);
+
+		expect((await member.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: false });
+		expect((await member.post('/api/household/leave')).response.status).toBe(200);
+		expect((await member.post('/api/household', { name: 'Своё' })).response.status).toBe(403);
+	});
+
+	it('signed up with an invitation into the application: 201, even after joining a household and leaving it', async () => {
+		const harness = boot();
+		const maria = await signUpWithAppLink(harness, MARIA);
+		const { token } = await createHouseholdInvitation(harness);
+
+		expect((await maria.post('/api/invitations/accept', { token })).response.status).toBe(200);
+		expect((await maria.post('/api/household/leave')).response.status).toBe(200);
+		expect((await maria.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: true, household: null });
+
+		const created = await maria.post('/api/household', { name: 'Дом Марии' });
+
+		expect(created.response.status, created.text).toBe(201);
+		expect(created.body).toMatchObject({ household: { name: 'Дом Марии', role: 'owner' }, ok: true });
+	});
+
+	it('the administrator, by login only, without any other ground: 201; with the list emptied: 403', async () => {
+		// The administrator is not in any household and has nothing in the database that would give the right.
+		await database.delete(householdMembers).where(eq(householdMembers.userId, ADMIN));
+		await database.update(users).set({ firstHouseholdOwnerAt: null }).where(eq(users.id, ADMIN));
+
+		vi.stubEnv('PLATFORM_ADMIN_USERNAMES', '');
+
+		const withoutList = boot();
+
+		expect((await new Browser(withoutList, ADMIN).request('GET', '/api/auth/session')).body)
+			.toMatchObject({ canCreateHousehold: false });
+		expect((await new Browser(withoutList, ADMIN).post('/api/household', { name: 'Дом' })).response.status).toBe(403);
+
+		vi.stubEnv('PLATFORM_ADMIN_USERNAMES', ADMIN);
+
+		const harness = boot();
+		const admin = new Browser(harness, ADMIN);
+
+		expect((await admin.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: true, household: null });
+
+		const created = await admin.post('/api/household', { name: 'Дом' });
+
+		expect(created.response.status, created.text).toBe(201);
+	});
+
+	it('an owner from before (first_household_owner_at filled by 0018) who left a shared household: 201', async () => {
+		// «Семья» had two owners, as the old auto-provisioning made them; 0018 wrote down when each became one.
+		await database.update(householdMembers).set({ role: 'owner' }).where(eq(householdMembers.userId, MEMBER));
+		await database.update(users).set({ firstHouseholdOwnerAt: new Date(Date.now() - DAY) }).where(eq(users.id, MEMBER));
+
+		const harness = boot();
+		const member = new Browser(harness, MEMBER);
+
+		expect((await member.post('/api/household/leave')).response.status).toBe(200);
+		expect((await member.request('GET', '/api/auth/session')).body).toMatchObject({ canCreateHousehold: true, household: null });
+		expect((await member.post('/api/household', { name: 'Своё' })).response.status).toBe(201);
+	});
+
+	it('race: without the right, creating and joining at once — creating is refused, joining succeeds', async () => {
+		const harness = boot();
+		const { browser, token } = await signUpWithHouseholdLink(harness, MARIA);
+		const [created, accepted] = await Promise.all([
+			browser.post('/api/household', { name: 'Дом Марии' }),
+			browser.post('/api/invitations/accept', { token })
+		]);
+
+		expect(created.response.status).toBe(403);
+		expect(created.body).toMatchObject({ errorCode: 'household-creation-not-allowed' });
+		expect(accepted.response.status).toBe(200);
+		expect(householdCount()).toBe(1);
+		expect(database.select().from(householdMembers).where(eq(householdMembers.userId, userOfTelegram(MARIA)?.id ?? '')).all())
+			.toEqual([expect.objectContaining({ householdId: FAMILY, role: 'member' })]);
+	});
+
+	it('race: with the right, creating and joining at once — exactly one membership', async () => {
+		const harness = boot();
+		const maria = await signUpWithAppLink(harness, MARIA);
+		const { token } = await createHouseholdInvitation(harness);
+		const [created, accepted] = await Promise.all([
+			maria.post('/api/household', { name: 'Дом Марии' }),
+			maria.post('/api/invitations/accept', { token })
+		]);
+		const memberships = database.select().from(householdMembers)
+			.where(eq(householdMembers.userId, userOfTelegram(MARIA)?.id ?? ''))
+			.all();
+
+		expect(memberships).toHaveLength(1);
+		expect([created.response.status, accepted.response.status].filter((status) => status === 200 || status === 201)).toHaveLength(1);
 	});
 });
 

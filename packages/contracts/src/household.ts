@@ -84,11 +84,24 @@ export const householdDetailsSchema = householdSummarySchema.extend({
 
 export type HouseholdDetails = z.infer<typeof householdDetailsSchema>;
 
+/**
+ * `POST /api/household` refused: the caller may not found a household (owner's decision 2026-10-23,
+ * `development/decisions/app-invitations-v1.md`, section 13). Only a platform administrator, a person who signed up with
+ * an invitation into the application, and a person who is or was an owner of a household may; somebody who came with a
+ * household invitation joins a household instead. `GET /api/auth/session` tells it in advance (`canCreateHousehold`).
+ */
+export const HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE = 'household-creation-not-allowed';
+
+export const HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE
+	= 'Создать своё окружение можно только по приглашению в приложение. Чтобы вести финансы вместе с близкими, '
+		+ 'примите их приглашение в окружение.';
+
 export const householdErrorCodes = [
 	'unauthenticated',
 	'invalid-origin',
 	'invalid-input',
 	HOUSEHOLD_REQUIRED_ERROR_CODE,
+	HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE,
 	'already-in-household',
 	'owner-required',
 	'member-not-found',
@@ -104,6 +117,7 @@ export const householdErrorMessageByCode: Record<HouseholdErrorCode, string> = {
 	'invalid-origin': 'Не удалось подтвердить источник запроса. Обновите страницу и попробуйте снова.',
 	'invalid-input': 'Проверьте название окружения.',
 	[HOUSEHOLD_REQUIRED_ERROR_CODE]: HOUSEHOLD_REQUIRED_MESSAGE,
+	[HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE]: HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
 	'already-in-household': 'Вы уже состоите в окружении. Чтобы создать новое, сначала покиньте текущее.',
 	'owner-required': 'Это может сделать только владелец окружения.',
 	'member-not-found': 'Участник не найден.',

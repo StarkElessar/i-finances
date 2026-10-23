@@ -17,7 +17,14 @@ export const users = sqliteTable(
 		passwordHash: text('password_hash'),
 		isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
-		updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull()
+		updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+		/**
+		 * When the user first became an owner of any household; never cleared, so it outlives the membership (leaving,
+		 * removal, an empty household given up for an invitation). One of the grounds of the right to found a household
+		 * (`HouseholdCreationPolicy`, `app-invitations-v1.md`, section 13). Set by the creation of a household and by
+		 * `seed-auth-user.ts`; migration 0018 filled it for the owners that existed before.
+		 */
+		firstHouseholdOwnerAt: integer('first_household_owner_at', { mode: 'timestamp_ms' })
 	},
 	(table) => [
 		uniqueIndex('users_username_unique').on(table.username)

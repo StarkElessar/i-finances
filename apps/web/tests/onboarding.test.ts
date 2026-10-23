@@ -1,11 +1,17 @@
+import { subscribeToApiAccessFailures } from '@/shared/api';
+
 import { HouseholdClient } from '@/features/household/api/household-client';
 import { HouseholdInvitationClient } from '@/features/household/api/household-invitation-client';
 import { createHousehold, DEFAULT_HOUSEHOLD_NAME } from '@/features/household/model/create-household';
-import { NOT_AN_INVITATION_MESSAGE, readWelcomeForm } from '@/features/household/model/read-welcome-form';
+import { availableWelcomeChoice, NOT_AN_INVITATION_MESSAGE, readWelcomeForm } from '@/features/household/model/read-welcome-form';
 import { InvitationClient } from '@/features/invitation/api/invitation-client';
 import { parseInvitationLink } from '@/features/invitation/model/parse-invitation-link';
 
-import type { HouseholdDetails } from '@i-finances/contracts';
+import {
+	HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE,
+	HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
+	type HouseholdDetails
+} from '@i-finances/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
 const TOKEN = `${'aB3_-'.repeat(8)}xyz`;
@@ -137,6 +143,28 @@ describe('createHousehold', () => {
 
 		await expect(createHousehold(gateway, 'Семья')).resolves.toEqual({ kind: 'failed', message: 'Не удалось выполнить действие.' });
 	});
+
+	it('shows the server text when the person may not found a household', async () => {
+		const gateway = {
+			create: vi.fn().mockResolvedValue({
+				errorCode: HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE,
+				message: HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
+				ok: false
+			})
+		};
+
+		await expect(createHousehold(gateway, 'Семья'))
+			.resolves.toEqual({ kind: 'failed', message: HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE });
+	});
+});
+
+describe('availableWelcomeChoice', () => {
+	it('keeps the choice of a person who may found a household and leaves only the invitation to anybody else', () => {
+		expect(availableWelcomeChoice('create', true)).toBe('create');
+		expect(availableWelcomeChoice('invite', true)).toBe('invite');
+		expect(availableWelcomeChoice('create', false)).toBe('invite');
+		expect(availableWelcomeChoice('invite', false)).toBe('invite');
+	});
 });
 
 type Call = { body: unknown; method: string; url: string };
@@ -160,6 +188,26 @@ describe('HouseholdClient', () => {
 
 		await expect(client.create('Семья')).resolves.toMatchObject({ ok: true });
 		expect(calls).toEqual([{ body: { name: 'Семья' }, method: 'POST', url: '/api/household' }]);
+	});
+
+	it('returns 403 household-creation-not-allowed as a value, not as an access failure', async () => {
+		const failures: string[] = [];
+		const unsubscribe = subscribeToApiAccessFailures((failure) => failures.push(failure));
+		const client = new HouseholdClient({
+			fetcher: createFetcher(403, {
+				errorCode: HOUSEHOLD_CREATION_NOT_ALLOWED_ERROR_CODE,
+				message: HOUSEHOLD_CREATION_NOT_ALLOWED_MESSAGE,
+				ok: false
+			}, [])
+		});
+
+		try {
+			await expect(client.create('Семья')).resolves.toMatchObject({ errorCode: 'household-creation-not-allowed', ok: false });
+			expect(failures).toEqual([]);
+		}
+		finally {
+			unsubscribe();
+		}
 	});
 
 	it('returns 409 already-in-household as a value', async () => {

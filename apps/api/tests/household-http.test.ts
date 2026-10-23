@@ -3,8 +3,8 @@ import { HouseholdHttpController } from '@/http/household-controller';
 import type { RequestSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { householdMembers, households, telegramAccounts, users } from '@/infrastructure/database/schema';
-import { type AuthConfig, SessionRepository } from '@/modules/auth';
+import { appInvitations, householdMembers, households, telegramAccounts, users } from '@/infrastructure/database/schema';
+import { type AuthConfig, PlatformAdminPolicy, SessionRepository } from '@/modules/auth';
 import {
 	HouseholdAccessRequiredError,
 	HouseholdMembershipRepository,
@@ -13,7 +13,7 @@ import {
 	HouseholdService
 } from '@/modules/household';
 
-import { householdResultSchema } from '@i-finances/contracts';
+import { householdErrorMessageByCode, householdResultSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
@@ -34,7 +34,14 @@ const AUTH_CONFIG: AuthConfig = {
 const OWNER_ID = 'owner-user';
 const MEMBER_ID = 'member-user';
 const NEWCOMER_ID = 'newcomer-user';
+/** Signed up with an invitation into the application (`app_invitations.accepted_by_user_id`), no household yet. */
+const APP_GUEST_ID = 'app-guest-user';
+/** Was an owner once (`users.first_household_owner_at`), no household now. */
+const FORMER_OWNER_ID = 'former-owner-user';
+/** A platform administrator by login only: nothing in the database. */
+const ADMIN_ID = 'admin-user';
 const EXISTING_HOUSEHOLD_ID = 'default-household';
+const FORMER_OWNER_SINCE = new Date('2026-01-05T08:00:00.000Z');
 
 let connection: Database.Database;
 let database: AppDatabase;
@@ -75,6 +82,19 @@ beforeEach(async () => {
 	await insertUser(OWNER_ID, 'Сергей');
 	await insertUser(MEMBER_ID, 'Анна');
 	await insertUser(NEWCOMER_ID, 'Олег');
+	await insertUser(APP_GUEST_ID, 'Мария');
+	await insertUser(FORMER_OWNER_ID, 'Ирина');
+	await insertUser(ADMIN_ID, 'Админ');
+	await database.update(users).set({ firstHouseholdOwnerAt: FORMER_OWNER_SINCE }).where(eq(users.id, FORMER_OWNER_ID));
+	await database.insert(appInvitations).values({
+		acceptedAt: FIXED_DATE,
+		acceptedByUserId: APP_GUEST_ID,
+		createdAt: FIXED_DATE,
+		createdByUserId: ADMIN_ID,
+		expiresAt: new Date(FIXED_DATE.getTime() + 1000),
+		id: 'app-invitation',
+		tokenHash: 'a'.repeat(64)
+	});
 	// The state DB-3 leaves on production: the existing household with an owner and a member.
 	await database.insert(households).values({
 		baseCurrency: 'BYN',
@@ -112,7 +132,8 @@ function createHouseholdApp() {
 		householdRepository,
 		householdResolver,
 		membershipRepository: new HouseholdMembershipRepository(database, new SessionRepository(database)),
-		now: () => FIXED_DATE
+		now: () => FIXED_DATE,
+		platformAdmins: new PlatformAdminPolicy(new Set([ADMIN_ID]))
 	});
 
 	return createApiApp({
@@ -137,8 +158,13 @@ function send(method: 'GET' | 'POST' | 'PUT', userId: string | undefined, body?:
 function countRows() {
 	return {
 		households: connection.prepare('SELECT count(*) AS count FROM households').get(),
-		members: connection.prepare('SELECT household_id, user_id, role FROM household_members ORDER BY user_id').all()
+		members: connection.prepare('SELECT household_id, user_id, role FROM household_members ORDER BY user_id').all(),
+		owners: connection.prepare('SELECT id, first_household_owner_at FROM users ORDER BY id').all()
 	};
+}
+
+function firstOwnerAt(userId: string): Date | null | undefined {
+	return database.select({ at: users.firstHouseholdOwnerAt }).from(users).where(eq(users.id, userId)).get()?.at;
 }
 
 describe('HouseholdResolver', () => {
@@ -201,8 +227,10 @@ describe('GET /api/household', () => {
 });
 
 describe('POST /api/household', () => {
-	it('creates a BYN household with the caller as owner in onboarding', async () => {
-		const response = await send('POST', NEWCOMER_ID, { name: '  Наш дом ' });
+	it('creates a BYN household with the caller as owner in onboarding and writes down when they became an owner', async () => {
+		expect(firstOwnerAt(APP_GUEST_ID)).toBeNull();
+
+		const response = await send('POST', APP_GUEST_ID, { name: '  Наш дом ' });
 
 		expect(response.status).toBe(201);
 		expect(householdResultSchema.parse(await response.json())).toEqual({
@@ -210,11 +238,11 @@ describe('POST /api/household', () => {
 				baseCurrency: 'BYN',
 				id: 'new-household',
 				members: [{
-					displayName: 'Олег',
+					displayName: 'Мария',
 					joinedAt: FIXED_DATE.toISOString(),
 					role: 'owner',
 					telegramUsername: null,
-					userId: NEWCOMER_ID
+					userId: APP_GUEST_ID
 				}],
 				name: 'Наш дом',
 				role: 'owner'
@@ -223,38 +251,95 @@ describe('POST /api/household', () => {
 		});
 		expect(connection.prepare('SELECT id, name, base_currency FROM households WHERE id = ?').get('new-household'))
 			.toEqual({ base_currency: 'BYN', id: 'new-household', name: 'Наш дом' });
-		expect((await send('GET', NEWCOMER_ID)).status).toBe(200);
+		expect((await send('GET', APP_GUEST_ID)).status).toBe(200);
+		expect(firstOwnerAt(APP_GUEST_ID)).toEqual(FIXED_DATE);
 	});
 
-	it('answers 409 already-in-household with no side effects for existing owner, member and a second create', async () => {
-		const before = countRows();
+	it('writes the time of the creator only: nobody else gets the right from somebody else\'s household', async () => {
+		expect((await send('POST', APP_GUEST_ID, { name: 'Дом Марии' })).status).toBe(201);
+		expect(firstOwnerAt(APP_GUEST_ID)).toEqual(FIXED_DATE);
+		expect(firstOwnerAt(NEWCOMER_ID)).toBeNull();
+		expect(firstOwnerAt(MEMBER_ID)).toBeNull();
+		expect(firstOwnerAt(OWNER_ID)).toBeNull();
+		expect(firstOwnerAt(FORMER_OWNER_ID)).toEqual(FORMER_OWNER_SINCE);
 
-		for (const userId of [OWNER_ID, MEMBER_ID]) {
-			const response = await send('POST', userId, { name: 'Ещё одно' });
+		const refused = await send('POST', NEWCOMER_ID, { name: 'Наш дом' });
 
-			expect(response.status).toBe(409);
-			expect(await response.json()).toMatchObject({ errorCode: 'already-in-household', ok: false });
+		expect(refused.status).toBe(403);
+		expect(await refused.json()).toMatchObject({ errorCode: 'household-creation-not-allowed' });
+	});
+
+	it('each ground alone is enough: an invitation into the application, a former owner, the administrator by login', async () => {
+		for (const userId of [APP_GUEST_ID, FORMER_OWNER_ID, ADMIN_ID]) {
+			connection.prepare('DELETE FROM households WHERE id = ?').run('new-household');
+
+			const response = await send('POST', userId, { name: 'Своё' });
+
+			expect(response.status, userId).toBe(201);
+			expect(await response.json(), userId)
+				.toMatchObject({ household: { members: [{ role: 'owner', userId }], role: 'owner' }, ok: true });
 		}
 
+		// The earlier time of a former owner is kept; the administrator's is written now.
+		expect(firstOwnerAt(FORMER_OWNER_ID)).toEqual(FORMER_OWNER_SINCE);
+		expect(firstOwnerAt(ADMIN_ID)).toEqual(FIXED_DATE);
+	});
+
+	it('refuses a user without any ground with 403 household-creation-not-allowed and writes nothing', async () => {
+		const before = countRows();
+		const response = await send('POST', NEWCOMER_ID, { name: 'Наш дом' });
+
+		expect(response.status).toBe(403);
+		expect(householdResultSchema.parse(await response.json())).toEqual({
+			errorCode: 'household-creation-not-allowed',
+			message: householdErrorMessageByCode['household-creation-not-allowed'],
+			ok: false
+		});
+		expect(countRows()).toEqual(before);
+	});
+
+	it('a member is refused for the right first (not «leave first»), an owner gets 409, with no side effects', async () => {
+		const before = countRows();
+		const member = await send('POST', MEMBER_ID, { name: 'Ещё одно' });
+		const owner = await send('POST', OWNER_ID, { name: 'Ещё одно' });
+
+		expect(member.status).toBe(403);
+		expect(await member.json()).toMatchObject({ errorCode: 'household-creation-not-allowed', ok: false });
+		expect(owner.status).toBe(409);
+		expect(await owner.json()).toMatchObject({ errorCode: 'already-in-household', ok: false });
 		expect(countRows()).toEqual(before);
 
-		expect((await send('POST', NEWCOMER_ID, { name: 'Первое' })).status).toBe(201);
+		expect((await send('POST', APP_GUEST_ID, { name: 'Первое' })).status).toBe(201);
 		const afterFirst = countRows();
-		const second = await send('POST', NEWCOMER_ID, { name: 'Второе' });
+		const second = await send('POST', APP_GUEST_ID, { name: 'Второе' });
 
 		expect(second.status).toBe(409);
+		expect(await second.json()).toMatchObject({ errorCode: 'already-in-household' });
 		expect(countRows()).toEqual(afterFirst);
 	});
 
-	it('creates nothing on a cross-origin request or an invalid name', async () => {
+	it('two creations racing for one user: exactly one household', async () => {
+		const answers = await Promise.all([
+			send('POST', FORMER_OWNER_ID, { name: 'Первое' }),
+			send('POST', FORMER_OWNER_ID, { name: 'Второе' })
+		]);
+
+		expect(answers.map((answer) => answer.status).sort()).toEqual([201, 409]);
+		expect(connection.prepare('SELECT count(*) AS count FROM household_members WHERE user_id = ?').get(FORMER_OWNER_ID))
+			.toEqual({ count: 1 });
+	});
+
+	it('creates nothing on a cross-origin request, an invalid name or without a session', async () => {
 		const before = countRows();
-		const crossOrigin = await send('POST', NEWCOMER_ID, { name: 'Наш дом' }, 'https://evil.example');
-		const invalid = await send('POST', NEWCOMER_ID, { name: '   ' });
+		const crossOrigin = await send('POST', APP_GUEST_ID, { name: 'Наш дом' }, 'https://evil.example');
+		const invalid = await send('POST', APP_GUEST_ID, { name: '   ' });
+		const anonymous = await send('POST', undefined, { name: 'Наш дом' });
 
 		expect(crossOrigin.status).toBe(403);
 		expect(await crossOrigin.json()).toMatchObject({ errorCode: 'invalid-origin' });
 		expect(invalid.status).toBe(400);
 		expect(await invalid.json()).toMatchObject({ errorCode: 'invalid-input', fieldErrors: { name: expect.any(String) } });
+		expect(anonymous.status).toBe(401);
 		expect(countRows()).toEqual(before);
 	});
 
@@ -266,7 +351,7 @@ describe('POST /api/household', () => {
 			CREATE TRIGGER simulate_concurrent_join BEFORE INSERT ON households
 			BEGIN
 				INSERT INTO household_members (household_id, user_id, role, joined_at)
-				VALUES ('${EXISTING_HOUSEHOLD_ID}', '${NEWCOMER_ID}', 'member', 0);
+				VALUES ('${EXISTING_HOUSEHOLD_ID}', '${APP_GUEST_ID}', 'member', 0);
 			END;
 		`);
 
@@ -275,9 +360,23 @@ describe('POST /api/household', () => {
 			createdAt: FIXED_DATE,
 			householdId: 'racing-household',
 			name: 'Гонка',
-			ownerUserId: NEWCOMER_ID
-		})).toBeUndefined();
+			ownerIsPlatformAdmin: false,
+			ownerUserId: APP_GUEST_ID
+		})).toEqual({ kind: 'already-in-household' });
 		expect(connection.prepare('SELECT count(*) AS count FROM households WHERE id = ?').get('racing-household')).toEqual({ count: 0 });
+		expect(firstOwnerAt(APP_GUEST_ID)).toBeNull();
+	});
+
+	it('the repository refuses without a ground unless told the owner is an administrator', async () => {
+		const repository = new HouseholdRepository(database);
+		const input = { baseCurrency: 'BYN' as const, createdAt: FIXED_DATE, name: 'Прямо', ownerUserId: NEWCOMER_ID };
+
+		expect(repository.createWithOwner({ ...input, householdId: 'refused', ownerIsPlatformAdmin: false }))
+			.toEqual({ kind: 'not-allowed' });
+		expect(connection.prepare('SELECT count(*) AS count FROM households WHERE id = ?').get('refused')).toEqual({ count: 0 });
+		expect(firstOwnerAt(NEWCOMER_ID)).toBeNull();
+		expect(repository.createWithOwner({ ...input, householdId: 'allowed', ownerIsPlatformAdmin: true }))
+			.toMatchObject({ household: { id: 'allowed', role: 'owner' }, kind: 'created' });
 	});
 });
 

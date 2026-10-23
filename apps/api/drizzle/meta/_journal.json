@@ -127,6 +127,13 @@
       "when": 1792679297536,
       "tag": "0017_app_invitations",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1792759413595,
+      "tag": "0018_household_creation_right",
+      "breakpoints": true
     }
   ]
 }

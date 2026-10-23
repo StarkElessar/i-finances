@@ -12,11 +12,13 @@ import { copyMigrationsBefore } from './support/copy-migrations-before';
 
 /**
  * Migration 0017 (`development/decisions/app-invitations-v1.md`), run the way production runs it: a database at
- * 0016 filled with data, then `applyMigrations` over `./drizzle`. 0017 only adds: the table `app_invitations` and two
- * nullable columns (`household_invitations.registered_user_id`, `telegram_login_requests.invitation_token_hash`)
- * through `ALTER TABLE ... ADD`, so no table is rebuilt and no row can be lost.
+ * 0016 filled with data, then `applyMigrations` over `./drizzle` up to and including 0017. 0017 only adds: the table
+ * `app_invitations` and two nullable columns (`household_invitations.registered_user_id`,
+ * `telegram_login_requests.invitation_token_hash`) through `ALTER TABLE ... ADD`, so no table is rebuilt and no row can
+ * be lost. 0018 (the right to found a household) has its own test (`household-creation-right-migration.test.ts`).
  */
 const MIGRATION_UNDER_TEST = '0017_app_invitations';
+const FIRST_LATER_MIGRATION = '0018_household_creation_right';
 const T = 1_792_000_000_000;
 
 type Row = Record<string, number | string | null>;
@@ -24,6 +26,8 @@ type SchemaObject = { name: string; sql: string | null; tbl_name: string; type: 
 
 let connection: Database.Database;
 let folderBefore: string;
+/** `./drizzle` up to and including 0017. */
+let folderRelease: string;
 
 function insertRows(table: string, rows: Row[]): void {
 	for (const row of rows) {
@@ -106,6 +110,7 @@ function migrateToPrevious() {
 
 beforeEach(() => {
 	folderBefore = copyMigrationsBefore(MIGRATION_UNDER_TEST);
+	folderRelease = copyMigrationsBefore(FIRST_LATER_MIGRATION);
 	connection = new Database(':memory:');
 	connection.pragma('foreign_keys = ON');
 });
@@ -113,6 +118,7 @@ beforeEach(() => {
 afterEach(() => {
 	connection.close();
 	rmSync(folderBefore, { force: true, recursive: true });
+	rmSync(folderRelease, { force: true, recursive: true });
 });
 
 describe('migration 0017: invitations into the application', () => {
@@ -120,7 +126,7 @@ describe('migration 0017: invitations into the application', () => {
 		const database = migrateToPrevious();
 		const before = dumpTables();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const after = dumpTables();
 
@@ -143,7 +149,7 @@ describe('migration 0017: invitations into the application', () => {
 		const database = migrateToPrevious();
 		const before = readSchemaObjects();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const after = readSchemaObjects();
 		const changed = new Set(['household_invitations', 'telegram_login_requests']);
@@ -199,7 +205,7 @@ describe('migration 0017: invitations into the application', () => {
 	it('enforces the new constraints', () => {
 		const database = migrateToPrevious();
 
-		applyMigrations(database, connection, './drizzle');
+		applyMigrations(database, connection, folderRelease);
 
 		const invitation = { created_at: T, created_by_user_id: 'stark', expires_at: T + 1000 };
 

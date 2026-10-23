@@ -8,6 +8,7 @@ import { createFakeSecurityClient } from './security-story-fixtures';
 const CODE = 'abcdefghijklmnopqrstuvwxyzABCDEF';
 
 const VIEWER = {
+	canCreateHousehold: true,
 	displayName: 'Алексей',
 	hasPassword: true,
 	household: { id: 'household', name: 'Семья', role: 'owner' },

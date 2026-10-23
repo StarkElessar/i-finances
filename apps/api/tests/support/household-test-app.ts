@@ -5,7 +5,7 @@ import { CookieSessionResolver } from '@/http/session-resolver';
 import type { AppDatabase } from '@/infrastructure/database/client';
 import { householdMembers, households, users } from '@/infrastructure/database/schema';
 import { AppInvitationRepository } from '@/modules/app-invitation';
-import { type AuthConfig, FixedWindowRateLimiter, SessionRepository, SessionService } from '@/modules/auth';
+import { type AuthConfig, FixedWindowRateLimiter, PlatformAdminPolicy, SessionRepository, SessionService } from '@/modules/auth';
 import {
 	HouseholdInvitationRepository,
 	HouseholdInvitationService,
@@ -16,6 +16,8 @@ import {
 } from '@/modules/household';
 import { loadTelegramMessages, type TelegramBotClient } from '@/modules/telegram';
 import { HouseholdMemberJoinedNotifier, TelegramAccountRepository } from '@/modules/telegram-auth';
+
+import { and, eq, isNull } from 'drizzle-orm';
 
 import { FakeTelegramBotClient } from './fake-telegram-bot-client';
 
@@ -58,7 +60,7 @@ export type TestRequest = {
 export function createHouseholdTestApp(
 	database: AppDatabase,
 	ttlMilliseconds = DEFAULT_INVITATION_TTL,
-	options: { botClient?: TelegramBotClient | null } = {}
+	options: { botClient?: TelegramBotClient | null; platformAdminUsernames?: readonly string[] } = {}
 ) {
 	const clock = { now: new Date('2026-10-18T10:00:00.000Z') };
 	const botClient = options.botClient === null ? undefined : options.botClient ?? new FakeTelegramBotClient();
@@ -83,7 +85,8 @@ export function createHouseholdTestApp(
 		householdRepository,
 		householdResolver,
 		membershipRepository: new HouseholdMembershipRepository(database, sessionRepository),
-		now
+		now,
+		platformAdmins: new PlatformAdminPolicy(new Set(options.platformAdminUsernames ?? []))
 	});
 	const invitationService = new HouseholdInvitationService({
 		acceptRateLimiter,
@@ -166,5 +169,13 @@ export async function insertHousehold(
 			role: member.role,
 			userId: member.userId
 		})));
+	}
+
+	// As in the application: every owner has the time they became one (written by the creation of a household and by
+	// migration 0018), so an owner who leaves keeps the right to found a household.
+	for (const member of members.filter(({ role }) => role === 'owner')) {
+		await database.update(users)
+			.set({ firstHouseholdOwnerAt: at })
+			.where(and(eq(users.id, member.userId), isNull(users.firstHouseholdOwnerAt)));
 	}
 }
