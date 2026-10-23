@@ -15,7 +15,76 @@
 
 Источники: макет https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1, решения в `development/ui-mockup.md`, аудит в `development/ui-audit.md`, реестр «доска → код» в `.claude/skills/ifinances-ui/SKILL.md`, задачи в Ticket Board (IF-N).
 
-## Срез кода на 2026-10-17
+## Срез кода на 2026-10-23
+
+Пересчитано командами из корня репозитория. Это состояние файлов, а не подтверждение деплоя или приёмки макета; решения и исходный срез сохранены ниже.
+
+| Что считаем | Результат | Граница подсчёта |
+|---|---|---|
+| Таблицы БД | 21 | Объявления `sqliteTable(...)` в `apps/api/src/infrastructure/database/schema/*.ts`, не число файлов схемы |
+| Миграции | 18 | `entries.length` в `apps/api/drizzle/meta/_journal.json`, 0000–0017; SQL-файлов верхнего уровня тоже 18 |
+| Файлы историй | 46 | `apps/web/src/**/*.stories.tsx`: 36 в `shared/ui`, 10 в `features` |
+| Компоненты `shared/ui` | 35 групп | Непосредственные каталоги `apps/web/src/shared/ui`; в публичном `index.ts` 38 экспортов компонентов: `ButtonLink`, `ChoiceCardGroup`, `ListRow` делят каталоги с основными компонентами. `createDragAction` — helper, не компонент |
+| Исключения линта | 7 уникальных файлов, 8 пар «правило–файл» | `lint/literal-exceptions.js`: Stylelint — 4 группы, 6 пар, 5 файлов; ESLint — 2 группы, 2 пары, 2 файла. `drag-action.module.scss` исключён по двум правилам |
+| Маршруты API | 78 | Явные пары «метод–путь» в `apps/api/src/app.ts`, включая условные dev/webhook и публичный OPTIONS; полный список и условия — в `docs/architecture.md` |
+
+- SCSS: 92 файла, 9561 строка в `apps/web/src`. Вне `shared/styles`: 235 вхождений чисел с `px`, 224 вызова `fn.rem(N)` с одним числовым аргументом, 3 hex, 26 объявлений `z-index`, 1 вызов `media-mx`/`media-mn-mx`; во всех TSX — 11 `style={{`. Это текстовые вхождения (включая комментарии), а не число нарушений линта.
+- Брейкпоинты в `shared/styles/mixins.scss` именованные: `sm` 640, `md` 960, `lg` 1280. Container queries уже есть: `columns-4` 600, `sort-label` 700, `columns-5` 860, `columns-7` 1100; используются в `operations-workspace.module.scss` и `operations-table.module.scss`.
+- В `tokens.scss` есть `--z-raised`, `--z-sticky`, `--z-nav`, `--z-drawer`, `--z-modal`, `--z-popover`, `--z-toast`; `--font-size-label` 12 px, шрифт IBM Plex Sans, серий категорий 10 плюс `other` в обеих темах. Шрифт подключается через `shared/styles/fonts.scss`.
+- `shared/lib/currency-formatter.ts` по-прежнему возвращает строку со знаком BYN `Б̶`; SVG-компонентов `money`/`currency-sign` в `shared/ui` нет. `Intl.NumberFormat` вне `shared/lib` остаётся в `views/receipts/page.tsx` и `views/statistics/ui/compare-tab/compare-tab.tsx` (два исключения ESLint).
+- Крупные страницы: `views/home/page.tsx` — 1355 строк, `views/receipts/page.tsx` — 1095 строк. Storybook установлен: конфигурация `apps/web/.storybook/main.ts`, команды `pnpm storybook` и `pnpm build-storybook`; web остаётся на Vite `^7.3.6` (`apps/web/package.json`).
+- «Безопасность» включена в `widgets/app-header/ui/profile-menu.tsx`; `features/security` содержит ключи, пароль, сеансы и Telegram. В API есть `GET /api/security/passkeys`, `DELETE /api/security/passkeys/:id`, смена пароля и управление сеансами (точные пути — в `docs/architecture.md`).
+- `modules/household/household-resolver.ts` содержит один класс и ничего не создаёт. Для пользователя без членства `requireForUser` бросает `HouseholdAccessRequiredError`; HTTP отвечает 403 `household-required`, сессия возвращает `household: null`. `users.password_hash` nullable, email в схеме нет. Реализованы web-onboarding и вход через Telegram; API поддерживает приглашения в окружение и приложение. Регистрация по текущему решению закрыта без живого приглашения.
+- Текущие списки API-модулей и web `features/entities/widgets/views` — в `docs/architecture.md`; полный список переменных — в `docs/deployment.md`. Шаблон — корневой `.env.example`, файла `apps/api/.env.example` нет.
+
+Команды для счётчиков (из корня, без открытия БД):
+
+```sh
+python3 - <<'PYCOUNT'
+from pathlib import Path
+import json
+import re
+
+schema = Path('apps/api/src/infrastructure/database/schema')
+print('tables', sum(len(re.findall(r"sqliteTable\(\s*['\"]([^'\"]+)", p.read_text())) for p in schema.glob('*.ts')))
+print('migrations', len(json.loads(Path('apps/api/drizzle/meta/_journal.json').read_text())['entries']))
+print('sql files', len(list(Path('apps/api/drizzle').glob('*.sql'))))
+root = Path('apps/web/src')
+stories = list(root.rglob('*.stories.tsx'))
+print('stories', len(stories), 'ui', sum('/shared/ui/' in str(p) for p in stories), 'features', sum('/features/' in str(p) for p in stories))
+print('ui directories', sum(p.is_dir() for p in (root / 'shared/ui').iterdir()))
+ui = (root / 'shared/ui/index.ts').read_text()
+print('ui component exports', sum(len(re.findall(r'\b[A-Z][A-Za-z0-9]*\b', re.sub(r'\btype\s+\w+', '', m))) for m in re.findall(r'^export \{ ([^}]+) \}', ui, re.M)))
+print('routes', len(re.findall(r"app\.(get|post|put|delete|options)\(\s*'([^']+)'", Path('apps/api/src/app.ts').read_text())))
+scss = list(root.rglob('*.scss'))
+outside = [p for p in scss if not p.is_relative_to(root / 'shared/styles')]
+print('scss files/lines', len(scss), sum(len(p.read_text().splitlines()) for p in scss))
+for name, pattern, files in [
+    ('px', r'(?<![\w-])-?\d+(?:\.\d+)?px\b', outside),
+    ('rem', r'fn\.rem\(\s*-?\d+(?:\.\d+)?\s*\)', outside),
+    ('hex', r'(?<![\w-])\#[0-9a-fA-F]{3,8}\b', outside),
+    ('z-index', r'\bz-index\s*:', outside),
+    ('media-mx/mn-mx', r'@include\s+mx\.media-(?:mx|mn-mx)\(', outside),
+    ('style', r'\bstyle=\{\{', list(root.rglob('*.tsx'))),
+]:
+    print(name, sum(len(re.findall(pattern, p.read_text())) for p in files))
+for name in ['views/home/page.tsx', 'views/receipts/page.tsx']:
+    print(name, len((root / name).read_text().splitlines()))
+PYCOUNT
+node --input-type=module <<'JSCOUNT'
+import { stylelintExceptions, eslintExceptions } from './lint/literal-exceptions.js';
+for (const [name, entries] of Object.entries({ stylelintExceptions, eslintExceptions })) {
+    const files = entries.flatMap((entry) => entry.files);
+    console.log(name, { groups: entries.length, ruleFilePairs: files.length, uniqueFiles: new Set(files).size });
+}
+console.log('all unique files', new Set([...stylelintExceptions, ...eslintExceptions].flatMap((entry) => entry.files)).size);
+JSCOUNT
+```
+
+<details>
+<summary>Срез на 2026-10-17 — история исходной оценки, не текущее состояние</summary>
+
+### Исторический срез на 2026-10-17
 
 Проверено по репозиторию, чтобы оценки были реальными.
 
@@ -29,6 +98,8 @@
 - Storybook не установлен.
 - «Безопасность»: пункт в `widgets/app-header/ui/profile-menu.tsx` выключен. В API есть только регистрация и вход по ключу (`/api/auth/passkey/*`), вход и выход по паролю, смена имени. **Поля для раздела в БД уже есть:** `sessions.last_seen_at` (обновляется с троттлингом в `session-service.ts`), `ip_address`, `user_agent`; `webauthn_credentials.device_name`, `last_used_at`. Миграция схемы, скорее всего, не нужна.
 - Household: таблицы `households`, `household_members` (роли `owner`/`member`) есть. `household-resolver.ts` создаёт `default-household` и бросает ошибку, если окружений несколько. В этом файле три класса, что нарушает правило «один класс — один файл»; разнести в IF-10. У `users` нет email, `password_hash` обязателен.
+
+</details>
 
 ## Этапы
 
