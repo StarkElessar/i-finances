@@ -96,11 +96,35 @@ describe('TelegramLoginRequestRepository: every transition changes exactly one r
 		expect(status()).toBe('used');
 	});
 
-	it('cancels a pending or confirmed request of the same secret, never a used one', async () => {
+	it('cancels a pending request of the same secret once', async () => {
 		expect(await requests.cancel({ id: 'request-1', secretHash: hashTelegramLoginSecret('other') })).toBe(false);
+		expect(status()).toBe('pending');
 		expect(await requests.cancel({ id: 'request-1', secretHash: hashTelegramLoginSecret(SECRET) })).toBe(true);
 		expect(status()).toBe('rejected');
 		expect(await requests.cancel({ id: 'request-1', secretHash: hashTelegramLoginSecret(SECRET) })).toBe(false);
+	});
+
+	it('cancels a confirmed request, which then can no longer be consumed', async () => {
+		const secretHash = hashTelegramLoginSecret(SECRET);
+
+		await requests.confirm({ id: 'request-1', identity: ANNA, now: LATER });
+
+		expect(await requests.cancel({ id: 'request-1', secretHash: hashTelegramLoginSecret('other') })).toBe(false);
+		expect(status()).toBe('confirmed');
+		expect(await requests.cancel({ id: 'request-1', secretHash })).toBe(true);
+		expect(status()).toBe('rejected');
+		expect(requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(false);
+		expect(status()).toBe('rejected');
+	});
+
+	it('never cancels a used request', async () => {
+		const secretHash = hashTelegramLoginSecret(SECRET);
+
+		await requests.confirm({ id: 'request-1', identity: ANNA, now: LATER });
+		requests.consume({ id: 'request-1', now: LATER, secretHash });
+
+		expect(await requests.cancel({ id: 'request-1', secretHash })).toBe(false);
+		expect(status()).toBe('used');
 	});
 
 	it('removes requests older than the given moment only', async () => {

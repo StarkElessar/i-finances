@@ -711,6 +711,51 @@ describe('cancel', () => {
 	});
 });
 
+describe('cancel after «Войти»', () => {
+	it('ends a confirmed request: the browser cannot complete it and no session or user appears', async () => {
+		const harness = boot();
+		const browser = new Browser(harness);
+		const code = await confirmInBot(harness, browser);
+		const secret = browser.cookies.get(TG_COOKIE) ?? '';
+
+		expect(requestRow(code)?.status).toBe('confirmed');
+
+		const cancelled = await browser.post('/api/auth/telegram/cancel', { code });
+
+		expect(cancelled.body).toEqual({ ok: true });
+		expect(requestRow(code)?.status).toBe('rejected');
+
+		// A second tab with the same secret, which the cancel did not reach.
+		const tab = new Browser(harness);
+
+		tab.cookies.set(TG_COOKIE, secret);
+
+		const { body, response } = await tab.complete(code);
+
+		expect(response.status).toBe(410);
+		expect(body).toMatchObject({ errorCode: 'login-rejected' });
+		expect(await database.select().from(sessions)).toEqual([]);
+		expect(await database.select().from(users)).toEqual([]);
+	});
+
+	it('leaves a used request used', async () => {
+		const harness = boot();
+		const browser = new Browser(harness);
+		const code = await confirmInBot(harness, browser);
+		const secret = browser.cookies.get(TG_COOKIE) ?? '';
+
+		expect((await browser.complete(code)).response.status).toBe(200);
+
+		const late = new Browser(harness);
+
+		late.cookies.set(TG_COOKIE, secret);
+		await late.post('/api/auth/telegram/cancel', { code });
+
+		expect(requestRow(code)?.status).toBe('used');
+		expect(await database.select().from(sessions)).toHaveLength(1);
+	});
+});
+
 describe('cancel of another request', () => {
 	it('keeps the cookie of the request this browser started later, and that request still completes', async () => {
 		const harness = boot();
