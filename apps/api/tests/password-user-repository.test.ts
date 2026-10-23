@@ -146,6 +146,28 @@ describe('PasswordUserRepository.replacePasswordAndRotateSessions', () => {
 		expect((await sessionIds()).filter((id) => id.startsWith('alice'))).toEqual([]);
 	});
 
+	it('is one transaction: when the last step fails, the old password and every session stay', async () => {
+		const before = JSON.stringify({
+			sessions: await database.select().from(sessions).orderBy(sessions.id),
+			users: await database.select().from(users).orderBy(users.id)
+		});
+
+		// The rotated token collides with a token of Bob's session: the final UPDATE breaks the unique `token_hash`.
+		expect(() => repository.replacePasswordAndRotateSessions({
+			expectedPasswordHash: 'hash-before',
+			keepSessionId: 'alice-session-1',
+			newPasswordHash: 'hash-after',
+			now: LATER_DATE,
+			rotatedTokenHash: 'bob-token-1',
+			userId: 'alice'
+		})).toThrow(/UNIQUE/u);
+
+		expect(JSON.stringify({
+			sessions: await database.select().from(sessions).orderBy(sessions.id),
+			users: await database.select().from(users).orderBy(users.id)
+		})).toBe(before);
+	});
+
 	it('does nothing when the stored hash is not the one that was verified', async () => {
 		const replacement = repository.replacePasswordAndRotateSessions({
 			expectedPasswordHash: 'stale-hash',

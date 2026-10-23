@@ -172,6 +172,19 @@ describe('PasswordSignInService accounts without a usable password', () => {
 		consoleError.mockRestore();
 	});
 
+	it('keeps the dummy hash in step with what PasswordService produces: variant, version, cost and lengths', async () => {
+		// `$argon2id$v=19$m=…,t=…,p=…$<salt>$<hash>`: without this a change of the cost in `password-service.ts` alone
+		// would make unknown users answer faster than wrong passwords again.
+		const shapeOf = (hash: string) => {
+			const [, variant, version, cost, salt, digest] = hash.split('$');
+
+			return { cost, digestLength: digest.length, saltLength: salt.length, variant, version };
+		};
+		const fresh = await new PasswordService().hash('any-password-123');
+
+		expect(shapeOf(DUMMY_PASSWORD_HASH)).toEqual(shapeOf(fresh));
+	});
+
 	it('keeps the dummy hash readable by the real verifier with the real cost parameters', async () => {
 		expect(hasUsablePassword(DUMMY_PASSWORD_HASH)).toBe(true);
 		expect(DUMMY_PASSWORD_HASH).toContain('$argon2id$v=19$m=19456,t=2,p=1$');
