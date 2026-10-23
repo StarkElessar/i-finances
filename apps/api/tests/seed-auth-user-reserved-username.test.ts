@@ -23,7 +23,7 @@ describe('seed-auth-user.ts', () => {
 		let failure: { status: number | null; stderr: string } | undefined;
 
 		try {
-			execFileSync('./node_modules/.bin/tsx', ['scripts/seed-auth-user.ts'], {
+			execFileSync(process.execPath, ['--import', 'tsx', 'scripts/seed-auth-user.ts'], {
 				env: {
 					...process.env,
 					DATABASE_URL: ':memory:',
