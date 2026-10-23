@@ -327,6 +327,34 @@ describe('a user who cannot be reset', () => {
 		expect(telegramIds()).toEqual(['1001', '2002']);
 	});
 
+	it('is refused when the last passkey goes while the operator types the username', async () => {
+		await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'anna'));
+		await database.insert(webauthnCredentials).values({
+			createdAt: NOW, deviceType: 'singleDevice', id: 'key-1', publicKey: 'pk', userId: 'anna'
+		});
+
+		const { terminal: io, transcript } = terminal([]);
+		const exitCode = await runResetUserTelegram({
+			argv: ['anna', '--apply', '--end-sessions'],
+			reset,
+			terminal: {
+				...io,
+				ask: async (question) => {
+					await io.ask(question);
+					// Meanwhile, in «Безопасность»: the API lets her delete the last key because Telegram is still linked.
+					database.delete(webauthnCredentials).where(eq(webauthnCredentials.id, 'key-1')).run();
+
+					return 'anna';
+				}
+			}
+		});
+
+		expect(exitCode).toBe(EXIT_FAILED);
+		expect(everything(transcript)).toContain('no way to sign in');
+		expect(telegramIds()).toEqual(['1001', '2002', '3003']);
+		expect(sessionIds()).toEqual(['anna-1', 'anna-2', 'boris-1', 'olga-1']);
+	});
+
 	it('with a passkey but no password can be reset without the override', async () => {
 		await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'anna'));
 		await database.insert(webauthnCredentials).values({
@@ -364,14 +392,14 @@ describe('command line', () => {
 describe('UserTelegramReset.apply', () => {
 	it('leaves everything alone when the link is no longer the one from the plan', () => {
 		const before = snapshot();
-		const result = reset.apply({ endSessions: true, expectedTelegramId: '9999', userId: 'anna' });
+		const result = reset.apply({ allowLockout: false, endSessions: true, expectedTelegramId: '9999', userId: 'anna' });
 
-		expect(result).toEqual({ accountRemoved: false, requestsRevoked: 0, sessionsEnded: 0 });
+		expect(result).toEqual({ accountRemoved: false, lockoutRefused: false, requestsRevoked: 0, sessionsEnded: 0 });
 		expect(snapshot()).toBe(before);
 	});
 
 	it('does not remove a link by the Telegram id alone when the user id is another', () => {
-		const result = reset.apply({ endSessions: false, expectedTelegramId: '1001', userId: 'olga' });
+		const result = reset.apply({ allowLockout: false, endSessions: false, expectedTelegramId: '1001', userId: 'olga' });
 
 		expect(result.accountRemoved).toBe(false);
 		expect(telegramIds()).toEqual(['1001', '2002', '3003']);
@@ -382,7 +410,7 @@ describe('UserTelegramReset.apply', () => {
 
 		connection.exec('CREATE TRIGGER fail_session_delete BEFORE DELETE ON sessions BEGIN SELECT RAISE(ABORT, \'boom\'); END;');
 
-		expect(() => reset.apply({ endSessions: true, expectedTelegramId: '1001', userId: 'anna' })).toThrow();
+		expect(() => reset.apply({ allowLockout: false, endSessions: true, expectedTelegramId: '1001', userId: 'anna' })).toThrow();
 		expect(snapshot()).toBe(before);
 	});
 

@@ -1,4 +1,4 @@
-import type { AppDatabase } from '@/infrastructure/database/client';
+import type { AppDatabase, AppTransaction } from '@/infrastructure/database/client';
 import { sessions, telegramAccounts, telegramLoginRequests, users, webauthnCredentials } from '@/infrastructure/database/schema';
 import { hasUsablePassword, SessionRepository } from '@/modules/auth';
 
@@ -8,6 +8,11 @@ import type { TelegramResetPlan, TelegramResetResult } from './telegram-reset-pl
 import { TelegramResetUserNotFoundError } from './telegram-reset-user-not-found-error';
 
 export type ApplyTelegramResetInput = {
+	/**
+	 * `--allow-lockout`: remove the link even when the user has no password and no passkey. Without it the transaction
+	 * checks the other ways in itself, so a passkey deleted while the operator was typing still counts.
+	 */
+	allowLockout: boolean;
 	/** Also delete every session row of the user. */
 	endSessions: boolean;
 	/** The Telegram account the operator saw in the plan: a link that has changed since is left alone. */
@@ -94,9 +99,20 @@ export class UserTelegramReset {
 	 *
 	 * The link is deleted only if it is still the account from the plan (`user_id` and `telegram_id` both match). If it
 	 * changed meanwhile, nothing is touched and `accountRemoved` is false.
+	 *
+	 * Without `allowLockout` the user must still have a usable password or a passkey, read inside this transaction: the
+	 * plan was read before the operator typed the username, and the API lets a user with Telegram delete the last
+	 * passkey meanwhile. `immediate` takes the write lock at the start, so the API cannot delete a passkey between this
+	 * check and the removal of the link. When the check fails nothing is touched and `lockoutRefused` is true.
 	 */
 	public apply(input: ApplyTelegramResetInput): TelegramResetResult {
 		return this.database.transaction((transaction): TelegramResetResult => {
+			const nothing = { accountRemoved: false, lockoutRefused: false, requestsRevoked: 0, sessionsEnded: 0 };
+
+			if (!input.allowLockout && !this.keepsAnotherWayIn(transaction, input.userId)) {
+				return { ...nothing, lockoutRefused: true };
+			}
+
 			const removal = transaction.delete(telegramAccounts)
 				.where(and(
 					eq(telegramAccounts.userId, input.userId),
@@ -105,7 +121,7 @@ export class UserTelegramReset {
 				.run();
 
 			if (removal.changes !== 1) {
-				return { accountRemoved: false, requestsRevoked: 0, sessionsEnded: 0 };
+				return nothing;
 			}
 
 			// Rejected, not deleted: a browser still holding the secret gets «gone» instead of an unknown request.
@@ -115,8 +131,19 @@ export class UserTelegramReset {
 				.run();
 			const sessionsEnded = input.endSessions ? this.sessionRepository.deleteByUserId(input.userId, transaction) : 0;
 
-			return { accountRemoved: true, requestsRevoked: revocation.changes, sessionsEnded };
-		});
+			return { accountRemoved: true, lockoutRefused: false, requestsRevoked: revocation.changes, sessionsEnded };
+		}, { behavior: 'immediate' });
+	}
+
+	/** A usable password or at least one passkey, as stored now. */
+	private keepsAnotherWayIn(transaction: AppTransaction, userId: string): boolean {
+		const user = transaction.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, userId)).get();
+		const passkeys = transaction.select({ value: count() })
+			.from(webauthnCredentials)
+			.where(eq(webauthnCredentials.userId, userId))
+			.get();
+
+		return hasUsablePassword(user?.passwordHash) || (passkeys?.value ?? 0) > 0;
 	}
 }
 

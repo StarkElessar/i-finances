@@ -277,7 +277,7 @@ describe('TelegramSignInService.complete against a parallel telegram:reset (Р10
 			signIn: async (input) => {
 				const resolution = await accounts.signIn(input);
 
-				reset.apply({ endSessions: true, expectedTelegramId: ANNA.telegramId, userId: 'anna' });
+				reset.apply({ allowLockout: false, endSessions: true, expectedTelegramId: ANNA.telegramId, userId: 'anna' });
 
 				return resolution;
 			}

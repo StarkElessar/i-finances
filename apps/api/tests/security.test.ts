@@ -21,9 +21,11 @@ import {
 	SecurityService,
 	SessionRepository,
 	SessionService,
+	type SignInMethodsPort,
 	SignInMethodsRepository,
 	WebAuthnCredentialRepository
 } from '@/modules/auth';
+import { UserTelegramReset } from '@/modules/telegram-auth';
 
 import {
 	changePasswordResultSchema,
@@ -118,6 +120,7 @@ function createContext(options: {
 	randomRotatedTokens?: boolean;
 	rateLimiter?: LoginRateLimiter;
 	securityNow?: Date;
+	signInMethods?: SignInMethodsPort;
 	telegramSignInAvailable?: boolean;
 } = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
@@ -134,7 +137,7 @@ function createContext(options: {
 		passwordService,
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionRepository: new SessionRepository(database),
-		signInMethods: new SignInMethodsRepository(database),
+		signInMethods: options.signInMethods ?? new SignInMethodsRepository(database),
 		userRepository: new PasswordUserRepository(database)
 	});
 	const app = createApiApp({
@@ -415,6 +418,38 @@ describe('passkeys', () => {
 			await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'alice'));
 			await linkTelegram('alice', '1001');
 			const { app, sessionService } = createContext({ telegramSignInAvailable: false });
+			const alice = await signIn(sessionService, app, 'alice');
+			await addPasskey('alice', 'key-1');
+
+			const refused = await alice.request('/api/security/passkeys/key-1', { method: 'DELETE' });
+
+			expect(refused.status).toBe(409);
+			expect(refused.body).toMatchObject({ errorCode: 'last-passkey' });
+			expect(await countPasskeys('alice')).toBe(1);
+		});
+
+		it('refuses when telegram:reset unlinks Telegram between reading the ways in and deleting the last key', async () => {
+			await database.update(users).set({ passwordHash: null }).where(eq(users.id, 'alice'));
+			await linkTelegram('alice', '1001');
+			const methods = new SignInMethodsRepository(database);
+			const { app, sessionService } = createContext({
+				signInMethods: {
+					read: async (userId) => {
+						const read = await methods.read(userId);
+
+						// The operator's reset (another process, Р10) commits right after the API looked.
+						new UserTelegramReset(database).apply({
+							allowLockout: false,
+							endSessions: false,
+							expectedTelegramId: '1001',
+							userId: 'alice'
+						});
+
+						return read;
+					}
+				},
+				telegramSignInAvailable: true
+			});
 			const alice = await signIn(sessionService, app, 'alice');
 			await addPasskey('alice', 'key-1');
 
