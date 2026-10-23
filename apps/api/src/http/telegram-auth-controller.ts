@@ -25,7 +25,7 @@ import {
 } from './telegram-login-cookie';
 import type { ApiEnvironment } from './types';
 
-/** `{ "code": "<32 characters>" }` is about 50 bytes. */
+/** `{ "code": "<32 characters>" }` is about 50 bytes, `{ "invitationToken": "<43 characters>" }` about 70. */
 const BODY_LIMIT_BYTES = 1024;
 
 export const TELEGRAM_SIGN_IN_STATUS_BY_ERROR_CODE: Record<TelegramSignInErrorCode, ContentfulStatusCode> = {
@@ -43,7 +43,7 @@ export const TELEGRAM_SIGN_IN_STATUS_BY_ERROR_CODE: Record<TelegramSignInErrorCo
 };
 
 /**
- * `POST /api/auth/telegram/start`, `.../complete` and `.../cancel` (flow 5.1). No session is needed: these routes
+ * `POST /api/auth/telegram/start { invitationToken? }`, `.../complete` and `.../cancel` (flow 5.1). No session is needed: these routes
  * are how a session is obtained. All three are browser mutations and pass the same-origin check (Р11); the request
  * secret travels only in the httpOnly cookie set by `start`, never in a body or an answer. Every answer goes through its
  * contract schema, so nothing beyond the contract (and nothing about a user before confirmation) can leak.
@@ -68,7 +68,7 @@ export class TelegramAuthHttpController {
 			}
 
 			try {
-				const outcome = await this.service.start(this.metadata(context));
+				const outcome = await this.service.start(await this.readStartBody(context), this.metadata(context));
 
 				if (!outcome.ok) {
 					return this.failure(context, outcome.errorCode, outcome.retryAfterSeconds);
@@ -169,6 +169,25 @@ export class TelegramAuthHttpController {
 			ipAddress: readClientIp(context, this.config.trustedProxyCount),
 			userAgent: context.req.header('user-agent')
 		};
+	}
+
+	/**
+	 * The body of `start` is optional: none (or only whitespace) is `{}`, as before invitations. Anything else must be
+	 * JSON; what is not reaches the schema as `undefined` and is refused there (`invalid-input`).
+	 */
+	private async readStartBody(context: Context<ApiEnvironment>): Promise<unknown> {
+		const text = await context.req.text();
+
+		if (text.trim() === '') {
+			return {};
+		}
+
+		try {
+			return JSON.parse(text) as unknown;
+		}
+		catch {
+			return undefined;
+		}
 	}
 
 	private async readBody(context: Context<ApiEnvironment>): Promise<unknown> {

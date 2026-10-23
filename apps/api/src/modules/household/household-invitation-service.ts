@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 
+import type { AppInvitationRepository } from '@/modules/app-invitation';
 import type { FixedWindowRateLimiter } from '@/modules/auth';
 
 import {
@@ -28,6 +29,11 @@ const UNKNOWN_ADDRESS_KEY = 'unknown';
 export type HouseholdInvitationServiceDependencies = {
 	/** `POST /api/invitations/accept`: 10 per 5 minutes per user (Р11). */
 	acceptRateLimiter: Pick<FixedWindowRateLimiter, 'tryConsume'>;
+	/**
+	 * Invitations into the application share the link and the preview (`app-invitations-v1.md`): every token is looked
+	 * up in both tables, one query each, whatever it opens.
+	 */
+	appInvitations: Pick<AppInvitationRepository, 'findPreview'>;
 	config: HouseholdInvitationConfig;
 	createId?: () => string;
 	createToken?: () => string;
@@ -180,20 +186,32 @@ export class HouseholdInvitationService {
 			return failure('rate-limited', limit.retryAfterSeconds);
 		}
 
-		const lookup = await this.dependencies.invitations.findPreview(hashHouseholdInvitationToken(token), now);
+		const tokenHash = hashHouseholdInvitationToken(token);
+		// Both lookups always run, so neither the work nor the answer's timing depends on the kind or the state.
+		const appLookup = await this.dependencies.appInvitations.findPreview(tokenHash, now);
+		const lookup = await this.dependencies.invitations.findPreview(tokenHash, now);
 
-		if (lookup.kind === 'unavailable') {
-			return unavailable(lookup.reason);
+		if (lookup.kind === 'active') {
+			return {
+				invitation: {
+					expiresAt: lookup.record.expiresAt.toISOString(),
+					householdName: lookup.record.householdName,
+					inviterName: lookup.record.inviterName,
+					kind: 'household'
+				},
+				ok: true
+			};
 		}
 
-		return {
-			invitation: {
-				expiresAt: lookup.record.expiresAt.toISOString(),
-				householdName: lookup.record.householdName,
-				inviterName: lookup.record.inviterName
-			},
-			ok: true
-		};
+		if (appLookup.kind === 'active') {
+			// No household, no note, no id: the inviter and the deadline only.
+			return {
+				invitation: { expiresAt: appLookup.record.expiresAt.toISOString(), inviterName: appLookup.record.inviterName, kind: 'app' },
+				ok: true
+			};
+		}
+
+		return unavailable(lookup.reason === 'unknown' ? appLookup.reason : lookup.reason);
 	}
 
 	/** Joins the household of the invitation as `member` (Р5, Р6). Limited per user. */
@@ -208,16 +226,25 @@ export class HouseholdInvitationService {
 			return failure('rate-limited', limit.retryAfterSeconds);
 		}
 
+		const tokenHash = hashHouseholdInvitationToken(input.token);
+		// First, for every token: an invitation into the application is used by signing up with it, never joined here.
+		// Nothing changes for it; a dead one gets its reason like a dead household invitation.
+		const appLookup = await this.dependencies.appInvitations.findPreview(tokenHash, now);
+
+		if (appLookup.kind === 'active') {
+			return failure('app-invitation-not-acceptable');
+		}
+
 		const acceptance = this.dependencies.invitations.accept({
 			now,
 			replaceEmptyHousehold: input.replaceEmptyHousehold,
-			tokenHash: hashHouseholdInvitationToken(input.token),
+			tokenHash,
 			userId
 		});
 
 		switch (acceptance.kind) {
 			case 'unavailable':
-				return unavailable(acceptance.reason);
+				return unavailable(acceptance.reason === 'unknown' ? appLookup.reason : acceptance.reason);
 			case 'already-in-household':
 				return { ...failure('already-in-household'), currentHouseholdName: acceptance.currentHouseholdName };
 			case 'confirmation-required':

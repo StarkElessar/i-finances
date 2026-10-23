@@ -339,6 +339,7 @@ describe('Telegram sign-up: the whole path', () => {
 				authenticated: true,
 				hasPassword: false,
 				household: null,
+				isPlatformAdmin: false,
 				telegram: { username: 'anna_k' },
 				user: { displayName: 'Анна Каренина', id: user.id, username: 'tg-1001' }
 			},

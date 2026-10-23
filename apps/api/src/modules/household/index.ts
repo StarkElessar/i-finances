@@ -56,3 +56,4 @@ export {
 	type HouseholdServiceDependencies,
 	NEW_HOUSEHOLD_BASE_CURRENCY
 } from './household-service';
+export { invitationUnavailableReason } from './invitation-unavailable-reason';

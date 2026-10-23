@@ -1,11 +1,16 @@
 import { z } from 'zod';
 
+import { invitationTokenSchema } from './household-invitation';
+
 /**
  * Sign-in and sign-up through the Telegram bot by deep link (decision Р1, flow 5.1 in
  * `development/decisions/telegram-auth-and-households-v1.md`).
  *
- * 1. `POST /api/auth/telegram/start` creates a request and answers the bot links; the secret that binds the request to
- *    this browser travels only in an httpOnly cookie, never in a body.
+ * 1. `POST /api/auth/telegram/start { invitationToken? }` creates a request and answers the bot links; the secret that
+ *    binds the request to this browser travels only in an httpOnly cookie, never in a body. The optional
+ *    `invitationToken` is the token of the invitation link the person came with (into a household or into the
+ *    application): while registration is closed, only such a person can sign up (`app-invitations-v1.md`). The answer
+ *    is the same whether or not the token opens anything.
  * 2. The person opens the bot, presses «Войти» there.
  * 3. The browser polls `POST /api/auth/telegram/complete { code }` until the answer is not `pending`.
  * 4. `POST /api/auth/telegram/cancel { code }` abandons the request.
@@ -70,6 +75,16 @@ export const telegramSignInStartResultSchema = z.discriminatedUnion('ok', [
 ]);
 
 export type TelegramSignInStartResult = z.infer<typeof telegramSignInStartResultSchema>;
+
+/**
+ * The body of `start`. An empty body is `{}`. A malformed `invitationToken` is `invalid-input` (400); a well-formed one
+ * that opens nothing changes nothing in the answer: the request is then an ordinary sign-in.
+ */
+export const telegramSignInStartInputSchema = z.object({
+	invitationToken: invitationTokenSchema.optional()
+});
+
+export type TelegramSignInStartInput = z.infer<typeof telegramSignInStartInputSchema>;
 
 export const telegramSignInCodeInputSchema = z.object({
 	code: telegramLoginCodeSchema

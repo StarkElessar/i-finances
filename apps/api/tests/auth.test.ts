@@ -9,6 +9,7 @@ import {
 	LoginRateLimiter,
 	PasswordSignInService,
 	PasswordUserRepository,
+	PlatformAdminPolicy,
 	SessionRepository,
 	SessionService,
 	SignInMethodsRepository
@@ -96,6 +97,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 		new PasswordUserRepository(database),
 		new HouseholdResolver(new HouseholdRepository(database)),
 		new SignInMethodsRepository(database),
+		new PlatformAdminPolicy(new Set(['sergei'])),
 		options.config ?? AUTH_CONFIG
 	);
 
@@ -137,6 +139,7 @@ describe('password session API', () => {
 			authenticated: true,
 			hasPassword: false,
 			household: null,
+			isPlatformAdmin: true,
 			telegram: null,
 			user: {
 				displayName: 'Sergei Test',
@@ -378,6 +381,7 @@ describe('update display name API', () => {
 			authenticated: true,
 			hasPassword: false,
 			household: null,
+			isPlatformAdmin: true,
 			telegram: null,
 			user: {
 				displayName: 'Новый Сергей',

@@ -42,6 +42,8 @@ export {
 	PasswordUserRepository,
 	type ReplacePasswordInput
 } from './password-user-repository';
+export { getPlatformAdminPolicy, parsePlatformAdminUsernames } from './platform-admin-config';
+export { PlatformAdminPolicy } from './platform-admin-policy';
 export { isReservedUsername, TELEGRAM_USERNAME_PREFIX } from './reserved-username';
 export {
 	type ChangePasswordOutcome,

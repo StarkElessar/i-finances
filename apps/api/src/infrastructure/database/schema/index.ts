@@ -1,4 +1,5 @@
 export * from './accounts';
+export * from './app-invitations';
 export * from './categories';
 export * from './category-keywords';
 export * from './contacts';

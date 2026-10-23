@@ -10,6 +10,8 @@
 | `0015_users_optional_password_hash.sql` | DB-2 | `users.password_hash` становится NULL-able: пересборка `users` (`__new_users`, копирование, `DROP`, `RENAME`), затем заново `users_username_unique` | `db:generate` + предохранитель в начале (раздел 3) |
 | `0016_household_members_one_household_per_user.sql` | DB-3 | `household_members_user_id_idx` заменяется уникальным `household_members_user_id_unique`, затем пользователи без членства добавляются в `default-household` как `member` | `db:generate` + шаг с данными в конце |
 
+Позже добавлена `0017_app_invitations.sql` (таблица `app_invitations` и две nullable-колонки через `ALTER TABLE ... ADD`, без пересборки): решение, тест, бэкап и откат в `app-invitations-v1.md`, раздел 7.
+
 Существующие миграции 0000–0013, их снапшоты и записи журнала не менялись (контрольные суммы в отчёте ветки). Журнал только дополнен тремя записями, снапшоты 0014–0016 порождены `drizzle-kit`; `drizzle-kit check` чистый, повторный `db:generate` говорит «No schema changes».
 
 ## 2. Как мигратор их применяет

@@ -120,6 +120,13 @@
       "when": 1792309498378,
       "tag": "0016_household_members_one_household_per_user",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1792679297536,
+      "tag": "0017_app_invitations",
+      "breakpoints": true
     }
   ]
 }

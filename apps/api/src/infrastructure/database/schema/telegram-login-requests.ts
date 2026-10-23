@@ -40,7 +40,13 @@ export const telegramLoginRequests = sqliteTable(
 		expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
 		createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 		confirmedAt: integer('confirmed_at', { mode: 'timestamp_ms' }),
-		usedAt: integer('used_at', { mode: 'timestamp_ms' })
+		usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+		/**
+		 * SHA-256 hex of the invitation token the sign-in was started with (an invitation into the application or into a
+		 * household), only when that invitation was active at `start`; never the token. `complete` checks it again in the
+		 * transaction that may create the user (`app-invitations-v1.md`).
+		 */
+		invitationTokenHash: text('invitation_token_hash')
 	},
 	(table) => [
 		index('telegram_login_requests_expires_at_idx').on(table.expiresAt)

@@ -10,6 +10,7 @@ import type { HouseholdInvitationUnavailableReason } from '@i-finances/contracts
 import { and, asc, eq, exists, gt, isNull, ne, notExists, sql, TransactionRollbackError } from 'drizzle-orm';
 
 import { householdHasData, householdHasNoDataConditions } from './household-data-references';
+import { invitationUnavailableReason } from './invitation-unavailable-reason';
 import { isUniqueConstraintError } from './is-unique-constraint-error';
 
 export type NewHouseholdInvitation = {
@@ -89,27 +90,6 @@ function isActive(now: Date) {
 		isNull(householdInvitations.revokedAt),
 		gt(householdInvitations.expiresAt, now)
 	);
-}
-
-/**
- * Why an invitation found by its hash is not active at `now`. An accepted one is `used`, a revoked one `revoked`; both
- * win over `expired`, which is what is left. An invitation cannot be both accepted and revoked: each statement needs
- * it active.
- */
-function unavailableReason(
-	invitation: { acceptedAt: Date | null; revokedAt: Date | null },
-	expiresAt: Date,
-	now: Date
-): HouseholdInvitationUnavailableReason | undefined {
-	if (invitation.acceptedAt !== null) {
-		return 'used';
-	}
-
-	if (invitation.revokedAt !== null) {
-		return 'revoked';
-	}
-
-	return expiresAt.getTime() > now.getTime() ? undefined : 'expired';
 }
 
 /** The user is an owner of the household right now, as a condition of the statement itself. */
@@ -232,7 +212,7 @@ export class HouseholdInvitationRepository {
 			return { kind: 'unavailable', reason: 'unknown' };
 		}
 
-		const reason = unavailableReason(row, row.expiresAt, now);
+		const reason = invitationUnavailableReason(row, now);
 
 		if (reason !== undefined) {
 			return { kind: 'unavailable', reason };
@@ -283,7 +263,7 @@ export class HouseholdInvitationRepository {
 					return { kind: 'unavailable', reason: 'unknown' };
 				}
 
-				const reason = unavailableReason(invitation, invitation.expiresAt, input.now);
+				const reason = invitationUnavailableReason(invitation, input.now);
 
 				if (reason !== undefined) {
 					return { kind: 'unavailable', reason };

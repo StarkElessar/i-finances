@@ -317,6 +317,7 @@ describe('a failed send never fails the acceptance', () => {
 		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
 		const service = new HouseholdInvitationService({
 			acceptRateLimiter: { tryConsume: () => ({ allowed: true }) },
+			appInvitations: { findPreview: async () => ({ kind: 'unavailable' as const, reason: 'unknown' as const }) },
 			config: { ttlMilliseconds: DEFAULT_INVITATION_TTL },
 			householdResolver: { requireForUser: async () => ({ baseCurrency: 'BYN', id: FAMILY, name: 'Семья', role: 'member' }) },
 			invitations: {

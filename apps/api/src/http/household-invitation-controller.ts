@@ -28,6 +28,7 @@ const BODY_LIMIT_BYTES = 1024;
 
 const STATUS_BY_ERROR_CODE: Record<HouseholdInvitationErrorCode, ContentfulStatusCode> = {
 	'already-in-household': 409,
+	'app-invitation-not-acceptable': 409,
 	'empty-household-confirmation-required': 409,
 	'household-required': 403,
 	'invalid-input': 400,

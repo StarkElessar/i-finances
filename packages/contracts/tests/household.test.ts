@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+	appInvitationErrorCodes,
+	appInvitationErrorMessageByCode,
+	appInvitationListItemSchema,
+	createAppInvitationInputSchema
+} from '../src/app-invitation';
 import { currentSessionResponseSchema } from '../src/auth';
 import {
 	createHouseholdInputSchema,
@@ -20,9 +26,11 @@ import {
 	householdInvitationFailureSchema,
 	householdInvitationUnavailableReasons,
 	invitationPreviewResultSchema,
+	invitationPreviewSchema,
 	invitationTokenSchema,
 	readInvitationTokenFromLocation
 } from '../src/household-invitation';
+import { telegramSignInStartInputSchema } from '../src/telegram-auth';
 
 /**
  * The invitation contracts (A6, `household-invitation.ts`) are tested here too: the lint default project of the
@@ -165,5 +173,82 @@ describe('household invitation contracts', () => {
 	it('leaving answers ok or a household failure', () => {
 		expect(householdLeaveResultSchema.safeParse({ ok: true }).success).toBe(true);
 		expect(householdLeaveResultSchema.safeParse({ errorCode: 'last-owner', message: 'нет', ok: false }).success).toBe(true);
+	});
+});
+
+// Invitations into the application (app-invitations-v1.md): the same link, the same preview, a kind.
+const APP_TEST_TOKEN = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJ0123-_9';
+
+describe('invitations into the application: contracts', () => {
+	it('a note is optional, trimmed, at most 80 characters, without control or format characters', () => {
+		expect(createAppInvitationInputSchema.parse({})).toEqual({});
+		expect(createAppInvitationInputSchema.parse({ note: '  Для Марии ' })).toEqual({ note: 'Для Марии' });
+		expect(createAppInvitationInputSchema.parse({ note: 'я'.repeat(80) }).note).toHaveLength(80);
+
+		for (const note of ['я'.repeat(81), 'a\nb', 'a‮b', 'a​b', 5, null]) {
+			expect(createAppInvitationInputSchema.safeParse({ note }).success, String(note)).toBe(false);
+		}
+	});
+
+	it('every error code has a message', () => {
+		for (const code of appInvitationErrorCodes) {
+			expect(appInvitationErrorMessageByCode[code], code).not.toBe('');
+		}
+
+		expect(householdInvitationErrorMessageByCode['app-invitation-not-acceptable']).toMatch(/приглашение в приложение/u);
+	});
+
+	it('a list item carries no link, token or hash', () => {
+		expect(Object.keys(appInvitationListItemSchema.shape).sort())
+			.toEqual(['acceptedAt', 'acceptedBy', 'createdAt', 'expiresAt', 'id', 'note', 'status']);
+	});
+});
+
+describe('the preview tells the kind', () => {
+	it('a household preview has the household name, an application preview has none', () => {
+		const expiresAt = '2026-10-29T10:00:00.000Z';
+
+		expect(invitationPreviewSchema.safeParse({ expiresAt, householdName: 'Семья', inviterName: 'Сергей', kind: 'household' }).success)
+			.toBe(true);
+		expect(invitationPreviewSchema.safeParse({ expiresAt, inviterName: 'Сергей', kind: 'app' }).success).toBe(true);
+		// The shape of clients written before the kind: a household invitation.
+		expect(invitationPreviewSchema.safeParse({ expiresAt, householdName: 'Семья', inviterName: 'Сергей' }).success).toBe(true);
+
+		for (const preview of [
+			{ expiresAt, householdName: 'Семья', inviterName: 'Сергей', kind: 'app' },
+			{ expiresAt, inviterName: 'Сергей', kind: 'household' },
+			{ expiresAt, inviterName: 'Сергей' },
+			{ expiresAt, inviterName: 'Сергей', kind: 'platform' }
+		]) {
+			expect(invitationPreviewSchema.safeParse(preview).success, JSON.stringify(preview)).toBe(false);
+		}
+
+		expect(invitationPreviewResultSchema.safeParse({ invitation: { expiresAt, inviterName: 'Сергей', kind: 'app' }, ok: true }).success)
+			.toBe(true);
+	});
+});
+
+describe('start and session', () => {
+	it('start takes an optional invitation token of the invitation format', () => {
+		expect(telegramSignInStartInputSchema.parse({})).toEqual({});
+		expect(telegramSignInStartInputSchema.parse({ invitationToken: APP_TEST_TOKEN })).toEqual({ invitationToken: APP_TEST_TOKEN });
+
+		for (const invitationToken of ['short', `${APP_TEST_TOKEN}x`, `${APP_TEST_TOKEN.slice(0, 42)}/`, 7]) {
+			expect(telegramSignInStartInputSchema.safeParse({ invitationToken }).success, String(invitationToken)).toBe(false);
+		}
+	});
+
+	it('the session carries isPlatformAdmin', () => {
+		const session = {
+			authenticated: true,
+			hasPassword: true,
+			household: null,
+			isPlatformAdmin: true,
+			telegram: null,
+			user: { displayName: 'Сергей', id: 'stark', username: 'stark' }
+		};
+
+		expect(currentSessionResponseSchema.parse(session)).toEqual(session);
+		expect(currentSessionResponseSchema.safeParse({ ...session, isPlatformAdmin: 'yes' }).success).toBe(false);
 	});
 });

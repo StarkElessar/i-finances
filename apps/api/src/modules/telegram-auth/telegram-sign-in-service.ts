@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
 
+import type { RegistrationInvitationLookup } from '@/modules/app-invitation';
 import type { CreatedSession, FixedWindowRateLimiter, SessionService } from '@/modules/auth';
-import type { HouseholdResolver } from '@/modules/household';
+import { hashHouseholdInvitationToken, type HouseholdResolver } from '@/modules/household';
 import type {
 	TelegramBotClient,
 	TelegramCallbackQuery,
@@ -15,7 +16,8 @@ import type {
 import {
 	devTelegramConfirmInputSchema,
 	telegramSignInCodeInputSchema,
-	type TelegramSignInErrorCode
+	type TelegramSignInErrorCode,
+	telegramSignInStartInputSchema
 } from '@i-finances/contracts';
 
 import { describeSignInDevice, describeSignInMoment } from './describe-sign-in-request';
@@ -62,7 +64,11 @@ export type TelegramSignInStartOutcome =
 		/** Lifetime of the request, and so of its cookie. */
 		ttlMilliseconds: number;
 	}
-	| { errorCode: Extract<TelegramSignInErrorCode, 'rate-limited' | 'telegram-unavailable'>; ok: false; retryAfterSeconds?: number };
+	| {
+		errorCode: Extract<TelegramSignInErrorCode, 'invalid-input' | 'rate-limited' | 'telegram-unavailable'>;
+		ok: false;
+		retryAfterSeconds?: number;
+	};
 
 export type TelegramSignInCompleteOutcome =
 	| { kind: 'pending' }
@@ -93,6 +99,11 @@ export type TelegramSignInServiceDependencies = {
 	createId?: () => string;
 	createSecret?: () => string;
 	households: Pick<HouseholdResolver, 'findForUser'>;
+	/**
+	 * Whether an invitation token hash would let its holder sign up now (`app-invitations-v1.md`): `start` binds the
+	 * hash only then, the bot says «Готово» instead of «аккаунт не найден». The decision is in `accounts.signIn`.
+	 */
+	invitations: Pick<RegistrationInvitationLookup, 'findActiveKind'>;
 	/** The bot side of link requests (A4): the bot is one, so `/start` and the buttons of a link request go there. */
 	link: Pick<TelegramLinkService, 'confirmFromBot' | 'offer' | 'rejectFromBot'>;
 	messages: TelegramMessages;
@@ -126,7 +137,9 @@ function addressKey(metadata: TelegramSignInMetadata): string {
  * 3. «Войти» (`callback_query`): `pending → confirmed` with the identity from `callback_query.from`. «Это не я»:
  *    `pending → rejected`.
  * 4. `complete` (browser, polling): only the browser with the secret, only once, only while alive (`confirmed → used`).
- *    A known Telegram account signs in; an unknown one becomes a new user when registration is enabled.
+ *    A known Telegram account signs in; an unknown one becomes a new user when registration is enabled, or when the
+ *    request carries an invitation that is still active in the transaction that creates the user
+ *    (`development/decisions/app-invitations-v1.md`).
  *
  * Every transition is a conditional update that must change exactly one row (see `TelegramLoginRequestRepository`), so
  * races, redelivered updates and repeats after a restart cannot change an outcome. Implements the bot's update port.
@@ -146,7 +159,12 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 		this.timeZone = dependencies.timeZone ?? DEFAULT_TIME_ZONE;
 	}
 
-	public async start(metadata: TelegramSignInMetadata): Promise<TelegramSignInStartOutcome> {
+	/**
+	 * `input` is the body: `{}` or `{ invitationToken }`. A malformed token is `invalid-input`. A well-formed one is
+	 * hashed, and the hash is bound to the request only if it opens an active invitation of either kind; the answer is
+	 * the same either way, so `start` tells nothing about the token. Limited like any `start`, before the lookup.
+	 */
+	public async start(input: unknown, metadata: TelegramSignInMetadata): Promise<TelegramSignInStartOutcome> {
 		const { botUsername, loginTtlMilliseconds, signInAvailable } = this.dependencies.config;
 
 		if (!signInAvailable || botUsername === undefined) {
@@ -160,6 +178,14 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			return { errorCode: 'rate-limited', ok: false, retryAfterSeconds: limit.retryAfterSeconds };
 		}
 
+		const parsedInput = telegramSignInStartInputSchema.safeParse(input);
+
+		if (!parsedInput.success) {
+			return { errorCode: 'invalid-input', ok: false };
+		}
+
+		const invitationTokenHash = await this.findBindableInvitation(parsedInput.data.invitationToken, now);
+
 		await this.dependencies.requests.deleteCreatedBefore(new Date(now.getTime() - DAY_MILLISECONDS));
 
 		const code = this.createCode();
@@ -171,6 +197,7 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			createdAt: now,
 			expiresAt,
 			id: this.createId(),
+			invitationTokenHash,
 			ipAddress: metadata.ipAddress?.slice(0, MAX_IP_ADDRESS_LENGTH),
 			purpose: 'sign-in',
 			secretHash: hashTelegramLoginSecret(secret),
@@ -238,6 +265,7 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 		const resolution = await this.dependencies.accounts.signIn({
 			allowRegistration: this.dependencies.config.registrationEnabled,
 			identity: request.identity,
+			invitationTokenHash: request.invitationTokenHash,
 			newUserId: this.createId(),
 			now
 		});
@@ -447,12 +475,36 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			return this.settledText(request.id, identity);
 		}
 
-		// The browser learns the same at `complete`; the bot says it right away instead of a misleading «Готово».
-		const known = await this.dependencies.accounts.findByTelegramId(identity.telegramId);
-
-		return known !== undefined || this.dependencies.config.registrationEnabled
+		// The browser learns the same at `complete`; the bot says it right away instead of a misleading «Готово». The
+		// same two texts whatever the reason: the bot never tells an invitation or its kind.
+		return await this.canSignIn(request, identity)
 			? messages.text('signIn.confirmed')
 			: messages.text('signIn.accountNotFound');
+	}
+
+	/** A known Telegram account, open registration, or an invitation bound to the request that is still active. */
+	private async canSignIn(request: TelegramLoginRequest, identity: TelegramIdentity): Promise<boolean> {
+		if (await this.dependencies.accounts.findByTelegramId(identity.telegramId) !== undefined) {
+			return true;
+		}
+
+		if (this.dependencies.config.registrationEnabled) {
+			return true;
+		}
+
+		return request.invitationTokenHash !== null
+			&& await this.dependencies.invitations.findActiveKind(request.invitationTokenHash, this.now()) !== undefined;
+	}
+
+	/** The hash to bind to a new request: only of a token that opens an active invitation now. */
+	private async findBindableInvitation(token: string | undefined, now: Date): Promise<string | undefined> {
+		if (token === undefined) {
+			return undefined;
+		}
+
+		const tokenHash = hashHouseholdInvitationToken(token);
+
+		return await this.dependencies.invitations.findActiveKind(tokenHash, now) === undefined ? undefined : tokenHash;
 	}
 
 	private async rejectFromBot(code: string, identity: TelegramIdentity): Promise<string> {
