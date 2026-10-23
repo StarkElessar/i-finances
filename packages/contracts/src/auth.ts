@@ -7,6 +7,7 @@ export const passwordSignInErrorCodes = [
 	'invalid-credentials',
 	'rate-limited',
 	'invalid-origin',
+	'payload-too-large',
 	'unexpected'
 ] as const;
 
@@ -17,6 +18,7 @@ export const passwordSignInErrorMessageByCode: Record<PasswordSignInErrorCode, s
 	'invalid-credentials': 'Не удалось войти. Проверьте логин и пароль.',
 	'rate-limited': 'Слишком много попыток входа. Попробуйте позже.',
 	'invalid-origin': 'Не удалось подтвердить источник запроса. Обновите страницу и попробуйте снова.',
+	'payload-too-large': 'Слишком большой запрос.',
 	unexpected: 'Не удалось войти. Попробуйте ещё раз.'
 };
 

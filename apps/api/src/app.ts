@@ -58,7 +58,7 @@ export function createApiApp(
 		const authController = dependencies.authController;
 
 		app.get('/api/auth/session', authController.currentSession());
-		app.post('/api/auth/sign-in', authController.signIn());
+		app.post('/api/auth/sign-in', authController.signInBodyLimit(), authController.signIn());
 		app.post('/api/auth/sign-out', authController.signOut());
 		app.put('/api/auth/display-name', authController.updateDisplayName());
 	}
