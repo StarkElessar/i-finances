@@ -24,7 +24,8 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { HonoRequest } from 'hono/request';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const USER_ID = 'user-1';
 // Shaped like an Argon2 hash so it counts as a usable password; the verifier is a stub in these tests.
@@ -83,7 +84,13 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 				isActive: true,
 				passwordHash: STORED_HASH,
 				username: 'sergei'
-			})
+			}),
+			// The stored row has another hash on purpose (see beforeEach): this suite tests HTTP, not the hash check.
+			insertSessionIfPasswordUnchanged: (input) => {
+				new SessionRepository(database).insertWith(input.session);
+
+				return true;
+			}
 		}
 	});
 	const sessionResolver = new CookieSessionResolver(
@@ -150,6 +157,74 @@ describe('password session API', () => {
 				username: 'sergei'
 			}
 		});
+	});
+
+	it('refuses an oversized sign-in body with 413 before it is parsed', async () => {
+		const app = createAuthApp();
+		const body = JSON.stringify({ password: 'correct-password', padding: 'x'.repeat(64 * 1024), username: 'sergei' });
+		const response = await app.request('/api/auth/sign-in', {
+			body,
+			headers: { 'content-length': String(body.length), 'content-type': 'application/json', origin: AUTH_CONFIG.origin },
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(413);
+		expect(await response.json()).toMatchObject({ errorCode: 'payload-too-large', ok: false });
+		expect(await database.select().from(sessions)).toEqual([]);
+	});
+
+	it('refuses an oversized sign-in body streamed without Content-Length, after reading no more than the limit', async () => {
+		const app = createAuthApp();
+		const chunk = new TextEncoder().encode(`{"username":"sergei","password":"correct-password","padding":"${'x'.repeat(1024)}`);
+		let sentChunks = 0;
+		const stream = new ReadableStream<Uint8Array>({
+			pull(controller) {
+				// Endless: only a limit that stops reading ends this request.
+				sentChunks += 1;
+				controller.enqueue(chunk);
+			}
+		});
+		const response = await app.request('/api/auth/sign-in', {
+			body: stream,
+			duplex: 'half',
+			headers: { 'content-type': 'application/json', origin: AUTH_CONFIG.origin },
+			method: 'POST'
+		} as RequestInit);
+
+		expect(response.status).toBe(413);
+		expect(await response.json()).toMatchObject({ errorCode: 'payload-too-large', ok: false });
+		expect(sentChunks).toBeLessThan(64);
+		expect(await database.select().from(sessions)).toEqual([]);
+	});
+
+	it('refuses a cross-origin sign-in before reading its body', async () => {
+		const app = createAuthApp();
+		const readJson = vi.spyOn(HonoRequest.prototype, 'json');
+
+		try {
+			const response = await app.request('/api/auth/sign-in', {
+				body: JSON.stringify({ password: 'correct-password', username: 'sergei' }),
+				headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
+				method: 'POST'
+			});
+
+			expect(response.status).toBe(403);
+			expect(readJson).not.toHaveBeenCalled();
+		}
+		finally {
+			readJson.mockRestore();
+		}
+	});
+
+	it('still accepts the largest valid body: a 2048-character returnTo with a 256-character password', async () => {
+		const app = createAuthApp();
+		const response = await app.request('/api/auth/sign-in', {
+			body: JSON.stringify({ password: 'п'.repeat(256), returnTo: `/${'ю'.repeat(2047)}`, username: 'ж'.repeat(64) }),
+			headers: { 'content-type': 'application/json', origin: AUTH_CONFIG.origin },
+			method: 'POST'
+		});
+
+		expect(response.status).toBe(200);
 	});
 
 	it('stores the address the trusted proxy appended, not the one the client forged', async () => {

@@ -3,6 +3,8 @@ import { sessions, users } from '@/infrastructure/database/schema';
 
 import { and, eq, ne } from 'drizzle-orm';
 
+import { type SessionInsertRecord, SessionRepository } from './session-repository';
+
 export type PasswordAuthUserRecord = {
 	displayName: string;
 	id: string;
@@ -33,8 +35,18 @@ export type PasswordReplacement = {
 	rotatedSession?: { expiresAt: Date };
 };
 
+export type PasswordSessionInput = {
+	/** The hash the sign-in verified the password against. */
+	expectedPasswordHash: string;
+	session: SessionInsertRecord;
+};
+
 export class PasswordUserRepository {
-	public constructor(private readonly database: AppDatabase) {}
+	private readonly sessions: SessionRepository;
+
+	public constructor(private readonly database: AppDatabase) {
+		this.sessions = new SessionRepository(database);
+	}
 
 	public async findByUsername(
 		username: string
@@ -68,6 +80,34 @@ export class PasswordUserRepository {
 			.limit(1);
 
 		return user;
+	}
+
+	/**
+	 * Stores the session of a password sign-in only while the user is still active and the stored hash is still the one
+	 * the password was verified against. Argon2 takes tens of milliseconds, and a password change (which ends every other
+	 * session, `replacePasswordAndRotateSessions`) may commit meanwhile: a session created after it from the replaced
+	 * password would survive the change. Check and insert are one `immediate` transaction, so no change commits between
+	 * them. Returns `false` and stores nothing when the check fails.
+	 */
+	public insertSessionIfPasswordUnchanged(input: PasswordSessionInput): boolean {
+		return this.database.transaction((transaction) => {
+			const user = transaction.select({ id: users.id })
+				.from(users)
+				.where(and(
+					eq(users.id, input.session.userId),
+					eq(users.passwordHash, input.expectedPasswordHash),
+					eq(users.isActive, true)
+				))
+				.get();
+
+			if (user === undefined) {
+				return false;
+			}
+
+			this.sessions.insertWith(input.session, transaction);
+
+			return true;
+		}, { behavior: 'immediate' });
 	}
 
 	public async updateDisplayName(userId: string, displayName: string): Promise<void> {

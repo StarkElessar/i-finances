@@ -26,8 +26,9 @@ export type PasswordSignInOutcome =
 	| Extract<PasswordSignInResult, { ok: false }> & { retryAfterSeconds?: number };
 
 export type PasswordVerificationPort = Pick<PasswordService, 'verify'>;
-export type PasswordUserPort = Pick<PasswordUserRepository, 'findByUsername'>;
-export type SessionCreationPort = Pick<SessionService, 'createSession'>;
+export type PasswordUserPort = Pick<PasswordUserRepository, 'findByUsername' | 'insertSessionIfPasswordUnchanged'>;
+/** Only drafts the session: `insertSessionIfPasswordUnchanged` stores it under the check that the password still holds. */
+export type SessionCreationPort = Pick<SessionService, 'draftSession'>;
 export type LoginRateLimitPort = Pick<LoginRateLimiter, 'recordSuccess' | 'tryReserve'>;
 
 export type PasswordSignInServiceDependencies = {
@@ -89,12 +90,24 @@ export class PasswordSignInService {
 			return this.failure('invalid-credentials');
 		}
 
+		const draft = this.sessionService.draftSession(metadata);
+		// The password was right for `storedHash`, read before the slow verification. If a password change or a
+		// deactivation committed meanwhile, the old password must not open a session that outlives it.
+		const stored = this.userRepository.insertSessionIfPasswordUnchanged({
+			expectedPasswordHash: storedHash,
+			session: { ...draft.record, userId: user.id }
+		});
+
+		if (!stored) {
+			return this.failure('invalid-credentials');
+		}
+
 		this.rateLimiter.recordSuccess(rateLimitInput);
 
 		return {
 			ok: true,
 			redirectTo: validateReturnPath(parsedInput.data.returnTo),
-			session: await this.sessionService.createSession(user.id, metadata)
+			session: draft.session
 		};
 	}
 

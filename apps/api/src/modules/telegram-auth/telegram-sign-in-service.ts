@@ -85,6 +85,14 @@ export type TelegramSignInSimpleOutcome =
 	| { ok: true }
 	| { errorCode: TelegramSignInErrorCode; ok: false; retryAfterSeconds?: number };
 
+export type TelegramSignInCancelOutcome =
+	| {
+		/** The cookie was the secret of the cancelled request: it can go. Otherwise it belongs to another request. */
+		endsBrowserRequest: boolean;
+		ok: true;
+	}
+	| { errorCode: TelegramSignInErrorCode; ok: false; retryAfterSeconds?: number };
+
 export type TelegramSignInServiceDependencies = {
 	accounts: Pick<TelegramAccountRepository, 'findByTelegramId' | 'signIn'>;
 	/** Undefined while no bot token is configured; the bot side then stays silent. */
@@ -110,9 +118,10 @@ export type TelegramSignInServiceDependencies = {
 	now?: () => Date;
 	requests: Pick<
 		TelegramLoginRequestRepository,
-		'cancel' | 'confirm' | 'consume' | 'deleteCreatedBefore' | 'findByCode' | 'findById' | 'insert' | 'reject'
+		'cancel' | 'confirm' | 'deleteCreatedBefore' | 'findByCode' | 'findById' | 'insert' | 'reject'
 	>;
-	sessionService: Pick<SessionService, 'createSession'>;
+	/** Only drafts the session: `accounts.signIn` stores it in the transaction that decides who signs in. */
+	sessionService: Pick<SessionService, 'draftSession'>;
 	/** 10 per 5 minutes per address (Р11). */
 	startRateLimiter: Pick<FixedWindowRateLimiter, 'tryConsume'>;
 	timeZone?: string;
@@ -251,24 +260,27 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			return failed(request.status === 'rejected' ? 'login-rejected' : 'login-expired', true);
 		}
 
-		// The transition decides, not the row read above: a parallel poll may have taken it meanwhile, or it expired.
-		const consumed = await this.dependencies.requests.consume({
-			id: request.id,
-			now,
-			secretHash: hashTelegramLoginSecret(secret ?? '')
-		});
-
-		if (!consumed || request.identity === null) {
+		if (request.identity === null) {
 			return this.settledFailure(request.id);
 		}
 
+		const draft = this.dependencies.sessionService.draftSession(metadata);
+		// One transaction: the request is consumed, the user resolved and the session stored together (see `signIn`). The
+		// transition decides, not the row read above: a parallel poll may have taken it meanwhile, it expired, or a
+		// `telegram:reset` revoked it.
 		const resolution = await this.dependencies.accounts.signIn({
 			allowRegistration: this.dependencies.config.registrationEnabled,
 			identity: request.identity,
 			invitationTokenHash: request.invitationTokenHash,
 			newUserId: this.createId(),
-			now
+			now,
+			request: { id: request.id, secretHash: hashTelegramLoginSecret(secret ?? '') },
+			session: draft.record
 		});
+
+		if (resolution.kind === 'request-taken') {
+			return this.settledFailure(request.id);
+		}
 
 		if (resolution.kind === 'not-found') {
 			return failed('registration-closed', true);
@@ -278,23 +290,25 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 			return failed('account-disabled', true);
 		}
 
-		const session = await this.dependencies.sessionService.createSession(resolution.userId, metadata);
 		const household = await this.dependencies.households.findForUser(resolution.userId);
 
 		return {
 			hasHousehold: household !== undefined,
 			isNewUser: resolution.kind === 'registered',
 			kind: 'confirmed',
-			session
+			session: draft.session
 		};
 	}
 
-	/** The starting browser gives up. Answers the same whether or not anything was cancelled. */
+	/**
+	 * The starting browser gives up. The public answer is the same whether or not anything was cancelled; only
+	 * `endsBrowserRequest` (never sent) tells the controller whether the cookie is the secret of this request and may go.
+	 */
 	public async cancel(
 		input: unknown,
 		secret: string | undefined,
 		metadata: TelegramSignInMetadata
-	): Promise<TelegramSignInSimpleOutcome> {
+	): Promise<TelegramSignInCancelOutcome> {
 		const limit = this.dependencies.completeRateLimiter.tryConsume(addressKey(metadata), this.now().getTime());
 
 		if (!limit.allowed) {
@@ -309,11 +323,15 @@ export class TelegramSignInService implements TelegramUpdateHandler {
 
 		const request = await this.dependencies.requests.findByCode(parsedInput.data.code);
 
-		if (request !== undefined && telegramLoginSecretMatches(request.secretHash, secret)) {
-			await this.dependencies.requests.cancel({ id: request.id, secretHash: hashTelegramLoginSecret(secret ?? '') });
+		// The cookie holds the secret of the request this browser started last. Cancelling an older one (or an unknown
+		// code) must leave that cookie alone, or the live request would end in `browser-mismatch`.
+		if (request === undefined || !telegramLoginSecretMatches(request.secretHash, secret)) {
+			return { endsBrowserRequest: false, ok: true };
 		}
 
-		return { ok: true };
+		await this.dependencies.requests.cancel({ id: request.id, secretHash: hashTelegramLoginSecret(secret ?? '') });
+
+		return { endsBrowserRequest: true, ok: true };
 	}
 
 	/**

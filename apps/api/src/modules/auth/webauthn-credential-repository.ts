@@ -1,11 +1,12 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import {
+	telegramAccounts,
 	users,
 	type WebauthnCredentialRecord,
 	webauthnCredentials
 } from '@/infrastructure/database/schema';
 
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, or, sql } from 'drizzle-orm';
 
 export type WebAuthnCredential = {
 	backedUp: boolean;
@@ -124,12 +125,16 @@ export class WebAuthnCredentialRepository {
 	 * Deletes one credential only when it belongs to the given user.
 	 *
 	 * Unless `allowLast` is set, the delete is a single statement that also
-	 * requires the user to keep at least one other credential, so two parallel
-	 * requests can never remove the last passkey between them.
+	 * requires the user to keep another way in: at least one other credential,
+	 * or, with `allowLastWhileTelegramLinked`, a linked Telegram account as it
+	 * is stored at that moment. Two parallel requests can never remove the last
+	 * passkey between them, and a `telegram:reset` that unlinks Telegram right
+	 * before the delete makes it refuse (Р10).
 	 * Returns `false` when nothing was deleted.
 	 */
 	public async deleteForUser(input: {
 		allowLast: boolean;
+		allowLastWhileTelegramLinked: boolean;
 		id: string;
 		userId: string;
 	}): Promise<boolean> {
@@ -137,11 +142,15 @@ export class WebAuthnCredentialRepository {
 			select count(*) from ${webauthnCredentials} as user_credentials
 			where user_credentials.user_id = ${input.userId}
 		) > 1`;
+		const hasLinkedTelegram = sql`exists (
+			select 1 from ${telegramAccounts} where ${telegramAccounts.userId} = ${input.userId}
+		)`;
+		const keepsAnotherWayIn = input.allowLastWhileTelegramLinked ? or(hasAnotherCredential, hasLinkedTelegram) : hasAnotherCredential;
 		const deleted = await this.database.delete(webauthnCredentials)
 			.where(and(
 				eq(webauthnCredentials.id, input.id),
 				eq(webauthnCredentials.userId, input.userId),
-				input.allowLast ? undefined : hasAnotherCredential
+				input.allowLast ? undefined : keepsAnotherWayIn
 			))
 			.returning({ id: webauthnCredentials.id });
 

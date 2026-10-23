@@ -152,7 +152,9 @@ export class TelegramAuthHttpController {
 					return this.failure(context, outcome.errorCode, outcome.retryAfterSeconds);
 				}
 
-				context.header('set-cookie', createClearedTelegramLoginCookie());
+				if (outcome.endsBrowserRequest) {
+					context.header('set-cookie', createClearedTelegramLoginCookie());
+				}
 
 				return context.json(telegramSignInCancelResultSchema.parse({ ok: true } satisfies TelegramSignInCancelResult), 200);
 			}
