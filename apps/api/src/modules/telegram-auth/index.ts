@@ -72,6 +72,7 @@ export {
 export type { TelegramResetPlan, TelegramResetPlanAccount, TelegramResetResult } from './telegram-reset-plan';
 export { TelegramResetUserNotFoundError } from './telegram-reset-user-not-found-error';
 export {
+	type TelegramSignInCancelOutcome,
 	type TelegramSignInCompleteOutcome,
 	type TelegramSignInMetadata,
 	TelegramSignInService,

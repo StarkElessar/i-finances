@@ -30,6 +30,16 @@ export type CreatedSession = {
 	token: string;
 };
 
+/**
+ * A session that is not stored yet. The caller inserts `record` with the user it settles on inside its own transaction
+ * (`SessionRepository.insertWith`), so that the decision «who signs in» and the session row commit together; `session`
+ * is what the browser gets once the row is stored.
+ */
+export type SessionDraft = {
+	record: Omit<SessionInsertRecord, 'userId'>;
+	session: CreatedSession;
+};
+
 export type SessionServiceOptions = {
 	config?: AuthConfig;
 	createId?: () => string;
@@ -66,23 +76,31 @@ export class SessionService {
 		userId: string,
 		metadata: SessionMetadata = {}
 	): Promise<CreatedSession> {
+		const draft = this.draftSession(metadata);
+
+		await this.repository.insert({ ...draft.record, userId });
+
+		return draft.session;
+	}
+
+	/** A new token and its row without the user, for a caller that stores it in its own transaction. Stores nothing. */
+	public draftSession(metadata: SessionMetadata = {}): SessionDraft {
 		const now = this.now();
 		const expiresAt = new Date(now.getTime() + this.config.sessionTtlMilliseconds);
 		const token = this.createToken();
-		const record: SessionInsertRecord = {
-			createdAt: now,
-			expiresAt,
-			id: this.createId(),
-			ipAddress: metadata.ipAddress?.slice(0, MAX_IP_ADDRESS_LENGTH),
-			lastSeenAt: now,
-			tokenHash: hashSessionToken(token),
-			userAgent: metadata.userAgent?.slice(0, MAX_USER_AGENT_LENGTH),
-			userId
+
+		return {
+			record: {
+				createdAt: now,
+				expiresAt,
+				id: this.createId(),
+				ipAddress: metadata.ipAddress?.slice(0, MAX_IP_ADDRESS_LENGTH),
+				lastSeenAt: now,
+				tokenHash: hashSessionToken(token),
+				userAgent: metadata.userAgent?.slice(0, MAX_USER_AGENT_LENGTH)
+			},
+			session: { expiresAt, token }
 		};
-
-		await this.repository.insert(record);
-
-		return { expiresAt, token };
 	}
 
 	public async validateSessionToken(

@@ -117,10 +117,19 @@ export async function runResetUserTelegram(input: RunResetUserTelegramInput): Pr
 	}
 
 	const result = reset.apply({
+		allowLockout: options.allowLockout,
 		endSessions: options.endSessions,
 		expectedTelegramId: telegram.telegramId,
 		userId: plan.userId
 	});
+
+	if (result.lockoutRefused) {
+		terminal.printError(
+			'Refused: the user has no password and no passkey any more, so there would be no way to sign in. Nothing was changed.'
+		);
+
+		return EXIT_FAILED;
+	}
 
 	if (!result.accountRemoved) {
 		terminal.printError('The Telegram link of this user changed while the command was running. Nothing was changed; run it again.');

@@ -31,11 +31,13 @@ export type TelegramResetPlanAccount = {
 };
 
 /**
- * What a reset changed. `accountRemoved: false` means the link had already changed since the plan, and nothing was
- * touched.
+ * What a reset changed. `accountRemoved: false` means nothing was touched: the link had already changed since the plan,
+ * or (`lockoutRefused`) the user had no other way to sign in by the time of the transaction.
  */
 export type TelegramResetResult = {
 	accountRemoved: boolean;
+	/** Refused without `--allow-lockout`: no usable password and no passkey any more. */
+	lockoutRefused: boolean;
 	requestsRevoked: number;
 	sessionsEnded: number;
 };

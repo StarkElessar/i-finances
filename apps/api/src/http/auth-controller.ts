@@ -21,6 +21,7 @@ import {
 	type UpdateDisplayNameResult
 } from '@i-finances/contracts';
 import type { Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 
 import { readClientIp } from './client-ip';
 import {
@@ -32,7 +33,9 @@ import { createClearedSessionCookie, createSessionCookie, readSessionCookie } fr
 import type { RequestSessionResolver } from './session-resolver';
 import type { ApiEnvironment } from './types';
 
-type AuthFailureStatus = 400 | 401 | 403 | 429 | 500;
+type AuthFailureStatus = 400 | 401 | 403 | 413 | 429 | 500;
+
+const SIGN_IN_BODY_LIMIT_BYTES = 16 * 1024;
 
 export class AuthHttpController {
 	private readonly config: AuthConfig;
@@ -82,13 +85,26 @@ export class AuthHttpController {
 		};
 	}
 
+	/**
+	 * Caps the body of the public sign-in route before anything buffers it, with or without `Content-Length`. The
+	 * largest valid body (64-character username, 256-character password, 2048-character `returnTo`, up to 4 bytes per
+	 * character) is under 12 KiB.
+	 */
+	public signInBodyLimit() {
+		return bodyLimit({
+			maxSize: SIGN_IN_BODY_LIMIT_BYTES,
+			onError: (context: Context<ApiEnvironment>) => this.failure(context, 'payload-too-large', 413)
+		});
+	}
+
 	public signIn() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			const input = await this.readBody(context);
-
+			// Before the body is read: a cross-origin request costs no parsing.
 			if (!isSameOriginMutation(context.req.raw, this.config)) {
 				return this.failure(context, 'invalid-origin', 403);
 			}
+
+			const input = await this.readBody(context);
 
 			try {
 				const outcome = await this.passwordSignInService.signIn(

@@ -1,3 +1,6 @@
+import type { AppDatabase } from '@/infrastructure/database/client';
+import * as schema from '@/infrastructure/database/schema';
+import { sessions, users } from '@/infrastructure/database/schema';
 import {
 	DUMMY_PASSWORD_HASH,
 	hasUsablePassword,
@@ -5,10 +8,17 @@ import {
 	type PasswordAuthUserRecord,
 	PasswordService,
 	PasswordSignInService,
-	type PasswordUserPort
+	type PasswordUserPort,
+	PasswordUserRepository,
+	SessionRepository,
+	SessionService
 } from '@/modules/auth';
 
-import { describe, expect, it, vi } from 'vitest';
+import Database from 'better-sqlite3';
+import { eq } from 'drizzle-orm';
+import { drizzle } from 'drizzle-orm/better-sqlite3';
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const STORED_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
 const USER: PasswordAuthUserRecord = {
@@ -29,15 +39,27 @@ function createService(options: {
 	verify?: (passwordHash: string, password: string) => Promise<boolean>;
 } = {}) {
 	const verify = vi.fn(options.verify ?? (async () => true));
-	const createSession = vi.fn(async () => ({ expiresAt: new Date(), token: 'token' }));
+	const createSession = vi.fn(() => true);
 	const service = new PasswordSignInService({
 		passwordService: { verify },
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
-		sessionService: { createSession },
-		userRepository: { findByUsername: options.findByUsername ?? (async () => USER) }
+		sessionService: { draftSession },
+		userRepository: {
+			findByUsername: options.findByUsername ?? (async () => USER),
+			insertSessionIfPasswordUnchanged: createSession
+		}
 	});
 
 	return { createSession, service, verify };
+}
+
+function draftSession() {
+	const now = new Date();
+
+	return {
+		record: { createdAt: now, expiresAt: now, id: 'session-1', lastSeenAt: now, tokenHash: 'token-hash' },
+		session: { expiresAt: now, token: 'token' }
+	};
 }
 
 describe('PasswordSignInService rate limiting', () => {
@@ -82,8 +104,13 @@ describe('PasswordSignInService accounts without a usable password', () => {
 		const service = new PasswordSignInService({
 			passwordService: new PasswordService(),
 			rateLimiter: new LoginRateLimiter(),
-			sessionService: { createSession: () => Promise.reject(new Error('No session expected.')) },
-			userRepository: { findByUsername: async () => ({ ...USER, passwordHash: 'telegram-only' }) }
+			sessionService: { draftSession },
+			userRepository: {
+				findByUsername: async () => ({ ...USER, passwordHash: 'telegram-only' }),
+				insertSessionIfPasswordUnchanged: () => {
+					throw new Error('No session expected.');
+				}
+			}
 		});
 
 		const outcome = await service.signIn(CREDENTIALS);
@@ -97,8 +124,8 @@ describe('PasswordSignInService accounts without a usable password', () => {
 		const service = new PasswordSignInService({
 			passwordService,
 			rateLimiter: new LoginRateLimiter(),
-			sessionService: { createSession: async () => ({ expiresAt: new Date(), token: 'token' }) },
-			userRepository: { findByUsername: async () => ({ ...USER, passwordHash }) }
+			sessionService: { draftSession },
+			userRepository: { findByUsername: async () => ({ ...USER, passwordHash }), insertSessionIfPasswordUnchanged: () => true }
 		});
 
 		expect((await service.signIn(CREDENTIALS)).ok).toBe(true);
@@ -145,10 +172,128 @@ describe('PasswordSignInService accounts without a usable password', () => {
 		consoleError.mockRestore();
 	});
 
+	it('keeps the dummy hash in step with what PasswordService produces: variant, version, cost and lengths', async () => {
+		// `$argon2id$v=19$m=…,t=…,p=…$<salt>$<hash>`: without this a change of the cost in `password-service.ts` alone
+		// would make unknown users answer faster than wrong passwords again.
+		const shapeOf = (hash: string) => {
+			const [, variant, version, cost, salt, digest] = hash.split('$');
+
+			return { cost, digestLength: digest.length, saltLength: salt.length, variant, version };
+		};
+		const fresh = await new PasswordService().hash('any-password-123');
+
+		expect(shapeOf(DUMMY_PASSWORD_HASH)).toEqual(shapeOf(fresh));
+	});
+
 	it('keeps the dummy hash readable by the real verifier with the real cost parameters', async () => {
 		expect(hasUsablePassword(DUMMY_PASSWORD_HASH)).toBe(true);
 		expect(DUMMY_PASSWORD_HASH).toContain('$argon2id$v=19$m=19456,t=2,p=1$');
 		await expect(new PasswordService().verify(DUMMY_PASSWORD_HASH, 'any-password-123')).resolves.toBe(false);
+	});
+});
+
+describe('PasswordSignInService against a parallel password change', () => {
+	const NOW = new Date('2026-10-23T10:00:00.000Z');
+	const NEW_HASH = '$argon2id$v=19$m=19456,t=2,p=1$bmV3c2FsdA$bmV3aGFzaA';
+	let connection: Database.Database;
+	let database: AppDatabase;
+
+	beforeEach(async () => {
+		connection = new Database(':memory:');
+		connection.pragma('foreign_keys = ON');
+		database = drizzle(connection, { schema });
+		migrate(database, { migrationsFolder: './drizzle' });
+		await database.insert(users).values({ ...USER, createdAt: NOW, updatedAt: NOW });
+		await database.insert(sessions).values({
+			createdAt: NOW,
+			expiresAt: new Date(NOW.getTime() + 86_400_000),
+			id: 'owner-session',
+			lastSeenAt: NOW,
+			tokenHash: 'owner',
+			userId: USER.id
+		});
+	});
+
+	afterEach(() => {
+		connection.close();
+	});
+
+	function createRealService(whileVerifying: () => Promise<void>) {
+		const sessionService = new SessionService(new SessionRepository(database), {
+			config: {
+				origin: 'http://localhost:5173',
+				sessionCookieName: 'test_session',
+				sessionTtlMilliseconds: 86_400_000,
+				trustedProxyCount: 0,
+				webauthnRpId: 'localhost',
+				webauthnRpName: 'iFinances'
+			},
+			now: () => NOW
+		});
+		const service = new PasswordSignInService({
+			passwordService: {
+				// The old password is right for the hash this request read; the change commits while Argon2 runs.
+				verify: async () => {
+					await whileVerifying();
+
+					return true;
+				}
+			},
+			rateLimiter: new LoginRateLimiter(),
+			sessionService,
+			userRepository: new PasswordUserRepository(database)
+		});
+
+		return { service, sessionService };
+	}
+
+	function sessionIds(): string[] {
+		return database.select({ id: sessions.id }).from(sessions).all().map((row) => row.id);
+	}
+
+	it('creates no session with the old password once the owner changed it during the verification', async () => {
+		const { service, sessionService } = createRealService(async () => {
+			const replaced = new PasswordUserRepository(database).replacePasswordAndRotateSessions({
+				expectedPasswordHash: STORED_HASH,
+				keepSessionId: 'owner-session',
+				newPasswordHash: NEW_HASH,
+				now: NOW,
+				rotatedTokenHash: 'owner-rotated',
+				userId: USER.id
+			});
+
+			expect(replaced).toBeDefined();
+		});
+
+		const outcome = await service.signIn(CREDENTIALS, { ipAddress: '203.0.113.7' });
+		const token = outcome.ok ? outcome.session.token : undefined;
+
+		expect(outcome).toMatchObject({ errorCode: 'invalid-credentials', ok: false });
+		expect(await sessionService.validateSessionToken(token)).toBeNull();
+		expect(sessionIds()).toEqual(['owner-session']);
+	});
+
+	it('creates no session for a user deactivated during the verification', async () => {
+		const { service } = createRealService(async () => {
+			database.update(users).set({ isActive: false }).where(eq(users.id, USER.id)).run();
+		});
+
+		const outcome = await service.signIn(CREDENTIALS);
+
+		expect(outcome).toMatchObject({ errorCode: 'invalid-credentials', ok: false });
+		expect(sessionIds()).toEqual(['owner-session']);
+	});
+
+	it('still signs in when nothing changed meanwhile', async () => {
+		const { service, sessionService } = createRealService(async () => undefined);
+
+		const outcome = await service.signIn(CREDENTIALS);
+
+		expect(outcome.ok).toBe(true);
+		expect(await sessionService.validateSessionToken(outcome.ok ? outcome.session.token : undefined)).toMatchObject({
+			user: { id: USER.id }
+		});
+		expect(sessionIds()).toHaveLength(2);
 	});
 });
 
