@@ -64,6 +64,7 @@ export {
 	type CreatedSession,
 	generateSessionToken,
 	hashSessionToken,
+	type SessionDraft,
 	type SessionMetadata,
 	SessionService,
 	type SessionServiceOptions,

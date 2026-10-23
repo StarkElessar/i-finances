@@ -38,13 +38,21 @@ export type SessionSummaryRecord = {
 };
 
 /** The shared connection or the transaction of another repository: both run the statement synchronously. */
-export type SessionStatementExecutor = Pick<AppDatabase | AppTransaction, 'delete'>;
+export type SessionStatementExecutor = Pick<AppDatabase | AppTransaction, 'delete' | 'insert'>;
 
 export class SessionRepository {
 	public constructor(private readonly database: AppDatabase) {}
 
 	public async insert(record: SessionInsertRecord): Promise<void> {
 		await this.database.insert(sessions).values(record);
+	}
+
+	/**
+	 * Stores a session on `executor`: a repository whose transaction decides who signs in passes its transaction, so the
+	 * session exists only if that decision commits (Telegram sign-in against a parallel `telegram:reset`).
+	 */
+	public insertWith(record: SessionInsertRecord, executor: SessionStatementExecutor = this.database): void {
+		executor.insert(sessions).values(record).run();
 	}
 
 	public async findByTokenHash(

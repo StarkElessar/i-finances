@@ -1,4 +1,4 @@
-import type { AppDatabase } from '@/infrastructure/database/client';
+import type { AppDatabase, AppTransaction } from '@/infrastructure/database/client';
 import {
 	type TelegramLoginRequestPurpose,
 	type TelegramLoginRequestRecord,
@@ -144,9 +144,16 @@ export class TelegramLoginRequestRepository {
 	/**
 	 * `confirmed → used`: the one browser that holds the secret takes the confirmation, once. The secret hash is part of
 	 * the condition, so a request is never consumed for a browser that did not start it, whatever the caller checked.
+	 *
+	 * Runs on `executor` when given: the sign-in consumes the request in the transaction that resolves the user and stores
+	 * the session (`TelegramAccountRepository.signIn`), so a parallel `telegram:reset` either revokes the request before
+	 * or ends the session after, never in between.
 	 */
-	public async consume(input: { id: string; now: Date; secretHash: string }): Promise<boolean> {
-		const result = this.database.update(telegramLoginRequests)
+	public consume(
+		input: { id: string; now: Date; secretHash: string },
+		executor: Pick<AppDatabase | AppTransaction, 'update'> = this.database
+	): boolean {
+		const result = executor.update(telegramLoginRequests)
 			.set({ status: 'used', usedAt: input.now })
 			.where(and(
 				eq(telegramLoginRequests.id, input.id),

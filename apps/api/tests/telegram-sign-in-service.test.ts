@@ -1,6 +1,6 @@
 import type { AppDatabase } from '@/infrastructure/database/client';
 import * as schema from '@/infrastructure/database/schema';
-import { sessions, telegramLoginRequests, users } from '@/infrastructure/database/schema';
+import { sessions, telegramAccounts, telegramLoginRequests, users } from '@/infrastructure/database/schema';
 import { RegistrationInvitationLookup } from '@/modules/app-invitation';
 import { FixedWindowRateLimiter, SessionRepository, SessionService } from '@/modules/auth';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
@@ -16,7 +16,9 @@ import {
 	type TelegramIdentity,
 	TelegramLoginRequestRepository,
 	telegramLoginSecretMatches,
-	TelegramSignInService
+	TelegramSignInService,
+	type TelegramSignInServiceDependencies,
+	UserTelegramReset
 } from '@/modules/telegram-auth';
 
 import Database from 'better-sqlite3';
@@ -83,14 +85,14 @@ describe('TelegramLoginRequestRepository: every transition changes exactly one r
 	it('consumes a confirmed request once, only with its secret, only while alive', async () => {
 		const secretHash = hashTelegramLoginSecret(SECRET);
 
-		expect(await requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(false);
+		expect(requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(false);
 
 		await requests.confirm({ id: 'request-1', identity: ANNA, now: LATER });
 
-		expect(await requests.consume({ id: 'request-1', now: LATER, secretHash: hashTelegramLoginSecret('other') })).toBe(false);
-		expect(await requests.consume({ id: 'request-1', now: AFTER_EXPIRY, secretHash })).toBe(false);
-		expect(await requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(true);
-		expect(await requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(false);
+		expect(requests.consume({ id: 'request-1', now: LATER, secretHash: hashTelegramLoginSecret('other') })).toBe(false);
+		expect(requests.consume({ id: 'request-1', now: AFTER_EXPIRY, secretHash })).toBe(false);
+		expect(requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(true);
+		expect(requests.consume({ id: 'request-1', now: LATER, secretHash })).toBe(false);
 		expect(status()).toBe('used');
 	});
 
@@ -123,7 +125,6 @@ describe('TelegramSignInService.complete under a race', () => {
 		const racingRequests = {
 			cancel: requests.cancel.bind(requests),
 			confirm: requests.confirm.bind(requests),
-			consume: requests.consume.bind(requests),
 			deleteCreatedBefore: requests.deleteCreatedBefore.bind(requests),
 			findByCode: async (code: string) => {
 				const found = await requests.findByCode(code);
@@ -197,32 +198,188 @@ describe('TelegramSignInService.complete under a race', () => {
 	});
 });
 
+describe('TelegramSignInService.complete against a parallel telegram:reset (Р10)', () => {
+	const PASSWORD_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
+
+	function createSessionService(): SessionService {
+		return new SessionService(new SessionRepository(database), {
+			config: {
+				origin: 'http://localhost:5173',
+				sessionCookieName: 'test_session',
+				sessionTtlMilliseconds: 86_400_000,
+				trustedProxyCount: 0,
+				webauthnRpId: 'localhost',
+				webauthnRpName: 'iFinances'
+			},
+			now: () => LATER
+		});
+	}
+
+	function createService(accounts: TelegramSignInServiceDependencies['accounts']): TelegramSignInService {
+		return new TelegramSignInService({
+			accounts,
+			botClient: undefined,
+			completeRateLimiter: new FixedWindowRateLimiter({ maxRequests: 100, windowMilliseconds: 60_000 }),
+			config: {
+				botUsername: 'bot_name',
+				devLoginEnabled: false,
+				loginTtlMilliseconds: 600_000,
+				registrationEnabled: false,
+				signInAvailable: true,
+				siteHost: 'localhost:5173'
+			},
+			households: new HouseholdResolver(new HouseholdRepository(database)),
+			invitations: new RegistrationInvitationLookup(database),
+			link: {
+				confirmFromBot: async () => {
+					throw new Error('unexpected link confirmation');
+				},
+				offer: async () => {
+					throw new Error('unexpected link offer');
+				},
+				rejectFromBot: async () => {
+					throw new Error('unexpected link rejection');
+				}
+			},
+			messages: loadTelegramMessages(),
+			now: () => LATER,
+			requests,
+			sessionService: createSessionService(),
+			startRateLimiter: new FixedWindowRateLimiter({ maxRequests: 100, windowMilliseconds: 60_000 })
+		});
+	}
+
+	/**
+	 * The operator runs `telegram:reset anna --apply --end-sessions` from another process while the browser's poll is
+	 * being answered. The reset commits right after the API has resolved the Telegram account to Anna: that is the moment
+	 * between «who is this» and «here is the session». Whatever the interleaving, no session may outlive the reset.
+	 */
+	it('leaves no valid session when the reset commits right after the account was resolved', async () => {
+		await database.insert(users).values({
+			createdAt: NOW, displayName: 'Анна', id: 'anna', isActive: true, passwordHash: PASSWORD_HASH, updatedAt: NOW, username: 'anna'
+		});
+		await database.insert(telegramAccounts).values({
+			chatId: ANNA.chatId,
+			firstName: ANNA.firstName,
+			lastSignInAt: NOW,
+			linkedAt: NOW,
+			telegramId: ANNA.telegramId,
+			updatedAt: NOW,
+			userId: 'anna',
+			username: ANNA.username
+		});
+		await requests.confirm({ id: 'request-1', identity: ANNA, now: LATER });
+
+		const accounts = new TelegramAccountRepository(database);
+		const reset = new UserTelegramReset(database);
+		const service = createService({
+			findByTelegramId: accounts.findByTelegramId.bind(accounts),
+			signIn: async (input) => {
+				const resolution = await accounts.signIn(input);
+
+				reset.apply({ endSessions: true, expectedTelegramId: ANNA.telegramId, userId: 'anna' });
+
+				return resolution;
+			}
+		});
+
+		const outcome = await service.complete({ code: CODE }, SECRET, {});
+		const token = outcome.kind === 'confirmed' ? outcome.session.token : undefined;
+
+		expect(await createSessionService().validateSessionToken(token)).toBeNull();
+		expect(database.select().from(sessions).all()).toEqual([]);
+		expect(database.select().from(telegramAccounts).all()).toEqual([]);
+	});
+});
+
 describe('TelegramAccountRepository.signIn', () => {
+	function sessionRecord(id: string) {
+		return { createdAt: LATER, expiresAt: AFTER_EXPIRY, id, lastSeenAt: LATER, tokenHash: `token-hash-${id}` };
+	}
+
+	async function confirmedRequest(id: string, code: string): Promise<{ id: string; secretHash: string }> {
+		const secretHash = hashTelegramLoginSecret(`${SECRET}-${id}`);
+
+		await requests.insert({ code, createdAt: NOW, expiresAt: AFTER_EXPIRY, id, purpose: 'sign-in', secretHash });
+		await requests.confirm({ id, identity: ANNA, now: LATER });
+
+		return { id, secretHash };
+	}
+
 	it('creates the user once even when two sign-ins of the same new Telegram race', async () => {
 		const accounts = new TelegramAccountRepository(database);
+		const requestA = await confirmedRequest('request-a', 'a'.repeat(32));
+		const requestB = await confirmedRequest('request-b', 'b'.repeat(32));
+		const common = { allowRegistration: true, identity: ANNA, invitationTokenHash: null, now: LATER };
 		const [first, second] = await Promise.all([
-			accounts.signIn({ allowRegistration: true, identity: ANNA, invitationTokenHash: null, newUserId: 'user-a', now: NOW }),
-			accounts.signIn({ allowRegistration: true, identity: ANNA, invitationTokenHash: null, newUserId: 'user-b', now: NOW })
+			accounts.signIn({ ...common, newUserId: 'user-a', request: requestA, session: sessionRecord('session-a') }),
+			accounts.signIn({ ...common, newUserId: 'user-b', request: requestB, session: sessionRecord('session-b') })
 		]);
 
 		expect(first).toEqual({ kind: 'registered', userId: 'user-a' });
 		expect(second).toEqual({ isActive: true, kind: 'existing', userId: 'user-a' });
 		expect(await database.select().from(users)).toHaveLength(1);
+		expect(database.select({ userId: sessions.userId }).from(sessions).all()).toEqual([{ userId: 'user-a' }, { userId: 'user-a' }]);
 	});
 
-	it('never creates a user when registration is closed', async () => {
+	it('never creates a user or a session when registration is closed, and the request stays used', async () => {
 		const accounts = new TelegramAccountRepository(database);
+		const request = await confirmedRequest('request-a', 'a'.repeat(32));
 
 		const resolution = await accounts.signIn({
 			allowRegistration: false,
 			identity: ANNA,
 			invitationTokenHash: null,
 			newUserId: 'user-a',
-			now: NOW
+			now: LATER,
+			request,
+			session: sessionRecord('session-a')
 		});
 
 		expect(resolution).toEqual({ kind: 'not-found' });
 		expect(await database.select().from(users)).toEqual([]);
+		expect(await database.select().from(sessions)).toEqual([]);
+		expect((await requests.findById('request-a'))?.status).toBe('used');
+	});
+
+	it('is one transaction: when storing the session fails, the request stays confirmed and no user is created', async () => {
+		const accounts = new TelegramAccountRepository(database);
+		const request = await confirmedRequest('request-a', 'a'.repeat(32));
+
+		connection.exec('CREATE TRIGGER fail_session_insert BEFORE INSERT ON sessions BEGIN SELECT RAISE(ABORT, \'boom\'); END;');
+
+		await expect(accounts.signIn({
+			allowRegistration: true,
+			identity: ANNA,
+			invitationTokenHash: null,
+			newUserId: 'user-a',
+			now: LATER,
+			request,
+			session: sessionRecord('session-a')
+		})).rejects.toThrow('boom');
+		expect((await requests.findById('request-a'))?.status).toBe('confirmed');
+		expect(await database.select().from(users)).toEqual([]);
+		expect(await database.select().from(telegramAccounts)).toEqual([]);
+	});
+
+	it('changes nothing when the request is no longer confirmed for this secret', async () => {
+		const accounts = new TelegramAccountRepository(database);
+		const request = await confirmedRequest('request-a', 'a'.repeat(32));
+		const input = {
+			allowRegistration: true,
+			identity: ANNA,
+			invitationTokenHash: null,
+			newUserId: 'user-a',
+			now: LATER,
+			session: sessionRecord('session-a')
+		};
+
+		expect(await accounts.signIn({ ...input, request: { ...request, secretHash: hashTelegramLoginSecret('other') } }))
+			.toEqual({ kind: 'request-taken' });
+		expect(await accounts.signIn({ ...input, now: AFTER_EXPIRY, request })).toEqual({ kind: 'request-taken' });
+		expect(await database.select().from(users)).toEqual([]);
+		expect(await database.select().from(sessions)).toEqual([]);
+		expect((await requests.findById('request-a'))?.status).toBe('confirmed');
 	});
 });
 
