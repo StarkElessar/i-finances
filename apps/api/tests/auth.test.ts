@@ -83,7 +83,13 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 				isActive: true,
 				passwordHash: STORED_HASH,
 				username: 'sergei'
-			})
+			}),
+			// The stored row has another hash on purpose (see beforeEach): this suite tests HTTP, not the hash check.
+			insertSessionIfPasswordUnchanged: (input) => {
+				new SessionRepository(database).insertWith(input.session);
+
+				return true;
+			}
 		}
 	});
 	const sessionResolver = new CookieSessionResolver(
