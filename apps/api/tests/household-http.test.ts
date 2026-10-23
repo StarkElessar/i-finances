@@ -255,6 +255,20 @@ describe('POST /api/household', () => {
 		expect(firstOwnerAt(APP_GUEST_ID)).toEqual(FIXED_DATE);
 	});
 
+	it('writes the time of the creator only: nobody else gets the right from somebody else\'s household', async () => {
+		expect((await send('POST', APP_GUEST_ID, { name: 'Дом Марии' })).status).toBe(201);
+		expect(firstOwnerAt(APP_GUEST_ID)).toEqual(FIXED_DATE);
+		expect(firstOwnerAt(NEWCOMER_ID)).toBeNull();
+		expect(firstOwnerAt(MEMBER_ID)).toBeNull();
+		expect(firstOwnerAt(OWNER_ID)).toBeNull();
+		expect(firstOwnerAt(FORMER_OWNER_ID)).toEqual(FORMER_OWNER_SINCE);
+
+		const refused = await send('POST', NEWCOMER_ID, { name: 'Наш дом' });
+
+		expect(refused.status).toBe(403);
+		expect(await refused.json()).toMatchObject({ errorCode: 'household-creation-not-allowed' });
+	});
+
 	it('each ground alone is enough: an invitation into the application, a former owner, the administrator by login', async () => {
 		for (const userId of [APP_GUEST_ID, FORMER_OWNER_ID, ADMIN_ID]) {
 			connection.prepare('DELETE FROM households WHERE id = ?').run('new-household');
