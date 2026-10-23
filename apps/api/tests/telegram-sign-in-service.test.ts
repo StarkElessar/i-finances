@@ -362,6 +362,34 @@ describe('TelegramAccountRepository.signIn', () => {
 		expect(await database.select().from(telegramAccounts)).toEqual([]);
 	});
 
+	it('signs the same Telegram up again after telegram:reset: a new user with a free technical login, not the old account', async () => {
+		const accounts = new TelegramAccountRepository(database);
+		const reset = new UserTelegramReset(database);
+		const signUp = async (index: number) => accounts.signIn({
+			allowRegistration: true,
+			identity: ANNA,
+			invitationTokenHash: null,
+			newUserId: `user-${index}`,
+			now: LATER,
+			request: await confirmedRequest(`sign-up-${index}`, String(index).repeat(32)),
+			session: sessionRecord(`session-${index}`)
+		});
+
+		expect(await signUp(1)).toEqual({ kind: 'registered', userId: 'user-1' });
+		reset.apply({ allowLockout: true, endSessions: true, expectedTelegramId: ANNA.telegramId, userId: 'user-1' });
+		expect(await signUp(2)).toEqual({ kind: 'registered', userId: 'user-2' });
+		reset.apply({ allowLockout: true, endSessions: true, expectedTelegramId: ANNA.telegramId, userId: 'user-2' });
+		expect(await signUp(3)).toEqual({ kind: 'registered', userId: 'user-3' });
+
+		expect(database.select({ id: users.id, username: users.username }).from(users).orderBy(users.id).all()).toEqual([
+			{ id: 'user-1', username: 'tg-1001' },
+			{ id: 'user-2', username: 'tg-1001-2' },
+			{ id: 'user-3', username: 'tg-1001-3' }
+		]);
+		expect(database.select({ userId: telegramAccounts.userId }).from(telegramAccounts).all()).toEqual([{ userId: 'user-3' }]);
+		expect(database.select({ userId: sessions.userId }).from(sessions).all()).toEqual([{ userId: 'user-3' }]);
+	});
+
 	it('changes nothing when the request is no longer confirmed for this secret', async () => {
 		const accounts = new TelegramAccountRepository(database);
 		const request = await confirmedRequest('request-a', 'a'.repeat(32));

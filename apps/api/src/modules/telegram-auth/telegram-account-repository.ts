@@ -188,7 +188,7 @@ export class TelegramAccountRepository {
 			isActive: true,
 			passwordHash: null,
 			updatedAt: now,
-			username: `${TELEGRAM_USERNAME_PREFIX}${identity.telegramId}`
+			username: this.freeTechnicalUsername(transaction, identity.telegramId)
 		}).run();
 		transaction.insert(telegramAccounts).values({
 			chatId: identity.chatId,
@@ -218,5 +218,30 @@ export class TelegramAccountRepository {
 		}
 
 		return { kind: 'registered', userId: input.newUserId };
+	}
+
+	/**
+	 * `tg-<telegram id>`, or `tg-<telegram id>-<n>` with the smallest free `n` from 2 when that name is taken. It is taken
+	 * only by an earlier user of the same Telegram whose link `telegram:reset` removed (Р10): that user stays, and the
+	 * Telegram signing up again becomes a new user. Never the old account by its name, which would undo the reset.
+	 */
+	private freeTechnicalUsername(transaction: AppTransaction, telegramId: string): string {
+		const base = `${TELEGRAM_USERNAME_PREFIX}${telegramId}`;
+		const isTaken = (username: string) => transaction.select({ id: users.id })
+			.from(users)
+			.where(eq(users.username, username))
+			.get() !== undefined;
+
+		if (!isTaken(base)) {
+			return base;
+		}
+
+		let suffix = 2;
+
+		while (isTaken(`${base}-${suffix}`)) {
+			suffix += 1;
+		}
+
+		return `${base}-${suffix}`;
 	}
 }
