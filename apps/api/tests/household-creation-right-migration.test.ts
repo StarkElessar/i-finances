@@ -17,7 +17,8 @@ import { copyMigrationsBefore } from './support/copy-migrations-before';
  * auto-provisioning and members who came by invitation, a second household, a former owner, people signed up with
  * both kinds of invitation), then `applyMigrations` over `./drizzle`. 0018 adds the nullable column
  * `users.first_household_owner_at` through `ALTER TABLE ... ADD` (no rebuild) and fills it in for the current owners
- * and for the creators of household invitations; nothing else changes.
+ * only; nothing else changes. A former owner is not guessed from the household invitations they created (owner's
+ * decision 2026-10-23): that would give the right back to a person demoted to member by hand, like `vicotya`.
  */
 const MIGRATION_UNDER_TEST = '0018_household_creation_right';
 const T = 1_793_000_000_000;
@@ -51,7 +52,8 @@ function householdInvitation(id: string, createdBy: string, createdAt: number, o
 
 /**
  * - `stark`, `anna`: owners of «Семья» (the old resolver made everybody who signed in an owner), `anna` joined later;
- * - `olga`: was an owner of «Семья», created an invitation there and left (no membership now);
+ * - `olga`: was an owner of «Семья», created invitations there and left (no membership now);
+ * - `vicotya`: was an owner of «Семья», created an invitation there, then was demoted to member by hand (SQL);
  * - `petr`: the owner of a second household, `petr-wife` its member;
  * - `tg-1001`: signed up with a household invitation and joined; `tg-1003`: signed up with one and never joined;
  * - `ivan`: accepted a household invitation with an existing account; `loner`: no membership, nothing;
@@ -62,6 +64,7 @@ function seed(): void {
 		user('stark', { password_hash: '$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA' }),
 		user('anna'),
 		user('olga'),
+		user('vicotya'),
 		user('petr'),
 		user('petr-wife'),
 		user('ivan'),
@@ -79,6 +82,7 @@ function seed(): void {
 		{ household_id: 'default-household', joined_at: T + 1, role: 'owner', user_id: 'anna' },
 		{ household_id: 'default-household', joined_at: T + 2, role: 'member', user_id: 'tg-1001' },
 		{ household_id: 'default-household', joined_at: T + 3, role: 'member', user_id: 'ivan' },
+		{ household_id: 'default-household', joined_at: T + 4, role: 'member', user_id: 'vicotya' },
 		{ household_id: 'household-2', joined_at: T + 100, role: 'owner', user_id: 'petr' },
 		{ household_id: 'household-2', joined_at: T + 101, role: 'member', user_id: 'petr-wife' }
 	]);
@@ -94,7 +98,8 @@ function seed(): void {
 		}),
 		householdInvitation('inv-not-joined', 'stark', T + 70, { registered_user_id: 'tg-1003' }),
 		householdInvitation('inv-olga-1', 'olga', T + 30, { revoked_at: T + 40 }),
-		householdInvitation('inv-olga-0', 'olga', T + 20, { revoked_at: T + 40 })
+		householdInvitation('inv-olga-0', 'olga', T + 20, { revoked_at: T + 40 }),
+		householdInvitation('inv-vicotya', 'vicotya', T + 10, { accepted_at: T + 12, accepted_by_user_id: 'ivan' })
 	]);
 	insertRows('app_invitations', [
 		{
@@ -153,7 +158,7 @@ afterEach(() => {
 });
 
 describe('migration 0018: the right to found a household', () => {
-	it('keeps every row, fills the new column for current owners and invitation creators only, stays consistent', () => {
+	it('keeps every row, fills the new column for current owners only, stays consistent', () => {
 		const database = migrateToPrevious();
 		const before = dumpTables();
 
@@ -164,15 +169,17 @@ describe('migration 0018: the right to found a household', () => {
 			anna: T + 1,
 			ivan: null,
 			loner: null,
-			// The earliest invitation she created: she was an owner then.
-			olga: T + 20,
+			// Created invitations as an owner and left: not written down (no owner membership now).
+			olga: null,
 			petr: T + 100,
 			'petr-wife': null,
 			// The owner membership counts, not the later invitations.
 			stark: T,
 			'tg-1001': null,
 			'tg-1002': null,
-			'tg-1003': null
+			'tg-1003': null,
+			// Demoted to member by hand, with old invitations of hers: not written down.
+			vicotya: null
 		};
 
 		expect(connection.pragma('foreign_key_check')).toEqual([]);
@@ -186,7 +193,7 @@ describe('migration 0018: the right to found a household', () => {
 		expect(after.users).toEqual(before.users.map((row) => ({ ...row, first_household_owner_at: expected[String(row.id)] })));
 	});
 
-	it('afterwards the right is exactly: the owners, the former owner, the person invited into the application', () => {
+	it('afterwards the right is exactly: the current owners and the person invited into the application', () => {
 		const database = migrateToPrevious();
 
 		applyMigrations(database, connection, './drizzle');
@@ -194,8 +201,24 @@ describe('migration 0018: the right to found a household', () => {
 		const allowed = (connection.prepare('SELECT id FROM users ORDER BY id').pluck().all() as string[])
 			.filter((id) => hasHouseholdCreationRight(database, id));
 
-		// Not the members, not the people who came with a household invitation (joined or not), not the lone user.
-		expect(allowed).toEqual(['anna', 'olga', 'petr', 'stark', 'tg-1002']);
+		// Not the members, not the people who came with a household invitation (joined or not), not the lone user, and
+		// not the people known as former owners only by the invitations they created.
+		expect(allowed).toEqual(['anna', 'petr', 'stark', 'tg-1002']);
+	});
+
+	it('a former owner known only by invitations, and an owner demoted to member by hand, get no right', () => {
+		const database = migrateToPrevious();
+
+		applyMigrations(database, connection, './drizzle');
+
+		for (const id of ['olga', 'vicotya']) {
+			expect(connection.prepare('SELECT count(*) FROM household_invitations WHERE created_by_user_id = ?').pluck().get(id), id)
+				.toBeGreaterThan(0);
+			expect(connection.prepare('SELECT first_household_owner_at FROM users WHERE id = ?').pluck().get(id), id).toBeNull();
+			expect(hasHouseholdCreationRight(database, id), id).toBe(false);
+		}
+
+		expect(connection.prepare('SELECT role FROM household_members WHERE user_id = ?').pluck().get('vicotya')).toBe('member');
 	});
 
 	it('changes nothing else in the schema: one column appended to users, no rebuild, no new object', () => {
