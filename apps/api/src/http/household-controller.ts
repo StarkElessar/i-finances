@@ -1,6 +1,7 @@
-import { type AuthConfig, type AuthenticatedSession, getAuthConfig } from '@/modules/auth';
+import { type AuthConfig, type AuthenticatedSession, getAuthConfig, type SessionUser } from '@/modules/auth';
 import {
 	HouseholdAlreadyJoinedError,
+	HouseholdCreationNotAllowedError,
 	HouseholdLastOwnerError,
 	HouseholdMemberNotFoundError,
 	HouseholdOwnerRequiredError,
@@ -29,6 +30,7 @@ import type { ApiEnvironment } from './types';
 const STATUS_BY_ERROR_CODE: Record<HouseholdErrorCode, ContentfulStatusCode> = {
 	'already-in-household': 409,
 	'cannot-remove-self': 409,
+	'household-creation-not-allowed': 403,
 	'household-required': 403,
 	'invalid-input': 400,
 	'invalid-origin': 403,
@@ -43,7 +45,8 @@ const STATUS_BY_ERROR_CODE: Record<HouseholdErrorCode, ContentfulStatusCode> = {
  * `GET`, `POST` and `PUT /api/household`, `POST /api/household/members/:userId/remove` and `POST /api/household/leave`:
  * the caller's own household and its members (Р6, Р7, flow 5.5). A caller without a household gets
  * `household-required` from the shared application error mapping (`household-required-response.ts`), except on
- * `POST`, which is how onboarding creates one.
+ * `POST`, which is how onboarding creates one: 403 `household-creation-not-allowed` when the caller may not found a
+ * household (`HouseholdCreationPolicy`), 409 `already-in-household` when they may but already belong to one.
  *
  * The composition root gives it the browser cookie resolver only: managing the household and its membership is
  * not something the MCP bearer key may do.
@@ -77,7 +80,7 @@ export class HouseholdHttpController {
 				context,
 				createHouseholdInputSchema,
 				201,
-				(userId, input) => this.householdService.create(userId, input)
+				(user, input) => this.householdService.create(user, input)
 			);
 		};
 	}
@@ -88,7 +91,7 @@ export class HouseholdHttpController {
 				context,
 				updateHouseholdInputSchema,
 				200,
-				(userId, input) => this.householdService.rename(userId, input)
+				(user, input) => this.householdService.rename(user.id, input)
 			);
 		};
 	}
@@ -119,7 +122,7 @@ export class HouseholdHttpController {
 		context: Context<ApiEnvironment>,
 		schema: z.ZodType<TInput>,
 		successStatus: 200 | 201,
-		command: (userId: string, input: TInput) => Promise<HouseholdDetails>
+		command: (user: SessionUser, input: TInput) => Promise<HouseholdDetails>
 	): Promise<Response> {
 		if (!isSameOriginMutation(context.req.raw, this.config)) {
 			return this.failure(context, 'invalid-origin');
@@ -137,7 +140,7 @@ export class HouseholdHttpController {
 			return this.failure(context, 'invalid-input', collectFieldErrors(parsedInput.error));
 		}
 
-		return this.mapErrors(context, async () => this.success(context, await command(session.user.id, parsedInput.data), successStatus));
+		return this.mapErrors(context, async () => this.success(context, await command(session.user, parsedInput.data), successStatus));
 	}
 
 	/** A mutation without a body: same-origin check, browser session, then the command. */
@@ -166,6 +169,10 @@ export class HouseholdHttpController {
 		catch (error: unknown) {
 			if (error instanceof HouseholdAlreadyJoinedError) {
 				return this.failure(context, 'already-in-household');
+			}
+
+			if (error instanceof HouseholdCreationNotAllowedError) {
+				return this.failure(context, 'household-creation-not-allowed');
 			}
 
 			if (error instanceof HouseholdOwnerRequiredError) {

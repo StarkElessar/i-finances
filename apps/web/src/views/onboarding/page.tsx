@@ -4,6 +4,7 @@ import { applyHouseholdChange, householdLossNotice, useCurrentViewer, useSetCurr
 
 import type { AuthClient } from '@/features/auth';
 import {
+	availableWelcomeChoice,
 	createHousehold,
 	DEFAULT_HOUSEHOLD_NAME,
 	HouseholdClient,
@@ -35,7 +36,8 @@ const SIGN_OUT_FAILED_MESSAGE = 'Не удалось выйти. Попробу�
  * route answers 403 `household-required` for them, so the router never shows those pages.
  *
  * Step 1 confirms the name and chooses between creating a household and accepting an invitation; step 2 names the new
- * household. After the creation the viewer is patched in place (household, role `owner`), never by reloading the
+ * household. A person without the right to found one (`canCreateHousehold`) only has the invitation. After the creation
+ * the viewer is patched in place (household, role `owner`), never by reloading the
  * session (memory `viewer-refetch-remount-bug`), and the person lands on the empty home.
  */
 export function OnboardingPage(props: OnboardingPageProps) {
@@ -47,7 +49,10 @@ export function OnboardingPage(props: OnboardingPageProps) {
 	const [step, setStep] = createSignal<Step>('welcome');
 	const [displayName, setDisplayName] = createSignal(viewer()?.displayName ?? '');
 	const [isNameTouched, setIsNameTouched] = createSignal(false);
-	const [choice, setChoice] = createSignal<WelcomeChoice>('create');
+	// Without the right to found a household there is nothing to choose: only the invitation (the server refuses too).
+	const canCreateHousehold = () => viewer()?.canCreateHousehold ?? false;
+	const [chosen, setChoice] = createSignal<WelcomeChoice>('create');
+	const choice = () => availableWelcomeChoice(chosen(), canCreateHousehold());
 	const [link, setLink] = createSignal('');
 	const [welcomeError, setWelcomeError] = createSignal<string>();
 	const [householdName, setHouseholdName] = createSignal(DEFAULT_HOUSEHOLD_NAME);
@@ -181,6 +186,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 				<Match when={step() === 'welcome'}>
 					<OnboardingWelcomeCard
 						canContinue={form().canContinue}
+						canCreateHousehold={canCreateHousehold()}
 						choice={choice()}
 						displayName={displayName()}
 						displayNameError={isNameTouched() ? form().displayNameError : undefined}
@@ -199,7 +205,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 						onSignOut={() => void handleSignOut()}
 					/>
 				</Match>
-				<Match when={step() === 'create'}>
+				<Match when={step() === 'create' && canCreateHousehold()}>
 					<OnboardingCreateCard
 						error={createError()}
 						isSubmitting={isSubmitting()}

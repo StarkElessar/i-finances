@@ -63,6 +63,13 @@ export const authSessionTelegramSchema = z.object({
 export const currentSessionResponseSchema = z.discriminatedUnion('authenticated', [
 	z.object({
 		authenticated: z.literal(true),
+		/**
+		 * Whether the user may found a household (`POST /api/household`; `household-creation-not-allowed` otherwise):
+		 * the onboarding offers «Создать своё окружение» only then. It is the right, not the state: it stays `true` for
+		 * an owner, who still gets `already-in-household`. The API always sends it; optional in the schema only for
+		 * clients and fixtures written before it, and a missing value means `false`.
+		 */
+		canCreateHousehold: z.boolean().optional(),
 		/** `false` for users who signed up through Telegram: the password block of «Безопасность» is hidden for them. */
 		hasPassword: z.boolean(),
 		/** `null` while the user has no household yet (onboarding). */

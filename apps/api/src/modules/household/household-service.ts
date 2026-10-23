@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
+import type { PlatformAdminPolicy, SessionUser } from '@/modules/auth';
+
 import type {
 	CreateHouseholdInput,
 	CurrencyCode,
@@ -8,6 +10,7 @@ import type {
 } from '@i-finances/contracts';
 
 import { HouseholdAlreadyJoinedError } from './household-already-joined-error';
+import { HouseholdCreationNotAllowedError } from './household-creation-not-allowed-error';
 import { HouseholdLastOwnerError } from './household-last-owner-error';
 import { HouseholdMemberNotFoundError } from './household-member-not-found-error';
 import type { HouseholdMembershipRepository } from './household-membership-repository';
@@ -28,6 +31,8 @@ export type HouseholdServiceDependencies = {
 	householdResolver: HouseholdResolver;
 	membershipRepository: Pick<HouseholdMembershipRepository, 'leave' | 'removeMember'>;
 	now?: () => Date;
+	/** The administrator is one ground of the right to found a household (`HouseholdCreationPolicy`). */
+	platformAdmins: Pick<PlatformAdminPolicy, 'isPlatformAdmin'>;
 };
 
 /**
@@ -48,23 +53,30 @@ export class HouseholdService {
 	}
 
 	/**
-	 * Creates a household with the caller as its owner. Throws `HouseholdAlreadyJoinedError`, writing nothing, when
-	 * the caller already belongs to a household.
+	 * Creates a household with the caller as its owner. Writes nothing and throws `HouseholdCreationNotAllowedError`
+	 * when the caller may not found a household (`HouseholdCreationPolicy`; decided inside the creating transaction),
+	 * otherwise `HouseholdAlreadyJoinedError` when the caller already belongs to a household.
 	 */
-	public async create(userId: string, input: CreateHouseholdInput): Promise<HouseholdDetails> {
-		const household = this.dependencies.householdRepository.createWithOwner({
+	public async create(user: Pick<SessionUser, 'id' | 'username'>, input: CreateHouseholdInput): Promise<HouseholdDetails> {
+		const creation = this.dependencies.householdRepository.createWithOwner({
 			baseCurrency: NEW_HOUSEHOLD_BASE_CURRENCY,
 			createdAt: this.now(),
 			householdId: this.createId(),
 			name: input.name,
-			ownerUserId: userId
+			ownerIsPlatformAdmin: this.dependencies.platformAdmins.isPlatformAdmin(user),
+			ownerUserId: user.id
 		});
 
-		if (household === undefined) {
-			throw new HouseholdAlreadyJoinedError();
-		}
+		switch (creation.kind) {
+			case 'created':
+				return this.toDetails(creation.household);
 
-		return this.toDetails(household);
+			case 'not-allowed':
+				throw new HouseholdCreationNotAllowedError();
+
+			case 'already-in-household':
+				throw new HouseholdAlreadyJoinedError();
+		}
 	}
 
 	public async rename(userId: string, input: UpdateHouseholdInput): Promise<HouseholdDetails> {

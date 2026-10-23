@@ -24,6 +24,14 @@ export type WelcomeForm = {
 export const NOT_AN_INVITATION_MESSAGE = 'Это не похоже на приглашение. Скопируйте ссылку целиком';
 
 /**
+ * The choice the onboarding works with: a person who may not found a household (`canCreateHousehold` of the session,
+ * `app-invitations-v1.md`, section 13) only has «У меня есть приглашение», whatever was chosen before.
+ */
+export function availableWelcomeChoice(choice: WelcomeChoice, canCreateHousehold: boolean): WelcomeChoice {
+	return canCreateHousehold ? choice : 'invite';
+}
+
+/**
  * The first onboarding card (board `Flow-Onboarding`, cards 1–3): the name to confirm and the choice between creating a
  * household and accepting an invitation. «Продолжить» stays disabled while the name is empty or, for the invitation,
  * while the link holds no token. `parseLink` is `parseInvitationLink` (passed in so this module stays free of the

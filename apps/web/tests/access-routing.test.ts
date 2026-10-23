@@ -47,6 +47,7 @@ describe('viewer access', () => {
 
 	it('keeps the household of the session in the viewer', () => {
 		expect(viewerFromSession(MEMBER_SESSION)).toEqual({
+			canCreateHousehold: false,
 			displayName: 'Сергей',
 			hasPassword: true,
 			household: { id: 'default-household', name: 'Семья', role: 'owner' },
@@ -54,6 +55,12 @@ describe('viewer access', () => {
 			telegram: null,
 			username: 'sergei'
 		});
+	});
+
+	it('takes the right to found a household from the session; a session without the flag never offers it', () => {
+		expect(viewerFromSession({ ...ONBOARDING_SESSION, canCreateHousehold: true })).toMatchObject({ canCreateHousehold: true });
+		expect(viewerFromSession({ ...ONBOARDING_SESSION, canCreateHousehold: false })).toMatchObject({ canCreateHousehold: false });
+		expect(viewerFromSession(ONBOARDING_SESSION)).toMatchObject({ canCreateHousehold: false });
 	});
 
 	it('keeps the password and Telegram flags of the session for the «Безопасность» section', () => {

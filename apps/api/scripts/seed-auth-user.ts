@@ -13,7 +13,7 @@ import {
 	DEFAULT_HOUSEHOLD_NAME
 } from '@/modules/household';
 
-import { eq } from 'drizzle-orm';
+import { and, eq, exists, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
 
 const seedEnvironmentSchema = z.object({
@@ -106,6 +106,18 @@ async function ensureSeedHousehold(
 			userId
 		})
 		.onConflictDoNothing();
+
+	// Written down only when the user really is an owner now (a membership that existed before keeps its role), so
+	// they keep the right to found a household after leaving this one (`HouseholdCreationPolicy`).
+	await db.update(users)
+		.set({ firstHouseholdOwnerAt: now })
+		.where(and(
+			eq(users.id, userId),
+			isNull(users.firstHouseholdOwnerAt),
+			exists(db.select({ one: sql`1` })
+				.from(householdMembers)
+				.where(and(eq(householdMembers.userId, userId), eq(householdMembers.role, 'owner'))))
+		));
 
 	console.warn(`Ensured household "${environment.SEED_HOUSEHOLD_ID}" membership.`);
 }

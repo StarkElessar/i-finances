@@ -209,9 +209,33 @@ describe('leaving a household', () => {
 		expect(after.status).toBe(403);
 		expect(await after.json()).toMatchObject({ errorCode: 'household-required' });
 
+		// A member never had the right to found a household, and leaving does not give it (owner's decision 2026-10-23).
+		const before = snapshot();
 		const created = await harness.call('/api/household', { body: { name: 'Своё' }, token: tokens[MEMBER] });
 
-		expect(created.status).toBe(201);
+		expect(created.status).toBe(403);
+		expect(await created.json()).toMatchObject({ errorCode: 'household-creation-not-allowed', ok: false });
+		expect(snapshot()).toBe(before);
+
+		// Joining another household by an invitation still works.
+		const invited = await harness.call('/api/household/invitations', { method: 'POST', token: tokens[OTHER_OWNER] });
+		const { invitation } = await invited.json() as { invitation: { link: string } };
+		const accepted = await harness.call('/api/invitations/accept', {
+			body: { token: invitation.link.split('#').at(-1) },
+			token: tokens[MEMBER]
+		});
+
+		expect(accepted.status).toBe(200);
+		expect(membershipOf(MEMBER)).toEqual({ household_id: OTHER, role: 'member' });
+	});
+
+	it('a removed member signs in again and still may not found a household', async () => {
+		await remove(MEMBER);
+
+		const response = await harness.call('/api/household', { body: { name: 'Своё' }, token: await harness.signIn(MEMBER) });
+
+		expect(response.status).toBe(403);
+		expect(await response.json()).toMatchObject({ errorCode: 'household-creation-not-allowed' });
 	});
 
 	it('the last owner cannot leave, even alone in the household', async () => {
@@ -243,6 +267,12 @@ describe('leaving a household', () => {
 		})).status).toBe(404);
 		expect((await leave(MEMBER)).status).toBe(409);
 		expect(membershipOf(MEMBER)).toEqual({ household_id: FAMILY, role: 'owner' });
+
+		// The owner who left was an owner: they keep the right to found a household of their own.
+		const founded = await harness.call('/api/household', { body: { name: 'Своё' }, token: tokens[OWNER] });
+
+		expect(founded.status).toBe(201);
+		expect(membershipOf(OWNER)).toMatchObject({ role: 'owner' });
 	});
 
 	it('without a household: household-required; without a session: 401', async () => {

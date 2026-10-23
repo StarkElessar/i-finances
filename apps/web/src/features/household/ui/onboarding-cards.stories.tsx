@@ -16,6 +16,7 @@ const meta = {
 	component: OnboardingWelcomeCard,
 	args: {
 		canContinue: true,
+		canCreateHousehold: true,
 		choice: 'create',
 		displayName: 'Алексей',
 		link: '',
@@ -41,6 +42,7 @@ export const Welcome: Story = {
 			<PageCard>
 				<OnboardingWelcomeCard
 					canContinue
+					canCreateHousehold
 					choice={choice()}
 					displayName='Алексей'
 					link=''
@@ -61,6 +63,7 @@ export const BadLink: Story = {
 		<PageCard>
 			<OnboardingWelcomeCard
 				canContinue={false}
+				canCreateHousehold
 				choice='invite'
 				displayName='Алексей'
 				link='ifinances.example/invite#abc'
@@ -81,6 +84,7 @@ export const NameError: Story = {
 		<PageCard>
 			<OnboardingWelcomeCard
 				canContinue={false}
+				canCreateHousehold
 				choice='create'
 				displayName=''
 				displayNameError='Введите имя.'
@@ -101,8 +105,30 @@ export const RemovedFromHousehold: Story = {
 		<PageCard>
 			<OnboardingWelcomeCard
 				canContinue
+				canCreateHousehold
 				choice='create'
 				displayName='Алексей'
+				link=''
+				lostHouseholdName='Семья'
+				onChoice={noop}
+				onContinue={noop}
+				onDisplayNameInput={noop}
+				onLinkInput={noop}
+				onSignOut={noop}
+			/>
+		</PageCard>
+	)
+};
+
+/** Без права создать окружение (пришёл по ссылке в окружение): выбора нет, только ссылка. Не на доске. */
+export const InvitationOnly: Story = {
+	render: () => (
+		<PageCard>
+			<OnboardingWelcomeCard
+				canContinue={false}
+				canCreateHousehold={false}
+				choice='invite'
+				displayName='Мария'
 				link=''
 				lostHouseholdName='Семья'
 				onChoice={noop}

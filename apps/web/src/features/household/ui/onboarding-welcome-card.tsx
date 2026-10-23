@@ -11,6 +11,11 @@ export type OnboardingWelcomeCardProps = {
 	displayName: string;
 	displayNameError?: string;
 	onDisplayNameInput: (value: string) => void;
+	/**
+	 * The person may found a household. Without it the card has no choice at all, only the field for the link: the
+	 * server would refuse the creation (`household-creation-not-allowed`).
+	 */
+	canCreateHousehold: boolean;
 	choice: WelcomeChoice;
 	onChoice: (choice: WelcomeChoice) => void;
 	link: string;
@@ -29,7 +34,8 @@ export type OnboardingWelcomeCardProps = {
 
 /**
  * Cards 1, 2, 3 and 6 of `Flow-Onboarding`: «Добро пожаловать», the name to confirm and the choice between «Создать
- * своё окружение» and «У меня есть приглашение» (with the field for the link).
+ * своё окружение» and «У меня есть приглашение» (with the field for the link). A person without the right to found a
+ * household sees no choice, only the field for the link (not on the board yet, `development/ui-mockup.md`).
  */
 export function OnboardingWelcomeCard(props: OnboardingWelcomeCardProps) {
 	return (
@@ -47,7 +53,9 @@ export function OnboardingWelcomeCard(props: OnboardingWelcomeCardProps) {
 			<Show when={props.lostHouseholdName}>
 				{(name) => (
 					<Banner icon={<CircleAlert/>} role='status' tone='warning'>
-						Вы больше не участник окружения «{name()}». Создайте своё или примите новое приглашение.
+						Вы больше не участник окружения «{name()}». {props.canCreateHousehold
+							? 'Создайте своё или примите новое приглашение.'
+							: 'Примите новое приглашение.'}
 					</Banner>
 				)}
 			</Show>
@@ -67,28 +75,30 @@ export function OnboardingWelcomeCard(props: OnboardingWelcomeCardProps) {
 				required
 				value={props.displayName}
 			/>
-			<ChoiceCardGroup legend='Что вы хотите сделать'>
-				<ChoiceCard
-					checked={props.choice === 'create'}
-					description='Для вас и семьи, приглашения потом'
-					disabled={props.isSubmitting}
-					icon={<Plus/>}
-					name='onboarding-choice'
-					onChange={() => props.onChoice('create')}
-					title='Создать своё окружение'
-					value='create'
-				/>
-				<ChoiceCard
-					checked={props.choice === 'invite'}
-					description='Присоединиться к окружению близких'
-					disabled={props.isSubmitting}
-					icon={<Plus/>}
-					name='onboarding-choice'
-					onChange={() => props.onChoice('invite')}
-					title='У меня есть приглашение'
-					value='invite'
-				/>
-			</ChoiceCardGroup>
+			<Show when={props.canCreateHousehold}>
+				<ChoiceCardGroup legend='Что вы хотите сделать'>
+					<ChoiceCard
+						checked={props.choice === 'create'}
+						description='Для вас и семьи, приглашения потом'
+						disabled={props.isSubmitting}
+						icon={<Plus/>}
+						name='onboarding-choice'
+						onChange={() => props.onChoice('create')}
+						title='Создать своё окружение'
+						value='create'
+					/>
+					<ChoiceCard
+						checked={props.choice === 'invite'}
+						description='Присоединиться к окружению близких'
+						disabled={props.isSubmitting}
+						icon={<Plus/>}
+						name='onboarding-choice'
+						onChange={() => props.onChoice('invite')}
+						title='У меня есть приглашение'
+						value='invite'
+					/>
+				</ChoiceCardGroup>
+			</Show>
 			<Show when={props.choice === 'invite'}>
 				<TextField
 					autocomplete='off'

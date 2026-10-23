@@ -362,8 +362,9 @@ const PROBES: Probe[] = [
 	},
 	{
 		beta: [409],
-		loner: [201],
-		name: 'cannot create a second household',
+		// Without any ground of the right to found a household (app-invitations-v1.md, section 13).
+		loner: [403],
+		name: 'cannot create a second household, nor one without the right',
 		request: () => ({ body: { name: 'Вторая' }, path: '/api/household' }),
 		route: 'POST /api/household',
 		scope: 'onboarding'
@@ -1662,6 +1663,14 @@ describe('existing users keep working', () => {
 			const response = await call(userId, 'GET /api/auth/session', { path: '/api/auth/session' });
 
 			expect(await response.json(), userId).toMatchObject({ isPlatformAdmin });
+		}
+
+		// The right to found a household: the owners (A's is also the administrator), A's member because the fixture has her
+		// as the person who used an invitation into the application, not the loner.
+		for (const [userId, canCreateHousehold] of [[A_OWNER, true], [A_MEMBER, true], [B_OWNER, true], [LONER, false]] as const) {
+			const response = await call(userId, 'GET /api/auth/session', { path: '/api/auth/session' });
+
+			expect(await response.json(), userId).toMatchObject({ canCreateHousehold });
 		}
 
 		const asB = await call(B_OWNER, 'GET /api/app-invitations', { path: '/api/app-invitations' });

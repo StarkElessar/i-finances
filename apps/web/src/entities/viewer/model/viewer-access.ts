@@ -14,6 +14,8 @@ export function viewerFromSession(session: CurrentSessionResponse): CurrentViewe
 	}
 
 	return {
+		// Fail closed: an answer without the flag never offers the creation (the server refuses it anyway).
+		canCreateHousehold: session.canCreateHousehold ?? false,
 		displayName: session.user.displayName,
 		hasPassword: session.hasPassword,
 		household: session.household,

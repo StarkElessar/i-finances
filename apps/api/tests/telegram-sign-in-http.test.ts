@@ -337,6 +337,8 @@ describe('Telegram sign-up: the whole path', () => {
 		expect(await browser.get('/api/auth/session')).toEqual({
 			body: {
 				authenticated: true,
+				// Registration open, no invitation: signed up, but may not found a household (app-invitations-v1.md, 13).
+				canCreateHousehold: false,
 				hasPassword: false,
 				household: null,
 				isPlatformAdmin: false,

@@ -60,6 +60,7 @@ import {
 } from './modules/exchange-rate';
 import {
 	getHouseholdInvitationConfig,
+	HouseholdCreationPolicy,
 	HouseholdInvitationRepository,
 	HouseholdInvitationService,
 	HouseholdMembershipRepository,
@@ -262,7 +263,8 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 	const householdService = new HouseholdService({
 		householdRepository,
 		householdResolver,
-		membershipRepository: new HouseholdMembershipRepository(database, sessionRepository)
+		membershipRepository: new HouseholdMembershipRepository(database, sessionRepository),
+		platformAdmins
 	});
 	const householdInvitationService = new HouseholdInvitationService({
 		acceptRateLimiter: new FixedWindowRateLimiter({ maxRequests: 10, windowMilliseconds: FIVE_MINUTES_MILLISECONDS }),
@@ -385,6 +387,7 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 			householdResolver,
 			signInMethods,
 			platformAdmins,
+			new HouseholdCreationPolicy(database, platformAdmins),
 			authConfig
 		),
 		accountController: new AccountHttpController(

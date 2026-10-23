@@ -8,8 +8,9 @@ import {
 } from '@/infrastructure/database/schema';
 
 import type { CurrencyCode } from '@i-finances/contracts';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 
+import { hasHouseholdCreationRight } from './has-household-creation-right';
 import { isUniqueConstraintError } from './is-unique-constraint-error';
 
 /**
@@ -35,8 +36,20 @@ export type CreateHouseholdWithOwnerInput = {
 	createdAt: Date;
 	householdId: string;
 	name: string;
+	/**
+	 * The owner is a platform administrator (`PLATFORM_ADMIN_USERNAMES`): the one ground of the right that is not in
+	 * the database. Every other ground is read inside the transaction (`hasHouseholdCreationRight`).
+	 */
+	ownerIsPlatformAdmin: boolean;
 	ownerUserId: string;
 };
+
+export type HouseholdCreation =
+	| { household: HouseholdAccessRecord; kind: 'created' }
+	/** The user may not found a household (`HouseholdCreationPolicy`): nothing was written. */
+	| { kind: 'not-allowed' }
+	/** The user already belongs to a household: nothing was written. */
+	| { kind: 'already-in-household' };
 
 export class HouseholdRepository {
 	public constructor(private readonly database: AppDatabase) {}
@@ -75,13 +88,21 @@ export class HouseholdRepository {
 	}
 
 	/**
-	 * Creates the household and the owner membership in one transaction. Returns `undefined`, writing nothing, when
-	 * the user already belongs to a household: either seen inside the transaction or reported by the unique index on
-	 * `household_members.user_id` when another connection won the race.
+	 * Creates the household and the owner membership in one transaction, and writes down when the user first became an
+	 * owner (`users.first_household_owner_at`, kept if already set). Writes nothing and answers:
+	 *
+	 * - `not-allowed` when the user may not found a household (checked first, inside the transaction, so the answer
+	 *   does not depend on the membership: a member who may not found one is told so, not «leave first»);
+	 * - `already-in-household` when the user belongs to a household: either seen inside the transaction or reported by
+	 *   the unique index on `household_members.user_id` when another connection won the race.
 	 */
-	public createWithOwner(input: CreateHouseholdWithOwnerInput): HouseholdAccessRecord | undefined {
+	public createWithOwner(input: CreateHouseholdWithOwnerInput): HouseholdCreation {
 		try {
-			return this.database.transaction((transaction) => {
+			return this.database.transaction((transaction): HouseholdCreation => {
+				if (!input.ownerIsPlatformAdmin && !hasHouseholdCreationRight(transaction, input.ownerUserId)) {
+					return { kind: 'not-allowed' };
+				}
+
 				const existing = transaction.select({ householdId: householdMembers.householdId })
 					.from(householdMembers)
 					.where(eq(householdMembers.userId, input.ownerUserId))
@@ -89,7 +110,7 @@ export class HouseholdRepository {
 					.get();
 
 				if (existing !== undefined) {
-					return undefined;
+					return { kind: 'already-in-household' };
 				}
 
 				transaction.insert(households)
@@ -109,18 +130,25 @@ export class HouseholdRepository {
 						userId: input.ownerUserId
 					})
 					.run();
+				transaction.update(users)
+					.set({ firstHouseholdOwnerAt: input.createdAt })
+					.where(and(eq(users.id, input.ownerUserId), isNull(users.firstHouseholdOwnerAt)))
+					.run();
 
 				return {
-					baseCurrency: input.baseCurrency,
-					id: input.householdId,
-					name: input.name,
-					role: 'owner' as const
+					household: {
+						baseCurrency: input.baseCurrency,
+						id: input.householdId,
+						name: input.name,
+						role: 'owner'
+					},
+					kind: 'created'
 				};
 			});
 		}
 		catch (error: unknown) {
 			if (isUniqueConstraintError(error)) {
-				return undefined;
+				return { kind: 'already-in-household' };
 			}
 
 			throw error;

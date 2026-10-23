@@ -9,6 +9,11 @@ export type ViewerTelegram = {
  * Minimal authenticated user snapshot safe for client UI.
  */
 export type CurrentViewer = {
+	/**
+	 * May found a household (`canCreateHousehold` of the session; `false` when the session does not say): only then
+	 * the onboarding offers «Создать своё окружение». Others join a household by an invitation.
+	 */
+	canCreateHousehold: boolean;
 	displayName: string;
 	/** `false` for an account created through Telegram: the password block of «Безопасность» has nothing to change. */
 	hasPassword: boolean;

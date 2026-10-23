@@ -8,6 +8,7 @@ export {
 	DEFAULT_HOUSEHOLD_NAME
 } from './model/create-household';
 export {
+	availableWelcomeChoice,
 	NOT_AN_INVITATION_MESSAGE,
 	readWelcomeForm,
 	type WelcomeChoice,
