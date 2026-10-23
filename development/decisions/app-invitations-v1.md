@@ -185,6 +185,8 @@ POST /api/app-invitations/:id/revoke
 3. Тексты причин недействительности (`expired`, `revoked`) говорят «попросите новую»; для ссылки в приложение просить надо у администратора (замечание на досках, `ui-mockup.md`, «Допущения» 1). API тексты не менял: они в вебе.
 4. «Недавно принятые»: API отдаёт принятые за 30 дней (до 100 строк); на доске предложено 5 последних — обрезка на стороне веба.
 5. Вливание дубля при привязке Telegram (Р9) теперь отказывает (409), если дубль зарегистрирован по приглашению (он упомянут в `app_invitations.accepted_by_user_id` или `household_invitations.registered_user_id`): след того, кто впустил человека, не стирается. На практике дубль при закрытой регистрации появиться почти не может.
+6. **Выдать право существующему пользователю можно только через SQL, отобрать — нельзя совсем.** Приглашение в приложение существующий аккаунт не «тратит» (раздел 6.1: известный Telegram входит как обычно), поэтому выдать право уже зарегистрированному человеку (например, тому, кто пришёл по ссылке в окружение, а потом заслужил своё) можно только записью `users.first_household_owner_at` вручную через контейнер `if-api`, как в 13.4. Отобрать право у того, кто зарегистрирован по приглашению в приложение или основал окружение, нельзя ничем, кроме ручного SQL (и для приглашения в приложение — только правкой `app_invitations`, что стирает след того, кто впустил). Нужны ли скрипт выдачи/снятия права (как `telegram:reset`) или пункт в диалоге администратора?
+7. **Шаг 2 миграции 0018 (создатели приглашений) на проде даёт только риск** (13.2, 13.4): там не осталось вышедших owner'ов, кроме пониженной вручную `vicotya`. Убрать шаг 2 из 0018 до выкатки (миграция ещё не на проде) или оставить и проверять чтением 13.4?
 
 ## 12. Тесты и мутационная проверка
 
@@ -227,7 +229,7 @@ POST /api/app-invitations/:id/revoke
 
 1. пользователь — **администратор платформы** (`PlatformAdminPolicy`, логин из `PLATFORM_ADMIN_USERNAMES`; единственное основание не из БД);
 2. пользователь **зарегистрирован по приглашению в приложение**: на него указывает `app_invitations.accepted_by_user_id` (это поле ставит только регистрация в транзакции создания пользователя, раздел 6.1; в задаче оно названо `registered_user_id`, такая колонка есть только у `household_invitations`);
-3. пользователь **когда-либо был owner** какого-либо окружения: `users.first_household_owner_at IS NOT NULL` (новая колонка, 13.3);
+3. пользователь **когда-либо был owner** какого-либо окружения: `users.first_household_owner_at IS NOT NULL` (новая колонка, 13.3). «Был owner» — это то, что записано: время ставят создание окружения, сид и миграция 0018. **Ручное понижение до `member` через SQL (как `vicotya` 2026-10-22, `release-1-runbook.md`) не считается «был owner»:** владелец этим решением снял и право. Миграция 0018 этого не знает (шаг 2 смотрит на созданные приглашения), поэтому чтение 13.4 перед выкаткой обязательно;
 4. пользователь **сейчас owner** (членство с ролью `owner`): страховка для owner, у которого время не записано (прямая вставка, работа старого кода после отката, 13.5); такой всё равно получит 409, пока состоит в окружении.
 
 Больше ничего не даёт права: ни регистрация по ссылке в окружение (`household_invitations.registered_user_id`), ни принятие такой ссылки, ни членство `member`, ни выход или удаление из окружения, ни включённый `TELEGRAM_REGISTRATION_ENABLED`. Правило — список разрешений (allow-list): человек «без следов» права не получает. Все основания только растут (ничего их не стирает), поэтому ответ для пользователя не меняется с «да» на «нет».
@@ -242,7 +244,8 @@ POST /api/app-invitations/:id/revoke
 |---|---|---|
 | Администратор платформы (по логину) | да | 201 |
 | Зарегистрирован по приглашению в приложение (в том числе вступивший потом в чужое окружение и вышедший) | да | 201 |
-| Был owner (в том числе унаследованные: `stark`, второй owner «Семьи» из старого автосоздания), вышел или удалён | да | 201 |
+| Был owner по записи: owner на момент 0018 (на проде только `stark`), создатель приглашения в окружение (кроме пониженных владельцем, 13.4), основатель окружения после 0018; в том числе вышедший или удалённый | да | 201 |
+| Понижен до `member` вручную через SQL (`vicotya`) | нет | 403 |
 | Зарегистрирован по ссылке в окружение, не вступил | нет | 403 |
 | Вступил по ссылке в окружение (новый или существующий аккаунт), вышел или удалён | нет | 403 |
 | Участник (`member`) окружения | нет | 403 (не 409) |
@@ -256,7 +259,7 @@ POST /api/app-invitations/:id/revoke
 - у `households` нет создателя; `leave`, удаление участника и вливание пустого окружения при `accept` удаляют строку членства вместе с ролью;
 - след прошлой роли есть только у тех, кто создавал приглашение в окружение (`household_invitations.created_by_user_id`: вставка проверяет роль `owner` в своей транзакции с первого дня таблицы), но это неполно: owner, ни разу не приглашавший и вышедший, следа не оставляет.
 
-На проде это не теория: старый резолвер делал owner'ом «Семьи» каждого, кто входил (до A5, `schema-migrations-v1.md`, 6), так что второй owner «Семьи» вправе выйти (`leave` пускает, пока есть другой owner) и без записи потерял бы право. Поэтому — одна nullable-колонка.
+Старый резолвер делал owner'ом «Семьи» каждого, кто входил (до A5, `schema-migrations-v1.md`, 6), так что в базе, где второй owner остался, он вправе выйти (`leave` пускает, пока есть другой owner) и без записи потерял бы право. Поэтому — одна nullable-колонка. **На проде сейчас** (после 2026-10-22) owner только `stark`, второй owner `vicotya` понижен владельцем вручную, и это понижение снимает право (13.1, п. 3). Значит, на проде колонка сегодня даёт право только `stark`, у которого оно есть и как у администратора; дальше её заполняет только создание окружения людьми, у которых право и так есть. Колонка нужна для «был owner» вне прода, на случай, если `stark` уберут из `PLATFORM_ADMIN_USERNAMES`, и для будущих совладельцев (передача владения в v2); см. вопрос 7 раздела 11.
 
 **Отвергнуто:** вывод по дате регистрации или по «нет следов приглашения в окружение» (deny-list: пропускает любого «без следов», например зарегистрированного при открытой регистрации); `households.created_by_user_id` (не покрывает унаследованных owner'ов и второго owner'а); колонка-разрешение `users.can_create_household` (это не факт, а право, которое кто-то должен выдавать; нужен скрипт или UI выдачи); триггер на `household_members` (Drizzle его не видит, а пересборка `users` или `household_members` будущей миграцией (`__new_*`, `DROP`, `RENAME`) уронила бы или сломала его молча); запись при потере роли (`leave`, удаление, `accept`) — три опасные транзакции вместо одной, при том что все пути, создающие owner'а, и так пишут время.
 
@@ -273,14 +276,54 @@ POST /api/app-invitations/:id/revoke
 
 ### 13.4. Выкатка
 
-Как 0017 (`docs/deployment.md`, раздел «Invitations into the application»): бэкап через контейнер `backup`, пробный прогон на копии из нового образа (ожидается `Database migrations applied.`, `integrity ok`, `fk violations 0`, те же количества строк), затем API и веб вместе. Перед выкаткой полезно прочитать (только чтение), кому миграция даст право:
+Как 0017 (`docs/deployment.md`, раздел «Invitations into the application»): бэкап через контейнер `backup`, пробный прогон на копии из нового образа (ожидается `Database migrations applied.`, `integrity ok`, `fk violations 0`, те же количества строк), затем API и веб вместе.
+
+**Обязательный шаг до выкатки: прочитать, кому миграция даст право** (только чтение, через контейнер `backup`, как 5.1 `schema-migrations-v1.md`: `cat <<'SQL' | docker compose exec -T backup sqlite3 -readonly -header -column /if-data/i-finances.sqlite`):
 
 ```sql
-SELECT u.username, u.display_name, m.household_id, m.role FROM users u
-  LEFT JOIN household_members m ON m.user_id = u.id
+-- Кому 0018 запишет first_household_owner_at, и по какому шагу. Ожидается ровно одна строка: stark, step1.
+SELECT u.username, u.display_name,
+       CASE WHEN EXISTS (SELECT 1 FROM household_members o WHERE o.user_id = u.id AND o.role = 'owner')
+            THEN 'step1-owner' ELSE 'step2-invitations' END AS step,
+       (SELECT group_concat(m.household_id || ':' || m.role) FROM household_members m WHERE m.user_id = u.id) AS memberships,
+       (SELECT count(*) FROM household_invitations i WHERE i.created_by_user_id = u.id) AS invitations_created
+  FROM users u
   WHERE EXISTS (SELECT 1 FROM household_members o WHERE o.user_id = u.id AND o.role = 'owner')
-     OR EXISTS (SELECT 1 FROM household_invitations i WHERE i.created_by_user_id = u.id);
+     OR EXISTS (SELECT 1 FROM household_invitations i WHERE i.created_by_user_id = u.id)
+  ORDER BY u.username;
 ```
+
+**Ожидаемый результат: ровно одна строка, `stark`, `step1-owner`.** Шаг 2 миграции даёт право всем, кто когда-либо создавал приглашение в окружение, в том числе тем, кого владелец потом понизил до `member` вручную. Любая другая строка — **стоп**, выкатка ждёт слова владельца. Если лишняя строка — `vicotya` (понижена 2026-10-22; если она создавала приглашения, пока была owner, шаг 2 вернёт ей право), владелец решает:
+
+- выкатывать и сразу после `healthy` снять ей время скриптом ниже (между стартом API и скриптом проходит минута; кнопки создания у неё в это время есть, но ей надо ещё выйти из «Семьи»; скрипт откатывается, если она успела стать owner, и тогда снова стоп);
+- или не выкатывать, пока шаг 2 не убран из 0018 (вопрос 7 раздела 11).
+
+Скрипт снятия (только по слову владельца, после бэкапа; меняет ровно одну строку, иначе откат):
+
+```js
+// Через контейнер if-api (база на запись), по образцу release-1-runbook.md, «Запись в боевую базу»:
+// ssh stark@<хост> 'cd ~/sites/homelab && docker compose exec -T if-api node -' < clear-vicotya-owner-time.js
+const Database = require('better-sqlite3');
+const db = new Database('/app/apps/api/data/i-finances.sqlite');
+db.pragma('foreign_keys = ON');
+const read = () => db.prepare(`SELECT u.username, u.first_household_owner_at,
+  (SELECT group_concat(m.household_id || ':' || m.role) FROM household_members m WHERE m.user_id = u.id) AS memberships
+  FROM users u WHERE u.username = 'vicotya'`).all();
+console.log('before', read());
+db.exec('BEGIN IMMEDIATE');
+const { changes } = db.prepare(`UPDATE users SET first_household_owner_at = NULL
+  WHERE username = 'vicotya' AND first_household_owner_at IS NOT NULL
+    AND NOT EXISTS (SELECT 1 FROM household_members m WHERE m.user_id = users.id AND m.role = 'owner')`).run();
+if (changes !== 1) {
+  db.exec('ROLLBACK');
+  console.log('changes', changes, '- rolled back, stop and ask the owner');
+  process.exit(1);
+}
+db.exec('COMMIT');
+console.log('after', read());
+```
+
+После него: `GET /api/auth/session` у `vicotya` — `canCreateHousehold: false`; повтор запроса выше с `first_household_owner_at IS NOT NULL` вместо условий — только `stark`.
 
 Smoke: `GET /api/auth/session` у `stark` — `canCreateHousehold: true`; у участника, пришедшего по ссылке, — `false`.
 
@@ -300,7 +343,7 @@ Smoke: `GET /api/auth/session` у `stark` — `canCreateHousehold: true`; у у�
 - `tests/app-invitation-http.test.ts` (боевой граф, Telegram, фальшивый бот), раздел «the right to found a household»: зарегистрированный по ссылке в окружение и не вступивший → 403 и `canCreateHousehold: false`, вступление по той же ссылке работает; вступил и вышел → 403; существующий участник вышел → 403; зарегистрированный по приглашению в приложение → 201 даже после вступления в чужое окружение и выхода; администратор без других оснований → 201, с пустым списком → 403; унаследованный второй owner «Семьи» (время записано, как 0018) вышел → 201; гонки «создать и вступить одновременно»: без права создание 403, вступление 200; с правом — ровно одно членство. Полный путь по приглашению в приложение проверяет `canCreateHousehold: true`.
 - `tests/household-members-http.test.ts`: вышедший участник → 403, затем вступает по приглашению в другое окружение; удалённый участник → 403; owner, вышедший при втором owner'е, → 201. `tests/household-isolation-http.test.ts`: проба `POST /api/household` без права → 403; `canCreateHousehold` в сеансе по ролям. `tests/household-creation-right-migration.test.ts` (13.3). Контракты: `packages/contracts/tests/household.test.ts`. Веб: `access-routing.test.ts`, `onboarding.test.ts`.
 
-Мутации (каждая вносилась отдельно скриптом в рабочее дерево и откатывалась, прогонялись 8 файлов API: `household-http`, `household-members-http`, `app-invitation-http`, `household-isolation-http`, `household-creation-right-migration`, `telegram-sign-in-http`, `auth`, `household-invitation-http` — 400 тестов; для веба `access-routing` и `onboarding` — 54 теста). Все падения — утверждения тестов, не ошибки выполнения.
+Мутации (каждая вносилась отдельно скриптом в рабочее дерево и откатывалась, прогонялись 8 файлов API: `household-http`, `household-members-http`, `app-invitation-http`, `household-isolation-http`, `household-creation-right-migration`, `telegram-sign-in-http`, `auth`, `household-invitation-http` — 400 тестов, после ревью ещё `seed-auth-user-household-owner` — 403; для веба `access-routing` и `onboarding` — 54 теста). Все падения — утверждения тестов, не ошибки выполнения.
 
 | # | Мутация | Упало тестов |
 |---|---|---|
@@ -327,5 +370,10 @@ Smoke: `GET /api/auth/session` у `stark` — `canCreateHousehold: true`; у у�
 | W1 | веб: сеанс без флага считается «можно» | 2 |
 | W2 | веб: выбор «создать» оставлен без права | 1 |
 | W3 | веб: флаг сеанса игнорируется | 2 |
+| R21 | запись времени в `createWithOwner` без `eq(users.id)`: время получают все, у кого NULL (ревью Opus 2026-10-23, у него W2) | 1 (тест добавлен после ревью) |
+| X1 | сид не пишет `first_household_owner_at` | 1 (тест `seed-auth-user-household-owner` добавлен после ревью) |
+| X2 | сид пишет время без проверки owner-членства | 1 |
+| X3 | сид перезаписывает уже записанное время | 1 |
+| V3–V5 | страница онбординга: право всегда `true`, группа выбора без права, шаг создания без проверки | выживают: у веб-тестов нет DOM (`--environment node`, ни `jsdom`, ни `happy-dom`, ни `@solidjs/testing-library` в зависимостях); логика выбора вынесена в `availableWelcomeChoice` (W2), остальное проверяется глазами в браузере |
 
 R20 выжила и **эквивалентна** по безопасности: основания только растут, поэтому проверка, прошедшая до транзакции, прошла бы и в ней; единственное, что может исчезнуть между ними, — «owner сейчас», но такой человек «был owner» и право имеет по правилу. Обратный случай (основание появилось между проверкой и вставкой) дал бы лишний 403, то есть отказ, а не обход. Проверка всё равно стоит в транзакции, чтобы ответ опирался на то же состояние базы, что и вставка.
