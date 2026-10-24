@@ -16,17 +16,64 @@ sessions, private receipt images, and worker endpoints. Nginx must preserve the
 `/api` prefix when proxying and forward the request host/origin information used
 by the API origin checks.
 
-The migration does not require CORS or cross-origin cookies. Browser smoke and
-the full authenticated flow are intentionally left for manual verification
-after the source split and cleanup are complete.
+The same-origin deployment does not require cross-origin cookies or a general
+CORS policy. The public categories GET/OPTIONS pair sets its own CORS headers
+in `apps/api/src/http/category-controller.ts`. Browser smoke and the full
+authenticated flow remain manual deployment checks; this document does not
+record that they have passed.
 
 ## Client IP behind the proxy
 
 The API derives the client address (sign-in rate limits, `sessions.ip_address`) in
 `apps/api/src/http/client-ip.ts`. Set `TRUSTED_PROXY_COUNT=1` for the API when exactly one
 reverse proxy (the homelab nginx, which appends `$remote_addr` to `X-Forwarded-For`) sits in
-front of it. With the default `0` no forwarding header is trusted and the TCP peer is used.
+front of it. Outside production the default is `0`: no forwarding header is trusted and the TCP peer is used.
+With `NODE_ENV=production`, `TRUSTED_PROXY_COUNT` must be set explicitly or the API refuses to start
+(`apps/api/src/modules/auth/auth-config.ts`).
 Rationale and caveats: `development/decisions/client-ip.md`.
+
+## Environment inventory (2026-10-23)
+
+The template is `.env.example` at the workspace root; there is no
+`apps/api/.env.example`. It declares 35 variables. `NODE_ENV` is also consumed by
+the API but is not declared in the template. API and MCP package scripts load
+`../../.env`; relative database/image paths are resolved from the API process's
+working directory (`apps/api` when run through its package commands).
+
+The tables below cover every template variable plus `NODE_ENV`. Defaults are
+code defaults unless explicitly described as template values. Auth config is in
+`apps/api/src/modules/auth/auth-config.ts`; Telegram and invitation configuration
+is listed in the next section. Receipt settings are read in `composition-root.ts`
+and `modules/receipt-import/receipt-image-storage.ts`; not every setting uses a
+strict config parser.
+
+| Variable | Default / use |
+|---|---|
+| `API_PORT` | `3001`; TCP port 1–65535, checked in `apps/api/src/main.ts`. |
+| `DATABASE_URL` | `./data/i-finances.sqlite`; optional `file:` prefix or `:memory:` (`infrastructure/database/client.ts`). |
+| `NODE_ENV` | No default here. `production` enables Secure auth cookies, requires explicit proxy count, enforces production Telegram checks, and disables the development global database cache. |
+| `AUTH_ORIGIN` | `http://localhost:5173`; absolute URL used for mutation-origin checks, WebAuthn, invitation links, and Telegram webhook URL/confirmation host. |
+| `SESSION_COOKIE_NAME` | `i_finances_session`; letters, digits, `_`, `-`. |
+| `SESSION_TTL_DAYS` | `30`; integer 1–365. |
+| `TRUSTED_PROXY_COUNT` | `0` outside production; integer 0–10, explicitly required in production. Use `1` behind the homelab nginx. |
+| `WEBAUTHN_RP_ID` | `localhost`; nonempty RP ID. |
+| `WEBAUTHN_RP_NAME` | `iFinances`; nonempty RP display name. |
+| `RECEIPT_IMAGE_ROOT` | `./storage/receipts`; private image directory. |
+| `RECEIPT_IMAGE_RETENTION_DAYS` | Positive integer; the template sets `5`, but unset/invalid values fall back to **30** in `ReceiptImportService`. Sets the image deadline after approval. |
+| `RECEIPT_LITELLM_BASE_URL` | `https://litellm.holdingbp.ru:4000/v1`; corporate LiteLLM proxy. |
+| `RECEIPT_LITELLM_API_KEY` | Secret; unset/blank disables the receipt processing loop while HTTP remains available. |
+| `RECEIPT_LITELLM_MODEL` | `deepseek-flash`. |
+| `RECEIPT_PROCESSING_POLL_INTERVAL_MS` | `5000`; fallback for unset/nonpositive/noninteger values. |
+| `RECEIPT_PROCESSING_TIMEOUT_MS` | `120000`; fallback for unset/nonpositive/noninteger values. |
+| `MCP_API_KEY` | Secret shared by API and MCP. API bearer authentication requires at least 32 characters (`http/api-key-session-resolver.ts`). |
+| `MCP_USER_ID` | User ID impersonated by the bearer key; must identify an active user. Finance access requires household membership (otherwise 403 `household-required`); production policy uses the household owner's ID. |
+| `MCP_BASE_URL` | `http://localhost:3001`; consumed by the separate MCP process (`apps/mcp/src/main.ts`). |
+| `WEB_PORT` | Template value `5173`; current web scripts/config do not read it. `apps/web/package.json` starts `vite --port 5173`, and `vite.config.ts` proxies `/api` to `http://localhost:3001`. |
+| `SEED_USERNAME` | Required by `apps/api/scripts/seed-auth-user.ts` only; 3–64 characters, reserved `tg-` prefix refused. |
+| `SEED_PASSWORD` | Secret, required by the seed script only; 12–256 characters. |
+| `SEED_DISPLAY_NAME` | Required by the seed script only; 1–100 characters after trimming. |
+| `SEED_HOUSEHOLD_ID` | `default-household`; seed script only. |
+| `SEED_HOUSEHOLD_NAME` | `Семья`; seed script only. |
 
 ## Telegram sign-in and households
 
@@ -37,12 +84,14 @@ them. Everything below that touches the server is done by whoever deploys, and o
 
 ### Environment
 
-Server variables live in `~/sites/homelab/env/i-finances.env` (not in git). `.env.example` is the template and holds
-no secrets. A wrong value stops the API at start with a message that names the variable and never its value.
+Server variables live in `~/sites/homelab/env/i-finances.env` (not in git). The workspace-root `.env.example` is the
+template and holds no secrets. Telegram configuration, invitation TTLs, and administrator logins are validated at
+startup; their errors name the variable without printing its value. Receipt numeric settings instead use the
+fallbacks documented above.
 
 | Variable | Secret | Meaning |
 |---|---|---|
-| `TELEGRAM_BOT_TOKEN` | yes | Token from BotFather. Empty: Telegram is off and the sign-in button is hidden. |
+| `TELEGRAM_BOT_TOKEN` | yes | Token from BotFather. Required with `webhook`/`polling`; missing with either mode stops startup. With `off`, no update runner starts. A bot username plus `DEV_TELEGRAM_LOGIN=true` can enable local sign-in without a token. |
 | `TELEGRAM_BOT_USERNAME` | no | Bot name without `@`, for `https://t.me/<name>` links. Required whenever `TELEGRAM_UPDATES` is not `off`. |
 | `TELEGRAM_UPDATES` | no | `off` (default), `webhook` (production), `polling` (local, with a separate dev bot). |
 | `TELEGRAM_WEBHOOK_SECRET` | yes | `webhook` only. 1-256 characters of `A-Za-z0-9_-`, at least 32 in production. Generate with `openssl rand -hex 32`. |
@@ -53,8 +102,6 @@ no secrets. A wrong value stops the API at start with a message that names the v
 | `PLATFORM_ADMIN_USERNAMES` | no | Logins (`users.username`, not display names) of the platform administrators, separated by commas; on production `stark`. Only they create invitations into the application. Empty: nobody. An entry that cannot be a login stops the start. |
 | `APP_INVITATION_TTL_HOURS` | no | Lifetime of an invitation into the application, 1-168, default 168 (7 days). |
 | `DEV_TELEGRAM_LOGIN` | no | Local development only. **Never in production**: the API refuses to start with it when `NODE_ENV=production`. |
-| `TRUSTED_PROXY_COUNT` | no | Number of reverse proxies in front of the API. `1` behind the homelab nginx; production refuses to start without it. |
-| `MCP_USER_ID` | no | Must be the id of the household owner (a member of the household), otherwise MCP gets 403 `household-required`. |
 
 ### Creating the bot
 
@@ -78,14 +125,16 @@ docker compose exec if-api node -e "fetch('https://api.telegram.org/bot'+process
 
 ### Rollout order
 
-The releases are those of section 8.4 of the decision. Every deploy starts with a backup (`schema-migrations-v1.md`, 5.2); migrations are applied by the container at start.
+The releases are those of section 8.4 of the decision. The sequence below retains that rollout history; the
+2026-10-22 decision in `app-invitations-v1.md` supersedes its open-registration step: keep
+`TELEGRAM_REGISTRATION_ENABLED=false` and register new people through live invitations. Every deploy starts with a backup (`schema-migrations-v1.md`, 5.2); migrations are applied by the container at start.
 
 1. **Release 1, no visible change.** Migrations 0014–0016, household without auto-creation, `TRUSTED_PROXY_COUNT=1`. Telegram stays off. Steps: `development/release-1-runbook.md`.
 2. **Release 2, Telegram for the family.** Deploy API and web together (the session response changed). Set the bot token, `TELEGRAM_BOT_USERNAME`, `TELEGRAM_UPDATES=webhook`, `TELEGRAM_WEBHOOK_SECRET`, and keep `TELEGRAM_REGISTRATION_ENABLED=false`. Then link Telegram in this order (Р9), so that no duplicate user appears:
    1. Registration stays **off**: Telegram signs in only accounts that already linked it.
    2. The owner signs in as usual (password or passkey), opens «Безопасность» and presses «Привязать Telegram». The screen shows the linked `@username`: check that it is theirs.
    3. The family member does the same.
-   4. Only after both are linked, and on the owner's word, set `TELEGRAM_REGISTRATION_ENABLED=true` and restart `if-api`.
+   4. The original rollout called for `TELEGRAM_REGISTRATION_ENABLED=true` after both linked, on the owner's word. **Superseded on 2026-10-22:** keep it `false`; new registrations require a live invitation (next section).
    If a duplicate was created anyway (registration turned on early), linking merges it only when it has no password, no passkey and an empty household; otherwise the answer is 409 and the owner decides by hand.
 3. **Release 3, households for other people.** Invitations, members, onboarding. Before it, a read-only query on the production database for the roles in `default-household`. There must be one owner: the head of the family, who is also `MCP_USER_ID`. A second `owner` (a leftover of the old resolver) can remove the owner and end their sessions; lowering that user to `member` is done only on the owner's word, after a backup. On the nginx side add `Referrer-Policy: same-origin` for `/invite` (below).
 
@@ -137,7 +186,7 @@ It works on the database from `DATABASE_URL` and can run while the API is up. It
 
 The person signs in with the password or passkey they still have and links the new Telegram in «Безопасность». A user with **no** password and **no** passkey would have no way in after the reset, so the script refuses them unless `--allow-lockout` is given. Such an account stays unreachable: the user row is never deleted, and a person who signs up through Telegram again becomes a different user. `seed-auth-user.ts` cannot give a password to a `tg-<id>` user (the prefix is reserved).
 
-A person who signed up through Telegram (no password, no passkey) and lost that Telegram account does not need the script: the new Telegram account is unknown, so with `TELEGRAM_REGISTRATION_ENABLED=true` it signs up as a new user. The owner removes the old account from the household in «Окружение» (that also ends its sessions) and invites the new one; the household's data stays with the household. `--allow-lockout` is for cutting a Telegram off an account on purpose, with `--end-sessions`, when nobody is to sign in to it any more.
+A person who signed up through Telegram (no password, no passkey) and lost that Telegram account does not need the script: the new Telegram account is unknown and, with the current `TELEGRAM_REGISTRATION_ENABLED=false` policy, needs a live invitation to sign up as a new user. The owner removes the old account from the household in «Окружение» (that also ends its sessions) and issues a household invitation for the person to register with the new Telegram account and then accept; the household's data stays with the household. The earlier open-registration rollout allowed sign-up with `TELEGRAM_REGISTRATION_ENABLED=true`; that is no longer the deployment policy. `--allow-lockout` is for cutting a Telegram off an account on purpose, with `--end-sessions`, when nobody is to sign in to it any more.
 
 ### Warnings
 
