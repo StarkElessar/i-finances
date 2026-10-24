@@ -25,6 +25,8 @@ import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createRequestBodyStream } from './request-body-stream';
+
 const USER_ID = 'user-1';
 // Shaped like an Argon2 hash, so the user counts as having a password (the passkey `userName` depends on it).
 const STORED_HASH = '$argon2id$v=19$m=19456,t=2,p=1$c2FsdHNhbHQ$aGFzaGhhc2g';
@@ -91,6 +93,134 @@ function createPasskeyApp(config: AuthConfig = AUTH_CONFIG) {
 		sessionService
 	};
 }
+
+describe.each([
+	{ limit: 16 * 1024, path: 'sign-in/options', resultSchema: passkeySignInResultSchema },
+	{ limit: 16 * 1024, path: 'sign-in/verification', resultSchema: passkeySignInResultSchema },
+	{ limit: 64 * 1024, path: 'registration/verification', resultSchema: passkeyRegistrationResultSchema }
+])('passkey body protection: $path', ({ limit, path, resultSchema }) => {
+	it.each([false, true])('checks Origin before reading chunked bodies (endless: %s)', async (endless) => {
+		const { app, service, sessionService } = createPasskeyApp();
+		const beginAuthentication = vi.spyOn(service, 'beginAuthentication');
+		const finishAuthentication = vi.spyOn(service, 'finishAuthentication');
+		const finishRegistration = vi.spyOn(service, 'finishRegistration');
+		const resolveSession = vi.spyOn(sessionService, 'validateSessionToken');
+		const stream = createRequestBodyStream('x'.repeat(8 * 1024), { endless });
+		const response = await app.request(`/api/auth/passkey/${path}`, {
+			body: stream.body,
+			duplex: 'half',
+			headers: { 'content-type': 'application/json', origin: 'https://evil.example', 'transfer-encoding': 'chunked' },
+			method: 'POST'
+		} as RequestInit);
+
+		expect(response.status).toBe(403);
+		expect(resultSchema.parse(await response.json())).toMatchObject({ errorCode: 'invalid-origin', ok: false });
+		expect(stream.readChunks()).toBe(0);
+		expect(beginAuthentication).not.toHaveBeenCalled();
+		expect(finishAuthentication).not.toHaveBeenCalled();
+		expect(finishRegistration).not.toHaveBeenCalled();
+		expect(resolveSession).not.toHaveBeenCalled();
+		await stream.body.cancel();
+	});
+
+	describe.each(['content-length', 'chunked'])('%s', (transport) => {
+		it('rejects one byte over the limit before session lookup, JSON validation or WebAuthn', async () => {
+			const { app, service, sessionService } = createPasskeyApp();
+			const beginAuthentication = vi.spyOn(service, 'beginAuthentication');
+			const finishAuthentication = vi.spyOn(service, 'finishAuthentication');
+			const finishRegistration = vi.spyOn(service, 'finishRegistration');
+			const resolveSession = vi.spyOn(sessionService, 'validateSessionToken');
+			// Invalid JSON would give 400, and registration without a session would give 401, if either ran first.
+			const stream = createRequestBodyStream('x'.repeat(limit + 1));
+			const headers: Record<string, string> = { 'content-type': 'application/json', origin: AUTH_CONFIG.origin };
+
+			headers[transport === 'content-length' ? 'content-length' : 'transfer-encoding'] =
+				transport === 'content-length' ? String(limit + 1) : 'chunked';
+
+			const response = await app.request(`/api/auth/passkey/${path}`, {
+				body: stream.body,
+				duplex: 'half',
+				headers,
+				method: 'POST'
+			} as RequestInit);
+
+			expect(response.status).toBe(413);
+			expect(resultSchema.parse(await response.json())).toMatchObject({ errorCode: 'payload-too-large', ok: false });
+			expect(beginAuthentication).not.toHaveBeenCalled();
+			expect(finishAuthentication).not.toHaveBeenCalled();
+			expect(finishRegistration).not.toHaveBeenCalled();
+			expect(resolveSession).not.toHaveBeenCalled();
+			expect(stream.readChunks()).toBe(transport === 'content-length' ? 0 : Math.ceil((limit + 1) / 1024));
+
+			if (transport === 'content-length') {
+				await stream.body.cancel();
+			}
+		});
+
+		it('accepts a schema-valid body exactly at the limit, preserving the WebAuthn response', async () => {
+			const { app, service, sessionService } = createPasskeyApp();
+			const session = await sessionService.createSession(USER_ID);
+			const beginAuthentication = vi.spyOn(service, 'beginAuthentication');
+			const finishAuthentication = vi.spyOn(service, 'finishAuthentication').mockResolvedValue({
+				ok: true, redirectTo: '/', session
+			});
+			const finishRegistration = vi.spyOn(service, 'finishRegistration').mockResolvedValue({ ok: true });
+			const credential = {
+				clientExtensionResults: {},
+				id: 'credential',
+				rawId: 'credential',
+				response: path === 'registration/verification'
+					? { attestationObject: 'YXR0ZXN0YXRpb24', clientDataJSON: 'e30' }
+					: { authenticatorData: 'ZGF0YQ', clientDataJSON: 'e30', signature: 'c2lnbmF0dXJl' },
+				type: 'public-key'
+			};
+			const input = { response: credential };
+			const initialBody = path === 'sign-in/options' ? '{}' : JSON.stringify(input);
+			const padding = 'A'.repeat(limit - Buffer.byteLength(initialBody));
+			let body: string;
+
+			if (path === 'sign-in/options') {
+				body = initialBody + ' '.repeat(padding.length);
+			}
+			else {
+				if (credential.response.attestationObject === undefined) {
+					credential.response.signature += padding;
+				}
+				else {
+					credential.response.attestationObject += padding;
+				}
+
+				body = JSON.stringify(input);
+			}
+
+			expect(Buffer.byteLength(body)).toBe(limit);
+
+			const stream = createRequestBodyStream(body);
+			const headers: Record<string, string> = {
+				'content-type': 'application/json', cookie: `${AUTH_CONFIG.sessionCookieName}=${session.token}`, origin: AUTH_CONFIG.origin
+			};
+
+			headers[transport === 'content-length' ? 'content-length' : 'transfer-encoding'] =
+				transport === 'content-length' ? String(limit) : 'chunked';
+
+			const response = await app.request(`/api/auth/passkey/${path}`, {
+				body: stream.body, duplex: 'half', headers, method: 'POST'
+			} as RequestInit);
+
+			expect(response.status).toBe(200);
+
+			if (path === 'sign-in/options') {
+				expect(passkeyAuthenticationOptionsSchema.parse(await response.json())).toHaveProperty('challenge');
+				expect(beginAuthentication).toHaveBeenCalledOnce();
+			}
+			else {
+				expect(resultSchema.parse(await response.json())).toMatchObject({ ok: true });
+				expect(path === 'registration/verification' ? finishRegistration : finishAuthentication)
+					.toHaveBeenCalledWith(expect.objectContaining({ response: credential }));
+			}
+		});
+	});
+});
 
 describe('passkey API', () => {
 	it('creates an authentication challenge with a browser-safe options response', async () => {

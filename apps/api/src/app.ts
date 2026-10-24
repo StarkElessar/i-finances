@@ -58,7 +58,7 @@ export function createApiApp(
 		const authController = dependencies.authController;
 
 		app.get('/api/auth/session', authController.currentSession());
-		app.post('/api/auth/sign-in', authController.signInBodyLimit(), authController.signIn());
+		app.post('/api/auth/sign-in', authController.signInOriginGuard(), authController.signInBodyLimit(), authController.signIn());
 		app.post('/api/auth/sign-out', authController.signOut());
 		app.put('/api/auth/display-name', authController.updateDisplayName());
 	}
@@ -104,10 +104,25 @@ export function createApiApp(
 	if (dependencies.passkeyController !== undefined) {
 		const passkeyController = dependencies.passkeyController;
 
-		app.post('/api/auth/passkey/sign-in/options', passkeyController.signInOptions());
-		app.post('/api/auth/passkey/sign-in/verification', passkeyController.signInVerification());
+		app.post(
+			'/api/auth/passkey/sign-in/options',
+			passkeyController.signInOriginGuard(),
+			passkeyController.signInBodyLimit(),
+			passkeyController.signInOptions()
+		);
+		app.post(
+			'/api/auth/passkey/sign-in/verification',
+			passkeyController.signInOriginGuard(),
+			passkeyController.signInBodyLimit(),
+			passkeyController.signInVerification()
+		);
 		app.post('/api/auth/passkey/registration/options', passkeyController.registrationOptions());
-		app.post('/api/auth/passkey/registration/verification', passkeyController.registrationVerification());
+		app.post(
+			'/api/auth/passkey/registration/verification',
+			passkeyController.registrationOriginGuard(),
+			passkeyController.registrationBodyLimit(),
+			passkeyController.registrationVerification()
+		);
 	}
 
 	if (dependencies.securityController !== undefined) {

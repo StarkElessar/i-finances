@@ -21,14 +21,20 @@ import {
 } from '@i-finances/contracts';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
 import type { Context } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
 
 import { readClientIp } from './client-ip';
 import { isSameOriginMutation } from './mutation-origin';
+import { mutationOriginGuard } from './mutation-origin-guard';
 import { createSessionCookie } from './session-cookie';
 import type { RequestSessionResolver } from './session-resolver';
 import type { ApiEnvironment } from './types';
 
-type PasskeyFailureStatus = 400 | 401 | 403 | 500;
+type PasskeyFailureStatus = 400 | 401 | 403 | 413 | 500;
+
+const SIGN_IN_BODY_LIMIT_BYTES = 16 * 1024;
+
+const REGISTRATION_BODY_LIMIT_BYTES = 64 * 1024;
 
 /**
  * Adapts the WebAuthn application service to the four browser-facing routes.
@@ -44,12 +50,31 @@ export class PasskeyHttpController {
 		this.config = config;
 	}
 
+	public signInOriginGuard() {
+		return mutationOriginGuard(this.config, (context) => this.signInFailure(context, 'invalid-origin', 403));
+	}
+
+	public signInBodyLimit() {
+		return bodyLimit({
+			maxSize: SIGN_IN_BODY_LIMIT_BYTES,
+			onError: (context: Context<ApiEnvironment>) => this.signInFailure(context, 'payload-too-large', 413)
+		});
+	}
+
+	public registrationOriginGuard() {
+		return mutationOriginGuard(this.config, (context) => this.registrationFailure(context, 'invalid-origin', 403));
+	}
+
+	public registrationBodyLimit() {
+		// Attestation can include a certificate chain, unlike the smaller sign-in assertion.
+		return bodyLimit({
+			maxSize: REGISTRATION_BODY_LIMIT_BYTES,
+			onError: (context: Context<ApiEnvironment>) => this.registrationFailure(context, 'payload-too-large', 413)
+		});
+	}
+
 	public signInOptions() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			if (!isSameOriginMutation(context.req.raw, this.config)) {
-				return this.signInFailure(context, 'invalid-origin', 403);
-			}
-
 			const options = await this.service.beginAuthentication();
 
 			return context.json(passkeyAuthenticationOptionsSchema.parse(options), 200);
@@ -58,10 +83,6 @@ export class PasskeyHttpController {
 
 	public signInVerification() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			if (!isSameOriginMutation(context.req.raw, this.config)) {
-				return this.signInFailure(context, 'invalid-origin', 403);
-			}
-
 			const parsedInput = passkeySignInVerificationInputSchema.safeParse(await this.readBody(context));
 
 			if (!parsedInput.success) {
@@ -110,10 +131,6 @@ export class PasskeyHttpController {
 
 	public registrationVerification() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			if (!isSameOriginMutation(context.req.raw, this.config)) {
-				return this.registrationFailure(context, 'invalid-origin', 403);
-			}
-
 			const session = await this.sessionResolver.resolve(context.req.raw);
 
 			if (session === null) {

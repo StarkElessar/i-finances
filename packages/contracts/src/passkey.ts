@@ -64,6 +64,7 @@ export const passkeySignInErrorCodes = [
 	'invalid-input',
 	'invalid-credentials',
 	'invalid-origin',
+	'payload-too-large',
 	'unexpected'
 ] as const;
 
@@ -75,6 +76,7 @@ export const passkeySignInErrorMessageByCode: Record<PasskeySignInErrorCode, str
 	'invalid-input': 'Не удалось прочитать ответ ключа доступа.',
 	'invalid-credentials': 'Ключ доступа не найден или больше недействителен.',
 	'invalid-origin': 'Не удалось подтвердить источник запроса. Обновите страницу и попробуйте снова.',
+	'payload-too-large': 'Слишком большой запрос.',
 	unexpected: 'Не удалось войти с ключом доступа. Попробуйте ещё раз.'
 };
 
@@ -118,6 +120,7 @@ export const passkeyRegistrationErrorCodes = [
 	'authentication-required',
 	'invalid-input',
 	'invalid-origin',
+	'payload-too-large',
 	'verification-failed',
 	'unexpected'
 ] as const;
@@ -128,6 +131,7 @@ export const passkeyRegistrationErrorMessageByCode: Record<PasskeyRegistrationEr
 	'authentication-required': 'Требуется авторизация.',
 	'invalid-input': 'Не удалось прочитать ответ ключа доступа.',
 	'invalid-origin': 'Не удалось подтвердить источник запроса. Обновите страницу и попробуйте снова.',
+	'payload-too-large': 'Слишком большой запрос.',
 	'verification-failed': 'Не удалось сохранить ключ доступа.',
 	unexpected: 'Не удалось добавить ключ доступа. Попробуйте ещё раз.'
 };

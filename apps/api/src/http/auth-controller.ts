@@ -26,9 +26,9 @@ import { bodyLimit } from 'hono/body-limit';
 import { readClientIp } from './client-ip';
 import {
 	assertSameOriginMutation,
-	InvalidMutationOriginError,
-	isSameOriginMutation
+	InvalidMutationOriginError
 } from './mutation-origin';
+import { mutationOriginGuard } from './mutation-origin-guard';
 import { createClearedSessionCookie, createSessionCookie, readSessionCookie } from './session-cookie';
 import type { RequestSessionResolver } from './session-resolver';
 import type { ApiEnvironment } from './types';
@@ -88,6 +88,10 @@ export class AuthHttpController {
 		};
 	}
 
+	public signInOriginGuard() {
+		return mutationOriginGuard(this.config, (context) => this.failure(context, 'invalid-origin', 403));
+	}
+
 	/**
 	 * Caps the body of the public sign-in route before anything buffers it, with or without `Content-Length`. The
 	 * largest valid body (64-character username, 256-character password, 2048-character `returnTo`, up to 4 bytes per
@@ -102,11 +106,6 @@ export class AuthHttpController {
 
 	public signIn() {
 		return async (context: Context<ApiEnvironment>): Promise<Response> => {
-			// Before the body is read: a cross-origin request costs no parsing.
-			if (!isSameOriginMutation(context.req.raw, this.config)) {
-				return this.failure(context, 'invalid-origin', 403);
-			}
-
 			const input = await this.readBody(context);
 
 			try {
