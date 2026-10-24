@@ -1,4 +1,5 @@
 import { FixedWindowCounter } from './fixed-window-counter';
+import { loginAddressKey } from './login-address-key';
 
 const DEFAULT_WINDOW_MILLISECONDS = 15 * 60 * 1000;
 const DEFAULT_MAX_ATTEMPTS = 5;
@@ -17,9 +18,11 @@ export type LoginRateLimitResult = {
 };
 
 export type LoginRateLimiterOptions = {
+	/** Maximum retained keys in each of the three counters. */
+	maxCounterKeys?: number;
 	/** Failures allowed per `ip + username` pair within one window. */
 	maxAttempts?: number;
-	/** Failures allowed from one address across all usernames within one window. Ignored when the address is unknown. */
+	/** Failures per IPv4 address / IPv6 /64 across all usernames. Ignored when the address is unknown. */
 	maxAttemptsPerIp?: number;
 	/** Failures allowed per username from any address within one window. Must exceed `maxAttempts`. */
 	maxAttemptsPerUsername?: number;
@@ -46,9 +49,14 @@ export class LoginRateLimiter {
 		this.maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 		this.maxAttemptsPerIp = options.maxAttemptsPerIp ?? DEFAULT_MAX_ATTEMPTS_PER_IP;
 		this.maxAttemptsPerUsername = options.maxAttemptsPerUsername ?? DEFAULT_MAX_ATTEMPTS_PER_USERNAME;
-		this.addresses = new FixedWindowCounter(windowMilliseconds);
-		this.pairs = new FixedWindowCounter(windowMilliseconds);
-		this.usernames = new FixedWindowCounter(windowMilliseconds);
+		this.addresses = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
+		this.pairs = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
+		this.usernames = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
+	}
+
+	/** Total retained keys across all three counters. */
+	public get size(): number {
+		return this.addresses.size + this.pairs.size + this.usernames.size;
 	}
 
 	/**
@@ -61,7 +69,8 @@ export class LoginRateLimiter {
 		const pairKey = this.createPairKey(input);
 		const pair = this.pairs.get(pairKey, now);
 		const username = this.usernames.get(input.username, now);
-		const address = input.ipAddress === undefined ? undefined : this.addresses.get(input.ipAddress, now);
+		const addressKey = loginAddressKey(input.ipAddress);
+		const address = addressKey === undefined ? undefined : this.addresses.get(addressKey, now);
 		const blockedUntil = [
 			address !== undefined && address.count >= this.maxAttemptsPerIp ? address.resetAt : undefined,
 			pair !== undefined && pair.count >= this.maxAttempts ? pair.resetAt : undefined,
@@ -78,8 +87,8 @@ export class LoginRateLimiter {
 		this.pairs.increment(pairKey, now);
 		this.usernames.increment(input.username, now);
 
-		if (input.ipAddress !== undefined) {
-			this.addresses.increment(input.ipAddress, now);
+		if (addressKey !== undefined) {
+			this.addresses.increment(addressKey, now);
 		}
 
 		return { allowed: true };
@@ -91,11 +100,13 @@ export class LoginRateLimiter {
 	 * a fresh budget.
 	 */
 	public recordSuccess(input: LoginRateLimitInput): void {
+		const addressKey = loginAddressKey(input.ipAddress);
+
 		this.pairs.delete(this.createPairKey(input));
 		this.usernames.decrement(input.username, input.now ?? Date.now());
 
-		if (input.ipAddress !== undefined) {
-			this.addresses.decrement(input.ipAddress, input.now ?? Date.now());
+		if (addressKey !== undefined) {
+			this.addresses.decrement(addressKey, input.now ?? Date.now());
 		}
 	}
 

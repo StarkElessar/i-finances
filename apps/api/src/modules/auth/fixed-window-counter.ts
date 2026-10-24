@@ -3,15 +3,24 @@ type CounterEntry = {
 	resetAt: number;
 };
 
+export const DEFAULT_MAX_COUNTER_KEYS = 10_000;
+
 /**
  * In-memory counters per key. A key's window starts at its first increment and is not extended by later ones.
- * Expired entries are dropped on read and swept periodically so that unbounded key spaces cannot grow forever.
+ * Expired entries are removed first. At capacity, the oldest remaining window is evicted to admit a new key.
  */
 export class FixedWindowCounter {
 	private readonly entries = new Map<string, CounterEntry>();
-	private nextSweepAt = 0;
+	private nextSweepAt = Number.POSITIVE_INFINITY;
 
-	public constructor(private readonly windowMilliseconds: number) {}
+	public constructor(
+		private readonly windowMilliseconds: number,
+		private readonly maxKeys: number = DEFAULT_MAX_COUNTER_KEYS
+	) {
+		if (!Number.isInteger(maxKeys) || maxKeys < 1) {
+			throw new RangeError('maxKeys must be a positive integer.');
+		}
+	}
 
 	public get size(): number {
 		return this.entries.size;
@@ -35,10 +44,21 @@ export class FixedWindowCounter {
 		const entry = this.entries.get(key);
 
 		if (entry === undefined || entry.resetAt <= now) {
+			if (this.entries.size >= this.maxKeys) {
+				const oldestKey = this.entries.keys().next().value;
+
+				if (oldestKey !== undefined) {
+					this.entries.delete(oldestKey);
+				}
+			}
+
+			const resetAt = now + this.windowMilliseconds;
+
 			this.entries.set(key, {
 				count: 1,
-				resetAt: now + this.windowMilliseconds
+				resetAt
 			});
+			this.nextSweepAt = Math.min(this.nextSweepAt, resetAt);
 
 			return;
 		}
@@ -66,7 +86,7 @@ export class FixedWindowCounter {
 
 	public clear(): void {
 		this.entries.clear();
-		this.nextSweepAt = 0;
+		this.nextSweepAt = Number.POSITIVE_INFINITY;
 	}
 
 	private sweep(now: number): void {
@@ -74,11 +94,14 @@ export class FixedWindowCounter {
 			return;
 		}
 
-		this.nextSweepAt = now + this.windowMilliseconds;
+		this.nextSweepAt = Number.POSITIVE_INFINITY;
 
 		for (const [key, entry] of this.entries) {
 			if (entry.resetAt <= now) {
 				this.entries.delete(key);
+			}
+			else {
+				this.nextSweepAt = Math.min(this.nextSweepAt, entry.resetAt);
 			}
 		}
 	}

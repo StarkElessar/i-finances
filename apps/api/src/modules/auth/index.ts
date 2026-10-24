@@ -26,6 +26,7 @@ export {
 	uint8ArrayToBase64Url
 } from './passkey-encoding';
 export { PasswordService } from './password-service';
+export { getPasswordSignInConfig } from './password-sign-in-config';
 export {
 	type LoginRateLimitPort,
 	type PasswordSignInMetadata,
@@ -42,6 +43,11 @@ export {
 	PasswordUserRepository,
 	type ReplacePasswordInput
 } from './password-user-repository';
+export {
+	type PasswordVerificationAdmission,
+	PasswordVerificationLimiter,
+	type PasswordVerificationLimiterOptions
+} from './password-verification-limiter';
 export { getPlatformAdminPolicy, parsePlatformAdminUsernames } from './platform-admin-config';
 export { PlatformAdminPolicy } from './platform-admin-policy';
 export { isReservedUsername, TELEGRAM_USERNAME_PREFIX } from './reserved-username';

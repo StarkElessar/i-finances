@@ -32,11 +32,13 @@ import {
 import {
 	FixedWindowRateLimiter,
 	getAuthConfig,
+	getPasswordSignInConfig,
 	getPlatformAdminPolicy,
 	LoginRateLimiter,
 	PasswordService,
 	PasswordSignInService,
 	PasswordUserRepository,
+	PasswordVerificationLimiter,
 	SecurityService,
 	SessionRepository,
 	SessionService,
@@ -177,6 +179,7 @@ const FIVE_MINUTES_MILLISECONDS = 5 * 60 * 1000;
  */
 export function createApiDependencies(database: AppDatabase = db, options: ApiDependenciesOptions = {}): ApiDependencies {
 	const authConfig = getAuthConfig();
+	const passwordSignInConfig = getPasswordSignInConfig();
 	// Throws, and so stops the start, when the Telegram environment is half configured (DEV_TELEGRAM_LOGIN in
 	// production included) or the bot texts are broken.
 	const telegramConfig = getTelegramConfig(process.env, authConfig.origin);
@@ -204,9 +207,10 @@ export function createApiDependencies(database: AppDatabase = db, options: ApiDe
 	const passwordService = new PasswordService();
 	const passwordSignInService = new PasswordSignInService({
 		passwordService,
-		rateLimiter: new LoginRateLimiter(),
+		rateLimiter: new LoginRateLimiter({ maxCounterKeys: passwordSignInConfig.maxCounterKeys }),
 		sessionService,
-		userRepository: passwordUserRepository
+		userRepository: passwordUserRepository,
+		verificationLimiter: new PasswordVerificationLimiter(passwordSignInConfig)
 	});
 	const webAuthnCredentialRepository = new WebAuthnCredentialRepository(database);
 	const webAuthnService = new WebAuthnService({

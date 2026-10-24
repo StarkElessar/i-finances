@@ -6,9 +6,11 @@ import * as schema from '@/infrastructure/database/schema';
 import { sessions, users } from '@/infrastructure/database/schema';
 import type { AuthConfig } from '@/modules/auth';
 import {
+	getPasswordSignInConfig,
 	LoginRateLimiter,
 	PasswordSignInService,
 	PasswordUserRepository,
+	PasswordVerificationLimiter,
 	PlatformAdminPolicy,
 	SessionRepository,
 	SessionService,
@@ -61,10 +63,17 @@ beforeEach(async () => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	connection.close();
 });
 
-function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; rateLimiter?: LoginRateLimiter } = {}) {
+function createAuthApp(options: {
+	config?: AuthConfig;
+	passwordValid?: boolean;
+	rateLimiter?: LoginRateLimiter;
+	verificationLimiter?: PasswordVerificationLimiter;
+	verify?: () => Promise<boolean>;
+} = {}) {
 	const sessionService = new SessionService(new SessionRepository(database), {
 		config: AUTH_CONFIG,
 		createId: () => 'session-1',
@@ -73,7 +82,7 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 	});
 	const passwordSignInService = new PasswordSignInService({
 		passwordService: {
-			verify: async () => options.passwordValid ?? true
+			verify: options.verify ?? (async () => options.passwordValid ?? true)
 		},
 		rateLimiter: options.rateLimiter ?? new LoginRateLimiter(),
 		sessionService,
@@ -91,7 +100,8 @@ function createAuthApp(options: { config?: AuthConfig; passwordValid?: boolean; 
 
 				return true;
 			}
-		}
+		},
+		verificationLimiter: options.verificationLimiter ?? new PasswordVerificationLimiter(getPasswordSignInConfig({}))
 	});
 	const sessionResolver = new CookieSessionResolver(
 		sessionService,
@@ -364,6 +374,138 @@ function requestWrongPassword(
 }
 
 describe('password sign-in rate limit', () => {
+	it('bounds a burst of 200 distinct sources to eight verifications and sixty-four waiting requests', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+		const rateLimiter = new LoginRateLimiter();
+		const reserve = vi.spyOn(rateLimiter, 'tryReserve');
+		const releases: (() => void)[] = [];
+		let active = 0;
+		let peak = 0;
+		const verify = vi.fn(async () => {
+			active += 1;
+			peak = Math.max(peak, active);
+			await new Promise<void>((resolve) => {
+				releases.push(resolve);
+			});
+			active -= 1;
+
+			return false;
+		});
+		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, rateLimiter, verify });
+		const completed: Response[] = [];
+		const requests = Array.from({ length: 200 }, (_, index) => (
+			requestWrongPassword(app, `203.0.113.${index + 1}`, `victim-${index}`).then((response) => {
+				completed.push(response);
+
+				return response;
+			})
+		));
+
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(verify).toHaveBeenCalledTimes(8);
+		expect(peak).toBe(8);
+		expect(reserve).toHaveBeenCalledTimes(8);
+		expect(rateLimiter.size).toBe(24);
+		expect(vi.getTimerCount()).toBe(64);
+		expect(completed).toHaveLength(128);
+
+		for (const response of completed) {
+			expect(response.status).toBe(429);
+			expect(response.headers.get('retry-after')).toBe('2');
+			expect(response.headers.get('set-cookie')).toBeNull();
+			expect(await response.json()).toEqual({
+				errorCode: 'rate-limited',
+				message: 'Слишком много попыток входа. Попробуйте позже.',
+				ok: false
+			});
+		}
+
+		releases.shift()?.();
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(verify).toHaveBeenCalledTimes(9);
+		expect(active).toBe(8);
+		expect(rateLimiter.size).toBe(27);
+
+		// Drain in waves without advancing the deadline: queued requests continue as slots become available.
+		while (releases.length > 0) {
+			releases.splice(0).forEach((resolve) => resolve());
+			await new Promise<void>((resolve) => setImmediate(resolve));
+		}
+
+		const responses = await Promise.all(requests);
+
+		expect(peak).toBe(8);
+		expect(verify).toHaveBeenCalledTimes(72);
+		expect(reserve).toHaveBeenCalledTimes(72);
+		expect(responses.filter((response) => response.status === 401)).toHaveLength(72);
+		expect(responses.filter((response) => response.status === 429)).toHaveLength(128);
+		expect(rateLimiter.size).toBe(216);
+		expect(vi.getTimerCount()).toBe(0);
+
+		// An overloaded source retains its entire five-attempt budget once capacity is available.
+		for (let index = 0; index < 5; index += 1) {
+			const request = requestWrongPassword(app, '203.0.113.200', 'victim-199');
+
+			await new Promise<void>((resolve) => setImmediate(resolve));
+			releases.shift()?.();
+			expect((await request).status).toBe(401);
+		}
+
+		const blocked = await requestWrongPassword(app, '203.0.113.200', 'victim-199');
+
+		expect(blocked.status).toBe(429);
+		expect(blocked.headers.get('retry-after')).toBe('900');
+	});
+
+	it('returns 429 on queue timeout without touching counters and admits new waiting requests', async () => {
+		vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] });
+
+		const rateLimiter = new LoginRateLimiter();
+		const reserve = vi.spyOn(rateLimiter, 'tryReserve');
+		let finish!: () => void;
+		const verify = vi.fn(async () => {
+			await new Promise<void>((resolve) => {
+				finish = resolve;
+			});
+
+			return false;
+		});
+		const app = createAuthApp({
+			config: { ...AUTH_CONFIG, trustedProxyCount: 1 },
+			rateLimiter,
+			verificationLimiter: new PasswordVerificationLimiter({ maxConcurrent: 1, maxQueue: 1, queueTimeoutMilliseconds: 2_000 }),
+			verify
+		});
+		const active = requestWrongPassword(app, '203.0.113.1', 'active');
+		const waiting = requestWrongPassword(app, '203.0.113.2', 'waiting');
+
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		await vi.advanceTimersByTimeAsync(2_000);
+
+		const expired = await waiting;
+
+		expect(expired.status).toBe(429);
+		expect(expired.headers.get('retry-after')).toBe('2');
+		expect(await expired.json()).toMatchObject({ errorCode: 'rate-limited', ok: false });
+		expect(reserve).toHaveBeenCalledTimes(1);
+		expect(rateLimiter.size).toBe(3);
+		expect(verify).toHaveBeenCalledTimes(1);
+
+		const fresh = requestWrongPassword(app, '203.0.113.3', 'fresh');
+
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		finish();
+		expect((await active).status).toBe(401);
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(verify).toHaveBeenCalledTimes(2);
+		finish();
+		expect((await fresh).status).toBe(401);
+		expect(reserve).toHaveBeenCalledTimes(2);
+		expect(rateLimiter.size).toBe(6);
+		expect(vi.getTimerCount()).toBe(0);
+	});
+
 	it('is not bypassed by forging the left side of X-Forwarded-For', async () => {
 		const app = createAuthApp({ config: { ...AUTH_CONFIG, trustedProxyCount: 1 }, passwordValid: false });
 
