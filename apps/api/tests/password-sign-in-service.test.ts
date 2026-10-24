@@ -3,6 +3,7 @@ import * as schema from '@/infrastructure/database/schema';
 import { sessions, users } from '@/infrastructure/database/schema';
 import {
 	DUMMY_PASSWORD_HASH,
+	getPasswordSignInConfig,
 	hasUsablePassword,
 	LoginRateLimiter,
 	type PasswordAuthUserRecord,
@@ -10,6 +11,7 @@ import {
 	PasswordSignInService,
 	type PasswordUserPort,
 	PasswordUserRepository,
+	PasswordVerificationLimiter,
 	SessionRepository,
 	SessionService
 } from '@/modules/auth';
@@ -37,6 +39,7 @@ function createService(options: {
 	findByUsername?: PasswordUserPort['findByUsername'];
 	rateLimiter?: LoginRateLimiter;
 	verify?: (passwordHash: string, password: string) => Promise<boolean>;
+	verificationLimiter?: PasswordVerificationLimiter;
 } = {}) {
 	const verify = vi.fn(options.verify ?? (async () => true));
 	const createSession = vi.fn(() => true);
@@ -47,7 +50,8 @@ function createService(options: {
 		userRepository: {
 			findByUsername: options.findByUsername ?? (async () => USER),
 			insertSessionIfPasswordUnchanged: createSession
-		}
+		},
+		verificationLimiter: options.verificationLimiter ?? new PasswordVerificationLimiter(getPasswordSignInConfig({}))
 	});
 
 	return { createSession, service, verify };
@@ -63,6 +67,52 @@ function draftSession() {
 }
 
 describe('PasswordSignInService rate limiting', () => {
+	it('releases admission after repository errors so the queue can continue', async () => {
+		let failLookup!: () => void;
+		const lookup = new Promise<void>((resolve) => {
+			failLookup = resolve;
+		});
+		const findByUsername = vi.fn<PasswordUserPort['findByUsername']>()
+			.mockImplementationOnce(async () => {
+				await lookup;
+
+				throw new Error('database unavailable');
+			})
+			.mockResolvedValue(USER);
+		const { service, verify } = createService({
+			findByUsername,
+			verificationLimiter: new PasswordVerificationLimiter({ maxConcurrent: 1, maxQueue: 1, queueTimeoutMilliseconds: 2000 })
+		});
+		const failed = service.signIn(CREDENTIALS);
+		const failure = expect(failed).rejects.toThrow('database unavailable');
+		const queued = service.signIn(CREDENTIALS);
+
+		failLookup();
+		await failure;
+		expect((await queued).ok).toBe(true);
+		expect(verify).toHaveBeenCalledTimes(1);
+	});
+
+	it('releases admission when the verifier throws and for subsequent successful logins', async () => {
+		const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+		const verify = vi.fn<() => Promise<boolean>>()
+			.mockRejectedValueOnce(new Error('broken verifier'))
+			.mockResolvedValue(true);
+		const { service } = createService({
+			verificationLimiter: new PasswordVerificationLimiter({ maxConcurrent: 1, maxQueue: 0, queueTimeoutMilliseconds: 2000 }),
+			verify
+		});
+
+		try {
+			expect(await service.signIn(CREDENTIALS)).toMatchObject({ errorCode: 'invalid-credentials', ok: false });
+			expect((await service.signIn(CREDENTIALS)).ok).toBe(true);
+			expect((await service.signIn(CREDENTIALS)).ok).toBe(true);
+		}
+		finally {
+			consoleError.mockRestore();
+		}
+	});
+
 	it('verifies at most the allowed number of passwords when requests arrive in parallel', async () => {
 		let openGate!: () => void;
 		const gate = new Promise<void>((resolve) => {
@@ -110,7 +160,8 @@ describe('PasswordSignInService accounts without a usable password', () => {
 				insertSessionIfPasswordUnchanged: () => {
 					throw new Error('No session expected.');
 				}
-			}
+			},
+			verificationLimiter: new PasswordVerificationLimiter(getPasswordSignInConfig({}))
 		});
 
 		const outcome = await service.signIn(CREDENTIALS);
@@ -125,7 +176,8 @@ describe('PasswordSignInService accounts without a usable password', () => {
 			passwordService,
 			rateLimiter: new LoginRateLimiter(),
 			sessionService: { draftSession },
-			userRepository: { findByUsername: async () => ({ ...USER, passwordHash }), insertSessionIfPasswordUnchanged: () => true }
+			userRepository: { findByUsername: async () => ({ ...USER, passwordHash }), insertSessionIfPasswordUnchanged: () => true },
+			verificationLimiter: new PasswordVerificationLimiter(getPasswordSignInConfig({}))
 		});
 
 		expect((await service.signIn(CREDENTIALS)).ok).toBe(true);
@@ -241,7 +293,8 @@ describe('PasswordSignInService against a parallel password change', () => {
 			},
 			rateLimiter: new LoginRateLimiter(),
 			sessionService,
-			userRepository: new PasswordUserRepository(database)
+			userRepository: new PasswordUserRepository(database),
+			verificationLimiter: new PasswordVerificationLimiter(getPasswordSignInConfig({}))
 		});
 
 		return { service, sessionService };

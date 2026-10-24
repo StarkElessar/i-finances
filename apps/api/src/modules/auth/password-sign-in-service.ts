@@ -12,6 +12,7 @@ import type { LoginRateLimiter } from './login-rate-limiter';
 import { normalizeUsername } from './normalize-username';
 import type { PasswordService } from './password-service';
 import type { PasswordUserRepository } from './password-user-repository';
+import type { PasswordVerificationLimiter } from './password-verification-limiter';
 import type { SessionService } from './session-service';
 import { type CreatedSession } from './session-service';
 import { validateReturnPath } from './validate-return-path';
@@ -36,6 +37,7 @@ export type PasswordSignInServiceDependencies = {
 	rateLimiter: LoginRateLimitPort;
 	sessionService: SessionCreationPort;
 	userRepository: PasswordUserPort;
+	verificationLimiter: Pick<PasswordVerificationLimiter, 'acquire'>;
 };
 
 export class PasswordSignInService {
@@ -43,12 +45,14 @@ export class PasswordSignInService {
 	private readonly rateLimiter: LoginRateLimitPort;
 	private readonly sessionService: SessionCreationPort;
 	private readonly userRepository: PasswordUserPort;
+	private readonly verificationLimiter: Pick<PasswordVerificationLimiter, 'acquire'>;
 
 	public constructor(dependencies: PasswordSignInServiceDependencies) {
 		this.passwordService = dependencies.passwordService;
 		this.rateLimiter = dependencies.rateLimiter;
 		this.sessionService = dependencies.sessionService;
 		this.userRepository = dependencies.userRepository;
+		this.verificationLimiter = dependencies.verificationLimiter;
 	}
 
 	public async signIn(
@@ -64,7 +68,26 @@ export class PasswordSignInService {
 			);
 		}
 
-		const username = normalizeUsername(parsedInput.data.username);
+		// Admission precedes ALL counter access: overload is not a failed password attempt, even on timeout.
+		const admission = await this.verificationLimiter.acquire();
+
+		if (!admission.allowed) {
+			return { ...this.failure('rate-limited'), retryAfterSeconds: admission.retryAfterSeconds };
+		}
+
+		try {
+			return await this.signInAdmitted(parsedInput.data, metadata);
+		}
+		finally {
+			admission.release();
+		}
+	}
+
+	private async signInAdmitted(
+		input: z.infer<typeof passwordSignInInputSchema>,
+		metadata: PasswordSignInMetadata
+	): Promise<PasswordSignInOutcome> {
+		const username = normalizeUsername(input.username);
 		const rateLimitInput = {
 			ipAddress: metadata.ipAddress,
 			username
@@ -84,7 +107,7 @@ export class PasswordSignInService {
 		// Every attempt costs one Argon2 verification, also for unknown, inactive and password-less accounts,
 		// so neither the response time nor the status tells which usernames exist or have a password.
 		const storedHash = user?.isActive === true && hasUsablePassword(user.passwordHash) ? user.passwordHash : undefined;
-		const isHashMatch = await this.verifyPassword(storedHash ?? DUMMY_PASSWORD_HASH, parsedInput.data.password);
+		const isHashMatch = await this.verifyPassword(storedHash ?? DUMMY_PASSWORD_HASH, input.password);
 
 		if (user === undefined || storedHash === undefined || !isHashMatch) {
 			return this.failure('invalid-credentials');
@@ -106,7 +129,7 @@ export class PasswordSignInService {
 
 		return {
 			ok: true,
-			redirectTo: validateReturnPath(parsedInput.data.returnTo),
+			redirectTo: validateReturnPath(input.returnTo),
 			session: draft.session
 		};
 	}

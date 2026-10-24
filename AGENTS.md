@@ -176,6 +176,14 @@ Never hide the keyboard focus indicator (`:focus-visible`) without replacing it.
 ## Auth
 
 - Session-based auth with Argon2 password hashing + WebAuthn support
+- Public password sign-in admits at most 8 concurrent verifications (dummy checks included), with a FIFO queue of 64
+  and a 2000 ms wait deadline (`PasswordVerificationLimiter`, wired in composition). Admission precedes all login
+  counters; overload returns the existing `429 rate-limited` with `Retry-After`, without counting an attempt or creating
+  keys. Passkey and Telegram sign-in bypass this gate. Configuration: `PASSWORD_VERIFY_MAX_CONCURRENT` (1-8),
+  `PASSWORD_VERIFY_MAX_QUEUE` (0-64), `PASSWORD_VERIFY_QUEUE_TIMEOUT_MS` (1-10000), `LOGIN_RATE_LIMIT_MAX_KEYS` (1-100000,
+  default 10000 per counter). The address counter groups IPv6 by /64; pair keys retain the full address. Bounded
+  `FixedWindowCounter` removes expired entries first, then evicts the oldest active window to admit new keys. See
+  `development/decisions/login-rate-limit.md` and `apps/api/.env.example` (package commands load the root `.env`).
 - API middleware guards authenticated routes and sets security headers: `x-content-type-options`, `x-frame-options`, `referrer-policy`, `permissions-policy`
 - Environment: `AUTH_ORIGIN`, `WEBAUTHN_RP_ID`, `SESSION_COOKIE_NAME`, `SESSION_TTL_DAYS`, `TRUSTED_PROXY_COUNT` (reverse proxies in front of the API, default 0, must be set explicitly when `NODE_ENV=production` or the API refuses to start; see `development/decisions/client-ip.md`)
 - `apps/mcp` authenticates with `MCP_API_KEY` as a bearer token instead of a browser session
