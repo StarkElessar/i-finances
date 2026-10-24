@@ -314,8 +314,11 @@ describe('TelegramSignInService.complete against a parallel telegram:reset (Р10
 		expect(database.select().from(sessions).all()).toEqual([]);
 		expect(database.select().from(telegramAccounts).all()).toEqual([]);
 
-		// A session scheduled outside the transaction must not appear after `complete` has returned either.
+		// A session scheduled outside the transaction must not appear after `complete` has returned either: wait for
+		// microtasks, immediates and a timer, not one tick.
+		await Promise.resolve();
 		await new Promise<void>((resolve) => setImmediate(resolve));
+		await new Promise<void>((resolve) => setTimeout(resolve, 20));
 
 		expect(database.select().from(sessions).all()).toEqual([]);
 	});

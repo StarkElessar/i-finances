@@ -7,7 +7,9 @@ export const DEFAULT_MAX_COUNTER_KEYS = 10_000;
 
 /**
  * In-memory counters per key. A key's window starts at its first increment and is not extended by later ones.
- * Expired entries are removed first. At capacity, the oldest remaining window is evicted to admit a new key.
+ * Expired entries are removed first. At capacity, the entry with the smallest count (the oldest among equals) is evicted
+ * to admit a new key, so a flood of fresh one-hit keys cannot push out the counter of a key that is already near or at
+ * its limit.
  */
 export class FixedWindowCounter {
 	private readonly entries = new Map<string, CounterEntry>();
@@ -45,11 +47,7 @@ export class FixedWindowCounter {
 
 		if (entry === undefined || entry.resetAt <= now) {
 			if (this.entries.size >= this.maxKeys) {
-				const oldestKey = this.entries.keys().next().value;
-
-				if (oldestKey !== undefined) {
-					this.entries.delete(oldestKey);
-				}
+				this.evictWeakest();
 			}
 
 			const resetAt = now + this.windowMilliseconds;
@@ -87,6 +85,23 @@ export class FixedWindowCounter {
 	public clear(): void {
 		this.entries.clear();
 		this.nextSweepAt = Number.POSITIVE_INFINITY;
+	}
+
+	private evictWeakest(): void {
+		let weakestKey: string | undefined;
+		let weakestCount = Number.POSITIVE_INFINITY;
+
+		// Map iterates in insertion order, so a strict comparison keeps the oldest of equal counts.
+		for (const [key, entry] of this.entries) {
+			if (entry.count < weakestCount) {
+				weakestKey = key;
+				weakestCount = entry.count;
+			}
+		}
+
+		if (weakestKey !== undefined) {
+			this.entries.delete(weakestKey);
+		}
 	}
 
 	private sweep(now: number): void {

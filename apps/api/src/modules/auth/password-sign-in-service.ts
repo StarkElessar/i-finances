@@ -30,7 +30,7 @@ export type PasswordVerificationPort = Pick<PasswordService, 'verify'>;
 export type PasswordUserPort = Pick<PasswordUserRepository, 'findByUsername' | 'insertSessionIfPasswordUnchanged'>;
 /** Only drafts the session: `insertSessionIfPasswordUnchanged` stores it under the check that the password still holds. */
 export type SessionCreationPort = Pick<SessionService, 'draftSession'>;
-export type LoginRateLimitPort = Pick<LoginRateLimiter, 'recordSuccess' | 'tryReserve'>;
+export type LoginRateLimitPort = Pick<LoginRateLimiter, 'check' | 'recordSuccess' | 'tryReserve'>;
 
 export type PasswordSignInServiceDependencies = {
 	passwordService: PasswordVerificationPort;
@@ -68,7 +68,17 @@ export class PasswordSignInService {
 			);
 		}
 
-		// Admission precedes ALL counter access: overload is not a failed password attempt, even on timeout.
+		// A source the counters already block never takes a slot or a queue place: the read-only check costs no Argon2.
+		const blocked = this.rateLimiter.check({
+			ipAddress: metadata.ipAddress,
+			username: normalizeUsername(parsedInput.data.username)
+		});
+
+		if (!blocked.allowed) {
+			return { ...this.failure('rate-limited'), retryAfterSeconds: blocked.retryAfterSeconds };
+		}
+
+		// Admission precedes every COUNTING access: overload is not a failed password attempt, even on timeout.
 		const admission = await this.verificationLimiter.acquire();
 
 		if (!admission.allowed) {

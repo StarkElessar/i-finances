@@ -20,7 +20,7 @@ import {
 	passkeySignInVerificationInputSchema
 } from '@i-finances/contracts';
 import type { AuthenticationResponseJSON, RegistrationResponseJSON } from '@simplewebauthn/server';
-import type { Context } from 'hono';
+import type { Context, Next } from 'hono';
 import { bodyLimit } from 'hono/body-limit';
 
 import { readClientIp } from './client-ip';
@@ -63,6 +63,19 @@ export class PasskeyHttpController {
 
 	public registrationOriginGuard() {
 		return mutationOriginGuard(this.config, (context) => this.registrationFailure(context, 'invalid-origin', 403));
+	}
+
+	/** Runs before the body limit so that an anonymous client cannot make the API buffer a 64 KiB body. */
+	public registrationSessionGuard() {
+		return async (context: Context<ApiEnvironment>, next: Next): Promise<Response | undefined> => {
+			if ((await this.sessionResolver.resolve(context.req.raw)) === null) {
+				return this.registrationFailure(context, 'authentication-required', 401);
+			}
+
+			await next();
+
+			return undefined;
+		};
 	}
 
 	public registrationBodyLimit() {

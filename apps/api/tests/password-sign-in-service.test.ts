@@ -138,6 +138,26 @@ describe('PasswordSignInService rate limiting', () => {
 		expect(errorCodes.filter((code) => code === 'rate-limited')).toHaveLength(15);
 	});
 
+	it('refuses a source the counters already block without taking a slot or counting', async () => {
+		const rateLimiter = new LoginRateLimiter({ maxAttempts: 1 });
+		const verificationLimiter = new PasswordVerificationLimiter(getPasswordSignInConfig({}));
+		const acquire = vi.spyOn(verificationLimiter, 'acquire');
+		const { service, verify } = createService({ rateLimiter, verificationLimiter, verify: async () => false });
+		const metadata = { ipAddress: '203.0.113.7' };
+
+		expect(await service.signIn(CREDENTIALS, metadata)).toMatchObject({ errorCode: 'invalid-credentials', ok: false });
+		expect(acquire).toHaveBeenCalledTimes(1);
+
+		const reserve = vi.spyOn(rateLimiter, 'tryReserve');
+		const blocked = await service.signIn(CREDENTIALS, metadata);
+
+		expect(blocked).toMatchObject({ errorCode: 'rate-limited', ok: false });
+		expect(blocked).toHaveProperty('retryAfterSeconds');
+		expect(acquire).toHaveBeenCalledTimes(1);
+		expect(reserve).not.toHaveBeenCalled();
+		expect(verify).toHaveBeenCalledTimes(1);
+	});
+
 	it('does not let a valid sign-in count against the limit', async () => {
 		const { service } = createService();
 

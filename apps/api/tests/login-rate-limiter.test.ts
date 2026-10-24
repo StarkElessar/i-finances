@@ -308,7 +308,7 @@ describe('FixedWindowCounter', () => {
 		expect(counter.get('key-10099', 1000)?.count).toBe(1);
 	});
 
-	it('evicts the oldest active window when full and still admits new keys', () => {
+	it('evicts the weakest counter when full and still admits new keys', () => {
 		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 2);
 
 		counter.increment('oldest', 1000);
@@ -319,9 +319,21 @@ describe('FixedWindowCounter', () => {
 		counter.increment('new', 4000);
 
 		expect(counter.size).toBe(2);
-		expect(counter.get('oldest', 4000)).toBeUndefined();
-		expect(counter.get('second', 4000)?.count).toBe(1);
+		expect(counter.get('second', 4000)).toBeUndefined();
+		expect(counter.get('oldest', 4000)?.count).toBe(2);
 		expect(counter.get('new', 4000)?.count).toBe(1);
+	});
+
+	it('evicts the oldest of equally weak counters', () => {
+		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 2);
+
+		counter.increment('first', 1000);
+		counter.increment('second', 2000);
+		counter.increment('new', 3000);
+
+		expect(counter.get('first', 3000)).toBeUndefined();
+		expect(counter.get('second', 3000)?.count).toBe(1);
+		expect(counter.get('new', 3000)?.count).toBe(1);
 	});
 
 	it('removes expired entries before evicting active ones, even after clock adjustments', () => {
@@ -391,6 +403,40 @@ describe('LoginRateLimiter memory bound', () => {
 		expect(limiter.tryReserve(recent).allowed).toBe(false);
 		limiter.reset();
 		expect(limiter.size).toBe(0);
+	});
+});
+
+describe('LoginRateLimiter flooding with fresh keys', () => {
+	it('keeps the blocked username of a victim when the counters are flooded with one-hit keys', () => {
+		const limiter = new LoginRateLimiter({ maxAttemptsPerUsername: 3, maxCounterKeys: 5 });
+		const victim = { ipAddress: '203.0.113.1', now: 1000, username: 'victim' };
+
+		for (let attempt = 0; attempt < 3; attempt += 1) {
+			expect(limiter.tryReserve({ ...victim, ipAddress: `198.51.100.${attempt + 1}` }).allowed).toBe(true);
+		}
+
+		for (let index = 0; index < 500; index += 1) {
+			limiter.tryReserve({ ipAddress: `192.0.2.${index % 250}`, now: 1000, username: `junk-${index}` });
+		}
+
+		expect(limiter.tryReserve(victim).allowed).toBe(false);
+	});
+});
+
+describe('LoginRateLimiter.check', () => {
+	it('reports a block without counting the attempt', () => {
+		const limiter = new LoginRateLimiter({ maxAttempts: 2 });
+		const input = { ipAddress: '203.0.113.7', now: 1000, username: 'sergei' };
+
+		for (let index = 0; index < 50; index += 1) {
+			expect(limiter.check(input)).toEqual({ allowed: true });
+		}
+
+		expect(limiter.size).toBe(0);
+		expect(limiter.tryReserve(input).allowed).toBe(true);
+		expect(limiter.tryReserve(input).allowed).toBe(true);
+		expect(limiter.check(input)).toMatchObject({ allowed: false, retryAfterSeconds: expect.any(Number) });
+		expect(limiter.check({ ...input, username: 'someone-else' })).toEqual({ allowed: true });
 	});
 });
 

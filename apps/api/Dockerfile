@@ -24,6 +24,8 @@ RUN pnpm install --frozen-lockfile --filter "@i-finances/api..."
 
 FROM node:24-bookworm-slim AS runtime
 ENV NODE_ENV=production
+# Argon2 runs on the libuv pool: up to 8 verifications (PASSWORD_VERIFY_MAX_CONCURRENT) must leave threads for fs and dns.
+ENV UV_THREADPOOL_SIZE=16
 WORKDIR /app
 
 COPY --from=deps /app /app

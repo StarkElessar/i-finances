@@ -66,8 +66,32 @@ export class LoginRateLimiter {
 	 */
 	public tryReserve(input: LoginRateLimitInput): LoginRateLimitResult {
 		const now = input.now ?? Date.now();
+		const blocked = this.check(input);
+
+		if (!blocked.allowed) {
+			return blocked;
+		}
+
 		const pairKey = this.createPairKey(input);
-		const pair = this.pairs.get(pairKey, now);
+		const addressKey = loginAddressKey(input.ipAddress);
+
+		this.pairs.increment(pairKey, now);
+		this.usernames.increment(input.username, now);
+
+		if (addressKey !== undefined) {
+			this.addresses.increment(addressKey, now);
+		}
+
+		return { allowed: true };
+	}
+
+	/**
+	 * Tells whether an attempt would be refused right now, without counting it. The service asks this before it takes
+	 * a verification slot, so a source that is already blocked never queues behind honest sign-ins.
+	 */
+	public check(input: LoginRateLimitInput): LoginRateLimitResult {
+		const now = input.now ?? Date.now();
+		const pair = this.pairs.get(this.createPairKey(input), now);
 		const username = this.usernames.get(input.username, now);
 		const addressKey = loginAddressKey(input.ipAddress);
 		const address = addressKey === undefined ? undefined : this.addresses.get(addressKey, now);
@@ -82,13 +106,6 @@ export class LoginRateLimiter {
 				allowed: false,
 				retryAfterSeconds: Math.max(1, Math.ceil((Math.max(...blockedUntil) - now) / 1000))
 			};
-		}
-
-		this.pairs.increment(pairKey, now);
-		this.usernames.increment(input.username, now);
-
-		if (addressKey !== undefined) {
-			this.addresses.increment(addressKey, now);
 		}
 
 		return { allowed: true };

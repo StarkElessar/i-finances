@@ -120,6 +120,7 @@ export function createApiApp(
 		app.post(
 			'/api/auth/passkey/registration/verification',
 			passkeyController.registrationOriginGuard(),
+			passkeyController.registrationSessionGuard(),
 			passkeyController.registrationBodyLimit(),
 			passkeyController.registrationVerification()
 		);

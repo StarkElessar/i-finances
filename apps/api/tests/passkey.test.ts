@@ -124,15 +124,18 @@ describe.each([
 	});
 
 	describe.each(['content-length', 'chunked'])('%s', (transport) => {
-		it('rejects one byte over the limit before session lookup, JSON validation or WebAuthn', async () => {
+		it('rejects one byte over the limit before JSON validation or WebAuthn', async () => {
 			const { app, service, sessionService } = createPasskeyApp();
+			const session = await sessionService.createSession(USER_ID);
 			const beginAuthentication = vi.spyOn(service, 'beginAuthentication');
 			const finishAuthentication = vi.spyOn(service, 'finishAuthentication');
 			const finishRegistration = vi.spyOn(service, 'finishRegistration');
 			const resolveSession = vi.spyOn(sessionService, 'validateSessionToken');
-			// Invalid JSON would give 400, and registration without a session would give 401, if either ran first.
+			// Invalid JSON would give 400 if validation ran first. Registration looks the session up once, in the guard before the limit.
 			const stream = createRequestBodyStream('x'.repeat(limit + 1));
-			const headers: Record<string, string> = { 'content-type': 'application/json', origin: AUTH_CONFIG.origin };
+			const headers: Record<string, string> = {
+				'content-type': 'application/json', cookie: `${AUTH_CONFIG.sessionCookieName}=${session.token}`, origin: AUTH_CONFIG.origin
+			};
 
 			headers[transport === 'content-length' ? 'content-length' : 'transfer-encoding'] =
 				transport === 'content-length' ? String(limit + 1) : 'chunked';
@@ -149,7 +152,7 @@ describe.each([
 			expect(beginAuthentication).not.toHaveBeenCalled();
 			expect(finishAuthentication).not.toHaveBeenCalled();
 			expect(finishRegistration).not.toHaveBeenCalled();
-			expect(resolveSession).not.toHaveBeenCalled();
+			expect(resolveSession).toHaveBeenCalledTimes(path === 'registration/verification' ? 1 : 0);
 			expect(stream.readChunks()).toBe(transport === 'content-length' ? 0 : Math.ceil((limit + 1) / 1024));
 
 			if (transport === 'content-length') {
@@ -219,6 +222,30 @@ describe.each([
 					.toHaveBeenCalledWith(expect.objectContaining({ response: credential }));
 			}
 		});
+	});
+});
+
+describe('passkey registration verification without a session', () => {
+	it.each(['content-length', 'chunked'])('answers 401 without reading a %s body', async (transport) => {
+		const { app, service } = createPasskeyApp();
+		const finishRegistration = vi.spyOn(service, 'finishRegistration');
+		const stream = createRequestBodyStream('x'.repeat(64 * 1024), { endless: true });
+		const headers: Record<string, string> = { 'content-type': 'application/json', origin: AUTH_CONFIG.origin };
+
+		headers[transport === 'content-length' ? 'content-length' : 'transfer-encoding'] =
+			transport === 'content-length' ? String(64 * 1024) : 'chunked';
+
+		const response = await app.request('/api/auth/passkey/registration/verification', {
+			body: stream.body, duplex: 'half', headers, method: 'POST'
+		} as RequestInit);
+
+		expect(response.status).toBe(401);
+		expect(passkeyRegistrationResultSchema.parse(await response.json())).toMatchObject({
+			errorCode: 'authentication-required', ok: false
+		});
+		expect(stream.readChunks()).toBe(0);
+		expect(finishRegistration).not.toHaveBeenCalled();
+		await stream.body.cancel();
 	});
 });
 
