@@ -308,24 +308,23 @@ describe('FixedWindowCounter', () => {
 		expect(counter.get('key-10099', 1000)?.count).toBe(1);
 	});
 
-	it('evicts the weakest counter when full and still admits new keys', () => {
-		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 2);
+	it('evicts the oldest entry below the protection count and keeps blocked ones', () => {
+		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 3, 2);
 
-		counter.increment('oldest', 1000);
+		counter.increment('blocked', 1000);
+		counter.increment('blocked', 1100);
 		counter.increment('second', 2000);
-		counter.increment('oldest', 3000);
-		expect(counter.size).toBe(2);
-		expect(counter.get('oldest', 3000)?.count).toBe(2);
+		counter.increment('third', 3000);
 		counter.increment('new', 4000);
 
-		expect(counter.size).toBe(2);
+		expect(counter.get('blocked', 4000)?.count).toBe(2);
 		expect(counter.get('second', 4000)).toBeUndefined();
-		expect(counter.get('oldest', 4000)?.count).toBe(2);
+		expect(counter.get('third', 4000)?.count).toBe(1);
 		expect(counter.get('new', 4000)?.count).toBe(1);
 	});
 
-	it('evicts the oldest of equally weak counters', () => {
-		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 2);
+	it('evicts the oldest entry when every one is protected', () => {
+		const counter = new FixedWindowCounter(WINDOW_MILLISECONDS, 2, 1);
 
 		counter.increment('first', 1000);
 		counter.increment('second', 2000);
@@ -420,6 +419,34 @@ describe('LoginRateLimiter flooding with fresh keys', () => {
 		}
 
 		expect(limiter.tryReserve(victim).allowed).toBe(false);
+	});
+});
+
+describe('LoginRateLimiter with alternating targets', () => {
+	it('does not let two targets evict each other so that a guesser never reaches the username limit', () => {
+		const limiter = new LoginRateLimiter({
+			maxAttempts: 1000, maxAttemptsPerIp: 1_000_000, maxAttemptsPerUsername: 20, maxCounterKeys: 50
+		});
+
+		// Fill all but one place with junk logins that each failed twice.
+		for (let index = 0; index < 49; index += 1) {
+			for (let attempt = 0; attempt < 2; attempt += 1) {
+				limiter.tryReserve({ ipAddress: `10.${index}.0.${attempt}`, now: 1000, username: `junk-${index}` });
+			}
+		}
+
+		let allowed = 0;
+
+		for (let guess = 0; guess < 400; guess += 1) {
+			const username = guess % 2 === 0 ? 'alice' : 'bob';
+
+			if (limiter.tryReserve({ ipAddress: `198.51.${guess % 250}.${Math.floor(guess / 250)}`, now: 1000, username }).allowed) {
+				allowed += 1;
+			}
+		}
+
+		// 20 per target at most; the old oldest-first eviction gave 40, an eviction by smallest count gave all 400.
+		expect(allowed).toBeLessThanOrEqual(40);
 	});
 });
 

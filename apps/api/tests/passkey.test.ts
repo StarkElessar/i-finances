@@ -229,11 +229,12 @@ describe('passkey registration verification without a session', () => {
 	it.each(['content-length', 'chunked'])('answers 401 without reading a %s body', async (transport) => {
 		const { app, service } = createPasskeyApp();
 		const finishRegistration = vi.spyOn(service, 'finishRegistration');
-		const stream = createRequestBodyStream('x'.repeat(64 * 1024), { endless: true });
+		// One byte over the limit: without the session guard the body limit would answer 413 first.
+		const stream = createRequestBodyStream('x'.repeat(64 * 1024 + 1), { endless: true });
 		const headers: Record<string, string> = { 'content-type': 'application/json', origin: AUTH_CONFIG.origin };
 
 		headers[transport === 'content-length' ? 'content-length' : 'transfer-encoding'] =
-			transport === 'content-length' ? String(64 * 1024) : 'chunked';
+			transport === 'content-length' ? String(64 * 1024 + 1) : 'chunked';
 
 		const response = await app.request('/api/auth/passkey/registration/verification', {
 			body: stream.body, duplex: 'half', headers, method: 'POST'

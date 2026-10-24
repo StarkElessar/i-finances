@@ -49,9 +49,9 @@ export class LoginRateLimiter {
 		this.maxAttempts = options.maxAttempts ?? DEFAULT_MAX_ATTEMPTS;
 		this.maxAttemptsPerIp = options.maxAttemptsPerIp ?? DEFAULT_MAX_ATTEMPTS_PER_IP;
 		this.maxAttemptsPerUsername = options.maxAttemptsPerUsername ?? DEFAULT_MAX_ATTEMPTS_PER_USERNAME;
-		this.addresses = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
-		this.pairs = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
-		this.usernames = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys);
+		this.addresses = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys, this.maxAttemptsPerIp);
+		this.pairs = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys, this.maxAttempts);
+		this.usernames = new FixedWindowCounter(windowMilliseconds, options.maxCounterKeys, this.maxAttemptsPerUsername);
 	}
 
 	/** Total retained keys across all three counters. */

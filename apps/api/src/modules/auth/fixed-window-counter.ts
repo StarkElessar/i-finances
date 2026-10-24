@@ -7,9 +7,10 @@ export const DEFAULT_MAX_COUNTER_KEYS = 10_000;
 
 /**
  * In-memory counters per key. A key's window starts at its first increment and is not extended by later ones.
- * Expired entries are removed first. At capacity, the entry with the smallest count (the oldest among equals) is evicted
- * to admit a new key, so a flood of fresh one-hit keys cannot push out the counter of a key that is already near or at
- * its limit.
+ * Expired entries are removed first. At capacity the oldest entry (by insertion) whose count is still below
+ * `protectFromCount` is evicted to admit a new key; entries at or above it (already blocked) stay while any weaker one
+ * exists. Evicting by smallest count instead would let an attacker keep the counter of a target at 1 by alternating
+ * targets, so the order stays by age: a fresh key is evicted only after all the older ones.
  */
 export class FixedWindowCounter {
 	private readonly entries = new Map<string, CounterEntry>();
@@ -17,7 +18,8 @@ export class FixedWindowCounter {
 
 	public constructor(
 		private readonly windowMilliseconds: number,
-		private readonly maxKeys: number = DEFAULT_MAX_COUNTER_KEYS
+		private readonly maxKeys: number = DEFAULT_MAX_COUNTER_KEYS,
+		private readonly protectFromCount: number = Number.POSITIVE_INFINITY
 	) {
 		if (!Number.isInteger(maxKeys) || maxKeys < 1) {
 			throw new RangeError('maxKeys must be a positive integer.');
@@ -47,7 +49,7 @@ export class FixedWindowCounter {
 
 		if (entry === undefined || entry.resetAt <= now) {
 			if (this.entries.size >= this.maxKeys) {
-				this.evictWeakest();
+				this.evictOldestUnblocked();
 			}
 
 			const resetAt = now + this.windowMilliseconds;
@@ -87,20 +89,24 @@ export class FixedWindowCounter {
 		this.nextSweepAt = Number.POSITIVE_INFINITY;
 	}
 
-	private evictWeakest(): void {
-		let weakestKey: string | undefined;
-		let weakestCount = Number.POSITIVE_INFINITY;
+	private evictOldestUnblocked(): void {
+		let oldestKey: string | undefined;
 
-		// Map iterates in insertion order, so a strict comparison keeps the oldest of equal counts.
+		// Map iterates in insertion order and entries are never re-inserted, so the first unprotected one is the oldest.
 		for (const [key, entry] of this.entries) {
-			if (entry.count < weakestCount) {
-				weakestKey = key;
-				weakestCount = entry.count;
+			if (oldestKey === undefined) {
+				oldestKey = key;
+			}
+
+			if (entry.count < this.protectFromCount) {
+				oldestKey = key;
+
+				break;
 			}
 		}
 
-		if (weakestKey !== undefined) {
-			this.entries.delete(weakestKey);
+		if (oldestKey !== undefined) {
+			this.entries.delete(oldestKey);
 		}
 	}
 
