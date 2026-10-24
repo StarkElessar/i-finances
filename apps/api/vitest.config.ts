@@ -9,6 +9,8 @@ export default defineConfig({
 		}
 	},
 	test: {
+		// Some module exports load the shared client: tests must never open the configured on-disk database.
+		env: { DATABASE_URL: ':memory:' },
 		environment: 'node'
 	}
 });
