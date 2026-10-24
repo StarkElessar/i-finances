@@ -1,6 +1,6 @@
 import css from './router.module.scss';
 
-import { CurrentViewerProvider, householdLossNotice, viewerFromSession } from '@/entities/viewer';
+import { CurrentViewerProvider, householdLossNotice } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
@@ -16,7 +16,6 @@ import { OnboardingPage } from '@/views/onboarding/page';
 import { ReceiptsPage } from '@/views/receipts/page';
 import { StatisticsPage } from '@/views/statistics/page';
 
-import type { CurrentSessionResponse } from '@i-finances/contracts';
 import type { RouteSectionProps } from '@solidjs/router';
 import { Navigate, query, Route, Router } from '@solidjs/router';
 import type { Accessor, JSX } from 'solid-js';
@@ -25,16 +24,17 @@ import { createResource, onMount, Show } from 'solid-js';
 import { AccessFailureListener } from './access/access-failure-listener';
 import { AccessGuard } from './access/access-guard';
 import { forgetSignedOutUser } from './access/forget-signed-out-user';
+import { resolveSessionChange, type SessionChange } from './access/resolve-session-change';
 
 export type AppRouterProps = {
 	authClient: AuthClient;
 };
 
 type SessionGateProps = {
-	children: (session: CurrentSessionResponse) => JSX.Element;
+	children: (session: SessionChange) => JSX.Element;
 	error: Accessor<unknown>;
 	isLoading: Accessor<boolean>;
-	session: Accessor<CurrentSessionResponse | undefined>;
+	session: Accessor<SessionChange | undefined>;
 };
 
 function SessionGate(props: SessionGateProps) {
@@ -79,7 +79,16 @@ function MemberLayout(props: MemberLayoutProps) {
 }
 
 export function AppRouter(props: AppRouterProps) {
-	const [session, { refetch }] = createResource(() => props.authClient.currentSession());
+	const [session, { refetch }] = createResource<SessionChange>(async (_, { value }) => {
+		const currentSession = await props.authClient.currentSession();
+		const change = resolveSessionChange(value?.viewer, currentSession);
+
+		if (change.clearCache) {
+			query.clear();
+		}
+
+		return change;
+	});
 
 	/**
 	 * A different user (or nobody) from now on: sign-in and sign-out. The whole tree under the session gate is rebuilt
@@ -87,7 +96,6 @@ export function AppRouter(props: AppRouterProps) {
 	 * Changes of the same user (display name, household) patch the viewer instead (`useSetCurrentViewer`).
 	 */
 	const reloadSession = (): void => {
-		query.clear();
 		void refetch();
 	};
 
@@ -103,7 +111,7 @@ export function AppRouter(props: AppRouterProps) {
 	const root = (rootProps: RouteSectionProps) => (
 		<SessionGate error={() => session.error} isLoading={() => session.loading} session={() => session()}>
 			{(currentSession) => (
-				<CurrentViewerProvider initialViewer={viewerFromSession(currentSession)}>
+				<CurrentViewerProvider initialViewer={currentSession.viewer}>
 					<AccessFailureListener/>
 					{rootProps.children}
 				</CurrentViewerProvider>
