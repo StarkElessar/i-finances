@@ -26,8 +26,9 @@ import Database from 'better-sqlite3';
 import { eq } from 'drizzle-orm';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
-import { HonoRequest } from 'hono/request';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+import { createRequestBodyStream } from './request-body-stream';
 
 const USER_ID = 'user-1';
 // Shaped like an Argon2 hash so it counts as a usable password; the verifier is a stub in these tests.
@@ -207,23 +208,21 @@ describe('password session API', () => {
 		expect(await database.select().from(sessions)).toEqual([]);
 	});
 
-	it('refuses a cross-origin sign-in before reading its body', async () => {
+	it.each([false, true])('refuses a cross-origin chunked sign-in without reading any portions (endless: %s)', async (endless) => {
 		const app = createAuthApp();
-		const readJson = vi.spyOn(HonoRequest.prototype, 'json');
+		const stream = createRequestBodyStream('x'.repeat(8 * 1024), { endless });
+		const response = await app.request('/api/auth/sign-in', {
+			body: stream.body,
+			duplex: 'half',
+			headers: { 'content-type': 'application/json', origin: 'https://evil.example', 'transfer-encoding': 'chunked' },
+			method: 'POST'
+		} as RequestInit);
 
-		try {
-			const response = await app.request('/api/auth/sign-in', {
-				body: JSON.stringify({ password: 'correct-password', username: 'sergei' }),
-				headers: { 'content-type': 'application/json', origin: 'https://evil.example' },
-				method: 'POST'
-			});
-
-			expect(response.status).toBe(403);
-			expect(readJson).not.toHaveBeenCalled();
-		}
-		finally {
-			readJson.mockRestore();
-		}
+		expect(response.status).toBe(403);
+		expect(await response.json()).toMatchObject({ errorCode: 'invalid-origin', ok: false });
+		expect(stream.readChunks()).toBe(0);
+		expect(await database.select().from(sessions)).toEqual([]);
+		await stream.body.cancel();
 	});
 
 	it('still accepts the largest valid body: a 2048-character returnTo with a 256-character password', async () => {

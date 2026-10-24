@@ -313,6 +313,11 @@ describe('TelegramSignInService.complete against a parallel telegram:reset (Р10
 		expect(await createSessionService().validateSessionToken(token)).toBeNull();
 		expect(database.select().from(sessions).all()).toEqual([]);
 		expect(database.select().from(telegramAccounts).all()).toEqual([]);
+
+		// A session scheduled outside the transaction must not appear after `complete` has returned either.
+		await new Promise<void>((resolve) => setImmediate(resolve));
+
+		expect(database.select().from(sessions).all()).toEqual([]);
 	});
 });
 
