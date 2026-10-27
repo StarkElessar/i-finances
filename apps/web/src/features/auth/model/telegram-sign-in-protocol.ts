@@ -92,7 +92,7 @@ export function createTelegramSignInProtocol(
 		recoverConfirmation: async () => {
 			const session = await gateway.currentSession();
 
-			return session.authenticated ? { hasHousehold: session.household !== null, isNewUser: false } : undefined;
+			return session.authenticated ? { hasHousehold: session.household !== null, isNewUser: false, isRecovered: true } : undefined;
 		},
 		start: () => invitationToken === undefined ? gateway.startTelegramSignIn() : gateway.startTelegramSignIn(invitationToken)
 	};

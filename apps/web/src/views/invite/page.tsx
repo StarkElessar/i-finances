@@ -45,9 +45,17 @@ function GuestSignIn(props: GuestSignInProps) {
 
 	const rememberRegistration = (allowUnclaimed = false): void => {
 		const state = controller.telegram.state();
-		const session = controller.session();
+		// A restarted sign-in retains the previous session value while the new account is loading.
+		const session = controller.isSessionLoading() ? undefined : controller.session();
 
-		if (state.kind === 'confirmed' && state.isNewUser && props.token !== undefined && (session?.authenticated || allowUnclaimed)) {
+		if (state.kind !== 'confirmed' || props.token === undefined) {
+			return;
+		}
+
+		// The complete body may be lost after registration consumed the app invitation and set the session cookie.
+		const isRecoveredAppRegistration = state.isRecovered && props.preview.kind === 'app' && !state.hasHousehold;
+
+		if ((state.isNewUser || isRecoveredAppRegistration) && (session?.authenticated || allowUnclaimed)) {
 			pendingInvitation.markRegistered(
 				props.token,
 				props.preview.kind ?? 'household',
@@ -68,7 +76,8 @@ function GuestSignIn(props: GuestSignInProps) {
 		pendingInvitation.clearRegistration(session?.authenticated ? session.user.id : undefined);
 
 		if (props.token !== undefined) {
-			pendingInvitation.clearToken(props.token);
+			// This guest flow continues with the same invitation; release any binding to the rejected identity.
+			pendingInvitation.save(props.token);
 		}
 	};
 

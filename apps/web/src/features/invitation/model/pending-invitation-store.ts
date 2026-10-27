@@ -57,7 +57,7 @@ function parseEntry(stored: string | null | undefined): PendingInvitationEntry |
  * The token belongs to one person (review of U4): a guest's link goes to the first user who signs in, and from then on
  * only that user gets it back. Another user in the same tab gets nothing, and the token is dropped; nobody signed in
  * (the owner signed out or the session ended) gets nothing either, but the token waits for its owner. An explicit
- * sign-out clears it (`clear`).
+ * sign-out clears it (`clear`), except rejecting the identity on a guest card that continues the same invitation.
  *
  * The token is a bearer secret of a family's finances: nothing here logs it or puts it into a message.
  */
@@ -79,7 +79,7 @@ export class PendingInvitationStore {
 		return this.readForViewer(viewerId)?.registrationKind;
 	}
 
-	/** Called only after Telegram confirms that this sign-in created an account. No token remains for an app invitation. */
+	/** Remembers a confirmed or recovered registration. No token remains for an app invitation. */
 	public markRegistered(token: string, kind: InvitationKind, userId?: string): void {
 		const entry = this.readEntry();
 

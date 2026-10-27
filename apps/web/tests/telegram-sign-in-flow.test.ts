@@ -423,7 +423,7 @@ describe('TelegramSignInFlow', () => {
 			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS * 2);
 
 			expect(harness.gateway.currentSession).toHaveBeenCalledTimes(1);
-			expect(harness.state()).toEqual({ hasHousehold: false, isNewUser: false, kind: 'confirmed' });
+			expect(harness.state()).toEqual({ hasHousehold: false, isNewUser: false, isRecovered: true, kind: 'confirmed' });
 		});
 
 		it('says expired after a lost answer when there is no session, and does not ask without a lost answer', async () => {
