@@ -7,6 +7,7 @@ import { describe, expect, it } from 'vitest';
 
 const VIEWER: CurrentViewer = {
 	canCreateHousehold: false,
+	isPlatformAdmin: false,
 	displayName: 'Сергей',
 	hasPassword: true,
 	household: { id: 'household-1', name: 'Семья', role: 'owner' },

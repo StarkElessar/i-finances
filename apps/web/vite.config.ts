@@ -3,13 +3,14 @@ import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vite';
 import solid from 'vite-plugin-solid';
 
-export default defineConfig({
+export default defineConfig(({ mode }) => ({
 	css: {
 		modules: {
 			localsConvention: 'camelCaseOnly'
 		}
 	},
-	plugins: [solid()],
+	// Node Vitest renders kit components to HTML without a browser or a DOM dependency.
+	plugins: [solid({ ssr: mode === 'test' })],
 	resolve: {
 		alias: {
 			'@': fileURLToPath(new URL('./src', import.meta.url)),
@@ -22,4 +23,4 @@ export default defineConfig({
 			'/api': 'http://localhost:3001'
 		}
 	}
-});
+}));

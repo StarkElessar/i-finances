@@ -13,6 +13,7 @@ const VIEWER = {
 	hasPassword: true,
 	household: { id: 'household', name: 'Семья', role: 'owner' },
 	id: 'user',
+	isPlatformAdmin: false,
 	telegram: null,
 	username: 'alexey'
 } as const;
