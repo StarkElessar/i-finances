@@ -1,0 +1,127 @@
+@use "@/shared/styles/mixins" as mx;
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+    min-inline-size: 0;
+}
+
+.label {
+    display: flex;
+    gap: var(--space-4);
+    align-items: baseline;
+    justify-content: space-between;
+
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-primary);
+}
+
+.required,
+.error {
+    color: var(--color-danger);
+}
+
+.optional {
+    font-weight: var(--font-weight-regular);
+    color: var(--color-text-tertiary);
+}
+
+.control {
+    position: relative;
+    min-inline-size: 0;
+}
+
+.input {
+    box-sizing: border-box;
+    inline-size: 100%;
+    min-inline-size: 0;
+    padding-block: 0;
+    padding-inline: var(--space-5) calc(var(--space-5) + var(--space-6) + var(--space-4));
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-md);
+
+    font-size: var(--font-size-body-md);
+    color: var(--color-text-primary);
+
+    background-color: var(--color-surface);
+
+    &:focus:not(:disabled) {
+        border-color: var(--color-primary);
+        outline: none;
+        box-shadow: 0 0 0 3px var(--color-focus-ring);
+    }
+
+    &[aria-invalid="true"]:not(:disabled) {
+        border-color: var(--color-danger);
+    }
+
+    &:disabled {
+        cursor: not-allowed;
+
+        border-color: var(--color-disabled-border);
+
+        color: var(--color-disabled-text);
+
+        opacity: 1;
+        background-color: var(--color-surface-subtle);
+
+        -webkit-text-fill-color: var(--color-disabled-text);
+    }
+
+    @include mx.pointer-coarse {
+        font-size: var(--font-size-body-lg);
+    }
+}
+
+.size-sm {
+    block-size: var(--control-size-sm);
+}
+
+.size-md {
+    block-size: var(--control-size-md);
+}
+
+.size-lg {
+    block-size: var(--control-size-lg);
+}
+
+.icon {
+    pointer-events: none;
+
+    position: absolute;
+    inset-block-start: 50%;
+    inset-inline-end: var(--space-5);
+    transform: translateY(-50%);
+
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+
+    color: var(--color-text-primary);
+
+    .input:disabled + & {
+        color: var(--color-disabled-text);
+    }
+}
+
+.message {
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+
+    &.error {
+        color: var(--color-danger);
+    }
+}
+
+.input {
+    appearance: none;
+
+    &:has(option:checked[value=""]):not(:disabled) {
+        color: var(--color-text-tertiary);
+    }
+
+    option {
+        color: var(--color-text-primary);
+    }
+}

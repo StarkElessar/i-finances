@@ -27,6 +27,7 @@
 	"devDependencies": {
 		"@testing-library/jest-dom": "^7.0.1",
 		"@types/node": "^26.1.1",
+		"jsdom": "24.1.3",
 		"sass-embedded": "^1.100.0",
 		"storybook": "10.6.2",
 		"storybook-addon-pseudo-states": "10.6.2",

@@ -32,7 +32,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 ## Реестр: доска → код
 
-Статус «есть» значит, что компонент в `shared/ui` существует; он может отставать от доски, сверяй размеры и состояния. «Нет» значит, что сначала его создают по доске (IF-20). Пометка «есть история» значит, что рядом с компонентом лежит `*.stories.tsx` (Storybook, `Kit/<Компонент>`). Новая история: файл `<имя>.stories.tsx` рядом с компонентом, состояния default, hover и focus (`parameters.pseudo`), disabled, loading, error; обе темы и ширины 390/768/1024/1280 переключаются в панели Storybook, не дублируй их историями. Запуск: `pnpm storybook` (порт 6006), сборка: `pnpm build-storybook`. Обёртки раскладки для историй: `@/shared/storybook` (`StoryStack`), без `style={{}}`. Аддоны `storybook-addon-pseudo-states` включён, `a11y` и `docs` нет.
+Статус «есть» значит, что компонент в `shared/ui` существует; он может отставать от доски, сверяй размеры и состояния. «Нет» значит, что сначала его создают по доске (IF-20). Пометка «есть история» значит, что рядом с компонентом лежит `*.stories.tsx` (Storybook, `Kit/<Компонент>`). Новая история: файл `<имя>.stories.tsx` рядом с компонентом, состояния default, hover и focus (`parameters.pseudo`), disabled, loading, error; обе темы и ширины 390/768/1024/1280 переключаются в панели Storybook, не дублируй их историями. Запуск: `pnpm storybook` (порт 6006), сборка: `pnpm build-storybook`. Обёртки раскладки для историй: `@/shared/storybook` (`StoryStack`, флаг `touch` для предпросмотра 44 px/16 px), без `style={{}}`. Аддоны `storybook-addon-pseudo-states` включён, `a11y` и `docs` нет.
 
 | Доска (файл) | Что на ней | Код | Статус |
 |---|---|---|---|
@@ -55,8 +55,9 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Checkbox, Switch, FAB (состояния и disabled; у выключенного Switch ручка и дорожка с рамкой `--c-disabled-border`, у пустого Checkbox рамка того же токена; строка Checkbox на тач 44) | `shared/ui/checkbox`, `shared/ui/switch`, `shared/ui/fab` | есть, есть история; disabled по доске 2026-10-19, в коде (у FAB история `Kit/Fab`) |
 | | навигатор периода | `shared/ui/period-navigator` (операции, месяц статистики: `views/statistics/ui/month-navigator` тонкая обёртка) | есть, есть история |
 | | копии сегмента периода и навигатора | остаются в `views/categories/ui/category-summary-dialog` и `views/contacts/ui/contact-summary-dialog` до IF-39 | не переведены, IF-39 |
-| | Select, поле даты | нет в `shared/ui` (нативные в оболочке кита, часть 2 IF-20) | нет, IF-20 |
-| `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/combobox` (есть), select и дата: нативные `<select>`, `type=date` в оболочке | оболочка нет, IF-20 |
+| | Select (нативный, оболочка кита) | `shared/ui/select` | есть, есть история |
+| | поле даты (нативный `type=date`, YYYY-MM-DD, min/max) | `shared/ui/date-field` | есть, есть история |
+| `Kit-Pickers` | Select и поле даты (нативные, оболочка кита), Combobox на телефоне с клавиатурой | `shared/ui/select`, `shared/ui/date-field`, `shared/ui/combobox` | Select и поле даты есть, есть истории (IF-20, часть 2, этап А); Combobox с клавиатурой — IF-11 |
 | | мультивыбор в popover, диапазон периода (статистика) | нет | нет, IF-19, IF-20 |
 | | выбор цвета категории (10 оттенков `k-1…k-10`, свой запрещён) | `shared/ui/color-picker` (6 цветов, hex) | не по доске, IF-19 |
 | `Kit-Surfaces` | Шапка: верхняя навигация на 640 (`.i-top.compact`: только знак 36 px, ссылки с отступом 12 px, замеры 585 из 640), 960 и 1280; высота 60 px на всех ширинах и на тач | `widgets/app-header` | высота 60 по доске в коде (2026-10-19); остальное доработка IF-17 |
@@ -67,9 +68,10 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Empty state | `shared/ui/empty-state` (сравнение статистики) | есть, есть история |
-| | Toast | нет | нет, IF-20 |
+| | Toast | `shared/ui/toast` (`createToaster`, `Toast`, `ToastContainer`) | есть, есть история |
 | | Skeleton (`.i-skel`, плитка и строка, тише при `prefers-reduced-motion`) | `shared/ui/skeleton` | есть, есть история |
-| `Kit-States` | Toast (место, длительность, стопка), Skeleton списка и таблицы, ошибка загрузки и офлайн | Skeleton: `shared/ui/skeleton`; остальное нет | Skeleton есть, остальное нет, IF-20 |
+| `Kit-States` | Toast (место, длительность, стопка) | `shared/ui/toast` (`createToaster` внутри Solid owner, до трёх, пауза hover/focus) | есть, есть история |
+| | Skeleton списка и таблицы, ошибка загрузки и офлайн | Skeleton: `shared/ui/skeleton`; остальное нет | Skeleton есть, остальное нет, IF-20 |
 | | подтверждение удаления внутри диалога (плоская карточка: вопрос, «Отмена» и «Удалить»; фокус на «Отмена», Escape закрывает только вопрос) | `shared/ui/confirm-panel` | есть, есть история; режим подтверждения самого `Dialog` не сделан, IF-21 |
 | | список строк с плиткой-значком (`.i-list`, `.i-row`, `.i-tile`): ключи, сеансы, привязанный аккаунт | `shared/ui/list` (`List`, `ListRow` со слотом `leading`: `IconTile` или `Avatar`, флаг `comfortable` 64 px); подтверждение внутри диалога: `shared/ui/confirm-panel` (`ConfirmPanel`, с `error`) | есть, есть история |
 | | поле пароля с глазом (показать, скрыть) | `shared/ui/password-field` | есть, есть история |

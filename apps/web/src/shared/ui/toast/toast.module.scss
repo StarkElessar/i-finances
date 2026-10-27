@@ -1,0 +1,113 @@
+@use "@/shared/styles/mixins" as mx;
+
+.container {
+    pointer-events: none;
+
+    position: fixed;
+    z-index: var(--z-toast);
+    inset-block-end: calc(var(--bottom-nav-offset) + var(--space-7));
+    inset-inline: var(--space-6) calc(var(--space-10) + var(--space-11));
+
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+    align-items: stretch;
+
+    @include mx.media-mn(sm) {
+        inset-block-end: var(--space-8);
+        inset-inline: var(--space-8);
+        align-items: center;
+    }
+}
+
+.toast {
+    pointer-events: auto;
+
+    display: inline-flex;
+    gap: var(--space-5);
+    align-items: center;
+
+    box-sizing: border-box;
+    min-inline-size: 0;
+    max-inline-size: 100%;
+    padding: var(--space-5) var(--space-6);
+    border-radius: var(--radius-md);
+
+    font-size: var(--font-size-caption);
+    color: var(--color-on-ink-card);
+
+    background-color: var(--color-ink-card);
+    box-shadow: var(--shadow-md);
+}
+
+.error {
+    border: 1px solid var(--color-danger);
+    color: var(--color-danger);
+    background-color: var(--color-danger-soft);
+}
+
+.message {
+    flex: 1;
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+}
+
+.icon {
+    display: inline-flex;
+    flex: none;
+    inline-size: var(--space-6);
+    block-size: var(--space-6);
+
+    svg {
+        inline-size: 100%;
+        block-size: 100%;
+    }
+}
+
+.action,
+.close {
+    cursor: pointer;
+
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+
+    min-block-size: var(--control-size-sm);
+
+    // Keep the drawn toast compact while the hit target grows to 44 on touch.
+    margin-block: calc((var(--space-6) - var(--control-size-sm)) / 2);
+    padding: 0;
+    border: 0;
+    border-radius: var(--radius-xs);
+
+    font: inherit;
+    color: inherit;
+
+    background: transparent;
+
+    &:focus-visible {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: var(--space-1);
+    }
+
+    &:hover {
+        text-decoration: underline;
+    }
+}
+
+.action {
+    margin-inline-start: var(--space-4);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: underline;
+}
+
+.close {
+    min-inline-size: var(--control-size-sm);
+    margin-inline: calc((var(--space-6) - var(--control-size-sm)) / 2);
+
+    svg {
+        inline-size: var(--space-6);
+        block-size: var(--space-6);
+    }
+}
