@@ -11,6 +11,30 @@ vi.mock('@simplewebauthn/browser', () => passkeyMocks);
 import { AuthClient } from '@/features/auth/api';
 
 describe('AuthClient', () => {
+	it.each([undefined, 'a'.repeat(43)])('starts Telegram with invitation token %s in the body only', async (invitationToken) => {
+		const code = 'A'.repeat(32);
+		const fetcher: typeof globalThis.fetch = async (input, init) => {
+			expect(input).toBe('/api/auth/telegram/start');
+			expect(init?.method).toBe('POST');
+			expect(init?.credentials).toBe('same-origin');
+			expect(init?.signal).toBeInstanceOf(AbortSignal);
+			expect(JSON.parse(typeof init?.body === 'string' ? init.body : '')).toEqual(
+				invitationToken === undefined ? {} : { invitationToken }
+			);
+
+			return new Response(JSON.stringify({
+				appUrl: `tg://resolve?domain=i_finances_bot&start=${code}`,
+				botUrl: `https://t.me/i_finances_bot?start=${code}`,
+				code,
+				expiresAt: '2026-10-27T12:10:00.000Z',
+				ok: true
+			}), { status: 200 });
+		};
+		const client = new AuthClient({ fetcher });
+
+		await expect(client.startTelegramSignIn(invitationToken)).resolves.toMatchObject({ code, ok: true });
+	});
+
 	it('loads the current session through the shared API client', async () => {
 		const fetcher: typeof globalThis.fetch = async (input, init) => {
 			expect(input).toBe('/api/auth/session');

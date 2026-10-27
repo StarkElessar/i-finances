@@ -7,6 +7,7 @@ export type { TelegramSignInGateway } from './telegram-sign-in-protocol';
 
 export type TelegramSignInFlowOptions = {
 	gateway: TelegramSignInGateway;
+	invitationToken?: string;
 	/** `document.visibilityState === 'visible'`; polling pauses while the page is hidden. */
 	isPageVisible: () => boolean;
 	onChange: TelegramRequestFlowOptions<TelegramSignInConfirmed, TelegramSignInFailureReason>['onChange'];
@@ -21,7 +22,7 @@ export class TelegramSignInFlow extends TelegramRequestFlow<TelegramSignInConfir
 		super({
 			isPageVisible: options.isPageVisible,
 			onChange: options.onChange,
-			protocol: createTelegramSignInProtocol(options.gateway)
+			protocol: createTelegramSignInProtocol(options.gateway, options.invitationToken)
 		});
 	}
 }

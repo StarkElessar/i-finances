@@ -2,10 +2,12 @@ import css from './onboarding-card.module.scss';
 
 import { Banner, Button, FlatCard, TextField, Typography } from '@/shared/ui';
 
-import { CircleAlert } from 'lucide-solid';
+import { CircleAlert, CircleCheck } from 'lucide-solid';
 import { Show } from 'solid-js';
 
 export type OnboardingCreateCardProps = {
+	/** Flow-AppInvite: name and household are confirmed together, without the welcome choice. */
+	newAccount?: { displayName: string; error?: string; onInput: (value: string) => void };
 	name: string;
 	nameError?: string;
 	onNameInput: (value: string) => void;
@@ -13,7 +15,7 @@ export type OnboardingCreateCardProps = {
 	error?: string;
 	isSubmitting?: boolean;
 	onSubmit: () => void;
-	onBack: () => void;
+	onBack?: () => void;
 };
 
 /**
@@ -33,10 +35,31 @@ export function OnboardingCreateCard(props: OnboardingCreateCardProps) {
 				}
 			}}
 		>
+			<Show when={props.newAccount}>
+				<Banner icon={<CircleCheck/>} role='status' tone='success'>Аккаунт создан</Banner>
+			</Show>
 			<div class={css.header}>
-				<Typography as='h2' focusOnMount variant='heading-2'>Создайте окружение</Typography>
+				<Typography as='h2' focusOnMount variant='heading-2'>
+					{props.newAccount === undefined ? 'Создайте окружение' : 'Создайте своё окружение'}
+				</Typography>
 				<Typography tone='secondary' variant='body-md'>Общее место для счетов и операций семьи.</Typography>
 			</div>
+			<Show when={props.newAccount}>
+				{(account) => (
+					<TextField
+						autocomplete='name'
+						disabled={props.isSubmitting}
+						error={account().error}
+						hint='Так вас увидят участники окружения. Можно изменить'
+						label='Ваше имя'
+						maxLength={100}
+						name='display-name'
+						onInput={(event) => account().onInput(event.currentTarget.value)}
+						required
+						value={account().displayName}
+					/>
+				)}
+			</Show>
 			<TextField
 				autocomplete='off'
 				disabled={props.isSubmitting}
@@ -59,7 +82,11 @@ export function OnboardingCreateCard(props: OnboardingCreateCardProps) {
 				{(message) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{message()}</Banner>}
 			</Show>
 			<Button fullWidth loading={props.isSubmitting} size='lg' type='submit'>Создать окружение</Button>
-			<Button disabled={props.isSubmitting} fullWidth onClick={() => props.onBack()} size='lg' variant='ghost'>Назад</Button>
+			<Show when={props.onBack}>
+				{(onBack) => (
+					<Button disabled={props.isSubmitting} fullWidth onClick={() => onBack()()} size='lg' variant='ghost'>Назад</Button>
+				)}
+			</Show>
 		</form>
 	);
 }

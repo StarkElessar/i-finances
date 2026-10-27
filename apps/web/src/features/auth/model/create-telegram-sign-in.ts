@@ -10,6 +10,6 @@ export type TelegramSignIn = TelegramRequest<TelegramSignInConfirmed, TelegramSi
  * Binds the Telegram sign-in flow to the component that owns it: one `start` on mount, polling resumed on
  * `visibilitychange`, everything stopped on cleanup (leaving the sign-in page).
  */
-export function createTelegramSignIn(gateway: TelegramSignInGateway): TelegramSignIn {
-	return createTelegramRequest((page) => new TelegramSignInFlow({ gateway, ...page }));
+export function createTelegramSignIn(gateway: TelegramSignInGateway, invitationToken?: string): TelegramSignIn {
+	return createTelegramRequest((page) => new TelegramSignInFlow({ gateway, invitationToken, ...page }));
 }

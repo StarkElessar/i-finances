@@ -83,8 +83,10 @@ export class AuthClient {
 	 * `POST /api/auth/telegram/start` (flow 5.1). The browser stores the request secret from the httpOnly cookie of the
 	 * answer by itself; a failure stays an `ApiHttpError` (its body is the contract failure, `Retry-After` on a 429).
 	 */
-	public startTelegramSignIn(): Promise<TelegramSignInStartResult> {
-		return this.client.post('/api/auth/telegram/start', {}, telegramSignInStartResultSchema, telegramRequestInit());
+	public startTelegramSignIn(invitationToken?: string): Promise<TelegramSignInStartResult> {
+		const input = invitationToken === undefined ? {} : { invitationToken };
+
+		return this.client.post('/api/auth/telegram/start', input, telegramSignInStartResultSchema, telegramRequestInit());
 	}
 
 	/** One poll of `POST /api/auth/telegram/complete`; `confirmed` means the session cookie is set. */

@@ -23,6 +23,8 @@ export type TelegramSignInFailureReason =
 export type TelegramSignInConfirmed = {
 	hasHousehold: boolean;
 	isNewUser: boolean;
+	/** The complete body was lost: the session confirms sign-in, but whether it created an account is unknown. */
+	isRecovered?: boolean;
 };
 
 export type TelegramSignInState = TelegramRequestState<TelegramSignInConfirmed, TelegramSignInFailureReason>;

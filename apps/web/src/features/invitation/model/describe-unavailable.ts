@@ -10,7 +10,7 @@ export type InvitationUnavailableView = {
 	title: string;
 };
 
-const NEW_LINK_REQUEST = 'Попросите владельца окружения прислать новую ссылку.';
+const NEW_LINK_REQUEST = 'Попросите того, кто вас пригласил, прислать новую ссылку.';
 
 /**
  * The texts of the dead-link card by cause (board `Flow-Invite`, card 2, «четыре причины», decision of 2026-10-19 in
@@ -25,10 +25,18 @@ export function describeUnavailable(cause: InvitationUnavailableCause): Invitati
 			return { description: NEW_LINK_REQUEST, icon: 'clock', title: 'Срок действия закончился' };
 
 		case 'used':
-			return { description: 'По ней присоединился другой человек. Нужна новая.', icon: 'check', title: 'Ссылка уже использована' };
+			return {
+				description: 'По ней уже зарегистрировался или присоединился другой человек. Нужна новая.',
+				icon: 'check',
+				title: 'Ссылка уже использована'
+			};
 
 		case 'revoked':
-			return { description: 'Владелец отозвал это приглашение.', icon: 'x', title: 'Приглашение отозвано' };
+			return {
+				description: 'Приглашение отозвано. Попросите того, кто вас пригласил, прислать новое.',
+				icon: 'x',
+				title: 'Приглашение отозвано'
+			};
 
 		case 'unknown':
 			return { description: NEW_LINK_REQUEST, icon: 'search', title: 'Ссылка не найдена' };

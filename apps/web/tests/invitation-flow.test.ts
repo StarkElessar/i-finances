@@ -63,6 +63,18 @@ function setup(): Setup {
 const PREVIEW_OK: InvitationPreviewResult = { invitation: PREVIEW, ok: true };
 
 describe('InvitationFlow preview', () => {
+	it('preserves the application kind without inventing a household name', async () => {
+		const { flow, gateway } = setup();
+		const preview = { expiresAt: PREVIEW.expiresAt, inviterName: PREVIEW.inviterName, kind: 'app' as const };
+
+		gateway.preview.mockResolvedValue({ invitation: preview, ok: true });
+		await flow.load(TOKEN);
+
+		expect(flow.state).toEqual({ kind: 'ready', preview });
+		await flow.accept(false);
+		expect(gateway.accept).not.toHaveBeenCalled();
+	});
+
 	it('shows the invitation of a live token', async () => {
 		const { flow, gateway } = setup();
 
@@ -423,6 +435,15 @@ describe('InvitationFlow accept', () => {
 });
 
 describe('describeUnavailable', () => {
+	it.each([
+		['expired', 'Попросите того, кто вас пригласил, прислать новую ссылку.'],
+		['unknown', 'Попросите того, кто вас пригласил, прислать новую ссылку.'],
+		['revoked', 'Приглашение отозвано. Попросите того, кто вас пригласил, прислать новое.'],
+		['used', 'По ней уже зарегистрировался или присоединился другой человек. Нужна новая.']
+	] as const)('uses the neutral text for %s, for both invitation kinds', (cause, description) => {
+		expect(describeUnavailable(cause).description).toBe(description);
+	});
+
 	it('gives each cause its own text and icon', () => {
 		const causes = ['expired', 'used', 'revoked', 'unknown', 'malformed', 'unspecified'] as const;
 		const texts = causes.map((cause) => describeUnavailable(cause));
@@ -454,6 +475,26 @@ describe('describeUnavailable', () => {
 
 describe('describeInvitationScreen', () => {
 	const ready: InvitationFlowState = { kind: 'ready', preview: PREVIEW };
+	const appPreview = { expiresAt: PREVIEW.expiresAt, inviterName: PREVIEW.inviterName, kind: 'app' as const };
+
+	it('shows the app guest card before sign-in and already registered after an existing user signs in', () => {
+		const appReady: InvitationFlowState = { kind: 'ready', preview: appPreview };
+
+		expect(describeInvitationScreen(appReady, false)).toEqual({ kind: 'guest', preview: appPreview });
+		expect(describeInvitationScreen(appReady, true)).toEqual({ kind: 'already-registered' });
+	});
+
+	it('continues a new app registration without previewing its consumed token', () => {
+		expect(describeInvitationScreen({ kind: 'loading' }, true, 'app')).toEqual({ kind: 'create-household' });
+		expect(describeInvitationScreen({ kind: 'loading' }, false, 'app')).toEqual({ kind: 'loading' });
+	});
+
+	it.each([undefined, 'household'] as const)('keeps household confirmation for kind %s, including a new account', (kind) => {
+		const preview = { ...PREVIEW, kind };
+
+		expect(describeInvitationScreen({ kind: 'ready', preview }, true, 'household'))
+			.toEqual({ isAccepting: false, kind: 'confirm', preview });
+	});
 
 	it('asks a guest to sign in and a signed-in person to confirm', () => {
 		expect(describeInvitationScreen(ready, false)).toEqual({ kind: 'guest', preview: PREVIEW });

@@ -47,6 +47,75 @@ describe('test tokens', () => {
 });
 
 describe('PendingInvitationStore', () => {
+	it('forgets a consumed app token but keeps the onboarding marker across a reload for its user', () => {
+		const storage = createMemoryStorage();
+		const store = new PendingInvitationStore(storage);
+
+		store.save(TOKEN);
+		store.markRegistered(TOKEN, 'app', 'anna');
+
+		const reloaded = new PendingInvitationStore(storage);
+
+		expect(reloaded.read('anna')).toBeUndefined();
+		expect(reloaded.has('anna')).toBe(false);
+		expect(reloaded.registrationKind('anna')).toBe('app');
+		expect(storage.values.get(PENDING_INVITATION_STORAGE_KEY)).not.toContain(TOKEN);
+		expect(reloaded.registrationKind()).toBeUndefined();
+		expect(reloaded.registrationKind('anna')).toBe('app');
+		expect(reloaded.registrationKind('boris')).toBeUndefined();
+		expect(reloaded.registrationKind('anna')).toBeUndefined();
+	});
+
+	it('keeps a household token and the new-account marker until acceptance', () => {
+		const storage = createMemoryStorage();
+		const store = new PendingInvitationStore(storage);
+
+		store.save(TOKEN);
+		store.markRegistered(TOKEN, 'household', 'anna');
+
+		const reloaded = new PendingInvitationStore(storage);
+
+		expect(reloaded.read('anna')).toBe(TOKEN);
+		expect(reloaded.registrationKind('anna')).toBe('household');
+		reloaded.clearToken(TOKEN);
+		expect(reloaded.registrationKind('anna')).toBeUndefined();
+		expect(storage.values.size).toBe(0);
+	});
+
+	it('binds an unclaimed registration to the session after an unavailable identity check', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+
+		store.save(TOKEN);
+		store.markRegistered(TOKEN, 'app');
+		expect(store.registrationKind('anna')).toBe('app');
+		expect(store.registrationKind('boris')).toBeUndefined();
+	});
+
+	it('clears registration on household creation and explicit sign-out', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+
+		store.save(TOKEN);
+		store.markRegistered(TOKEN, 'app', 'anna');
+		store.clearRegistration('anna');
+		expect(store.registrationKind('anna')).toBeUndefined();
+
+		store.save(TOKEN);
+		store.markRegistered(TOKEN, 'app', 'anna');
+		store.clear();
+		expect(store.registrationKind('anna')).toBeUndefined();
+	});
+
+	it('does not overwrite or clear a newer invitation with a late registration or creation', () => {
+		const store = new PendingInvitationStore(createMemoryStorage());
+
+		store.save(TOKEN);
+		store.save(OTHER_TOKEN);
+		store.markRegistered(TOKEN, 'app', 'anna');
+		store.clearRegistration('anna');
+		expect(store.read()).toBe(OTHER_TOKEN);
+		expect(store.registrationKind()).toBeUndefined();
+	});
+
 	it('keeps the token in the tab storage and gives it back', () => {
 		const storage = createMemoryStorage();
 		const store = new PendingInvitationStore(storage);
