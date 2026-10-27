@@ -160,6 +160,7 @@ export class OperationService {
 			current.record.id,
 			input.version,
 			{
+				accountId: account.id,
 				amountInHouseholdBaseCurrencyMinor: rateSnapshot.amountInHouseholdBaseCurrencyMinor,
 				amountMinor: input.amountMinor,
 				categoryId: references.category?.id ?? null,
@@ -169,7 +170,6 @@ export class OperationService {
 					current.record.categoryNameSnapshot,
 					references.category?.name
 				),
-				accountId: account.id,
 				comment: input.comment,
 				contactId: references.contact?.id ?? null,
 				contactNameSnapshot: getReferenceSnapshot(
@@ -487,8 +487,8 @@ export class OperationService {
 			current.record.id,
 			input.version,
 			{
-				amountInHouseholdBaseCurrencyMinor: rateSnapshot.amountInHouseholdBaseCurrencyMinor,
 				accountId: account.id,
+				amountInHouseholdBaseCurrencyMinor: rateSnapshot.amountInHouseholdBaseCurrencyMinor,
 				amountMinor: current.record.amountMinor,
 				categoryId: current.record.categoryId,
 				categoryNameSnapshot: current.record.categoryNameSnapshot,

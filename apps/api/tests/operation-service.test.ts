@@ -313,16 +313,25 @@ describe('OperationService', () => {
 			await insertAccount({ currency: 'BYN', id: 'account-wife' });
 
 			const service = createService();
-			const existing = await service.create(USER_ID, createOperationInputSchema.parse({
-				accountId: 'account-wife',
-				amountMinor: 500,
-				categoryId: null,
-				comment: '',
-				contactId: null,
-				happenedOn: '2026-08-08',
-				title: 'Уже на счёте жены',
-				type: 'expense'
-			}));
+			const existingIds: string[] = [];
+
+			// Two entries on the target account give it orders -1 and -2, the source account has only -1: taking the
+			// order from the source account would collide with -2 on the unique (account, day, order) index.
+			for (const title of ['Уже на счёте жены 1', 'Уже на счёте жены 2']) {
+				const existing = await service.create(USER_ID, createOperationInputSchema.parse({
+					accountId: 'account-wife',
+					amountMinor: 500,
+					categoryId: null,
+					comment: '',
+					contactId: null,
+					happenedOn: '2026-08-08',
+					title,
+					type: 'expense'
+				}));
+
+				existingIds.push(existing.id);
+			}
+
 			const created = await createExpense(service);
 			const moved = await service.update(USER_ID, updateOperationInputSchema.parse({
 				...created, accountId: 'account-wife'
@@ -331,7 +340,7 @@ describe('OperationService', () => {
 				accountId: 'account-wife', end: '2026-08-08', start: '2026-08-08'
 			});
 
-			expect(ledger.items.map((item) => item.id)).toEqual([moved.id, existing.id]);
+			expect(ledger.items.map((item) => item.id)).toEqual([moved.id, ...existingIds.reverse()]);
 		});
 
 		it('keeps the account when the field is missing or equals the current one', async () => {
