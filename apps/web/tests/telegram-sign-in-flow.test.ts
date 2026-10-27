@@ -53,7 +53,7 @@ type Harness = {
 	states: TelegramSignInState[];
 };
 
-function createHarness(): Harness {
+function createHarness(invitationToken?: string): Harness {
 	let visible = true;
 	const states: TelegramSignInState[] = [];
 	const codes = [CODE_A, CODE_B];
@@ -65,6 +65,7 @@ function createHarness(): Harness {
 	};
 	const flow = new TelegramSignInFlow({
 		gateway,
+		invitationToken,
 		isPageVisible: () => visible,
 		onChange: (state) => states.push(state)
 	});
@@ -115,6 +116,28 @@ describe('TelegramSignInFlow', () => {
 	});
 
 	describe('start', () => {
+		it('keeps ordinary sign-in free of invitation arguments', async () => {
+			const harness = await readyHarness();
+
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenCalledExactlyOnceWith();
+		});
+
+		it('passes the invitation token on every start and never exposes it in a state', async () => {
+			const token = 'a'.repeat(43);
+			const harness = createHarness(token);
+
+			harness.flow.start();
+			await flush();
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenCalledExactlyOnceWith(token);
+
+			harness.flow.start();
+			await flush();
+
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenCalledTimes(2);
+			expect(harness.gateway.startTelegramSignIn).toHaveBeenLastCalledWith(token);
+			expect(JSON.stringify(harness.states)).not.toContain(token);
+		});
+
 		it('prepares the link once and keeps the code of its own answer', async () => {
 			const harness = createHarness();
 

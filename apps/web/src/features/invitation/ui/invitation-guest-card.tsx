@@ -1,12 +1,13 @@
 import css from './invitation-card.module.scss';
 
 import { formatDeadline } from '@/shared/lib';
-import { AppLogo, Typography } from '@/shared/ui';
+import { AppLogo, Banner, Typography } from '@/shared/ui';
 
 import type { SignInMethodsController } from '@/features/auth';
 import { SignInMethods } from '@/features/auth';
 
 import type { InvitationPreview } from '@i-finances/contracts';
+import { CircleAlert } from 'lucide-solid';
 import { Show } from 'solid-js';
 
 export type InvitationGuestCardProps = {
@@ -21,6 +22,13 @@ export type InvitationGuestCardProps = {
  */
 export function InvitationGuestCard(props: InvitationGuestCardProps) {
 	const deadline = () => formatDeadline(props.preview.expiresAt);
+	const isApp = () => props.preview.kind === 'app';
+	const title = () => isApp()
+		? 'Вас пригласили в i-finances'
+		: `${props.preview.inviterName} приглашает вас в окружение «${props.preview.householdName}»`;
+	const description = () => isApp()
+		? `${props.preview.inviterName} приглашает вас вести финансы в i-finances. Создайте своё окружение для себя и семьи.`
+		: 'Войдите или создайте аккаунт через Telegram, чтобы присоединиться.';
 
 	return (
 		<SignInMethods
@@ -29,12 +37,20 @@ export function InvitationGuestCard(props: InvitationGuestCardProps) {
 				<div class={css.header}>
 					<AppLogo size='lg'/>
 					<Typography as='h2' class={css.title} focusOnMount variant='heading-2'>
-						{props.preview.inviterName} приглашает вас в окружение «{props.preview.householdName}»
+						{props.controller.view().isCancellable ? props.controller.view().title : title()}
 					</Typography>
 					<Typography tone='secondary' variant='body-md'>
-						Войдите, чтобы присоединиться.
+						{description()}
 						<Show when={deadline()}>{(text) => ` Действует до ${text()}.`}</Show>
 					</Typography>
+					<Typography tone='secondary' variant='body-md'>
+						Нет аккаунта? Он создастся при первом входе через Telegram по этой ссылке. Без приглашения регистрация закрыта.
+					</Typography>
+					<Show when={props.controller.telegram.state().kind === 'unavailable'}>
+						<Banner icon={<CircleAlert/>} role='status' tone='warning'>
+							Вход через Telegram сейчас недоступен. Попробуйте позже.
+						</Banner>
+					</Show>
 				</div>
 			)}
 			hideDivider

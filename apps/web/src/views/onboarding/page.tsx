@@ -3,6 +3,7 @@ import { PageCard } from '@/shared/ui';
 import { applyHouseholdChange, householdLossNotice, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
+import { saveDisplayName } from '@/features/auth';
 import {
 	availableWelcomeChoice,
 	createHousehold,
@@ -27,8 +28,6 @@ export type OnboardingPageProps = {
 
 type Step = 'create' | 'welcome';
 
-const SAVE_NAME_FAILED_MESSAGE = 'Не удалось сохранить имя. Попробуйте ещё раз.';
-
 const SIGN_OUT_FAILED_MESSAGE = 'Не удалось выйти. Попробуйте ещё раз.';
 
 /**
@@ -46,7 +45,8 @@ export function OnboardingPage(props: OnboardingPageProps) {
 	const navigate = useNavigate();
 	const householdClient = new HouseholdClient();
 	const lostHouseholdName = householdLossNotice.read(viewer()?.id);
-	const [step, setStep] = createSignal<Step>('welcome');
+	const isAppRegistration = pendingInvitation.registrationKind(viewer()?.id) === 'app' && (viewer()?.canCreateHousehold ?? false);
+	const [step, setStep] = createSignal<Step>(isAppRegistration ? 'create' : 'welcome');
 	const [displayName, setDisplayName] = createSignal(viewer()?.displayName ?? '');
 	const [isNameTouched, setIsNameTouched] = createSignal(false);
 	// Without the right to found a household there is nothing to choose: only the invitation (the server refuses too).
@@ -64,23 +64,14 @@ export function OnboardingPage(props: OnboardingPageProps) {
 
 	/** Saves the name when it changed; false when it could not be saved (the message is already shown). */
 	const confirmDisplayName = async (name: string): Promise<boolean> => {
-		if (name === (viewer()?.displayName ?? '')) {
+		const outcome = await saveDisplayName(props.authClient, name, viewer()?.displayName);
+
+		if (outcome.kind === 'saved') {
+			setCurrentViewer({ displayName: outcome.displayName });
 			return true;
 		}
 
-		try {
-			const result = await props.authClient.updateDisplayName(name);
-
-			if (result.ok) {
-				setCurrentViewer({ displayName: result.displayName });
-				return true;
-			}
-
-			setWelcomeError(result.message);
-		}
-		catch {
-			setWelcomeError(SAVE_NAME_FAILED_MESSAGE);
-		}
+		setWelcomeError(outcome.message);
 
 		return false;
 	};
@@ -122,6 +113,7 @@ export function OnboardingPage(props: OnboardingPageProps) {
 			const session = await props.authClient.currentSession();
 
 			if (session.authenticated && session.household !== null) {
+				pendingInvitation.clearRegistration(viewer()?.id);
 				applyHouseholdChange(session.household, { clearCache: () => query.clear(), setCurrentViewer });
 				return;
 			}
@@ -134,16 +126,32 @@ export function OnboardingPage(props: OnboardingPageProps) {
 	};
 
 	const handleCreate = async (): Promise<void> => {
+		if (isSubmitting()) {
+			return;
+		}
+
 		setHouseholdNameError(undefined);
 		setCreateError(undefined);
+		setWelcomeError(undefined);
+		setIsNameTouched(true);
+
+		if (isAppRegistration && form().displayNameError !== undefined) {
+			return;
+		}
+
 		setIsSubmitting(true);
 
 		try {
+			if (isAppRegistration && !await confirmDisplayName(form().displayName)) {
+				return;
+			}
+
 			const outcome = await createHousehold(householdClient, householdName());
 
 			switch (outcome.kind) {
 				case 'created':
 					householdLossNotice.clear();
+					pendingInvitation.clearRegistration(viewer()?.id);
 					applyHouseholdChange(outcome.household, { clearCache: () => query.clear(), setCurrentViewer });
 					navigate('/', { replace: true });
 					return;
@@ -207,11 +215,19 @@ export function OnboardingPage(props: OnboardingPageProps) {
 				</Match>
 				<Match when={step() === 'create' && canCreateHousehold()}>
 					<OnboardingCreateCard
-						error={createError()}
+						error={createError() ?? welcomeError()}
 						isSubmitting={isSubmitting()}
 						name={householdName()}
 						nameError={householdNameError()}
-						onBack={() => {
+						newAccount={isAppRegistration ? {
+							displayName: displayName(),
+							error: isNameTouched() ? form().displayNameError : undefined,
+							onInput: (value) => {
+								setIsNameTouched(true);
+								setDisplayName(value);
+							}
+						} : undefined}
+						onBack={isAppRegistration ? undefined : () => {
 							setCreateError(undefined);
 							setStep('welcome');
 						}}

@@ -109,6 +109,11 @@ export class InvitationFlow {
 		}
 
 		const { preview } = state;
+
+		if (preview.kind === 'app') {
+			return;
+		}
+
 		const replacing = replaceEmptyHousehold && state.kind === 'confirm-replace'
 			? { currentHouseholdName: state.currentHouseholdName }
 			: undefined;

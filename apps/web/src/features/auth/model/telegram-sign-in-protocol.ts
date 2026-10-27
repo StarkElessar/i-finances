@@ -19,7 +19,7 @@ export type TelegramSignInGateway = {
 	completeTelegramSignIn(code: string): Promise<TelegramSignInCompleteResult>;
 	/** Read only when a confirmation may have been lost on the way (see `recoverConfirmation` of the protocol). */
 	currentSession(): Promise<CurrentSessionResponse>;
-	startTelegramSignIn(): Promise<TelegramSignInStartResult>;
+	startTelegramSignIn(invitationToken?: string): Promise<TelegramSignInStartResult>;
 };
 
 const FAILURE_REASON_BY_ERROR_CODE: Partial<Record<string, TelegramSignInFailureReason>> = {
@@ -60,7 +60,8 @@ function readSignInFailure(error: unknown): TelegramRequestFailure | null {
 
 /** The sign-in side of a Telegram request: `start`, `complete` and `cancel` of flow 5.1, and the session as the lost-answer check. */
 export function createTelegramSignInProtocol(
-	gateway: TelegramSignInGateway
+	gateway: TelegramSignInGateway,
+	invitationToken?: string
 ): TelegramRequestProtocol<TelegramSignInConfirmed, TelegramSignInFailureReason> {
 	return {
 		cancel: (code) => gateway.cancelTelegramSignIn(code),
@@ -93,6 +94,6 @@ export function createTelegramSignInProtocol(
 
 			return session.authenticated ? { hasHousehold: session.household !== null, isNewUser: false } : undefined;
 		},
-		start: () => gateway.startTelegramSignIn()
+		start: () => invitationToken === undefined ? gateway.startTelegramSignIn() : gateway.startTelegramSignIn(invitationToken)
 	};
 }

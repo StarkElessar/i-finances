@@ -1,4 +1,4 @@
-import { INVITATION_TOKEN_PATTERN } from '@i-finances/contracts';
+import { INVITATION_TOKEN_PATTERN, type InvitationKind } from '@i-finances/contracts';
 
 /** The part of `Storage` the store needs; a test passes a plain object. */
 export type PendingInvitationStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
@@ -6,11 +6,13 @@ export type PendingInvitationStorage = Pick<Storage, 'getItem' | 'removeItem' | 
 export const PENDING_INVITATION_STORAGE_KEY = 'i-finances.pending-invitation';
 
 /**
- * The stored invitation: the token and the user it belongs to. `userId` is empty while nobody signed in has seen it
- * (the link was opened by a guest, or before the session was known); the first signed-in reader takes it.
+ * The stored invitation or registration context. `userId` is empty while nobody signed in has seen it (the link was
+ * opened by a guest, or before the session was known); the first signed-in reader takes it.
  */
 type PendingInvitationEntry = {
-	token: string;
+	/** An application invitation is consumed at registration: only its onboarding marker remains. */
+	registrationKind?: InvitationKind;
+	token?: string;
 	userId?: string;
 };
 
@@ -26,13 +28,18 @@ function parseEntry(stored: string | null | undefined): PendingInvitationEntry |
 			return undefined;
 		}
 
-		const { token, userId } = value as Record<string, unknown>;
+		const { registrationKind, token, userId } = value as Record<string, unknown>;
+		const registration = registrationKind === 'app' || registrationKind === 'household' ? registrationKind : undefined;
 
-		if (typeof token !== 'string' || !INVITATION_TOKEN_PATTERN.test(token)) {
+		if (token === undefined ? registration !== 'app' : typeof token !== 'string' || !INVITATION_TOKEN_PATTERN.test(token)) {
 			return undefined;
 		}
 
-		return typeof userId === 'string' && userId !== '' ? { token, userId } : { token };
+		return {
+			...(registration === undefined ? {} : { registrationKind: registration }),
+			...(typeof token === 'string' ? { token } : {}),
+			...(typeof userId === 'string' && userId !== '' ? { userId } : {})
+		};
 	}
 	catch {
 		return undefined;
@@ -45,6 +52,7 @@ function parseEntry(stored: string | null | undefined): PendingInvitationEntry |
  * dies with the tab and is never shared with other tabs (a `localStorage` token would outlive the tab and open in the
  * next person's browser on a shared device, review of Р5). If the browser refuses storage (private mode, blocked site
  * data) the token is kept in memory, which is enough as long as the page is not reloaded.
+ * After app registration the consumed token is removed; only a user-bound onboarding marker remains until creation.
  *
  * The token belongs to one person (review of U4): a guest's link goes to the first user who signs in, and from then on
  * only that user gets it back. Another user in the same tab gets nothing, and the token is dropped; nobody signed in
@@ -63,6 +71,35 @@ export class PendingInvitationStore {
 	 * not theirs. An unclaimed token is bound to the first signed-in reader; a token of another user is forgotten.
 	 */
 	public read(viewerId?: string): string | undefined {
+		return this.readForViewer(viewerId)?.token;
+	}
+
+	/** Registration context survives the session remount and a reload, and belongs to the same user as the invitation. */
+	public registrationKind(viewerId?: string): InvitationKind | undefined {
+		return this.readForViewer(viewerId)?.registrationKind;
+	}
+
+	/** Called only after Telegram confirms that this sign-in created an account. No token remains for an app invitation. */
+	public markRegistered(token: string, kind: InvitationKind, userId?: string): void {
+		const entry = this.readEntry();
+
+		if (entry?.token !== token || (entry.userId !== undefined && entry.userId !== userId)) {
+			return;
+		}
+
+		this.write({ registrationKind: kind, ...(kind === 'household' ? { token } : {}), userId });
+	}
+
+	/** Creating the household finishes the application-invitation onboarding; a newer invitation is left alone. */
+	public clearRegistration(viewerId: string | undefined): void {
+		const entry = this.readEntry();
+
+		if (entry?.registrationKind === 'app' && entry.userId === viewerId) {
+			this.clear();
+		}
+	}
+
+	private readForViewer(viewerId?: string): PendingInvitationEntry | undefined {
 		const entry = this.readEntry();
 
 		if (entry === undefined) {
@@ -71,14 +108,14 @@ export class PendingInvitationStore {
 
 		if (entry.userId === undefined) {
 			if (viewerId !== undefined) {
-				this.write({ token: entry.token, userId: viewerId });
+				this.write({ ...entry, userId: viewerId });
 			}
 
-			return entry.token;
+			return entry;
 		}
 
 		if (entry.userId === viewerId) {
-			return entry.token;
+			return entry;
 		}
 
 		if (viewerId !== undefined) {

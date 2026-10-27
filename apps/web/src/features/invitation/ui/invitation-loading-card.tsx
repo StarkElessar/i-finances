@@ -1,8 +1,8 @@
 import css from './invitation-card.module.scss';
 
-import { Banner, Button, Typography } from '@/shared/ui';
+import { Banner, Button, Skeleton, Typography } from '@/shared/ui';
 
-import { CircleAlert, LoaderCircle, RefreshCw } from 'lucide-solid';
+import { CircleAlert, RefreshCw } from 'lucide-solid';
 import { Show } from 'solid-js';
 
 import type { InvitationRequestProblem } from '../model/invitation-state';
@@ -15,14 +15,14 @@ export type InvitationLoadingCardProps = {
 };
 
 /**
- * Not on the board: the moment while the invitation is checked, and the failure of that check (no connection, too many
- * requests). The check needs no sign-in, so a guest sees this card first too.
+ * The shared check and failure cards of Flow-Invite and Flow-AppInvite (no connection, too many requests). The kind is
+ * not known until the preview succeeds, so the title is neutral.
  */
 export function InvitationLoadingCard(props: InvitationLoadingCardProps) {
 	return (
-		<div class={css.root}>
+		<div aria-busy={props.problem === undefined} class={css.root}>
 			<div class={css.header}>
-				<Typography as='h2' class={css.title} focusOnMount variant='heading-2'>Приглашение в окружение</Typography>
+				<Typography as='h2' class={css.title} focusOnMount variant='heading-2'>Приглашение</Typography>
 			</div>
 			<Show
 				fallback={(
@@ -34,7 +34,10 @@ export function InvitationLoadingCard(props: InvitationLoadingCardProps) {
 				)}
 				when={props.problem === undefined}
 			>
-				<Banner icon={<LoaderCircle/>} role='status' tone='neutral'>Проверяем приглашение…</Banner>
+				<div role='status'><Typography tone='secondary' variant='body-md'>Проверяем приглашение…</Typography></div>
+				<Skeleton/>
+				<Skeleton/>
+				<Skeleton/>
 			</Show>
 		</div>
 	);

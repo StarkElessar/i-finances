@@ -32,9 +32,9 @@ export type SignInMethodsController = {
  * controller, also while the password form is open), the passkey and the password. The sign-in page and the guest card of
  * the invitation both use it, each with its own frame; the states are the same (board `Auth-Telegram`).
  */
-export function createSignInMethods(client: AuthClient, onSignedIn: () => void): SignInMethodsController {
+export function createSignInMethods(client: AuthClient, onSignedIn: () => void, invitationToken?: string): SignInMethodsController {
 	const [method, setMethod] = createSignal<'options' | 'password'>('options');
-	const telegram = createTelegramSignIn(client);
+	const telegram = createTelegramSignIn(client, invitationToken);
 	const passkey = createPasskeySignIn(client, () => onSignedIn());
 	const view = createMemo(() => describeSignInCard(telegram.state()));
 	const botUrl = () => {
