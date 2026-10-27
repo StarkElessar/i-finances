@@ -134,7 +134,8 @@ export class OperationService {
 		this.rules.assertEditable(current.record);
 
 		const household = await this.dependencies.householdResolver.requireForUser(userId);
-		const account = await this.rules.requireAccount(household.id, current.record.accountId, false);
+		const currentAccount = await this.rules.requireAccount(household.id, current.record.accountId, false);
+		const account = await this.rules.resolveTargetAccount(household.id, currentAccount, input.accountId);
 		const references = await this.rules.resolveReferences(
 			household.id,
 			input.categoryId,
@@ -168,6 +169,7 @@ export class OperationService {
 					current.record.categoryNameSnapshot,
 					references.category?.name
 				),
+				accountId: account.id,
 				comment: input.comment,
 				contactId: references.contact?.id ?? null,
 				contactNameSnapshot: getReferenceSnapshot(
@@ -486,6 +488,7 @@ export class OperationService {
 			input.version,
 			{
 				amountInHouseholdBaseCurrencyMinor: rateSnapshot.amountInHouseholdBaseCurrencyMinor,
+				accountId: account.id,
 				amountMinor: current.record.amountMinor,
 				categoryId: current.record.categoryId,
 				categoryNameSnapshot: current.record.categoryNameSnapshot,

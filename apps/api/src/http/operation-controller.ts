@@ -2,6 +2,7 @@ import type { AuthenticatedSession } from '@/modules/auth';
 import { ExchangeRateNotFoundError } from '@/modules/exchange-rate';
 import type { OperationService } from '@/modules/operation';
 import {
+	OperationAccountCurrencyMismatchError,
 	OperationAccountUnavailableError,
 	OperationConversionAmountError,
 	OperationDeletedError,
@@ -452,6 +453,15 @@ export class OperationHttpController {
 				errorCode: 'reference-unavailable',
 				fieldErrors: { accountId: 'Счёт недоступен.' },
 				message: 'Выбранный счёт недоступен.',
+				ok: false
+			}, 409);
+		}
+
+		if (error instanceof OperationAccountCurrencyMismatchError) {
+			return context.json({
+				errorCode: 'reference-unavailable',
+				fieldErrors: { accountId: 'Операцию можно перенести только на счёт в той же валюте.' },
+				message: 'Операцию можно перенести только на счёт в той же валюте.',
 				ok: false
 			}, 409);
 		}

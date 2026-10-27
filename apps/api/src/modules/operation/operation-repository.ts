@@ -56,6 +56,7 @@ export type NewOperationRecord = Omit<OperationRecord, 'sourceOrder'>;
 
 export type OperationUpdateValues = Pick<
 	OperationRecord,
+	| 'accountId'
 	| 'amountInHouseholdBaseCurrencyMinor'
 	| 'amountMinor'
 	| 'categoryId'
@@ -204,12 +205,13 @@ export class OperationRepository {
 				return undefined;
 			}
 
-			const sourceOrder = current.happenedOn === values.happenedOn
+			// A move to another account or another day puts the operation first among that account's entries of the day.
+			const sourceOrder = current.happenedOn === values.happenedOn && current.accountId === values.accountId
 				? current.sourceOrder
 				: this.getLeadingSourceOrder(
 					transaction,
 					householdId,
-					current.accountId,
+					values.accountId,
 					values.happenedOn
 				);
 			const updated = transaction.update(operations)

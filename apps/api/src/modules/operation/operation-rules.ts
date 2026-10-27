@@ -3,6 +3,7 @@ import type { CategoryRepository } from '@/modules/category';
 import type { ContactRepository } from '@/modules/contact';
 import type { HouseholdResolver } from '@/modules/household';
 
+import { OperationAccountCurrencyMismatchError } from './operation-account-currency-mismatch-error';
 import { OperationAccountUnavailableError } from './operation-account-unavailable-error';
 import { OperationDeletedError } from './operation-deleted-error';
 import { OperationNotFoundError } from './operation-not-found-error';
@@ -53,6 +54,29 @@ export class OperationRules {
 		}
 
 		throw new OperationAccountUnavailableError();
+	}
+
+	/**
+	 * The account an edited operation ends up on. No `targetAccountId`, or the same one, keeps the account (even an
+	 * archived one: editing an old operation must not need an active account). A different one must be an active
+	 * account of the household with the same currency: the stored amount and rate snapshot stay valid only then.
+	 */
+	public async resolveTargetAccount(
+		householdId: string,
+		currentAccount: AccountRecord,
+		targetAccountId: string | undefined
+	): Promise<AccountRecord> {
+		if (targetAccountId === undefined || targetAccountId === currentAccount.id) {
+			return currentAccount;
+		}
+
+		const target = await this.requireAccount(householdId, targetAccountId, true);
+
+		if (target.currency !== currentAccount.currency) {
+			throw new OperationAccountCurrencyMismatchError();
+		}
+
+		return target;
 	}
 
 	public assertVersion(record: OperationRecord, expectedVersion: number): void {

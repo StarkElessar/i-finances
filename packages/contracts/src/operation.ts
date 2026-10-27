@@ -65,8 +65,14 @@ export const createOperationInputSchema = z.object({
 
 export type CreateOperationInput = z.infer<typeof createOperationInputSchema>;
 
+/**
+ * `accountId` is optional: when present and different from the operation's account, the operation moves to that
+ * account. Only to an active account of the same household in the same currency; the amount, the rate snapshot and the
+ * date stay as they are.
+ */
 export const updateOperationInputSchema = z.object({
 	...editableOperationFields,
+	accountId: operationIdSchema.optional(),
 	id: operationIdSchema,
 	version: operationVersionSchema
 });

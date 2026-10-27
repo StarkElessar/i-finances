@@ -19,6 +19,8 @@ import { ContactRepository } from '@/modules/contact';
 import { ExchangeRateRepository, ExchangeRateService } from '@/modules/exchange-rate';
 import { HouseholdRepository, HouseholdResolver } from '@/modules/household';
 import {
+	OperationAccountCurrencyMismatchError,
+	OperationAccountUnavailableError,
 	OperationReferenceUnavailableError,
 	OperationRepository,
 	OperationService,
@@ -249,6 +251,159 @@ describe('OperationService', () => {
 		expect(balances).toEqual([
 			{ accountId: 'account-main', balanceMinor: 10_000, currency: 'BYN' }
 		]);
+	});
+
+	describe('moving an operation to another account', () => {
+		async function insertAccount(values: { archivedAt?: Date; currency: 'BYN' | 'USD'; householdId?: string; id: string }) {
+			await database.insert(accounts).values({
+				archivedAt: values.archivedAt ?? null,
+				color: '#3f77a8',
+				createdAt: FIXED_DATE,
+				createdByUserId: USER_ID,
+				currency: values.currency,
+				description: '',
+				householdId: values.householdId ?? HOUSEHOLD_ID,
+				id: values.id,
+				initialBalanceMinor: 0,
+				isColorAccentEnabled: false,
+				isIncludedInFamilyTotal: true,
+				name: values.id,
+				type: 'card',
+				updatedAt: FIXED_DATE,
+				version: 1
+			});
+		}
+
+		async function createExpense(service: OperationService) {
+			return service.create(USER_ID, createOperationInputSchema.parse({
+				accountId: 'account-main',
+				amountMinor: 2_120,
+				categoryId: null,
+				comment: '',
+				contactId: null,
+				happenedOn: '2026-08-08',
+				title: 'Воппер',
+				type: 'expense'
+			}));
+		}
+
+		it('moves it to an active account of the same currency and moves the balance with it', async () => {
+			await insertAccount({ currency: 'BYN', id: 'account-wife' });
+
+			const service = createService();
+			const created = await createExpense(service);
+			const moved = await service.update(USER_ID, updateOperationInputSchema.parse({
+				...created, accountId: 'account-wife'
+			}));
+
+			expect(moved).toMatchObject({
+				accountId: 'account-wife',
+				amountInHouseholdBaseCurrencyMinor: created.amountInHouseholdBaseCurrencyMinor,
+				amountMinor: 2_120,
+				currency: 'BYN',
+				version: created.version + 1
+			});
+			expect(await service.getAccountBalances(USER_ID)).toEqual(expect.arrayContaining([
+				{ accountId: 'account-main', balanceMinor: 10_000, currency: 'BYN' },
+				{ accountId: 'account-wife', balanceMinor: -2_120, currency: 'BYN' }
+			]));
+		});
+
+		it('puts the moved operation first among the target account entries of that day', async () => {
+			await insertAccount({ currency: 'BYN', id: 'account-wife' });
+
+			const service = createService();
+			const existing = await service.create(USER_ID, createOperationInputSchema.parse({
+				accountId: 'account-wife',
+				amountMinor: 500,
+				categoryId: null,
+				comment: '',
+				contactId: null,
+				happenedOn: '2026-08-08',
+				title: 'Уже на счёте жены',
+				type: 'expense'
+			}));
+			const created = await createExpense(service);
+			const moved = await service.update(USER_ID, updateOperationInputSchema.parse({
+				...created, accountId: 'account-wife'
+			}));
+			const ledger = await service.getAccountLedger(USER_ID, {
+				accountId: 'account-wife', end: '2026-08-08', start: '2026-08-08'
+			});
+
+			expect(ledger.items.map((item) => item.id)).toEqual([moved.id, existing.id]);
+		});
+
+		it('keeps the account when the field is missing or equals the current one', async () => {
+			const service = createService();
+			const created = await createExpense(service);
+			const withoutField = await service.update(USER_ID, updateOperationInputSchema.parse({
+				...created, accountId: undefined, title: 'Без поля'
+			}));
+			const same = await service.update(USER_ID, updateOperationInputSchema.parse({
+				...withoutField, accountId: 'account-main', title: 'Тот же счёт'
+			}));
+
+			expect(withoutField.accountId).toBe('account-main');
+			expect(same).toMatchObject({ accountId: 'account-main', title: 'Тот же счёт' });
+		});
+
+		it('refuses an account in another currency and changes nothing', async () => {
+			await insertAccount({ currency: 'USD', id: 'account-usd' });
+
+			const service = createService();
+			const created = await createExpense(service);
+
+			await expect(service.update(USER_ID, updateOperationInputSchema.parse({
+				...created, accountId: 'account-usd'
+			}))).rejects.toBeInstanceOf(OperationAccountCurrencyMismatchError);
+			expect(await service.getAccountBalances(USER_ID)).toEqual(expect.arrayContaining([
+				{ accountId: 'account-main', balanceMinor: 7_880, currency: 'BYN' }
+			]));
+		});
+
+		it('refuses an archived account, an unknown one and an account of another household', async () => {
+			await insertAccount({ archivedAt: FIXED_DATE, currency: 'BYN', id: 'account-archived' });
+			await database.insert(households).values({
+				baseCurrency: 'BYN', createdAt: FIXED_DATE, id: 'household-2', name: 'Чужая', updatedAt: FIXED_DATE
+			});
+			await insertAccount({ currency: 'BYN', householdId: 'household-2', id: 'account-foreign' });
+
+			const service = createService();
+			const created = await createExpense(service);
+
+			for (const accountId of ['account-archived', 'account-missing', 'account-foreign']) {
+				await expect(service.update(USER_ID, updateOperationInputSchema.parse({
+					...created, accountId
+				}))).rejects.toBeInstanceOf(OperationAccountUnavailableError);
+			}
+
+			expect(await service.getAccountBalances(USER_ID)).toEqual(expect.arrayContaining([
+				{ accountId: 'account-main', balanceMinor: 7_880, currency: 'BYN' }
+			]));
+		});
+
+		it('answers 409 reference-unavailable with the account field through HTTP', async () => {
+			await insertAccount({ currency: 'USD', id: 'account-usd' });
+
+			const service = createService();
+			const created = await createExpense(service);
+			const app = createApiApp({
+				operationController: new OperationHttpController(service, { resolve: async () => authenticatedSession })
+			});
+			const response = await app.request(`/api/operations/${created.id}`, {
+				body: JSON.stringify({ ...created, accountId: 'account-usd' }),
+				headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
+				method: 'PUT'
+			});
+
+			expect(response.status).toBe(409);
+			expect(await response.json()).toMatchObject({
+				errorCode: 'reference-unavailable',
+				fieldErrors: { accountId: expect.any(String) },
+				ok: false
+			});
+		});
 	});
 
 	it('keeps a current archived contact reference but rejects selecting it anew', async () => {

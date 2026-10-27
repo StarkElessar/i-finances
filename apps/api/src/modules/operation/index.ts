@@ -1,3 +1,4 @@
+export { OperationAccountCurrencyMismatchError } from './operation-account-currency-mismatch-error';
 export { OperationAccountUnavailableError } from './operation-account-unavailable-error';
 export { OperationConversionAmountError } from './operation-conversion-amount-error';
 export { OperationDeletedError } from './operation-deleted-error';
