@@ -314,6 +314,7 @@
 .option-text {
     overflow: hidden;
     display: grid;
+    flex: 1;
     min-inline-size: 0;
 
     strong,
@@ -331,6 +332,24 @@
         font-size: var(--font-size-label);
         color: var(--color-text-tertiary);
     }
+}
+
+// An archived account in the «Счёт» picker: the name is quieter, the badge and the balance keep their size.
+.option-muted {
+    color: var(--color-text-secondary);
+}
+
+.option-badge {
+    flex: none;
+}
+
+.account-balance {
+    flex: none;
+
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-semibold);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .delete-dialog {

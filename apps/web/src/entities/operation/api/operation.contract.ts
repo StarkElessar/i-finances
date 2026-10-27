@@ -88,8 +88,13 @@ export const createOperationInputSchema = z.object({
 	accountId: entityIdSchema
 });
 
+/**
+ * `accountId` is optional: when present and different from the operation's account, the operation moves to that
+ * account (same household, same currency, active).
+ */
 export const updateOperationInputSchema = z.object({
 	...editableOperationFields,
+	accountId: entityIdSchema.optional(),
 	id: entityIdSchema,
 	version: operationVersionSchema
 });

@@ -6,6 +6,7 @@ import {
 	formatMinorUnitsCurrency,
 	parseOptionalMoneyInputToMinorUnits
 } from '@/shared/lib';
+import { Banner } from '@/shared/ui/banner';
 import { Button } from '@/shared/ui/button';
 import { Combobox } from '@/shared/ui/combobox';
 import { Dialog } from '@/shared/ui/dialog';
@@ -30,6 +31,7 @@ import {
 	Building2,
 	ChevronLeft,
 	ChevronRight,
+	CircleAlert,
 	RefreshCw,
 	Trash,
 	UserRound,
@@ -44,6 +46,9 @@ import {
 	Show
 } from 'solid-js';
 
+import { resolveMovedAccountId, resolveOperationAccountField } from './lib/resolve-operation-account-field';
+import { OperationAccountField } from './operation-account-field';
+import { TransferPartSummary } from './transfer-part-summary';
 import type { OperationDetailsPanelProps } from './types';
 
 const TYPE_OPTIONS: SegmentedOption<OperationType>[] = [
@@ -54,6 +59,7 @@ const TYPE_OPTIONS: SegmentedOption<OperationType>[] = [
 type OperationDetailsFormProps = Pick<
 	OperationDetailsPanelProps,
 	| 'account'
+	| 'accountChoices'
 	| 'categories'
 	| 'contacts'
 	| 'error'
@@ -92,6 +98,8 @@ type ContactOption = {
 export function OperationDetailsForm(props: OperationDetailsFormProps) {
 	let amountInput: HTMLInputElement | undefined;
 	const commentId = createUniqueId();
+	const [accountErrorDismissed, setAccountErrorDismissed] = createSignal(false);
+	const [accountId, setAccountId] = createSignal('');
 	const [amount, setAmount] = createSignal('');
 	const [amountError, setAmountError] = createSignal<string>();
 	const [categoryId, setCategoryId] = createSignal<string | null>(null);
@@ -105,6 +113,19 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 	const typeOptions = () => TYPE_OPTIONS.map((option) => ({ ...option, disabled: props.loading }));
 
 	const isEditMode = () => props.mode === 'edit';
+	const isTransferPart = () => isEditMode() && Boolean(props.operation?.transferId);
+	const accountField = createMemo(() => {
+		const operation = props.operation;
+
+		return isEditMode() && operation && !operation.transferId
+			? resolveOperationAccountField({
+				choices: props.accountChoices,
+				currentAccountId: operation.accountId,
+				selectedAccountId: accountId()
+			})
+			: undefined;
+	});
+	const accountError = () => (accountErrorDismissed() ? undefined : props.fieldErrors?.accountId);
 	const usesExchangeRate = () => (
 		props.operation?.exchangeRate.fromCurrency
 		!== props.operation?.exchangeRate.toCurrency
@@ -190,6 +211,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 		const operation = props.operation;
 
 		if (isEditMode() && operation) {
+			setAccountId(operation.accountId);
 			setAmount(formatMinorUnitsAsInput(operation.amountMinor));
 			setCategoryId(operation.categoryId);
 			setCategoryWasSelectedManually(operation.categoryId !== null);
@@ -200,6 +222,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 			setType(operation.type);
 		}
 		else {
+			setAccountId('');
 			setAmount('');
 			setCategoryId(null);
 			setCategoryWasSelectedManually(false);
@@ -210,6 +233,7 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 			setType('expense');
 		}
 
+		setAccountErrorDismissed(false);
 		setAmountError(undefined);
 		setIsDeleteDialogOpen(false);
 		queueMicrotask(() => amountInput?.focus());
@@ -229,6 +253,11 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 	const handleCategoryChange = (value: string | null): void => {
 		setCategoryId(value);
 		setCategoryWasSelectedManually(true);
+	};
+
+	const handleAccountChange = (nextAccountId: string): void => {
+		setAccountId(nextAccountId);
+		setAccountErrorDismissed(true);
 	};
 
 	const handleAmountInput: JSX.EventHandler<HTMLInputElement, InputEvent> = (event) => {
@@ -263,7 +292,13 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 			return;
 		}
 
+		const operation = props.operation;
+		const movedAccountId = isEditMode() && operation && accountField()
+			? resolveMovedAccountId(operation.accountId, accountId())
+			: undefined;
+
 		props.onSubmit({
+			...(movedAccountId === undefined ? {} : { accountId: movedAccountId }),
 			amountMinor,
 			categoryId: categoryId(),
 			comment: comment(),
@@ -283,6 +318,12 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 
 	createEffect(() => {
 		resetForm();
+	});
+
+	createEffect(() => {
+		// A new server answer brings its own field errors: show them again after the user changed the account.
+		void props.fieldErrors;
+		setAccountErrorDismissed(false);
 	});
 
 	return (
@@ -319,195 +360,220 @@ export function OperationDetailsForm(props: OperationDetailsFormProps) {
 				</header>
 
 				<div class={css.body}>
-					<Segmented
-						aria-label='Тип операции'
-						fullWidth
-						options={typeOptions()}
-						value={type()}
-						onChange={setType}
-					/>
-
-					<div class={css.dateField}>
-						<TextField
-							disabled={props.loading}
-							error={props.fieldErrors?.happenedOn}
-							label='Дата'
-							required
-							type='date'
-							value={happenedOn()}
-							onInput={(event) => setHappenedOn(event.currentTarget.value)}
+					<Show
+						fallback={props.operation && <TransferPartSummary operation={props.operation}/>}
+						when={!isTransferPart()}
+					>
+						<Segmented
+							aria-label='Тип операции'
+							fullWidth
+							options={typeOptions()}
+							value={type()}
+							onChange={setType}
 						/>
-						<div class={css.dateActions}>
-							<Button
-								aria-label='Предыдущий день'
-								disabled={props.loading}
-								iconOnly
-								size='sm'
-								variant='ghost'
-								onClick={() => handleDateShift(-1)}
-							>
-								<ChevronLeft size={18}/>
-							</Button>
-							<Button
-								aria-label='Следующий день'
-								disabled={props.loading}
-								iconOnly
-								size='sm'
-								variant='ghost'
-								onClick={() => handleDateShift(1)}
-							>
-								<ChevronRight size={18}/>
-							</Button>
-						</div>
-					</div>
+						<Show when={accountField()}>
+							{(field) => (
+								<OperationAccountField
+									error={accountError()}
+									field={field()}
+									loading={props.loading}
+									onChange={handleAccountChange}
+								/>
+							)}
+						</Show>
 
-					<TextField
-						ref={amountInput}
-						disabled={props.loading}
-						error={amountError() ?? props.fieldErrors?.amountMinor}
-						inputMode='decimal'
-						label='Сумма'
-						placeholder='0,00'
-						required
-						value={amount()}
-						endContent={props.account.currency}
-						onInput={handleAmountInput}
-					/>
-
-					<Show when={isEditMode() && usesExchangeRate() && props.operation}>
-						{(operation) => (
-							<div class={css.rateField}>
-								<div>
-									<span class={css.rateLabel}>Курс операции</span>
-									<strong>
-										1 {operation().exchangeRate.fromCurrency}
-										{' = '}
-										{operation().exchangeRate.rate}
-										{' '}
-										{operation().exchangeRate.toCurrency}
-									</strong>
-									<span class={css.rateHint}>
-										{operation().exchangeRate.effectiveOn}
-										{' · '}
-										{operation().exchangeRate.source}
-									</span>
-								</div>
+						<div class={css.dateField}>
+							<TextField
+								disabled={props.loading}
+								error={props.fieldErrors?.happenedOn}
+								label='Дата'
+								required
+								type='date'
+								value={happenedOn()}
+								onInput={(event) => setHappenedOn(event.currentTarget.value)}
+							/>
+							<div class={css.dateActions}>
 								<Button
-									aria-label='Пересчитать курс операции'
+									aria-label='Предыдущий день'
 									disabled={props.loading}
 									iconOnly
 									size='sm'
-									title='Пересчитать по таблице курсов'
-									type='button'
 									variant='ghost'
-									onClick={props.onRecalculateRate}
+									onClick={() => handleDateShift(-1)}
 								>
-									<RefreshCw size={17}/>
+									<ChevronLeft size={18}/>
+								</Button>
+								<Button
+									aria-label='Следующий день'
+									disabled={props.loading}
+									iconOnly
+									size='sm'
+									variant='ghost'
+									onClick={() => handleDateShift(1)}
+								>
+									<ChevronRight size={18}/>
 								</Button>
 							</div>
-						)}
-					</Show>
-
-					<TextField
-						disabled={props.loading}
-						error={props.fieldErrors?.title}
-						label='Название'
-						maxLength={160}
-						placeholder='Например, Продукты на неделю'
-						required
-						value={title()}
-						onInput={handleTitleInput}
-					/>
-
-					<Combobox
-						clearable
-						disabled={props.loading}
-						error={props.fieldErrors?.contactId}
-						getOptionDisabled={(option) => option.archived}
-						getOptionLabel={(option) => option.name}
-						getOptionSearchText={(option) => `${option.name} ${option.legalName ?? ''}`}
-						getOptionValue={(option) => option.id}
-						label='Контакт'
-						optional
-						options={contactOptions()}
-						placeholder='Не выбран'
-						searchPlaceholder='Название или юридическое имя'
-						value={contactId()}
-						renderOption={(option) => <ContactOptionContent option={option}/>}
-						renderValue={(option) => <ContactOptionContent compact option={option}/>}
-						onChange={(value) => setContactId(value)}
-					/>
-
-					<Combobox
-						clearable
-						disabled={props.loading}
-						error={props.fieldErrors?.categoryId}
-						getOptionDisabled={(option) => option.disabled}
-						getOptionLabel={(option) => option.name}
-						getOptionValue={(option) => option.id}
-						label='Категория'
-						optional
-						options={categoryOptions()}
-						placeholder='Не выбрана'
-						searchPlaceholder='Название категории'
-						value={categoryId()}
-						renderOption={(option) => <CategoryOptionContent option={option}/>}
-						renderValue={(option) => <CategoryOptionContent compact option={option}/>}
-						onChange={handleCategoryChange}
-					/>
-
-					<div class={css.commentField}>
-						<div class={css.labelRow}>
-							<label class={css.label} for={commentId}>Комментарий</label>
-							<span class={css.optional}>необязательно</span>
 						</div>
-						<textarea
-							class={css.textarea}
+
+						<TextField
+							ref={amountInput}
 							disabled={props.loading}
-							id={commentId}
-							maxLength={1000}
-							placeholder='Дополнительные сведения об операции'
-							rows={4}
-							value={comment()}
-							onInput={(event) => setComment(event.currentTarget.value)}
+							error={amountError() ?? props.fieldErrors?.amountMinor}
+							inputMode='decimal'
+							label='Сумма'
+							placeholder='0,00'
+							required
+							value={amount()}
+							endContent={props.account.currency}
+							onInput={handleAmountInput}
 						/>
-					</div>
-					<Show when={props.error}>
-						<p class={css.formError} role='alert'>{props.error}</p>
+
+						<Show when={isEditMode() && usesExchangeRate() && props.operation}>
+							{(operation) => (
+								<div class={css.rateField}>
+									<div>
+										<span class={css.rateLabel}>Курс операции</span>
+										<strong>
+											1 {operation().exchangeRate.fromCurrency}
+											{' = '}
+											{operation().exchangeRate.rate}
+											{' '}
+											{operation().exchangeRate.toCurrency}
+										</strong>
+										<span class={css.rateHint}>
+											{operation().exchangeRate.effectiveOn}
+											{' · '}
+											{operation().exchangeRate.source}
+										</span>
+									</div>
+									<Button
+										aria-label='Пересчитать курс операции'
+										disabled={props.loading}
+										iconOnly
+										size='sm'
+										title='Пересчитать по таблице курсов'
+										type='button'
+										variant='ghost'
+										onClick={props.onRecalculateRate}
+									>
+										<RefreshCw size={17}/>
+									</Button>
+								</div>
+							)}
+						</Show>
+
+						<TextField
+							disabled={props.loading}
+							error={props.fieldErrors?.title}
+							label='Название'
+							maxLength={160}
+							placeholder='Например, Продукты на неделю'
+							required
+							value={title()}
+							onInput={handleTitleInput}
+						/>
+
+						<Combobox
+							clearable
+							disabled={props.loading}
+							error={props.fieldErrors?.contactId}
+							getOptionDisabled={(option) => option.archived}
+							getOptionLabel={(option) => option.name}
+							getOptionSearchText={(option) => `${option.name} ${option.legalName ?? ''}`}
+							getOptionValue={(option) => option.id}
+							label='Контакт'
+							optional
+							options={contactOptions()}
+							placeholder='Не выбран'
+							searchPlaceholder='Название или юридическое имя'
+							value={contactId()}
+							renderOption={(option) => <ContactOptionContent option={option}/>}
+							renderValue={(option) => <ContactOptionContent compact option={option}/>}
+							onChange={(value) => setContactId(value)}
+						/>
+
+						<Combobox
+							clearable
+							disabled={props.loading}
+							error={props.fieldErrors?.categoryId}
+							getOptionDisabled={(option) => option.disabled}
+							getOptionLabel={(option) => option.name}
+							getOptionValue={(option) => option.id}
+							label='Категория'
+							optional
+							options={categoryOptions()}
+							placeholder='Не выбрана'
+							searchPlaceholder='Название категории'
+							value={categoryId()}
+							renderOption={(option) => <CategoryOptionContent option={option}/>}
+							renderValue={(option) => <CategoryOptionContent compact option={option}/>}
+							onChange={handleCategoryChange}
+						/>
+
+						<div class={css.commentField}>
+							<div class={css.labelRow}>
+								<label class={css.label} for={commentId}>Комментарий</label>
+								<span class={css.optional}>необязательно</span>
+							</div>
+							<textarea
+								class={css.textarea}
+								disabled={props.loading}
+								id={commentId}
+								maxLength={1000}
+								placeholder='Дополнительные сведения об операции'
+								rows={4}
+								value={comment()}
+								onInput={(event) => setComment(event.currentTarget.value)}
+							/>
+						</div>
+					</Show>
+					<Show when={props.error && !props.fieldErrors?.accountId}>
+						<Banner icon={<CircleAlert size={16}/>} role='alert' tone='danger'>{props.error}</Banner>
 					</Show>
 				</div>
 
 				<footer class={css.footer}>
-					<Show when={isEditMode() && props.operation}>
+					<Show
+						fallback={(
+							<>
+								<span class={css.footerSpacer}/>
+								<Button type='button' variant='secondary' onClick={props.onClose}>Закрыть</Button>
+							</>
+						)}
+						when={!isTransferPart()}
+					>
+						<Show when={isEditMode() && props.operation}>
+							<Button
+								aria-label='Удалить операцию'
+								class={css.deleteButton}
+								disabled={props.loading}
+								iconOnly
+								title='Удалить операцию'
+								type='button'
+								variant='ghost'
+								onClick={() => setIsDeleteDialogOpen(true)}
+							>
+								<Trash size={18}/>
+							</Button>
+						</Show>
+						<span class={css.footerSpacer}/>
 						<Button
-							aria-label='Удалить операцию'
-							class={css.deleteButton}
 							disabled={props.loading}
-							iconOnly
-							title='Удалить операцию'
 							type='button'
-							variant='ghost'
-							onClick={() => setIsDeleteDialogOpen(true)}
+							variant='secondary'
+							onClick={props.onClose}
 						>
-							<Trash size={18}/>
+							Отмена
+						</Button>
+						<Button
+							disabled={!canSubmit()}
+							loading={props.loading}
+							type='submit'
+						>
+							{isEditMode() ? 'Сохранить' : 'Добавить'}
 						</Button>
 					</Show>
-					<span class={css.footerSpacer}/>
-					<Button
-						disabled={props.loading}
-						type='button'
-						variant='secondary'
-						onClick={props.onClose}
-					>
-						Отмена
-					</Button>
-					<Button
-						disabled={!canSubmit()}
-						loading={props.loading}
-						type='submit'
-					>
-						{isEditMode() ? 'Сохранить' : 'Добавить'}
-					</Button>
 				</footer>
 			</form>
 

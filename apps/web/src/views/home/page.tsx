@@ -103,7 +103,7 @@ import { homeSearchParamsSchema } from './model/home-search-params';
 import type { AccountDetailsStatus, AccountDialogValue } from './ui/account-dialog';
 import { AccountDialog } from './ui/account-dialog';
 import type { OperationDetailsPanelMode } from './ui/operation-details-panel';
-import { OperationDetailsPanel } from './ui/operation-details-panel';
+import { buildOperationAccountChoices, OperationDetailsPanel } from './ui/operation-details-panel';
 import { OperationsWorkspace } from './ui/operations-workspace';
 import type {
 	TransferDialogMode,
@@ -447,6 +447,9 @@ function HomeContent(props: HomeContentProps) {
 
 		return account ? toAccountDialogValue(account) : undefined;
 	});
+	const operationAccountChoices = createMemo(() => (
+		buildOperationAccountChoices(accountsList(), props.balances() ?? [])
+	));
 	const detailsPanelContext = createMemo(() => {
 		const account = activeAccount();
 		const mode = detailsPanelMode();
@@ -881,7 +884,7 @@ function HomeContent(props: HomeContentProps) {
 			}
 			catch {
 				setOperationError(
-					'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
+					'Не удалось сохранить операцию. Проверьте соединение и повторите.'
 				);
 			}
 
@@ -907,7 +910,7 @@ function HomeContent(props: HomeContentProps) {
 		}
 		catch {
 			setOperationError(
-				'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
+				'Не удалось сохранить операцию. Проверьте соединение и повторите.'
 			);
 		}
 		finally {
@@ -1260,6 +1263,7 @@ function HomeContent(props: HomeContentProps) {
 					{(context) => (
 						<OperationDetailsPanel
 							account={context().account}
+							accountChoices={operationAccountChoices()}
 							categories={categories()}
 							contacts={contacts()}
 							error={operationError()}
