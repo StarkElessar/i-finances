@@ -62,7 +62,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `Kit-Surfaces` | Шапка: верхняя навигация на 640 (`.i-top.compact`: только знак 36 px, ссылки с отступом 12 px, замеры 585 из 640), 960 и 1280; высота 60 px на всех ширинах и на тач | `widgets/app-header` | высота 60 по доске в коде (2026-10-19); остальное доработка IF-17 |
 | | Dialog | `shared/ui/dialog` | есть, есть история |
 | | Menu / Popover | `shared/ui/context-menu` | есть, есть история |
-| | Card счёта, категории, контакта, KPI | `views/home/page.tsx` (счета), `views/categories/ui`, `views/contacts/ui`, `views/statistics/ui/breakdown-summary` | нет общего компонента, IF-20 |
+| | Card счёта, категории, контакта, KPI | `shared/ui/account-card`, `category-card`, `contact-card`, `kpi-card` (на `FlatCard variant='outlined'`, `IconTile tint`, `Badge`); бюджетный прогресс: `shared/ui/progress` | есть, есть истории (IF-20 часть 2, этап Б, 2026-10-27); экраны пока не переведены, IF-16/18/19/39; архив и общая ошибка счёта на досках отсутствуют |
 | | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
 | | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
@@ -74,7 +74,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | список строк с плиткой-значком (`.i-list`, `.i-row`, `.i-tile`): ключи, сеансы, привязанный аккаунт | `shared/ui/list` (`List`, `ListRow` со слотом `leading`: `IconTile` или `Avatar`, флаг `comfortable` 64 px); подтверждение внутри диалога: `shared/ui/confirm-panel` (`ConfirmPanel`, с `error`) | есть, есть история |
 | | поле пароля с глазом (показать, скрыть) | `shared/ui/password-field` | есть, есть история |
 | | панель операции в просмотре | `views/home/ui/operation-details-panel` | нет, IF-16, IF-21 |
-| | FAB и нижняя навигация | `shared/ui/fab` (FAB, IF-17), `widgets/app-header` (нижняя навигация, 5 ячеек; токены `--bottom-nav-*`) | есть; по доске нижняя панель и FAB только ниже 640 px, с 640 верхняя шапка (в коде с 640: знак 36 px на 640–959, ссылки 12 px), история Storybook у FAB есть |
+| | FAB и Bottom navigation | `shared/ui/fab` и `shared/ui/bottom-navigation` (5 ячеек; токены `--bottom-nav-*`); подключена в `widgets/app-header` | есть, есть истории; только ниже 640 px, скрытие при фокусе в поле сохранено; с 640 верхняя шапка; карточки экранов пока не переведены |
 | | жест по строке (зона `drag-action`) | `shared/ui/drag-action` | есть, есть история, z-index не по шкале, IF-14 |
 | `Kit-Currency` | знаки валют ₴ BYN ₽ ¥ € $ zł, размеры, правило «знак или код», формат суммы (минус U+2212, ноль, копейки, сокращения на графиках) | `shared/ui/currency-sign` и `money` (IF-32) | нет, IF-32 |
 | `Kit-AccountCard` | CardFace (full, mini, истёк, светлый цвет) | `shared/ui/card-face` | есть, есть история |

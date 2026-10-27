@@ -11,6 +11,8 @@ export type IconTileProps = {
 	/** A lucide icon. */
 	children: JSX.Element;
 	tone?: IconTileTone;
+	/** Account colour or category palette token; defaults to the tone's colour. */
+	tint?: string;
 	class?: string;
 };
 
@@ -20,7 +22,11 @@ export type IconTileProps = {
  */
 export function IconTile(props: IconTileProps) {
 	return (
-		<span aria-hidden='true' class={cn(css.root, props.tone === 'neutral' ? css.toneNeutral : css.tonePrimary, props.class)}>
+		<span
+			aria-hidden='true'
+			class={cn(css.root, props.tone === 'neutral' ? css.toneNeutral : css.tonePrimary, props.class)}
+			style={{ '--tile-tint': props.tint }}
+		>
 			{props.children}
 		</span>
 	);

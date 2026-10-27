@@ -1,0 +1,84 @@
+@use "@/shared/styles/mixins" as mx;
+
+.root {
+    position: fixed;
+    z-index: var(--z-nav);
+    inset-block-end: var(--bottom-nav-inset);
+    inset-inline: var(--space-5);
+
+    display: flex;
+    gap: var(--space-1);
+    align-items: stretch;
+
+    box-sizing: border-box;
+    block-size: var(--bottom-nav-block-size);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-xl);
+
+    background-color: var(--color-surface);
+    box-shadow: var(--shadow-md);
+
+    transition: opacity var(--duration-fast) var(--ease-standard);
+
+    &:has(.active:focus-visible) {
+        box-shadow: var(--shadow-md), 0 0 0 3px var(--color-focus-ring);
+    }
+
+    @include mx.media-mn(sm) {
+        display: none;
+    }
+}
+
+.hidden {
+    pointer-events: none;
+    visibility: hidden;
+    opacity: 0;
+}
+
+.link {
+    cursor: default;
+
+    display: flex;
+    flex: 1 1 0;
+    flex-direction: column;
+    gap: var(--space-1);
+    align-items: center;
+    justify-content: center;
+
+    min-inline-size: 0;
+    border-radius: var(--radius-lg);
+
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.2;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+    white-space: nowrap;
+
+    transition: color var(--duration-fast) var(--ease-standard), background-color var(--duration-fast) var(--ease-standard);
+
+    &:not(.active) {
+        cursor: pointer;
+
+        &:hover {
+            color: var(--color-primary);
+            background-color: var(--color-surface-subtle);
+        }
+
+        &:focus-visible {
+            outline: none;
+            box-shadow: 0 0 0 3px var(--color-focus-ring);
+        }
+    }
+}
+
+.active {
+    pointer-events: none;
+    color: var(--color-primary);
+    background-color: var(--color-primary-soft);
+
+    &:focus-visible {
+        outline: none;
+    }
+}
