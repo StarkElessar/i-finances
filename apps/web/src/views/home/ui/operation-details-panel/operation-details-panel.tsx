@@ -118,6 +118,7 @@ export function OperationDetailsPanel(props: OperationDetailsPanelProps) {
 		>
 			<OperationDetailsForm
 				account={props.account}
+				accountChoices={props.accountChoices}
 				categories={props.categories}
 				contacts={props.contacts}
 				error={props.error}

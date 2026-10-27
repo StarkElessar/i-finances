@@ -11,11 +11,12 @@ import type {
 } from '@/entities/operation';
 import {
 	deleteOperationAction,
+	getAccountBalances,
 	recalculateOperationRateAction,
 	updateOperationAction
 } from '@/entities/operation';
 
-import { OperationDetailsForm } from '@/views/home/ui/operation-details-panel';
+import { buildOperationAccountChoices, OperationDetailsForm } from '@/views/home/ui/operation-details-panel';
 
 import { createAsync, useAction, useSubmission } from '@solidjs/router';
 import {
@@ -56,6 +57,11 @@ export function CategoryOperationDialog(props: CategoryOperationDialogProps) {
 			return getAccounts(true);
 		}
 	});
+	const balances = createAsync(async () => {
+		if (props.open) {
+			return getAccountBalances();
+		}
+	});
 	const contacts = createAsync(async () => {
 		if (props.open) {
 			return getContacts({ status: 'all' });
@@ -69,7 +75,7 @@ export function CategoryOperationDialog(props: CategoryOperationDialogProps) {
 	);
 	const isContextLoading = () => (
 		props.open
-		&& (accounts() === undefined || contacts() === undefined)
+		&& (accounts() === undefined || balances() === undefined || contacts() === undefined)
 	);
 	const activeCategories = createMemo(() => (
 		props.categories.filter((category) => category.archivedAt === null)
@@ -84,6 +90,7 @@ export function CategoryOperationDialog(props: CategoryOperationDialogProps) {
 
 		return accountList.find((item) => item.id === operation.accountId);
 	});
+	const accountChoices = createMemo(() => buildOperationAccountChoices(accounts() ?? [], balances() ?? []));
 	const formContext = createMemo(() => {
 		const currentAccount = account();
 		const operation = editingOperation();
@@ -146,7 +153,7 @@ export function CategoryOperationDialog(props: CategoryOperationDialogProps) {
 		}
 		catch {
 			setError(
-				'Не удалось сохранить операцию. Проверьте подключение и повторите попытку.'
+				'Не удалось сохранить операцию. Проверьте соединение и повторите.'
 			);
 		}
 	};
@@ -252,6 +259,7 @@ export function CategoryOperationDialog(props: CategoryOperationDialogProps) {
 							<div class={css.formHost}>
 								<OperationDetailsForm
 									account={context().account}
+									accountChoices={accountChoices()}
 									categories={activeCategories()}
 									contacts={contacts()?.items ?? []}
 									error={error()}

@@ -9,6 +9,8 @@ export type OperationType = 'expense' | 'income';
  * them from the fixed account and the historical exchange-rate table.
  */
 export type OperationDraft = {
+	/** Target account of a move; set only when an edited operation goes to another account of the same currency. */
+	accountId?: string;
 	amountMinor: number;
 	categoryId: string | null;
 	comment: string;
