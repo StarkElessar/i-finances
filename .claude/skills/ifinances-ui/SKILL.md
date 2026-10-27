@@ -20,7 +20,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 
 | Что | Где |
 |---|---|
-| **Макет и кит** (Claude Design, 50 досок, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
+| **Макет и кит** (Claude Design, 54 доски, одним артефактом) | https://claude.ai/artifact/De31TDNR7feRASBZ73Leq1 |
 | Решения владельца, состав холста | `development/ui-mockup.md` |
 | Аудит дефектов (A1…C6) | `development/ui-audit.md` |
 | Токены в коде (эталон) | `apps/web/src/shared/styles/tokens.scss` |
