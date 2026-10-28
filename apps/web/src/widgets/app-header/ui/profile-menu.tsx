@@ -6,10 +6,12 @@ import { ContextMenu } from '@/shared/ui';
 import type { CurrentViewer } from '@/entities/viewer';
 import { useCurrentViewer } from '@/entities/viewer';
 
+import { AppInvitationDialog } from '@/features/app-invitation';
 import type { AuthClient } from '@/features/auth';
 import { HouseholdDialog } from '@/features/household';
 import { SecurityDialog } from '@/features/security';
 
+import { Link } from 'lucide-solid';
 import { createSignal, Show } from 'solid-js';
 
 import { ProfileSettingsDialog } from './profile-settings-dialog';
@@ -43,6 +45,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 	const [isSettingsOpen, setIsSettingsOpen] = createSignal(false);
 	const [isHouseholdOpen, setIsHouseholdOpen] = createSignal(false);
 	const [isSecurityOpen, setIsSecurityOpen] = createSignal(false);
+	const [isAppInvitationsOpen, setIsAppInvitationsOpen] = createSignal(false);
 
 	const handleSignOut = async (): Promise<void> => {
 		setSignOutError(undefined);
@@ -99,6 +102,16 @@ export function ProfileMenu(props: ProfileMenuProps) {
 						Безопасность
 					</ContextMenu.Item>
 					<ContextMenu.Separator/>
+					<Show when={viewer()?.isPlatformAdmin === true}>
+						<ContextMenu.Item
+							onSelect={() => {
+								setTimeout(() => setIsAppInvitationsOpen(true), 0);
+							}}
+						>
+							<Link aria-hidden='true'/>
+							Приглашения в приложение
+						</ContextMenu.Item>
+					</Show>
 					<Show when={signOutError()}>
 						{(message) => <p class={css.error} role='alert'>{message()}</p>}
 					</Show>
@@ -113,6 +126,7 @@ export function ProfileMenu(props: ProfileMenuProps) {
 				</ContextMenu.Content>
 			</ContextMenu.Root>
 			<HouseholdDialog open={isHouseholdOpen()} onOpenChange={setIsHouseholdOpen}/>
+			<AppInvitationDialog open={isAppInvitationsOpen()} onOpenChange={setIsAppInvitationsOpen}/>
 			<ProfileSettingsDialog
 				authClient={props.authClient}
 				open={isSettingsOpen()}

@@ -20,6 +20,8 @@ export type CurrentViewer = {
 	/** `null` while the user has no household (onboarding); every household route answers 403 then. */
 	household: HouseholdSummary | null;
 	id: string;
+	/** Only the explicit session flag grants access to application invitations. */
+	isPlatformAdmin: boolean;
 	/** The linked Telegram account, `null` while there is none. Patched in place when a link is made. */
 	telegram: ViewerTelegram | null;
 	username: string;
