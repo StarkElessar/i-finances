@@ -17,7 +17,8 @@ const NEW_LINK_REQUEST = 'Попросите того, кто вас пригл�
  * Р5). `unknown` is a well-formed token no invitation has, or one whose household was deleted: it must not say that the
  * link was mistyped, so it only asks for a new one. `malformed` is a link cut by the messenger and has the board's
  * «скопировали ссылку целиком». `unspecified` is an answer with no reason (an older API) and keeps the general text of
- * the contract.
+ * the contract. `used-for-registration` follows identity rejection after app registration: ask for a new link without
+ * claiming somebody else used this one.
  */
 export function describeUnavailable(cause: InvitationUnavailableCause): InvitationUnavailableView {
 	switch (cause) {
@@ -30,6 +31,9 @@ export function describeUnavailable(cause: InvitationUnavailableCause): Invitati
 				icon: 'check',
 				title: 'Ссылка уже использована'
 			};
+
+		case 'used-for-registration':
+			return { description: NEW_LINK_REQUEST, icon: 'check', title: 'Ссылка уже использована' };
 
 		case 'revoked':
 			return {

@@ -5,7 +5,13 @@ import { viewerFromSession } from '@/entities/viewer/model/viewer-access';
 
 import type { SignInMethodsController } from '@/features/auth';
 import { AuthClient } from '@/features/auth/api';
-import { InvitationAlreadyCard, InvitationClient, InvitationGuestCard, pendingInvitation } from '@/features/invitation';
+import {
+	InvitationAlreadyCard,
+	InvitationClient,
+	InvitationGuestCard,
+	InvitationUnavailableCard,
+	pendingInvitation
+} from '@/features/invitation';
 import { resetTelegramCookieQueue, TELEGRAM_POLL_INTERVAL_MS } from '@/features/telegram-request';
 
 import { InvitePage } from '@/views/invite/page';
@@ -155,9 +161,10 @@ describe('invitation page sign-in', () => {
 
 	it.each([
 		['app', false],
+		['app', true],
 		['household', false],
 		['household', true]
-	] as const)('keeps the %s invitation through identity rejection (first sign-in new: %s) and remembers the next registration',
+	] as const)('handles identity rejection for an %s invitation (first sign-in new: %s)',
 		async (kind, firstIsNewUser) => {
 			const { complete, controller, currentSession, onSignedIn, start } = await openInvitation(kind);
 
@@ -166,9 +173,20 @@ describe('invitation page sign-in', () => {
 			controller.telegram.openTelegram();
 			await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
 			expect(controller.isConfirmed()).toBe(true);
+			// A session-aware read claims a live token; rejecting this identity must release that binding.
+			expect(pendingInvitation.read('wrong-user')).toBe(kind === 'app' && firstIsNewUser ? undefined : TOKEN);
 
 			await controller.signOut();
 			await vi.advanceTimersByTimeAsync(0);
+
+			if (kind === 'app' && firstIsNewUser) {
+				expect(pendingInvitation.read()).toBeUndefined();
+				expect(pendingInvitation.registrationKind('wrong-user')).toBeUndefined();
+				expect(start).toHaveBeenCalledExactlyOnceWith(TOKEN);
+				expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+				return;
+			}
+
 			expect(pendingInvitation.read()).toBe(TOKEN);
 			expect(start).toHaveBeenCalledTimes(2);
 			expect(start.mock.calls).toEqual([[TOKEN], [TOKEN]]);
@@ -184,6 +202,114 @@ describe('invitation page sign-in', () => {
 			controller.onSignedIn();
 			expect(onSignedIn).toHaveBeenCalledOnce();
 		});
+
+	it('forgets the spent app token when the identity is still loading at sign-out', async () => {
+		const { complete, controller, currentSession, start } = await openInvitation('app');
+
+		currentSession.mockReturnValue(new Promise(() => {}));
+		complete.mockResolvedValue({ hasHousehold: false, isNewUser: true, ok: true, status: 'confirmed' });
+		controller.telegram.openTelegram();
+		await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+		expect(controller.isSessionLoading()).toBe(true);
+		expect(pendingInvitation.read()).toBe(TOKEN);
+
+		await controller.signOut();
+		expect(pendingInvitation.read()).toBeUndefined();
+		expect(start).toHaveBeenCalledOnce();
+		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+	});
+
+	it('shows the spent-link card when rejecting a recovered app registration', async () => {
+		const { complete, controller, start } = await openInvitation('app');
+
+		complete
+			.mockRejectedValueOnce(new DOMException('The operation timed out.', 'TimeoutError'))
+			.mockRejectedValueOnce(new ApiHttpError(410, {
+				errorCode: 'login-expired',
+				message: 'Заявка завершена.',
+				ok: false
+			}, '/api/auth/telegram/complete'));
+		controller.telegram.openTelegram();
+		await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS * 2);
+		expect(controller.isConfirmed()).toBe(true);
+
+		await controller.signOut();
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(pendingInvitation.read()).toBeUndefined();
+		expect(pendingInvitation.registrationKind(SESSION.user.id)).toBeUndefined();
+		expect(start).toHaveBeenCalledOnce();
+		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+	});
+
+	it('keeps the confirmed registration when signing out fails and lets the person retry', async () => {
+		const { client, complete, controller, start } = await openInvitation('app');
+
+		complete.mockResolvedValue({ hasHousehold: false, isNewUser: true, ok: true, status: 'confirmed' });
+		controller.telegram.openTelegram();
+		await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS);
+		vi.mocked(client.signOut).mockRejectedValueOnce(new TypeError('Failed to fetch'));
+
+		await expect(controller.signOut()).rejects.toThrow('Failed to fetch');
+		expect(controller.isConfirmed()).toBe(true);
+		expect(pendingInvitation.registrationKind(SESSION.user.id)).toBe('app');
+		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
+
+		await controller.signOut();
+		expect(start).toHaveBeenCalledOnce();
+		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+	});
+
+	it('recovers a registration after a reload when preview says the token was used and the viewer may create a household', async () => {
+		const client = new AuthClient();
+		const preview = vi.spyOn(InvitationClient.prototype, 'preview').mockResolvedValue({
+			errorCode: 'invitation-unavailable',
+			message: 'Ссылка приглашения недействительна.',
+			ok: false,
+			reason: 'used'
+		});
+		const start = vi.spyOn(client, 'startTelegramSignIn');
+
+		page.viewer = viewerFromSession(SESSION);
+		pendingInvitation.save(TOKEN);
+		renderPage(client);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(preview).toHaveBeenCalledExactlyOnceWith(TOKEN);
+		expect(Navigate).toHaveBeenCalledWith(expect.objectContaining({ href: '/onboarding' }));
+		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
+		expect(start).not.toHaveBeenCalled();
+		expect(pendingInvitation.read(SESSION.user.id)).toBeUndefined();
+	});
+
+	it.each([
+		['guest', 'used'],
+		['invitation-only', 'used'],
+		['member', 'used'],
+		['founder', 'expired'],
+		['founder', 'revoked'],
+		['founder', 'unknown']
+	] as const)('keeps the unavailable card for a %s with a %s invitation', async (viewerKind, reason) => {
+		const client = new AuthClient();
+
+		vi.spyOn(InvitationClient.prototype, 'preview').mockResolvedValue({
+			errorCode: 'invitation-unavailable',
+			message: 'Ссылка приглашения недействительна.',
+			ok: false,
+			reason
+		});
+		page.viewer = viewerKind === 'guest' ? null : viewerFromSession({
+			...SESSION,
+			canCreateHousehold: viewerKind !== 'invitation-only',
+			household: viewerKind === 'member' ? { id: 'household', name: 'Семья', role: 'owner' } : null
+		});
+		pendingInvitation.save(TOKEN);
+		renderPage(client);
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: reason }));
+		expect(Navigate).not.toHaveBeenCalled();
+	});
 
 	it.each(['login-expired', 'browser-mismatch'] as const)(
 		'continues a recovered app registration to onboarding without previewing the spent invitation (%s)',

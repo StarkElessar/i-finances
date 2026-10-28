@@ -3,7 +3,7 @@ import { PageCard } from '@/shared/ui';
 import { applyHouseholdChange, resolveViewerAccess, useCurrentViewer, useSetCurrentViewer } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
-import { createSignInMethods, saveDisplayName } from '@/features/auth';
+import { saveDisplayName } from '@/features/auth';
 import {
 	claimInvitationTokenFromAddress,
 	describeInvitationScreen,
@@ -13,7 +13,6 @@ import {
 	InvitationConfirmCard,
 	InvitationFlow,
 	type InvitationFlowState,
-	InvitationGuestCard,
 	InvitationLoadingCard,
 	InvitationReplaceCard,
 	type InvitationScreen,
@@ -23,71 +22,15 @@ import {
 
 import { Title } from '@solidjs/meta';
 import { Navigate, query, useNavigate } from '@solidjs/router';
-import { createEffect, createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
+import { createMemo, createSignal, Match, onCleanup, onMount, Switch } from 'solid-js';
+
+import { GuestSignIn } from './guest-sign-in';
 
 export type InvitePageProps = {
 	authClient: AuthClient;
 	/** The sign-in on the card finished: the app reloads the session and comes back to this page. */
 	onSignedIn: () => void;
 };
-
-type GuestSignInProps = {
-	authClient: AuthClient;
-	onSignedIn: () => void;
-	preview: Extract<InvitationScreen, { kind: 'guest' }>['preview'];
-	token: string | undefined;
-};
-
-/** The guest card owns the sign-in controller, so a signed-in person never starts a Telegram request here. */
-function GuestSignIn(props: GuestSignInProps) {
-	const controller = createSignInMethods(props.authClient, () => handleSignedIn(), props.token);
-	const guestController = { ...controller, signOut: () => handleSignOut() };
-
-	const rememberRegistration = (allowUnclaimed = false): void => {
-		const state = controller.telegram.state();
-		// A restarted sign-in retains the previous session value while the new account is loading.
-		const session = controller.isSessionLoading() ? undefined : controller.session();
-
-		if (state.kind !== 'confirmed' || props.token === undefined) {
-			return;
-		}
-
-		// The complete body may be lost after registration consumed the app invitation and set the session cookie.
-		const isRecoveredAppRegistration = state.isRecovered && props.preview.kind === 'app' && !state.hasHousehold;
-
-		if ((state.isNewUser || isRecoveredAppRegistration) && (session?.authenticated || allowUnclaimed)) {
-			pendingInvitation.markRegistered(
-				props.token,
-				props.preview.kind ?? 'household',
-				session?.authenticated ? session.user.id : undefined
-			);
-		}
-	};
-
-	const handleSignedIn = (): void => {
-		rememberRegistration(true);
-		props.onSignedIn();
-	};
-
-	const handleSignOut = async (): Promise<void> => {
-		const session = controller.session();
-
-		await controller.signOut();
-		pendingInvitation.clearRegistration(session?.authenticated ? session.user.id : undefined);
-
-		if (props.token !== undefined) {
-			// This guest flow continues with the same invitation; release any binding to the rejected identity.
-			pendingInvitation.save(props.token);
-		}
-	};
-
-	createEffect(() => {
-		// Remember the successful registration before the person continues or reloads the identity card.
-		rememberRegistration();
-	});
-
-	return <InvitationGuestCard controller={guestController} preview={props.preview}/>;
-}
 
 /**
  * `/invite`: the page of an invitation link `/invite#<token>` (boards `Flow-Invite`, flow 5.4, U4). It serves every
@@ -115,7 +58,17 @@ export function InvitePage(props: InvitePageProps) {
 		store: pendingInvitation
 	});
 	const registrationKind = () => pendingInvitation.registrationKind(viewer()?.id);
-	const screen = createMemo(() => describeInvitationScreen(state(), resolveViewerAccess(viewer()) !== 'anonymous', registrationKind()));
+	const screen = createMemo<InvitationScreen>(() => {
+		const current = state();
+		const access = resolveViewerAccess(viewer());
+
+		// A reload can lose the complete response after the server spent the link and set the session cookie.
+		if (current.kind === 'unavailable' && current.cause === 'used' && access === 'onboarding' && viewer()?.canCreateHousehold) {
+			return { kind: 'create-household' };
+		}
+
+		return describeInvitationScreen(current, access !== 'anonymous', registrationKind());
+	});
 	const screenOf = <TKind extends InvitationScreen['kind']>(kind: TKind) => () => {
 		const current = screen();
 
@@ -205,7 +158,13 @@ export function InvitePage(props: InvitePageProps) {
 				</Match>
 				<Match when={screenOf('guest')()}>
 					{(guest) => (
-						<GuestSignIn authClient={props.authClient} onSignedIn={props.onSignedIn} preview={guest().preview} token={token}/>
+						<GuestSignIn
+							authClient={props.authClient}
+							onInvitationUsed={() => setState({ cause: 'used-for-registration', kind: 'unavailable' })}
+							onSignedIn={props.onSignedIn}
+							preview={guest().preview}
+							token={token}
+						/>
 					)}
 				</Match>
 				<Match when={screenOf('confirm')()}>
