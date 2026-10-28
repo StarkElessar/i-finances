@@ -6,7 +6,6 @@ import { createEffect } from 'solid-js';
 
 type GuestSignInProps = {
 	authClient: AuthClient;
-	onInvitationUsed: () => void;
 	onSignedIn: () => void;
 	preview: Extract<InvitationScreen, { kind: 'guest' }>['preview'];
 	token: string | undefined;
@@ -45,25 +44,6 @@ export function GuestSignIn(props: GuestSignInProps) {
 
 	const handleSignOut = async (): Promise<void> => {
 		const session = controller.session();
-		const state = controller.telegram.state();
-		const isAppRegistration = props.preview.kind === 'app' && state.kind === 'confirmed'
-			&& (state.isNewUser || (state.isRecovered && !state.hasHousehold));
-
-		if (isAppRegistration) {
-			// This registration spent the one-time link; signing out must not start another request with it.
-			await props.authClient.signOut();
-
-			const signedOutSession = controller.session();
-
-			pendingInvitation.clearRegistration(signedOutSession?.authenticated ? signedOutSession.user.id : undefined);
-
-			if (props.token !== undefined) {
-				pendingInvitation.clearToken(props.token);
-			}
-
-			props.onInvitationUsed();
-			return;
-		}
 
 		await controller.signOut();
 		pendingInvitation.clearRegistration(session?.authenticated ? session.user.id : undefined);

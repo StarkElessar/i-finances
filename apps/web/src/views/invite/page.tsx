@@ -58,17 +58,7 @@ export function InvitePage(props: InvitePageProps) {
 		store: pendingInvitation
 	});
 	const registrationKind = () => pendingInvitation.registrationKind(viewer()?.id);
-	const screen = createMemo<InvitationScreen>(() => {
-		const current = state();
-		const access = resolveViewerAccess(viewer());
-
-		// A reload can lose the complete response after the server spent the link and set the session cookie.
-		if (current.kind === 'unavailable' && current.cause === 'used' && access === 'onboarding' && viewer()?.canCreateHousehold) {
-			return { kind: 'create-household' };
-		}
-
-		return describeInvitationScreen(current, access !== 'anonymous', registrationKind());
-	});
+	const screen = createMemo(() => describeInvitationScreen(state(), resolveViewerAccess(viewer()) !== 'anonymous', registrationKind()));
 	const screenOf = <TKind extends InvitationScreen['kind']>(kind: TKind) => () => {
 		const current = screen();
 
@@ -158,13 +148,7 @@ export function InvitePage(props: InvitePageProps) {
 				</Match>
 				<Match when={screenOf('guest')()}>
 					{(guest) => (
-						<GuestSignIn
-							authClient={props.authClient}
-							onInvitationUsed={() => setState({ cause: 'used-for-registration', kind: 'unavailable' })}
-							onSignedIn={props.onSignedIn}
-							preview={guest().preview}
-							token={token}
-						/>
+						<GuestSignIn authClient={props.authClient} onSignedIn={props.onSignedIn} preview={guest().preview} token={token}/>
 					)}
 				</Match>
 				<Match when={screenOf('confirm')()}>

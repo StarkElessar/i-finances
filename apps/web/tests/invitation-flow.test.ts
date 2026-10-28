@@ -438,7 +438,6 @@ describe('describeUnavailable', () => {
 	it.each([
 		['expired', 'Попросите того, кто вас пригласил, прислать новую ссылку.'],
 		['unknown', 'Попросите того, кто вас пригласил, прислать новую ссылку.'],
-		['used-for-registration', 'Попросите того, кто вас пригласил, прислать новую ссылку.'],
 		['revoked', 'Приглашение отозвано. Попросите того, кто вас пригласил, прислать новое.'],
 		['used', 'По ней уже зарегистрировался или присоединился другой человек. Нужна новая.']
 	] as const)('uses the neutral text for %s, for both invitation kinds', (cause, description) => {
@@ -452,7 +451,6 @@ describe('describeUnavailable', () => {
 		expect(new Set(texts.map((view) => view.title)).size).toBe(texts.length);
 		expect(describeUnavailable('expired')).toMatchObject({ icon: 'clock', title: 'Срок действия закончился' });
 		expect(describeUnavailable('used')).toMatchObject({ icon: 'check', title: 'Ссылка уже использована' });
-		expect(describeUnavailable('used-for-registration')).toMatchObject({ icon: 'check', title: 'Ссылка уже использована' });
 		expect(describeUnavailable('revoked')).toMatchObject({ icon: 'x', title: 'Приглашение отозвано' });
 	});
 

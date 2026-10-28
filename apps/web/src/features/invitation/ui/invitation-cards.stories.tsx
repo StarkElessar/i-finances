@@ -231,10 +231,6 @@ export const AppExpired: Story = { ...Expired };
 
 export const AppUsed: Story = { ...Used };
 
-export const AppRegistrationUsed: Story = {
-	render: () => <PageCard><InvitationUnavailableCard cause='used-for-registration' onDismiss={noop}/></PageCard>
-};
-
 export const AppRevoked: Story = { ...Revoked };
 
 export const AppUnknown: Story = { ...Unknown };

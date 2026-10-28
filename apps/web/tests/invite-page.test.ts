@@ -164,7 +164,7 @@ describe('invitation page sign-in', () => {
 		['app', true],
 		['household', false],
 		['household', true]
-	] as const)('handles identity rejection for an %s invitation (first sign-in new: %s)',
+	] as const)('keeps the %s invitation through identity rejection (first sign-in new: %s) and remembers the next registration',
 		async (kind, firstIsNewUser) => {
 			const { complete, controller, currentSession, onSignedIn, start } = await openInvitation(kind);
 
@@ -179,17 +179,10 @@ describe('invitation page sign-in', () => {
 			await controller.signOut();
 			await vi.advanceTimersByTimeAsync(0);
 
-			if (kind === 'app' && firstIsNewUser) {
-				expect(pendingInvitation.read()).toBeUndefined();
-				expect(pendingInvitation.registrationKind('wrong-user')).toBeUndefined();
-				expect(start).toHaveBeenCalledExactlyOnceWith(TOKEN);
-				expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
-				return;
-			}
-
 			expect(pendingInvitation.read()).toBe(TOKEN);
 			expect(start).toHaveBeenCalledTimes(2);
 			expect(start.mock.calls).toEqual([[TOKEN], [TOKEN]]);
+			expect(InvitationUnavailableCard).not.toHaveBeenCalled();
 
 			currentSession.mockResolvedValue(SESSION);
 			complete.mockResolvedValue({ hasHousehold: false, isNewUser: true, ok: true, status: 'confirmed' });
@@ -203,7 +196,7 @@ describe('invitation page sign-in', () => {
 			expect(onSignedIn).toHaveBeenCalledOnce();
 		});
 
-	it('forgets the spent app token when the identity is still loading at sign-out', async () => {
+	it('keeps the app invitation and restarts sign-in when the identity is still loading at sign-out', async () => {
 		const { complete, controller, currentSession, start } = await openInvitation('app');
 
 		currentSession.mockReturnValue(new Promise(() => {}));
@@ -214,12 +207,14 @@ describe('invitation page sign-in', () => {
 		expect(pendingInvitation.read()).toBe(TOKEN);
 
 		await controller.signOut();
-		expect(pendingInvitation.read()).toBeUndefined();
-		expect(start).toHaveBeenCalledOnce();
-		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(pendingInvitation.read()).toBe(TOKEN);
+		expect(start.mock.calls).toEqual([[TOKEN], [TOKEN]]);
+		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
 	});
 
-	it('shows the spent-link card when rejecting a recovered app registration', async () => {
+	it('keeps the app invitation and restarts sign-in when rejecting a recovered existing account without a household', async () => {
 		const { complete, controller, start } = await openInvitation('app');
 
 		complete
@@ -232,14 +227,15 @@ describe('invitation page sign-in', () => {
 		controller.telegram.openTelegram();
 		await vi.advanceTimersByTimeAsync(TELEGRAM_POLL_INTERVAL_MS * 2);
 		expect(controller.isConfirmed()).toBe(true);
+		expect(controller.telegram.state()).toMatchObject({ hasHousehold: false, isNewUser: false, isRecovered: true, kind: 'confirmed' });
 
 		await controller.signOut();
 		await vi.advanceTimersByTimeAsync(0);
 
-		expect(pendingInvitation.read()).toBeUndefined();
-		expect(pendingInvitation.registrationKind(SESSION.user.id)).toBeUndefined();
-		expect(start).toHaveBeenCalledOnce();
-		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+		expect(pendingInvitation.read()).toBe(TOKEN);
+		expect(pendingInvitation.registrationKind()).toBeUndefined();
+		expect(start.mock.calls).toEqual([[TOKEN], [TOKEN]]);
+		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
 	});
 
 	it('keeps the confirmed registration when signing out fails and lets the person retry', async () => {
@@ -256,11 +252,16 @@ describe('invitation page sign-in', () => {
 		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
 
 		await controller.signOut();
-		expect(start).toHaveBeenCalledOnce();
-		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used-for-registration' }));
+		await vi.advanceTimersByTimeAsync(0);
+
+		expect(controller.isConfirmed()).toBe(false);
+		expect(pendingInvitation.read()).toBe(TOKEN);
+		expect(pendingInvitation.registrationKind()).toBeUndefined();
+		expect(start.mock.calls).toEqual([[TOKEN], [TOKEN]]);
+		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
 	});
 
-	it('recovers a registration after a reload when preview says the token was used and the viewer may create a household', async () => {
+	it('shows the used-link error instead of onboarding for a viewer allowed to create a household', async () => {
 		const client = new AuthClient();
 		const preview = vi.spyOn(InvitationClient.prototype, 'preview').mockResolvedValue({
 			errorCode: 'invitation-unavailable',
@@ -270,14 +271,14 @@ describe('invitation page sign-in', () => {
 		});
 		const start = vi.spyOn(client, 'startTelegramSignIn');
 
-		page.viewer = viewerFromSession(SESSION);
+		page.viewer = viewerFromSession({ ...SESSION, canCreateHousehold: true });
 		pendingInvitation.save(TOKEN);
 		renderPage(client);
 		await vi.advanceTimersByTimeAsync(0);
 
 		expect(preview).toHaveBeenCalledExactlyOnceWith(TOKEN);
-		expect(Navigate).toHaveBeenCalledWith(expect.objectContaining({ href: '/onboarding' }));
-		expect(InvitationUnavailableCard).not.toHaveBeenCalled();
+		expect(InvitationUnavailableCard).toHaveBeenCalledWith(expect.objectContaining({ cause: 'used' }));
+		expect(Navigate).not.toHaveBeenCalled();
 		expect(start).not.toHaveBeenCalled();
 		expect(pendingInvitation.read(SESSION.user.id)).toBeUndefined();
 	});

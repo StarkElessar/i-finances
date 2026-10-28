@@ -2,9 +2,9 @@ import type { HouseholdInvitationUnavailableReason, HouseholdSummary, Invitation
 
 /**
  * Why the page cannot offer the invitation: the four `reason`s of the API (board `Flow-Invite`, decision of
- * 2026-10-19 in Р5), a malformed token, no `reason` (an older API), or a registration that just spent the app link.
+ * 2026-10-19 in Р5), a token that is not even well-formed, and an answer with no `reason` (an older API).
  */
-export type InvitationUnavailableCause = HouseholdInvitationUnavailableReason | 'malformed' | 'unspecified' | 'used-for-registration';
+export type InvitationUnavailableCause = HouseholdInvitationUnavailableReason | 'malformed' | 'unspecified';
 
 /** The person's own empty household, named by the API with the refusal that asks for consent. */
 export type OwnEmptyHousehold = { currentHouseholdName: string | undefined };
