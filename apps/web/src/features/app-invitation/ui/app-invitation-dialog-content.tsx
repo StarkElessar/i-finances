@@ -1,6 +1,6 @@
 import { useSetCurrentViewer } from '@/entities/viewer';
 
-import { createSignal, onCleanup, onMount } from 'solid-js';
+import { createEffect, createMemo, createSignal, onCleanup, onMount } from 'solid-js';
 
 import { AppInvitationClient } from '../api/app-invitation-client';
 import { type AppInvitationGateway, AppInvitationPanel } from '../model/app-invitation-panel';
@@ -16,13 +16,31 @@ export function AppInvitationDialogContent(props: { client?: AppInvitationGatewa
 	});
 	const [state, setState] = createSignal(panel.state);
 	const [now, setNow] = createSignal(Date.now());
+	const createRetryAt = createMemo(() => state().createRetryAt);
 
-	onMount(() => {
-		const timer = window.setInterval(() => setNow(Date.now()), 1000);
+	createEffect(() => {
+		const retryAt = createRetryAt();
+		const currentTime = Date.now();
+
+		setNow(currentTime);
+
+		if (retryAt === undefined || retryAt <= currentTime) {
+			return;
+		}
+
+		const timer = window.setInterval(() => {
+			const currentTime = Date.now();
+
+			setNow(currentTime);
+
+			if (currentTime >= retryAt) {
+				window.clearInterval(timer);
+			}
+		}, 1000);
 
 		onCleanup(() => window.clearInterval(timer));
-		void panel.load();
 	});
+	onMount(() => void panel.load());
 	onCleanup(() => panel.dispose());
 
 	return (

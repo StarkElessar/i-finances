@@ -46,7 +46,7 @@ export class AppInvitationPanel {
 			const result = await this.options.gateway.list();
 
 			if (result.ok) {
-				this.patch({ invitations: result.invitations, limitReached: false, load: 'ready' });
+				this.patch({ createRateLimitError: undefined, invitations: result.invitations, limitReached: false, load: 'ready' });
 			}
 			else {
 				this.patch({ error: result.message, load: 'failed' });
@@ -66,7 +66,7 @@ export class AppInvitationPanel {
 	}
 
 	public startCreate(): void {
-		if (!this.canAct() || this.current.view !== 'main' || this.current.confirmingId || this.isFull() || this.isCoolingDown()) {
+		if (!this.canAct() || this.current.view !== 'main' || this.current.confirmingId || this.isFull() || this.isCreateBlocked()) {
 			return;
 		}
 
@@ -80,7 +80,7 @@ export class AppInvitationPanel {
 	}
 
 	public async create(): Promise<void> {
-		if (!this.canAct() || this.current.view !== 'create' || this.isCoolingDown() || this.isFull()) {
+		if (!this.canAct() || this.current.view !== 'create' || this.isCreateBlocked() || this.isFull()) {
 			return;
 		}
 
@@ -103,6 +103,7 @@ export class AppInvitationPanel {
 
 				this.patch({
 					created: result.invitation,
+					createRetryAt: undefined,
 					invitations: [{
 						acceptedAt: null,
 						acceptedBy: null,
@@ -223,12 +224,12 @@ export class AppInvitationPanel {
 			|| selectAppInvitations(this.current.invitations, false).active.length >= MAX_ACTIVE_APP_INVITATIONS;
 	}
 
-	private isCoolingDown(): boolean {
-		return (this.current.createRetryAt ?? 0) > this.now();
+	private isCreateBlocked(): boolean {
+		return this.current.createRateLimitError !== undefined || (this.current.createRetryAt ?? 0) > this.now();
 	}
 
 	private validateNote(note: string): string | undefined {
-		if (note.length > APP_INVITATION_NOTE_MAX_LENGTH) {
+		if (note.trim().length > APP_INVITATION_NOTE_MAX_LENGTH) {
 			return `Заметка не длиннее ${APP_INVITATION_NOTE_MAX_LENGTH} символов.`;
 		}
 
@@ -243,10 +244,14 @@ export class AppInvitationPanel {
 			return;
 		}
 
+		const createRateLimitError = result.errorCode === 'rate-limited' && result.retryAfterSeconds === undefined
+			? result.message : undefined;
+
 		this.patch(confirmation ? { confirmError: result.message } : {
+			createRateLimitError,
 			createRetryAt: result.errorCode === 'rate-limited' && result.retryAfterSeconds !== undefined
 				? this.now() + result.retryAfterSeconds * 1000 : undefined,
-			error: result.message,
+			error: createRateLimitError === undefined ? result.message : undefined,
 			limitReached: result.errorCode === 'invitation-limit-reached',
 			noteError: result.fieldErrors?.note
 		});

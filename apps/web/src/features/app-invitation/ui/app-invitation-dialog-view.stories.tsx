@@ -150,4 +150,8 @@ export const RateLimited: Story = {
 	args: { state: ready({ createRetryAt: NOW + 241_000, error: 'За сутки можно создать не больше 50 приглашений.', view: 'create' }) }
 };
 
+export const RateLimitedWithoutRetryAfter: Story = {
+	args: { state: ready({ createRateLimitError: 'За сутки можно создать не больше 50 приглашений. Попробуйте позже.', view: 'create' }) }
+};
+
 export const AccessLost: Story = { args: { state: ready({ error: APP_INVITATION_ACCESS_LOST, invitations: [], load: 'forbidden' }) } };

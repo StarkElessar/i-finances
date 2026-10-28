@@ -44,7 +44,7 @@ export function AppInvitationForm(props: AppInvitationFormProps) {
 				value={props.note}
 			/>
 			<Typography align='end' id={countId} tone={props.error ? 'danger' : 'secondary'} variant='caption'>
-				{props.note.length} / {APP_INVITATION_NOTE_MAX_LENGTH}
+				{props.note.trim().length} / {APP_INVITATION_NOTE_MAX_LENGTH}
 			</Typography>
 		</form>
 	);

@@ -13,5 +13,6 @@ export type AppInvitationPanelState = {
 	confirmError?: string;
 	busy?: 'load' | 'create' | 'revoke';
 	createRetryAt?: number;
+	createRateLimitError?: string;
 	limitReached?: boolean;
 };

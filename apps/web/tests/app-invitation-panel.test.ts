@@ -113,6 +113,19 @@ describe('application invitation dialog state', () => {
 		expect(gateway.create).toHaveBeenCalledExactlyOnceWith({});
 	});
 
+	it('accepts 80 characters with a trailing space and submits the trimmed note', async () => {
+		const { gateway, panel } = createPanel();
+		const note = 'я'.repeat(80);
+
+		await panel.load();
+		panel.startCreate();
+		panel.setNote(`${note} `);
+		expect(panel.state.noteError).toBeUndefined();
+		await panel.create();
+		expect(gateway.create).toHaveBeenCalledExactlyOnceWith({ note });
+		expect(panel.state.view).toBe('created');
+	});
+
 	it('shows creation network and field errors without losing the draft', async () => {
 		const { gateway, panel } = createPanel();
 
@@ -179,6 +192,32 @@ describe('application invitation dialog state', () => {
 		gateway.list.mockResolvedValueOnce({ invitations: [INVITATION], ok: true });
 		panel.back();
 		await vi.waitFor(() => expect(panel.state).toMatchObject({ invitations: [INVITATION], load: 'ready', view: 'main' }));
+	});
+
+	it('blocks creation without Retry-After until reload, retaining the message across edits, cancellation and revocation', async () => {
+		const { gateway, panel } = createPanel([INVITATION]);
+		const message = 'За сутки можно создать не больше 50 приглашений. Попробуйте позже.';
+
+		await panel.load();
+		panel.startCreate();
+		gateway.create.mockResolvedValueOnce({ errorCode: 'rate-limited', message, ok: false });
+		await panel.create();
+		expect(panel.state).toMatchObject({ createRateLimitError: message, createRetryAt: undefined });
+		panel.setNote('Мария');
+		await panel.create();
+		expect(panel.state.createRateLimitError).toBe(message);
+		expect(gateway.create).toHaveBeenCalledTimes(1);
+		panel.back();
+		panel.askRevoke(INVITATION.id);
+		await panel.confirmRevoke();
+		panel.startCreate();
+		expect(panel.state).toMatchObject({ createRateLimitError: message, view: 'main' });
+		await panel.load();
+		expect(panel.state.createRateLimitError).toBeUndefined();
+		panel.startCreate();
+		await panel.create();
+		expect(gateway.create).toHaveBeenCalledTimes(2);
+		expect(panel.state.view).toBe('created');
 	});
 
 	it('handles a contract 401 while loading and blocks all subsequent actions', async () => {

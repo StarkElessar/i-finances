@@ -1,16 +1,19 @@
+// @vitest-environment jsdom
 import type { AppInvitationPanelState } from '@/features/app-invitation/model/app-invitation-panel-state';
 import { AppInvitationForm } from '@/features/app-invitation/ui/app-invitation-form';
 import { AppInvitationLists } from '@/features/app-invitation/ui/app-invitation-lists';
 import { CreatedAppInvitation } from '@/features/app-invitation/ui/created-app-invitation';
 import { OnboardingWelcomeCard } from '@/features/household/ui/onboarding-welcome-card';
 
+import { within } from '@testing-library/dom';
 import { createComponent } from 'solid-js';
-import { renderToString } from 'solid-js/web';
 import { describe, expect, it, vi } from 'vitest';
+
+import { renderUi } from './render-ui';
 
 describe('onboarding invitation-only card', () => {
 	it.each([undefined, 'Семья'])('explains creation rights below the invitation field (lost household: %s)', (lostHouseholdName) => {
-		const html = renderToString(() => createComponent(OnboardingWelcomeCard, {
+		const host = renderUi(() => createComponent(OnboardingWelcomeCard, {
 			canContinue: false,
 			canCreateHousehold: false,
 			choice: 'invite',
@@ -24,14 +27,17 @@ describe('onboarding invitation-only card', () => {
 			onSignOut: vi.fn()
 		}));
 
-		expect(html).toContain('Создать своё окружение можно только по приглашению в приложение.');
-		expect(html.indexOf('Ссылка-приглашение')).toBeLessThan(html.indexOf('Создать своё окружение можно'));
-		expect(html).toContain('Так вас увидят участники окружения. Можно изменить');
-		expect(html).not.toContain('Что вы хотите сделать');
+		const text = host.textContent;
+
+		expect(host).toHaveTextContent('Создать своё окружение можно только по приглашению в приложение.');
+		expect(within(host).getByRole('textbox', { name: 'Ссылка-приглашение' })).toBeInTheDocument();
+		expect(text.indexOf('Ссылка-приглашение')).toBeLessThan(text.indexOf('Создать своё окружение можно'));
+		expect(host).toHaveTextContent('Так вас увидят участники окружения. Можно изменить');
+		expect(host).not.toHaveTextContent('Что вы хотите сделать');
 	});
 
 	it('does not show the restriction to a person allowed to create a household', () => {
-		const html = renderToString(() => createComponent(OnboardingWelcomeCard, {
+		const host = renderUi(() => createComponent(OnboardingWelcomeCard, {
 			canContinue: false,
 			canCreateHousehold: true,
 			choice: 'invite',
@@ -44,11 +50,11 @@ describe('onboarding invitation-only card', () => {
 			onSignOut: vi.fn()
 		}));
 
-		expect(html).not.toContain('Создать своё окружение можно только');
+		expect(host).not.toHaveTextContent('Создать своё окружение можно только');
 	});
 });
 
-function renderLists(count: number, expanded: boolean): string {
+function renderLists(count: number, expanded: boolean): HTMLElement {
 	const state: AppInvitationPanelState = {
 		expanded,
 		invitations: Array.from({ length: count }, (_, index) => ({
@@ -65,7 +71,7 @@ function renderLists(count: number, expanded: boolean): string {
 		view: 'main'
 	};
 
-	return renderToString(() => createComponent(AppInvitationLists, {
+	return renderUi(() => createComponent(AppInvitationLists, {
 		onAskRevoke: vi.fn(),
 		onCancelRevoke: vi.fn(),
 		onConfirmRevoke: vi.fn(),
@@ -79,27 +85,25 @@ describe('accepted invitation list markup', () => {
 		const preview = renderLists(8, false);
 		const expanded = renderLists(8, true);
 
-		expect(preview.match(/Гость-/g)).toHaveLength(5);
-		expect(preview).toContain('Смотреть далее');
-		expect(preview).toContain('aria-expanded="false"');
-		expect(expanded.match(/Гость-/g)).toHaveLength(8);
-		expect(expanded).toContain('Свернуть');
-		expect(expanded).toContain('aria-expanded="true"');
-		expect(preview).toContain('без @логина');
-		expect(preview).toContain('@guest_1');
+		expect(within(preview).getAllByText(/Гость-/)).toHaveLength(5);
+		expect(within(preview).getByRole('button', { name: 'Смотреть далее' })).toHaveAttribute('aria-expanded', 'false');
+		expect(within(expanded).getAllByText(/Гость-/)).toHaveLength(8);
+		expect(within(expanded).getByRole('button', { name: 'Свернуть' })).toHaveAttribute('aria-expanded', 'true');
+		expect(preview).toHaveTextContent('без @логина');
+		expect(preview).toHaveTextContent('@guest_1');
 	});
 
 	it.each([0, 1, 5])('has no expansion control for %i accepted invitations', (count) => {
-		const html = renderLists(count, false);
+		const host = renderLists(count, false);
 
-		expect(html).not.toContain('Смотреть далее');
-		expect(html).not.toContain('Свернуть');
+		expect(within(host).queryByRole('button', { name: 'Смотреть далее' })).not.toBeInTheDocument();
+		expect(within(host).queryByRole('button', { name: 'Свернуть' })).not.toBeInTheDocument();
 	});
 });
 
 describe('application invitation form and created link', () => {
 	it('shows the optional note, its error and the counter even when the limit is exceeded', () => {
-		const html = renderToString(() => createComponent(AppInvitationForm, {
+		const host = renderUi(() => createComponent(AppInvitationForm, {
 			error: 'Заметка не длиннее 80 символов.',
 			id: 'create-invitation',
 			loading: false,
@@ -108,25 +112,36 @@ describe('application invitation form and created link', () => {
 			onNoteInput: vi.fn()
 		}));
 
-		expect(html).toContain('Для кого');
-		expect(html).toContain('необязательно');
-		expect(html).toContain('81 / 80');
-		expect(html).toContain('aria-invalid="true"');
-		expect(html).toContain('Заметка не длиннее 80 символов.');
+		expect(within(host).getByRole('textbox', { name: 'Для кого необязательно' })).toHaveAttribute('aria-invalid', 'true');
+		expect(host).toHaveTextContent('81 / 80');
+		expect(host).toHaveTextContent('Заметка не длиннее 80 символов.');
+	});
+
+	it('counts the trimmed note so 80 characters and a trailing space stay within the limit', () => {
+		const host = renderUi(() => createComponent(AppInvitationForm, {
+			id: 'create-invitation',
+			loading: false,
+			note: `${'я'.repeat(80)} `,
+			onCreate: vi.fn(),
+			onNoteInput: vi.fn()
+		}));
+
+		expect(host).toHaveTextContent('80 / 80');
+		expect(within(host).getByRole('textbox')).not.toHaveAttribute('aria-invalid');
 	});
 
 	it.each([false, true])('shows a readonly one-time link and offers share only when available: %s', (canShare) => {
-		const html = renderToString(() => createComponent(CreatedAppInvitation, {
+		const host = renderUi(() => createComponent(CreatedAppInvitation, {
 			canShare,
 			invitation: {
 				expiresAt: '2026-11-03T12:00:00.000Z', id: 'created-1', link: `https://ifinances.example/invite#${'x'.repeat(43)}`
 			}
 		}));
 
-		expect(html).toContain('readonly');
-		expect(html).toContain('Скопировать');
-		expect(html.includes('Поделиться')).toBe(canShare);
-		expect(html).toContain('Ссылка одноразовая и действует 7 дней.');
-		expect(html).toContain('Пересылайте её только тому, кого приглашаете. Показывается один раз.');
+		expect(within(host).getByRole('textbox', { name: 'Ссылка-приглашение' })).toHaveAttribute('readonly');
+		expect(within(host).getByRole('button', { name: 'Скопировать' })).toBeInTheDocument();
+		expect(within(host).queryByRole('button', { name: 'Поделиться' }) !== null).toBe(canShare);
+		expect(host).toHaveTextContent('Ссылка одноразовая и действует 7 дней.');
+		expect(host).toHaveTextContent('Пересылайте её только тому, кого приглашаете. Показывается один раз.');
 	});
 });

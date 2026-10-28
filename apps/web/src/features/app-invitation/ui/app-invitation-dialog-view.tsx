@@ -32,7 +32,9 @@ export function AppInvitationDialogView(props: AppInvitationDialogViewProps) {
 	const isFull = () => props.state.limitReached === true
 		|| selectAppInvitations(props.state.invitations, false).active.length >= MAX_ACTIVE_APP_INVITATIONS;
 	const retrySeconds = () => Math.max(0, Math.ceil(((props.state.createRetryAt ?? 0) - props.now) / 1000));
-	const createDisabled = () => isFull() || retrySeconds() > 0 || props.state.busy !== undefined;
+	const error = () => props.state.error ?? props.state.createRateLimitError;
+	const createDisabled = () => isFull() || retrySeconds() > 0 || props.state.createRateLimitError !== undefined
+		|| props.state.busy !== undefined;
 
 	return (
 		<>
@@ -60,7 +62,7 @@ export function AppInvitationDialogView(props: AppInvitationDialogViewProps) {
 							</Show>
 						</Match>
 						<Match when={props.state.load === 'ready'}>
-							<Show when={props.state.error}>
+							<Show when={error()}>
 								{(message) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{message()}</Banner>}
 							</Show>
 							<Show when={retrySeconds() > 0}>
