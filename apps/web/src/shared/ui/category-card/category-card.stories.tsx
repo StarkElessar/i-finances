@@ -36,6 +36,11 @@ export const NoBudget: Story = {
 
 export const WithoutEdit: Story = { args: { onEdit: undefined } };
 
+export const LongText: Story = {
+	args: { name: 'Повседневные расходы на здоровье и медицинское обслуживание', spentMinor: Number.MAX_SAFE_INTEGER },
+	globals: { viewport: { value: 'phone', isRotated: false } }
+};
+
 export const EditHover: Story = { parameters: { pseudo: { hover: ['button'] } } };
 
 export const EditFocus: Story = { parameters: { pseudo: { focusVisible: ['button'] } } };

@@ -41,7 +41,9 @@ export function AccountCard(props: AccountCardProps) {
 				<span class={css.content}>
 					<span class={css.titleRow}>
 						<span class={css.name}>{props.name}</span>
-						<Show when={props.holder}><Badge>{props.holder}</Badge></Show>
+						<Show when={props.holder}>
+							<Badge class={css.holder} title={props.holder}><span class={css.holderName}>{props.holder}</span></Badge>
+						</Show>
 					</span>
 					<span class={css.description}>
 						{getAccountTypeMeta(props.type).label}

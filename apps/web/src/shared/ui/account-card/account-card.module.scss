@@ -50,6 +50,7 @@
 
 .title-row {
     display: flex;
+    flex-wrap: wrap;
     gap: var(--space-4);
     align-items: center;
 }
@@ -59,6 +60,16 @@
     font-weight: var(--font-weight-semibold);
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.holder {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+}
+
+.holder-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .description {

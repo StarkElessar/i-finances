@@ -27,6 +27,7 @@
 .spent {
     font-size: var(--font-size-caption);
     color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
 
     b {
         color: var(--color-text-primary);

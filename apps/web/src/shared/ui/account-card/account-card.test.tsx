@@ -46,4 +46,16 @@ describe('AccountCard', () => {
 		expect(screen.queryByText('истёк')).not.toBeInTheDocument();
 		expect(screen.queryByText(/0042/)).not.toBeInTheDocument();
 	});
+
+	it('keeps the full account and holder names accessible when the display text is truncated', () => {
+		const name = 'Основная семейная карта для повседневных расходов и накоплений';
+		const holder = 'Александр Александрович Константинопольский';
+
+		renderUi(() => <AccountCard {...ACCOUNT} name={name} holder={holder} onSelect={() => undefined}/>);
+
+		expect(screen.getByRole('button')).toHaveAccessibleName(
+			`${name} ${holder} Карта ${formatMinorUnitsCurrency(ACCOUNT.balanceMinor, ACCOUNT.currency)}`
+		);
+		expect(screen.getByTitle(holder)).toHaveTextContent(holder);
+	});
 });

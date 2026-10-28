@@ -17,3 +17,12 @@ export const Default: Story = {};
 export const Decrease: Story = {
 	render: () => <KpiCard description='сентябрь против августа' label='Последний закрытый' tone='success' value='−43%'/>
 };
+
+export const LongText: Story = {
+	args: {
+		label: 'Общая сумма расходов за последний закрытый расчётный период',
+		description: 'Идентификатор периода: 20261001_20261031_Константинопольский_Александрович',
+		amountMinor: Number.MAX_SAFE_INTEGER
+	},
+	globals: { viewport: { value: 'phone', isRotated: false } }
+};

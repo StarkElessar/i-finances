@@ -38,6 +38,14 @@ export const Cash: Story = {
 	args: { name: 'Кошелёк', type: 'cash', balanceMinor: 12000, currency: 'BYN', tint: 'var(--color-series-8)', holder: undefined }
 };
 
+export const LongText: Story = {
+	args: {
+		name: 'Основная семейная карта для повседневных расходов и накоплений',
+		holder: 'Александр Александрович Константинопольский'
+	},
+	globals: { viewport: { value: 'phone', isRotated: false } }
+};
+
 export const Focus: Story = { parameters: { pseudo: { focusVisible: ['button'] } } };
 
 export const SelectedFocus: Story = { args: { selected: true }, parameters: { pseudo: { focusVisible: ['button'] } } };
