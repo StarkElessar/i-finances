@@ -20,7 +20,10 @@ import { createAsync } from '@solidjs/router';
 import type { Accessor } from 'solid-js';
 import { createMemo, createSignal } from 'solid-js';
 
-const FALLBACK_CATEGORY_COLOR = '#778398';
+import type { OperationVirtualItems } from '../../../model/operation-virtual-items';
+import { createOperationVirtualItems } from '../../../model/operation-virtual-items';
+
+const FALLBACK_CATEGORY_COLOR = 'var(--color-text-tertiary)';
 
 export type UseOperationsViewOptions = {
 	account: Account;
@@ -32,6 +35,8 @@ export type UseOperationsViewOptions = {
 export type OperationsView = {
 	canMoveToNextPeriod: Accessor<boolean>;
 	groups: Accessor<OperationGroup[]>;
+	rows: Accessor<OperationVirtualItems>;
+	scrollResetKey: Accessor<string>;
 	isLoading: Accessor<boolean>;
 	periodAnchor: Accessor<Date>;
 	resolveCategoryColor: (operation: OperationWithBalance) => string;
@@ -124,6 +129,10 @@ export function useOperationsView(options: UseOperationsViewOptions): Operations
 	return {
 		canMoveToNextPeriod: createMemo(() => canMoveToNextOperationPeriod(periodAnchor(), options.periodMode, new Date())),
 		groups,
+		rows: createMemo(() => createOperationVirtualItems(groups())),
+		scrollResetKey: createMemo(() => JSON.stringify([
+			options.account.id, options.periodFrom, options.periodMode, sort().field, sort().direction, searchQuery()
+		])),
 		isLoading: () => ledger() === undefined,
 		periodAnchor,
 		resolveCategoryColor,

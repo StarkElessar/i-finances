@@ -6,5 +6,6 @@ export type {
 	GridFullWidthRowTemplateContext,
 	GridProps,
 	GridSortDirection,
-	GridSortState
+	GridSortState,
+	GridVirtualization
 } from './types';

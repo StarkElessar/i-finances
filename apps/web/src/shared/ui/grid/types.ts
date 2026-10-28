@@ -1,3 +1,4 @@
+import type { VirtualItem } from '@tanstack/solid-virtual';
 import type { JSX } from 'solid-js';
 
 /**
@@ -48,11 +49,20 @@ export type GridColumn<T> = {
 	class?: string;
 };
 
+export type GridVirtualization = {
+	items: readonly VirtualItem[];
+	totalSize: number;
+	/** Offset of the body after the sticky header, in scroll coordinates. */
+	scrollMargin: number;
+	measureElement: (element: HTMLTableRowElement) => void;
+};
+
 /**
  * Public properties of the declarative grid.
  */
 export type GridProps<T> = {
 	'aria-label'?: string;
+	'aria-rowcount'?: number;
 	class?: string;
 	columns: readonly GridColumn<T>[];
 	data: readonly T[];
@@ -64,6 +74,9 @@ export type GridProps<T> = {
 	isFullWidthRow?: (row: T) => boolean;
 	isRowSelected?: (row: T) => boolean;
 	sort?: GridSortState;
+	/** Exposes the existing horizontal/vertical scroll owner. */
+	scrollRef?: (element: HTMLDivElement) => void;
+	virtualization?: GridVirtualization;
 	onRowClick?: (row: T) => void;
 	onSortChange?: (columnId: string) => void;
 };

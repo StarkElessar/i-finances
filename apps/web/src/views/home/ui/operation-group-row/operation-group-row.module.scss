@@ -9,7 +9,7 @@
     gap: var(--space-5);
     align-items: center;
 
-    min-block-size: fn.rem(36);
+    min-block-size: var(--row-height-group-compact);
     padding: var(--space-4) var(--space-5);
 
     font-size: var(--font-size-body-sm);

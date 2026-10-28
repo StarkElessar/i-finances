@@ -144,8 +144,16 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@include mx.reduced-motion {
     .just-created-row {
         animation: none;
+    }
+}
+
+.operation-row {
+    block-size: var(--row-height-compact);
+
+    > td {
+        padding-block: var(--space-2);
     }
 }

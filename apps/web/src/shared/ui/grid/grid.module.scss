@@ -206,3 +206,12 @@
         text-align: center;
     }
 }
+
+.spacer-row > td {
+    padding: 0;
+    border: 0;
+}
+
+.virtual-frame {
+    overflow-anchor: none;
+}
