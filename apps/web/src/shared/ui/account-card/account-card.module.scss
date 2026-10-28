@@ -1,0 +1,92 @@
+.root {
+    --account-tint: var(--color-series-1);
+
+    min-inline-size: 0;
+    border: 1px solid color-mix(in srgb, var(--account-tint) 30%, var(--color-border));
+    border-radius: var(--radius-lg);
+    background-color: color-mix(in srgb, var(--account-tint) 7%, var(--color-surface));
+
+    &:has(.button:focus-visible) {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: var(--space-1);
+    }
+}
+
+.selected {
+    box-shadow: 0 0 0 2px var(--account-tint);
+}
+
+.button {
+    cursor: default;
+
+    display: flex;
+    gap: var(--space-5);
+    align-items: center;
+
+    inline-size: 100%;
+    padding: var(--space-5);
+    border: 0;
+    border-radius: inherit;
+
+    font: inherit;
+    color: var(--color-text-primary);
+    text-align: start;
+
+    background: transparent;
+
+    &[aria-pressed="false"] {
+        cursor: pointer;
+    }
+
+    &:focus-visible {
+        outline: none;
+    }
+}
+
+.content {
+    flex: 1;
+    min-inline-size: 0;
+}
+
+.title-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-4);
+    align-items: center;
+}
+
+.name {
+    overflow: hidden;
+    font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.holder {
+    min-inline-size: 0;
+    max-inline-size: 100%;
+}
+
+.holder-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.description {
+    display: block;
+    font-size: var(--font-size-label);
+    color: var(--color-text-secondary);
+    overflow-wrap: anywhere;
+}
+
+.expired {
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-danger);
+}
+
+.balance {
+    flex: none;
+    font-size: var(--font-size-caption);
+    font-weight: var(--font-weight-bold);
+    white-space: nowrap;
+}

@@ -20,3 +20,7 @@ export const Default: Story = {};
 export const TitleOnly: Story = {
 	args: { children: undefined }
 };
+
+export const Outlined: Story = {
+	args: { variant: 'outlined' }
+};

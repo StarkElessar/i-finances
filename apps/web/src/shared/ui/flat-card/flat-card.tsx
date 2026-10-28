@@ -11,6 +11,8 @@ export type FlatCardProps = {
 	/** Quieter text under the title. */
 	children?: JSX.Element;
 	class?: string;
+	/** Bordered surface for entity cards; the default remains the subtle summary. */
+	variant?: 'flat' | 'outlined';
 };
 
 /**
@@ -19,7 +21,7 @@ export type FlatCardProps = {
  */
 export function FlatCard(props: FlatCardProps) {
 	return (
-		<div class={cn(css.root, props.class)}>
+		<div class={cn(css.root, props.variant === 'outlined' && css.outlined, props.class)}>
 			<Show when={props.title}><b class={css.title}>{props.title}</b></Show>
 			<Show when={props.children}><div class={css.text}>{props.children}</div></Show>
 		</div>

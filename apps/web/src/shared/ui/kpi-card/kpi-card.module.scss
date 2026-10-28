@@ -1,0 +1,43 @@
+.root {
+    --flat-card-padding-block: var(--space-5);
+
+    min-inline-size: 0;
+}
+
+.content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+
+    margin: 0;
+
+    overflow-wrap: anywhere;
+
+    dd {
+        margin: 0;
+    }
+}
+
+.label {
+    font-size: var(--font-size-label);
+    font-weight: var(--font-weight-semibold);
+    color: var(--color-text-tertiary);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.value {
+    font-size: var(--font-size-heading-2);
+    font-weight: var(--font-weight-bold);
+    line-height: var(--line-height-display);
+    overflow-wrap: anywhere;
+}
+
+.success {
+    color: var(--color-success);
+}
+
+.description {
+    font-size: var(--font-size-label);
+    color: var(--color-text-tertiary);
+}

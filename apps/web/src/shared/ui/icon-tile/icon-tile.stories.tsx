@@ -33,3 +33,7 @@ export const Tones: Story = {
 		</StoryStack>
 	)
 };
+
+export const CategoryTint: Story = {
+	args: { tint: 'var(--color-series-6)' }
+};
