@@ -203,12 +203,55 @@ describe('application invitation dialog state', () => {
 		gateway.revoke.mockRejectedValueOnce(new TypeError('offline'));
 		await panel.confirmRevoke();
 		expect(panel.state).toMatchObject({ confirmingId: INVITATION.id, confirmError: expect.stringContaining('Проверьте соединение') });
-		gateway.revoke.mockResolvedValueOnce({ errorCode: 'invitation-not-found', message: 'Уже недействительно', ok: false });
+		gateway.revoke.mockResolvedValueOnce({ errorCode: 'invalid-origin', message: 'Обновите страницу', ok: false });
 		await panel.confirmRevoke();
-		expect(panel.state.confirmError).toBe('Уже недействительно');
+		expect(panel.state.confirmError).toBe('Обновите страницу');
 		await panel.confirmRevoke();
 		expect(panel.state).toMatchObject({ invitations: [], confirmingId: undefined, confirmError: undefined });
 		expect(gateway.revoke).toHaveBeenLastCalledWith(INVITATION.id);
+	});
+
+	it('reloads after a lost revoke response and a not-found retry, freeing capacity for creation', async () => {
+		const full = Array.from({ length: 20 }, (_, index) => ({ ...INVITATION, id: `active-${index}` }));
+		const remaining = full.slice(1);
+		const { gateway, panel } = createPanel(full);
+
+		await panel.load();
+		panel.startCreate();
+		await panel.create();
+		expect(panel.state.view).toBe('main');
+		expect(gateway.create).not.toHaveBeenCalled();
+		panel.askRevoke('active-0');
+		gateway.revoke.mockRejectedValueOnce(new TypeError('offline'));
+		gateway.revoke.mockResolvedValue({ errorCode: 'invitation-not-found', message: 'Уже недействительно', ok: false });
+		await panel.confirmRevoke();
+		expect(panel.state).toMatchObject({
+			confirmingId: 'active-0', confirmError: expect.stringContaining('Проверьте соединение'), invitations: full
+		});
+		gateway.list.mockResolvedValueOnce({ invitations: remaining, ok: true });
+		await panel.confirmRevoke();
+		expect(gateway.revoke).toHaveBeenCalledTimes(2);
+		expect(gateway.revoke).toHaveBeenNthCalledWith(1, 'active-0');
+		expect(gateway.revoke).toHaveBeenNthCalledWith(2, 'active-0');
+		expect(gateway.list).toHaveBeenCalledTimes(2);
+		expect(panel.state).toMatchObject({
+			busy: undefined,
+			confirmError: undefined,
+			confirmingId: undefined,
+			error: 'Уже недействительно',
+			invitations: remaining,
+			limitReached: false,
+			load: 'ready',
+			view: 'main'
+		});
+		expect(selectAppInvitations(panel.state.invitations, false).active).toHaveLength(19);
+		await panel.confirmRevoke();
+		expect(gateway.revoke).toHaveBeenCalledTimes(2);
+		panel.startCreate();
+		expect(panel.state.view).toBe('create');
+		await panel.create();
+		expect(gateway.create).toHaveBeenCalledExactlyOnceWith({});
+		expect(panel.state.view).toBe('created');
 	});
 
 	it.each([401, 403, 404])('clears sensitive state and disables actions on HTTP %i', async (status) => {

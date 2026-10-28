@@ -166,6 +166,8 @@ export class AppInvitationPanel {
 			return;
 		}
 
+		let reloadMessage: string | undefined;
+
 		this.patch({ busy: 'revoke', confirmError: undefined });
 
 		try {
@@ -178,6 +180,10 @@ export class AppInvitationPanel {
 					limitReached: false
 				});
 			}
+			else if (result.errorCode === 'invitation-not-found') {
+				reloadMessage = result.message;
+				this.patch({ confirmError: undefined, confirmingId: undefined });
+			}
 			else {
 				this.refused(result, true);
 			}
@@ -187,6 +193,14 @@ export class AppInvitationPanel {
 		}
 		finally {
 			this.patch({ busy: undefined });
+		}
+
+		if (reloadMessage !== undefined) {
+			await this.load();
+
+			if (this.current.load === 'ready') {
+				this.patch({ error: reloadMessage });
+			}
 		}
 	}
 
