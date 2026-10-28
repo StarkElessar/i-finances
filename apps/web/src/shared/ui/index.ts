@@ -40,6 +40,8 @@ export type {
 	ContextMenuTriggerProps
 } from './context-menu';
 export { ContextMenu } from './context-menu';
+export type { DateFieldProps, DateFieldSize } from './date-field';
+export { DateField } from './date-field';
 export type {
 	DialogActionIntent,
 	DialogActionProps,
@@ -95,6 +97,8 @@ export type { PhoneFieldProps } from './phone-field';
 export { PhoneField } from './phone-field';
 export type { SegmentedOption, SegmentedProps } from './segmented';
 export { Segmented } from './segmented';
+export type { SelectOption, SelectProps, SelectSize } from './select';
+export { Select } from './select';
 export type { SkeletonProps } from './skeleton';
 export { Skeleton } from './skeleton';
 export type { SwitchProps } from './switch';
@@ -103,6 +107,8 @@ export type { TabOption, TabsProps } from './tabs';
 export { Tabs } from './tabs';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
+export type { ToastContainerProps, ToastEntry, Toaster, ToastOptions, ToastProps, ToastTone } from './toast';
+export { createToaster, Toast, ToastContainer } from './toast';
 export type {
 	TypographyAlign,
 	TypographyElement,
