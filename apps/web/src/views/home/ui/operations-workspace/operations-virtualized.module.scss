@@ -1,0 +1,9 @@
+.layout {
+    flex-wrap: nowrap;
+    align-items: stretch;
+}
+
+.panel {
+    flex: 0 0 var(--panel-docked-inline-size);
+    min-block-size: 0;
+}

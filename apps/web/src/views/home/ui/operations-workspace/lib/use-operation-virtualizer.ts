@@ -1,10 +1,12 @@
 import type { Range } from '@tanstack/solid-virtual';
-import { createVirtualizer, defaultRangeExtractor } from '@tanstack/solid-virtual';
+import { createVirtualizer } from '@tanstack/solid-virtual';
 import { createEffect, createMemo, createSignal, on, onCleanup, onMount } from 'solid-js';
 
 import type { OperationVirtualItems } from '../../../model/operation-virtual-items';
 import type { OperationVirtualSizes } from '../../../model/operation-virtual-size';
 import { estimateOperationItemSize, operationTokenPixels } from '../../../model/operation-virtual-size';
+
+import { getOperationVirtualRange } from './operation-virtual-range';
 
 type OperationVirtualizerOptions = {
 	density: 'compact' | 'comfortable';
@@ -20,22 +22,25 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 	const [scrollElement, setScrollElement] = createSignal<HTMLElement>();
 	const [sizes, setSizes] = createSignal<OperationVirtualSizes>();
 	const [scrollMargin, setScrollMargin] = createSignal(0);
+	const [focusedOperationId, setFocusedOperationId] = createSignal<string>();
+	const [panelOriginOperationId, setPanelOriginOperationId] = createSignal<string>();
 	const getItemKey = createMemo(() => {
 		const items = options.rows.items;
 
 		return (index: number) => items[index].key;
 	});
 	const rangeExtractor = createMemo(() => {
-		const items = options.rows.items;
-		const isTable = options.density === 'compact';
+		const rows = options.rows;
+		const keepGroupHeading = options.density === 'compact';
+		const focusedId = focusedOperationId();
+		const panelOriginId = panelOriginOperationId();
+		const selectedOperationId = options.selectedOperationId;
 
-		return (range: Range) => {
-			const indices = defaultRangeExtractor(range);
-			const groupIndex = items[range.startIndex].groupIndex;
-
-			// Keep the current sticky day heading mounted even in a very large day.
-			return isTable && groupIndex < indices[0] ? [groupIndex, ...indices] : indices;
-		};
+		// Pin the actual DOM focus anchor instead of scrolling/remounting it asynchronously on close.
+		// Retain the panel's original anchor even if focus moves to another row: selection clears before focus is restored.
+		return (range: Range) => getOperationVirtualRange({
+			focusedOperationId: focusedId, keepGroupHeading, panelOriginOperationId: panelOriginId, range, rows, selectedOperationId
+		});
 	});
 	const targetOperationId = createMemo(() => {
 		const highlightId = options.highlightOperationId;
@@ -70,6 +75,18 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 		}
 	});
 
+	const handleFocusIn = (event: FocusEvent) => {
+		const element = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-index]') : null;
+		const index = element?.dataset.index;
+		const item = index === undefined ? undefined : options.rows.items[Number(index)];
+
+		setFocusedOperationId(item?.kind === 'operation' ? item.operation.id : undefined);
+
+		if (options.selectedOperationId === undefined) {
+			setPanelOriginOperationId(undefined);
+		}
+	};
+
 	const readSizes = () => {
 		const element = scrollElement();
 
@@ -90,6 +107,12 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 		setScrollMargin(element.querySelector('thead')?.getBoundingClientRect().height ?? Number.parseFloat(style.paddingBlockStart));
 	};
 
+	createEffect(on(() => options.selectedOperationId, (id, previousId) => {
+		if (id !== undefined && previousId === undefined) {
+			setPanelOriginOperationId(focusedOperationId() ?? id);
+		}
+	}));
+
 	onMount(() => {
 		readSizes();
 
@@ -97,6 +120,7 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 		const observer = new ResizeObserver(readSizes);
 
 		if (element) {
+			element.addEventListener('focusin', handleFocusIn);
 			observer.observe(element);
 
 			const header = element.querySelector('thead');
@@ -106,7 +130,10 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 			}
 		}
 
-		onCleanup(() => observer.disconnect());
+		onCleanup(() => {
+			element?.removeEventListener('focusin', handleFocusIn);
+			observer.disconnect();
+		});
 	});
 
 	createEffect(on(() => options.density, readSizes, { defer: true }));

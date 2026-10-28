@@ -30,6 +30,10 @@ export function OperationsList(props: OperationsTableProps) {
 	const paddingBottom = () => virtualizer.getTotalSize()
 		- ((virtualizer.getVirtualItems().at(-1)?.end ?? scrollMargin()) - scrollMargin());
 
+	const gapBefore = (index: number) => index > 0
+		? virtualizer.getVirtualItems()[index].start - virtualizer.getVirtualItems()[index - 1].end
+		: 0;
+
 	return (
 		<section ref={setScrollElement} aria-label={`Операции счёта «${props.account.name}»`} class={css.root}>
 			<Show fallback={<p class={css.empty}>{props.emptyContent}</p>} when={props.rows.items.length > 0}>
@@ -39,45 +43,50 @@ export function OperationsList(props: OperationsTableProps) {
 					style={{ 'padding-block-start': `${paddingTop()}px`, 'padding-block-end': `${paddingBottom()}px` }}
 				>
 					<For each={virtualizer.getVirtualItems()}>
-						{(virtualRow) => (
-							<Show keyed when={props.rows.items[virtualRow.index]}>
-								{(item) => (
-									<div
-										ref={(element) => {
-											// The ref runs before Solid applies reactive data attributes.
-											element.dataset.index = String(virtualRow.index);
-											virtualizer.measureElement(element);
-										}}
-										aria-posinset={virtualRow.index + 1}
-										aria-setsize={props.rows.items.length}
-										class={cn(item.kind === 'group' && css.groupStart, virtualRow.index === 0 && css.firstGroup)}
-										data-index={virtualRow.index}
-										data-row-key={item.key}
-										role='listitem'
-									>
-										{item.kind === 'group' ? (
-											<div class={css.groupHeading}>
-												<OperationGroupRow
-													group={item.group}
-													resolveCategoryColor={props.resolveCategoryColor}
-													resolveCategoryIcon={props.resolveCategoryIcon}
-												/>
-											</div>
-										) : (
-											<div class={cn(css.operation, item.isLastInGroup && css.groupEnd)}>
-												<OperationListRow
-													highlighted={item.operation.id === props.highlightOperationId}
-													operation={item.operation}
-													resolveCategoryColor={props.resolveCategoryColor}
-													resolveCategoryIcon={props.resolveCategoryIcon}
-													selected={item.operation.id === props.selectedOperationId}
-													onSelect={props.onOperationSelect}
-												/>
-											</div>
-										)}
-									</div>
-								)}
-							</Show>
+						{(virtualRow, index) => (
+							<>
+								<Show when={gapBefore(index()) > 0}>
+									<div aria-hidden='true' style={{ 'block-size': `${gapBefore(index())}px` }}/>
+								</Show>
+								<Show keyed when={props.rows.items[virtualRow.index]}>
+									{(item) => (
+										<div
+											ref={(element) => {
+												// The ref runs before Solid applies reactive data attributes.
+												element.dataset.index = String(virtualRow.index);
+												virtualizer.measureElement(element);
+											}}
+											aria-posinset={virtualRow.index + 1}
+											aria-setsize={props.rows.items.length}
+											class={cn(item.kind === 'group' && css.groupStart, virtualRow.index === 0 && css.firstGroup)}
+											data-index={virtualRow.index}
+											data-row-key={item.key}
+											role='listitem'
+										>
+											{item.kind === 'group' ? (
+												<div class={css.groupHeading}>
+													<OperationGroupRow
+														group={item.group}
+														resolveCategoryColor={props.resolveCategoryColor}
+														resolveCategoryIcon={props.resolveCategoryIcon}
+													/>
+												</div>
+											) : (
+												<div class={cn(css.operation, item.isLastInGroup && css.groupEnd)}>
+													<OperationListRow
+														highlighted={item.operation.id === props.highlightOperationId}
+														operation={item.operation}
+														resolveCategoryColor={props.resolveCategoryColor}
+														resolveCategoryIcon={props.resolveCategoryIcon}
+														selected={item.operation.id === props.selectedOperationId}
+														onSelect={props.onOperationSelect}
+													/>
+												</div>
+											)}
+										</div>
+									)}
+								</Show>
+							</>
 						)}
 					</For>
 				</div>
