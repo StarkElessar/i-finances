@@ -35,7 +35,7 @@ export type OnboardingWelcomeCardProps = {
 /**
  * Cards 1, 2, 3 and 6 of `Flow-Onboarding`: «Добро пожаловать», the name to confirm and the choice between «Создать
  * своё окружение» and «У меня есть приглашение» (with the field for the link). A person without the right to found a
- * household sees no choice, only the field for the link (not on the board yet, `development/ui-mockup.md`).
+ * household sees the link field and an explanation (cards 8 and 9 of `Flow-Onboarding`).
  */
 export function OnboardingWelcomeCard(props: OnboardingWelcomeCardProps) {
 	return (
@@ -113,6 +113,11 @@ export function OnboardingWelcomeCard(props: OnboardingWelcomeCardProps) {
 					startContent={<Link/>}
 					value={props.link}
 				/>
+			</Show>
+			<Show when={!props.canCreateHousehold}>
+				<Typography tone='secondary' variant='body-sm'>
+					Создать своё окружение можно только по приглашению в приложение.
+				</Typography>
 			</Show>
 			<Show when={props.error}>
 				{(message) => <Banner icon={<CircleAlert/>} role='alert' tone='danger'>{message()}</Banner>}

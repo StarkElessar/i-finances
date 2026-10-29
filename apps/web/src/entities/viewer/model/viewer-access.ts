@@ -20,6 +20,7 @@ export function viewerFromSession(session: CurrentSessionResponse): CurrentViewe
 		hasPassword: session.hasPassword,
 		household: session.household,
 		id: session.user.id,
+		isPlatformAdmin: session.isPlatformAdmin ?? false,
 		telegram: session.telegram,
 		username: session.user.username
 	};

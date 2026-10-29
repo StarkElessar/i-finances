@@ -48,6 +48,7 @@ describe('viewer access', () => {
 	it('keeps the household of the session in the viewer', () => {
 		expect(viewerFromSession(MEMBER_SESSION)).toEqual({
 			canCreateHousehold: false,
+			isPlatformAdmin: false,
 			displayName: 'Сергей',
 			hasPassword: true,
 			household: { id: 'default-household', name: 'Семья', role: 'owner' },
@@ -55,6 +56,12 @@ describe('viewer access', () => {
 			telegram: null,
 			username: 'sergei'
 		});
+	});
+
+	it('takes application administration only from the explicit session flag', () => {
+		expect(viewerFromSession({ ...ONBOARDING_SESSION, isPlatformAdmin: true })).toMatchObject({ isPlatformAdmin: true });
+		expect(viewerFromSession({ ...ONBOARDING_SESSION, isPlatformAdmin: false })).toMatchObject({ isPlatformAdmin: false });
+		expect(viewerFromSession(ONBOARDING_SESSION)).toMatchObject({ isPlatformAdmin: false });
 	});
 
 	it('takes the right to found a household from the session; a session without the flag never offers it', () => {
