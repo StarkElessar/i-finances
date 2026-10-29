@@ -5,10 +5,13 @@ import { cn } from '@/shared/lib';
 import { createEffect, createSignal, createUniqueId, onCleanup, Show } from 'solid-js';
 import { Portal } from 'solid-js/web';
 
+import { readLastFocusedElement, trackLastFocusedElement } from './lib/last-focused-element';
 import { OperationDetailsForm } from './operation-details-form';
 import type { OperationDetailsPanelProps } from './types';
 
 const CLOSE_ANIMATION_MS = 180;
+
+trackLastFocusedElement();
 
 /**
  * Renders the controlled transaction editor as an in-flow desktop panel or a
@@ -44,9 +47,9 @@ export function OperationDetailsPanel(props: OperationDetailsPanelProps) {
 			props.onPresenceChange(true);
 
 			if (!wasOpen) {
-				previousFocusElement = document.activeElement instanceof HTMLElement
+				previousFocusElement = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
 					? document.activeElement
-					: undefined;
+					: readLastFocusedElement();
 			}
 		}
 		else if (isPresent()) {

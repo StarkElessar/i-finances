@@ -94,17 +94,17 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 	// Solid moves a retained row while it reconciles the window, and a moved element loses focus with no new target.
 	// A pointer press just before is a deliberate click on an empty area, which must not pull focus back.
 	const handleFocusOut = (event: FocusEvent) => {
-		const row = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-index]') : null;
+		const target = event.target instanceof HTMLElement && event.target.closest('[data-index]') ? event.target : null;
 
-		if (!row || event.relatedTarget !== null || performance.now() - lastPointerDownAt < 500) {
+		if (!target || event.relatedTarget !== null || performance.now() - lastPointerDownAt < 500) {
 			return;
 		}
 
 		queueMicrotask(() => {
-			const { activeElement } = row.ownerDocument;
+			const { activeElement } = target.ownerDocument;
 
-			if (row.isConnected && (activeElement === null || activeElement === row.ownerDocument.body)) {
-				row.focus({ preventScroll: true });
+			if (target.isConnected && (activeElement === null || activeElement === target.ownerDocument.body)) {
+				target.focus({ preventScroll: true });
 			}
 		});
 	};
