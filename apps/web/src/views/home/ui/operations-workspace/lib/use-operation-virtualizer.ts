@@ -87,6 +87,28 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 		}
 	};
 
+	let lastPointerDownAt = Number.NEGATIVE_INFINITY;
+	const handlePointerDown = () => {
+		lastPointerDownAt = performance.now();
+	};
+	// Solid moves a retained row while it reconciles the window, and a moved element loses focus with no new target.
+	// A pointer press just before is a deliberate click on an empty area, which must not pull focus back.
+	const handleFocusOut = (event: FocusEvent) => {
+		const row = event.target instanceof Element ? event.target.closest<HTMLElement>('[data-index]') : null;
+
+		if (!row || event.relatedTarget !== null || performance.now() - lastPointerDownAt < 500) {
+			return;
+		}
+
+		queueMicrotask(() => {
+			const { activeElement } = row.ownerDocument;
+
+			if (row.isConnected && (activeElement === null || activeElement === row.ownerDocument.body)) {
+				row.focus({ preventScroll: true });
+			}
+		});
+	};
+
 	const readSizes = () => {
 		const element = scrollElement();
 
@@ -121,6 +143,8 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 
 		if (element) {
 			element.addEventListener('focusin', handleFocusIn);
+			element.addEventListener('focusout', handleFocusOut);
+			element.addEventListener('pointerdown', handlePointerDown);
 			observer.observe(element);
 
 			const header = element.querySelector('thead');
@@ -132,6 +156,8 @@ export function useOperationVirtualizer<TItem extends HTMLElement>(options: Oper
 
 		onCleanup(() => {
 			element?.removeEventListener('focusin', handleFocusIn);
+			element?.removeEventListener('focusout', handleFocusOut);
+			element?.removeEventListener('pointerdown', handlePointerDown);
 			observer.disconnect();
 		});
 	});

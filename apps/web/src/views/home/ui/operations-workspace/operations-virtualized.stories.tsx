@@ -65,7 +65,7 @@ function OperationsVirtualizedStory(props: VirtualizedStoryProps) {
 	});
 
 	return (
-		<StoryStack class={storyCss.layout} viewport>
+		<StoryStack viewport>
 			<section class={css.root}>
 				<div class={css.toolbar}>
 					<TextField

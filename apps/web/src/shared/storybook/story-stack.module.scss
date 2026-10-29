@@ -23,7 +23,10 @@
     }
 }
 
+// After `.row`, so a viewport-bound stack stretches its children instead of centring them.
 .viewport {
+    flex-wrap: nowrap;
+    align-items: stretch;
     block-size: 100dvh;
     padding: var(--space-6);
 }
