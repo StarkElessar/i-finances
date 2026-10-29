@@ -73,6 +73,7 @@ describe('onboarding page registration context', () => {
 			hasPassword: false,
 			household: null,
 			id: 'new-user',
+			isPlatformAdmin: false,
 			telegram: { username: 'anna' },
 			username: 'tg-1'
 		};
