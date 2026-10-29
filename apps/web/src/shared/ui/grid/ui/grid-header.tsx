@@ -12,6 +12,7 @@ import { GridHeaderCell } from './grid-header-cell';
 type GridHeaderProps<T> = {
 	columns: ResolvedGridColumn<T>[];
 	sort?: GridSortState;
+	virtualized?: boolean;
 	onResizeStart: (index: number, event: MouseEvent) => void;
 	onSortChange?: (columnId: string) => void;
 };
@@ -22,7 +23,7 @@ type GridHeaderProps<T> = {
 export function GridHeader<T>(props: GridHeaderProps<T>) {
 	return (
 		<thead class={css.head}>
-			<tr>
+			<tr aria-rowindex={props.virtualized ? 1 : undefined}>
 				<For each={props.columns}>
 					{(column, index) => (
 						<GridHeaderCell

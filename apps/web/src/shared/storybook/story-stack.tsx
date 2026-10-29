@@ -10,6 +10,8 @@ export type StoryStackProps = {
 	column?: boolean;
 	/** Preview the kit's coarse-pointer control heights and native field font floor. */
 	touch?: boolean;
+	/** Bound flex children to the Storybook viewport, for scrollable screens. */
+	viewport?: boolean;
 	class?: string;
 };
 
@@ -18,5 +20,17 @@ export type StoryStackProps = {
  * so stories do not need inline `style` literals.
  */
 export function StoryStack(props: StoryStackProps) {
-	return <div class={cn(css.root, props.column ? css.column : css.row, props.touch && css.touch, props.class)}>{props.children}</div>;
+	return (
+		<div
+			class={cn(
+				css.root,
+				props.column ? css.column : css.row,
+				props.touch && css.touch,
+				props.viewport && css.viewport,
+				props.class
+			)}
+		>
+			{props.children}
+		</div>
+	);
 }

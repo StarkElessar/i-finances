@@ -4,39 +4,52 @@
 .root {
     @include mx.scroll-gutter;
 
-    overflow-y: auto;
-    display: grid;
+    overflow-anchor: none;
 
-    // Without an explicit max-content, grid rows lose their content-based
-    // minimum size once a descendant (.group) has overflow: hidden and the
-    // container itself gets a bounded height — every row silently shrinks
-    // to fit the viewport instead of the list scrolling.
-    grid-auto-rows: max-content;
+    overflow-y: auto;
+    display: block;
     flex: 1 1 0;
-    gap: var(--space-4);
 
     min-block-size: 0;
 }
 
-.group {
-    overflow: hidden;
-    border: 1px solid var(--color-border);
-    border-radius: var(--radius-lg);
+.group-start {
+    padding-block-start: var(--space-4);
 }
 
-.items {
-    display: grid;
-    margin: 0;
-    padding: 0;
-    list-style: none;
+.first-group {
+    padding-block-start: 0;
+}
 
-    li + li {
-        border-block-start: 1px solid var(--color-border);
+.group-heading {
+    overflow: hidden;
+
+    border: 1px solid var(--color-border);
+    border-start-start-radius: var(--radius-lg);
+    border-start-end-radius: var(--radius-lg);
+    border-end-start-radius: 0;
+    border-end-end-radius: 0;
+}
+
+.operation {
+    border-block-end: 1px solid var(--color-border);
+    border-inline: 1px solid var(--color-border);
+
+    // Keep the button's selected appearance while the containing row exposes keyboard focus.
+    &:has(:focus-visible) {
+        outline: 3px solid var(--color-focus-ring);
+        outline-offset: -3px;
     }
 }
 
+.group-end {
+    overflow: hidden;
+    border-end-start-radius: var(--radius-lg);
+    border-end-end-radius: var(--radius-lg);
+}
+
 .item {
-    cursor: pointer;
+    --category-color: var(--color-text-tertiary);
 
     display: grid;
     grid-template-columns: auto minmax(0, 1fr);
@@ -44,6 +57,7 @@
     align-items: center;
 
     inline-size: 100%;
+    min-block-size: var(--row-height-comfortable);
     padding: var(--space-3) var(--space-4);
     border: none;
 
@@ -51,8 +65,16 @@
 
     background: none;
 
-    &:hover {
-        background-color: var(--color-surface-subtle);
+    &:not(.item-selected) {
+        cursor: pointer;
+
+        &:hover {
+            background-color: var(--color-surface-subtle);
+        }
+    }
+
+    &:focus-visible {
+        outline: none;
     }
 }
 
@@ -74,7 +96,7 @@
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
+@include mx.reduced-motion {
     .item-highlighted {
         animation: none;
     }
@@ -89,11 +111,9 @@
     block-size: fn.rem(28);
     border-radius: var(--radius-sm);
 
-    /* stylelint-disable no-unknown-custom-properties -- the category colour is set inline by operations-list.tsx */
     color: var(--category-color);
 
     background-color: color-mix(in srgb, var(--category-color) 13%, var(--color-surface));
-    /* stylelint-enable no-unknown-custom-properties */
 }
 
 .item-main {

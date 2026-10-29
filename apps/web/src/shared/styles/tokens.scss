@@ -87,6 +87,14 @@
     --row-height-compact: #{fn.rem(44)};
     --row-height-comfortable: #{fn.rem(64)};
 
+    // Group minimum stays compact; day balances occupy a second line on the phone.
+    --row-height-group-compact: #{fn.rem(36)};
+    --row-height-group: #{fn.rem(64)};
+
+    @include mx.media-mn(sm) {
+        --row-height-group: var(--row-height-group-compact);
+    }
+
     // Side panel. One width over the content (owner and Opus decision
     // 2026-10-18), another when docked next to the content.
     --panel-overlay-inline-size: #{fn.rem(420)};

@@ -42,9 +42,10 @@ export function Grid<T>(props: GridProps<T>) {
 
 	return (
 		<div class={cn(css.root, props.class)}>
-			<div class={css.frame}>
+			<div ref={(element) => props.scrollRef?.(element)} class={cn(css.frame, props.virtualization && css.virtualFrame)}>
 				<table
 					aria-label={props['aria-label']}
+					aria-rowcount={props['aria-rowcount']}
 					class={css.table}
 				>
 					<colgroup>
@@ -56,6 +57,7 @@ export function Grid<T>(props: GridProps<T>) {
 					<GridHeader
 						columns={columns}
 						sort={props.sort}
+						virtualized={Boolean(props.virtualization)}
 						onResizeStart={startResize}
 						onSortChange={props.onSortChange}
 					/>
@@ -69,6 +71,7 @@ export function Grid<T>(props: GridProps<T>) {
 						getRowKey={props.getRowKey}
 						isFullWidthRow={props.isFullWidthRow}
 						isRowSelected={props.isRowSelected}
+						virtualization={props.virtualization}
 						onRowClick={props.onRowClick}
 					/>
 				</table>

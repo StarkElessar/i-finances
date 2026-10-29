@@ -1,73 +1,95 @@
 import css from './operations-list.module.scss';
 
-import { cn, formatMinorUnitsCurrency } from '@/shared/lib';
-
-import { CategoryIcon } from '@/entities/category';
-import type { OperationWithBalance } from '@/entities/operation';
+import { cn } from '@/shared/lib';
 
 import { For, Show } from 'solid-js';
 
 import { OperationGroupRow } from '../operation-group-row/operation-group-row';
 import type { OperationsTableProps } from '../operations-table/operations-table';
+import { useOperationVirtualizer } from '../operations-workspace/lib/use-operation-virtualizer';
 
-function formatShortDate(dateKey: string): string {
-	const [year, month, day] = dateKey.split('-');
-
-	return `${day}.${month}.${year}`;
-}
+import { OperationListRow } from './operation-list-row';
 
 export function OperationsList(props: OperationsTableProps) {
-	const handleRowClick = (operation: OperationWithBalance) => {
-		props.onOperationSelect(operation);
-	};
+	const { scrollMargin, setScrollElement, virtualizer } = useOperationVirtualizer<HTMLDivElement>({
+		density: 'comfortable',
+		get highlightOperationId() {
+			return props.highlightOperationId;
+		},
+		get rows() {
+			return props.rows;
+		},
+		get scrollResetKey() {
+			return props.scrollResetKey;
+		},
+		get selectedOperationId() {
+			return props.selectedOperationId;
+		}
+	});
+	const paddingTop = () => (virtualizer.getVirtualItems()[0]?.start ?? scrollMargin()) - scrollMargin();
+	const paddingBottom = () => virtualizer.getTotalSize()
+		- ((virtualizer.getVirtualItems().at(-1)?.end ?? scrollMargin()) - scrollMargin());
+
+	const gapBefore = (index: number) => index > 0
+		? virtualizer.getVirtualItems()[index].start - virtualizer.getVirtualItems()[index - 1].end
+		: 0;
 
 	return (
-		<section aria-label={`Операции счёта «${props.account.name}»`} class={css.root}>
-			<Show fallback={<p class={css.empty}>{props.emptyContent}</p>} when={props.groups.length > 0}>
-				<For each={props.groups}>
-					{(group) => (
-						<div class={css.group}>
-							<OperationGroupRow
-								group={group}
-								resolveCategoryColor={props.resolveCategoryColor}
-								resolveCategoryIcon={props.resolveCategoryIcon}
-							/>
-							<ul class={css.items}>
-								<For each={group.operations}>
-									{(operation) => (
-										<li>
-											<button
-												aria-current={operation.id === props.selectedOperationId}
-												class={cn(
-													css.item,
-													operation.id === props.selectedOperationId && css.itemSelected,
-													operation.id === props.highlightOperationId && css.itemHighlighted
-												)}
-												style={{ '--category-color': props.resolveCategoryColor(operation) }}
-												type='button'
-												onClick={() => handleRowClick(operation)}
-											>
-												<span aria-hidden='true' class={css.categoryIcon}>
-													<CategoryIcon icon={props.resolveCategoryIcon(operation)} size={16}/>
-												</span>
-												<span class={css.itemMain}>
-													<span class={css.itemTitle}>{operation.title}</span>
-													<span class={css.itemAmount}>
-														{formatMinorUnitsCurrency(operation.signedAmountMinor, operation.currency)}
-													</span>
-												</span>
-												<span class={css.itemMeta}>
-													<span>{formatShortDate(operation.happenedOn)}</span>
-													<span>{formatMinorUnitsCurrency(operation.balanceAfterMinor, operation.currency)}</span>
-												</span>
-											</button>
-										</li>
+		<section ref={setScrollElement} aria-label={`Операции счёта «${props.account.name}»`} class={css.root}>
+			<Show fallback={<p class={css.empty}>{props.emptyContent}</p>} when={props.rows.items.length > 0}>
+				<div
+					aria-label='Операции по группам'
+					role='list'
+					style={{ 'padding-block-start': `${paddingTop()}px`, 'padding-block-end': `${paddingBottom()}px` }}
+				>
+					<For each={virtualizer.getVirtualItems()}>
+						{(virtualRow, index) => (
+							<>
+								<Show when={gapBefore(index()) > 0}>
+									<div aria-hidden='true' style={{ 'block-size': `${gapBefore(index())}px` }}/>
+								</Show>
+								<Show keyed when={props.rows.items[virtualRow.index]}>
+									{(item) => (
+										<div
+											ref={(element) => {
+												// The ref runs before Solid applies reactive data attributes.
+												element.dataset.index = String(virtualRow.index);
+												virtualizer.measureElement(element);
+											}}
+											aria-posinset={virtualRow.index + 1}
+											aria-setsize={props.rows.items.length}
+											class={cn(item.kind === 'group' && css.groupStart, virtualRow.index === 0 && css.firstGroup)}
+											data-index={virtualRow.index}
+											data-row-key={item.key}
+											role='listitem'
+										>
+											{item.kind === 'group' ? (
+												<div class={css.groupHeading}>
+													<OperationGroupRow
+														group={item.group}
+														resolveCategoryColor={props.resolveCategoryColor}
+														resolveCategoryIcon={props.resolveCategoryIcon}
+													/>
+												</div>
+											) : (
+												<div class={cn(css.operation, item.isLastInGroup && css.groupEnd)}>
+													<OperationListRow
+														highlighted={item.operation.id === props.highlightOperationId}
+														operation={item.operation}
+														resolveCategoryColor={props.resolveCategoryColor}
+														resolveCategoryIcon={props.resolveCategoryIcon}
+														selected={item.operation.id === props.selectedOperationId}
+														onSelect={props.onOperationSelect}
+													/>
+												</div>
+											)}
+										</div>
 									)}
-								</For>
-							</ul>
-						</div>
-					)}
-				</For>
+								</Show>
+							</>
+						)}
+					</For>
+				</div>
 			</Show>
 		</section>
 	);

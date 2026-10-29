@@ -22,3 +22,8 @@
         font-size: var(--font-size-body-lg);
     }
 }
+
+.viewport {
+    block-size: 100dvh;
+    padding: var(--space-6);
+}

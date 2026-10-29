@@ -64,8 +64,8 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | | Dialog | `shared/ui/dialog` | есть, есть история |
 | | Menu / Popover | `shared/ui/context-menu` | есть, есть история |
 | | Card счёта, категории, контакта, KPI | `shared/ui/account-card`, `category-card`, `contact-card`, `kpi-card` (на `FlatCard variant='outlined'`, `IconTile tint`, `Badge`); бюджетный прогресс: `shared/ui/progress` | есть, есть истории (IF-20 часть 2, этап Б, 2026-10-27); экраны пока не переведены, IF-16/18/19/39; архив и общая ошибка счёта на досках отсутствуют |
-| | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код |
-| | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история |
+| | строка операции, группа дня | `views/home/ui/operations-table`, `operations-list`, `operation-group-row` | экранный код; IF-13 этап 1 (2026-10-28): общая плоская модель, виртуализация таблицы и списка, истории `Home/OperationsVirtualized` на 5000; ручная приёмка остаётся |
+| | таблица: сетка колонок с сортировкой и строками (операции, чеки) | `shared/ui/grid` | есть, есть история; опциональное виртуальное окно, распорки и ref существующего скролла (IF-13) |
 | | Bottom sheet, Drawer / панель | панель операции: `views/home/ui/operation-details-panel` | нет общего, IF-20, IF-21 |
 | | Empty state | `shared/ui/empty-state` (сравнение статистики) | есть, есть история |
 | | Toast | `shared/ui/toast` (`createToaster`, `Toast`, `ToastContainer`) | есть, есть история |
@@ -129,7 +129,8 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 | `--s-focus-gutter` (4 px) | `--space-focus-gutter` (4 px) и миксин `mx.scroll-gutter` (класс макета `i-gutter`) |
 | нет переменной, значение 420 px (`development/ui-mockup.md`) | `--panel-overlay-inline-size` (420 px) |
 | нет переменной, значение 340 px (`development/ui-mockup.md`) | `--panel-docked-inline-size` (340 px) |
-| нет переменной, 44 px (`.i-tr`), на телефоне 64 px (`development/ui-mockup.md`) | `--row-height-compact` (44 px), `--row-height-comfortable` (64 px) |
+| нет переменной, 44 px (`.i-tr`), на телефоне 64 px (`development/ui-mockup.md`) | `--row-height-compact` (44 px), `--row-height-comfortable` (64 px); используются IF-13 |
+| заголовок группы дня (оценка существующей раскладки, IF-13) | `--row-height-group` (64 px ниже `sm`, 36 px с `sm`), минимум группы `--row-height-group-compact` (36 px); фактическая высота измеряется виртуализатором |
 
 **Расхождения, закрытые IF-14** (проверено по `tokens.scss`; решения ревью в `development/decisions/ui-breakpoints.md`): шкала `--z-*` (10…60) и `--z-raised`; `--space-focus-gutter` 4 px и `mx.scroll-gutter`; `--color-scrim`, `--color-ink-card`, `--radius-pill`, `--shadow-lg` заведены; размер 13 px (`--font-size-caption`) и подпись 12 px (`--font-size-label`); `--color-text-secondary` светлая тема приведена к макету, `--color-text-tertiary` совпадает с макетом; категории 9–10 (`--color-series-9`, `-10`); панели 420 и 340 px, высоты строк 44 и 64 px; шрифт IBM Plex Sans.
 
@@ -138,7 +139,7 @@ description: Use when creating, changing or reviewing any UI in i-finances (apps
 - Затемнения литералами 32…42 % вместо `--color-scrim` (макет 45 %). IF-21.
 - Поле 16 px при `(pointer: coarse)`: миксин `mx.pointer-coarse` есть (IF-20, часть 1), сам размер шрифта в полях ещё не переведён.
 - Мобильные значения `--font-size-display` 28, `--font-size-heading-1` 24, `--space-12` 48 ниже 640 (в макете 32, 28, 64). Экранные задачи.
-- Пока не используются: `--panel-docked-inline-size` (IF-16), `--row-height-*` (IF-13), `--color-series-9`, `-10` (IF-19). `--font-size-body-sm` (12 px) устаревший: экраны уходят с него в своих задачах.
+- Пока не используются: `--panel-docked-inline-size` (IF-16), `--color-series-9`, `-10` (IF-19). `--font-size-body-sm` (12 px) устаревший: экраны уходят с него в своих задачах.
 
 **Брейкпоинты.** Три значения и больше ничего: `sm` 640 px (телефон кончается, планшет), `md` 960 px, `lg` 1280 px. В SCSS только `@include mx.media-mn(sm)` (или `md`, `lg`), mobile-first: база под телефон, выше `min-width`. В TS `minWidthQuery('md')` из `apps/web/src/shared/lib/breakpoints.ts`. Сырых `@media` в компонентах нет. Линта, который это запрещает, пока нет (этап 2), проверяй в ревью. Четвёртое значение не вводи без обсуждения в задаче.
 

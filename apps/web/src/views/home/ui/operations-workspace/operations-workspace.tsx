@@ -123,7 +123,8 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 			: view.searchQuery()
 				? 'По вашему запросу ничего не найдено'
 				: 'В этом периоде операций нет',
-		groups: view.groups(),
+		rows: view.rows(),
+		scrollResetKey: view.scrollResetKey(),
 		highlightOperationId: props.highlightOperationId,
 		resolveCategoryColor: view.resolveCategoryColor,
 		resolveCategoryIcon: view.resolveCategoryIcon,

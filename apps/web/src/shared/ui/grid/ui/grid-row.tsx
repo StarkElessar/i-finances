@@ -22,6 +22,8 @@ type GridRowProps<T> = {
 	row: T;
 	rowIndex: number;
 	rowKey?: string;
+	virtualized?: boolean;
+	measureElement?: (element: HTMLTableRowElement) => void;
 	onRowClick?: (row: T) => void;
 };
 
@@ -31,6 +33,14 @@ type GridRowProps<T> = {
 export function GridRow<T>(props: GridRowProps<T>) {
 	const isFullWidth = () => props.isFullWidthRow?.(props.row) ?? false;
 	const isInteractive = () => Boolean(props.onRowClick) && !isFullWidth();
+
+	const measureRow = (element: HTMLTableRowElement) => {
+		if (props.measureElement) {
+			// Solid calls refs before reactive attributes are applied. The virtualizer needs this attribute immediately.
+			element.dataset.index = String(props.rowIndex);
+			props.measureElement(element);
+		}
+	};
 
 	const handleClick = () => {
 		if (!props.isSelected) {
@@ -49,6 +59,9 @@ export function GridRow<T>(props: GridRowProps<T>) {
 
 	return (
 		<tr
+			ref={measureRow}
+			aria-current={props.virtualized && isInteractive() ? props.isSelected : undefined}
+			aria-rowindex={props.virtualized ? props.rowIndex + 2 : undefined}
 			aria-label={isInteractive() ? props.getRowAriaLabel?.(props.row) : undefined}
 			aria-selected={isInteractive() ? props.isSelected : undefined}
 			class={cn(
@@ -57,6 +70,7 @@ export function GridRow<T>(props: GridRowProps<T>) {
 				isInteractive() && css.interactiveRow,
 				props.isSelected && css.selectedRow
 			)}
+			data-index={props.virtualized ? props.rowIndex : undefined}
 			data-row-key={props.rowKey}
 			tabIndex={isInteractive() && !props.isSelected ? 0 : undefined}
 			onClick={isInteractive() ? handleClick : undefined}

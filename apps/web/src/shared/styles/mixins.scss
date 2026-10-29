@@ -116,3 +116,9 @@ $max-offset: 0.02px;
 
     clip-path: inset(50%);
 }
+
+@mixin reduced-motion {
+    @media (prefers-reduced-motion: reduce) {
+        @content;
+    }
+}
