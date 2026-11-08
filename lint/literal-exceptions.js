@@ -45,7 +45,7 @@ export const eslintExceptions = [
 	{
 		rule: 'no-restricted-properties',
 		task: 'IF-18',
-		files: [`${WEB}/views/receipts/page.tsx`]
+		files: [`${WEB}/views/receipts/ui/review-dialog/review-dialog.tsx`]
 	},
 	{
 		rule: 'no-restricted-properties',

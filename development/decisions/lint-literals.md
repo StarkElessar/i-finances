@@ -65,7 +65,7 @@
 |---|---|---|
 | IF-16 (операции) | 1 | `views/home/home.module.scss`: `rgb()` скрима |
 | IF-17 (навигация) | 0 | снято в IF-17 (тени шапки на токенах) |
-| IF-18 (чеки) | 1 | `views/receipts/page.tsx`: `Intl.NumberFormat` |
+| IF-18 (чеки) | 1 | `views/receipts/ui/review-dialog/review-dialog.tsx`: `Intl.NumberFormat` |
 | IF-19 (статистика) | 1 | `views/statistics/ui/compare-tab/compare-tab.tsx`: `Intl.NumberFormat` |
 | IF-20 (кит) | 2 | `shared/ui/context-menu`: `rgb()`; `shared/ui/drag-action`: `rgb()` и hex (19 + 3 места) |
 | IF-21 (панели, диалоги) | 2 | `shared/ui/dialog`: `rgb()` скрима; `views/home/ui/operation-details-panel`: `rgb()` скрима |
