@@ -16,6 +16,8 @@ export type ToastEntry = ToastOptions & { id: number; tone: ToastTone };
 export type Toaster = {
 	toasts: Accessor<readonly ToastEntry[]>;
 	show: (options: ToastOptions) => number;
+	/** Rewrites the text of a toast that is still on screen (progress); unknown ids are ignored. */
+	update: (id: number, patch: Pick<ToastOptions, 'message'>) => void;
 	dismiss: (id: number) => void;
 	clear: () => void;
 	pause: (id: number, reason: 'hover' | 'focus') => void;
@@ -88,6 +90,10 @@ export function createToaster(): Toaster {
 		return id;
 	};
 
+	const update: Toaster['update'] = (id, patch) => {
+		setToasts((current) => current.map((toast) => (toast.id === id ? { ...toast, message: patch.message } : toast)));
+	};
+
 	const pause: Toaster['pause'] = (id, reason) => {
 		const timer = timers.get(id);
 
@@ -116,5 +122,5 @@ export function createToaster(): Toaster {
 		clear();
 	});
 
-	return { toasts, show, dismiss, clear, pause, resume };
+	return { toasts, show, update, dismiss, clear, pause, resume };
 }

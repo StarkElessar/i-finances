@@ -81,6 +81,18 @@ describe('Toast', () => {
 		expect(vi.getTimerCount()).toBe(3);
 	});
 
+	it('rewrites the text of a visible toast in place and ignores unknown ids', () => {
+		const toaster = mountToaster();
+		const id = toaster.show({ duration: 0, message: 'Загружаем чек 1 из 3…' });
+
+		toaster.update(id, { message: 'Загружаем чек 2 из 3…' });
+		toaster.update(id + 100, { message: 'Нет такого' });
+
+		const toasts = [...document.querySelectorAll('[role="status"]')];
+
+		expect(toasts.map((toast) => toast.textContent)).toEqual(['Загружаем чек 2 из 3…']);
+	});
+
 	it('closes through the button and runs an action only while the toast is visible', () => {
 		const toaster = mountToaster();
 		const retry = vi.fn();

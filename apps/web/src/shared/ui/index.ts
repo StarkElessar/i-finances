@@ -120,7 +120,8 @@ export { Tabs } from './tabs';
 export type { TextFieldProps, TextFieldSize, TextFieldVariant } from './text-field';
 export { TextField } from './text-field';
 export type { ToastContainerProps, ToastEntry, Toaster, ToastOptions, ToastProps, ToastTone } from './toast';
-export { createToaster, Toast, ToastContainer } from './toast';
+export type { ToasterProviderProps } from './toast';
+export { createToaster, Toast, ToastContainer, ToasterProvider, useToaster } from './toast';
 export type {
 	TypographyAlign,
 	TypographyElement,
