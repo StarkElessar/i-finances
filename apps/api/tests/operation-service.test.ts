@@ -10,6 +10,7 @@ import {
 	exchangeRates,
 	householdMembers,
 	households,
+	operations,
 	users
 } from '@/infrastructure/database/schema';
 import { AccountRepository } from '@/modules/account';
@@ -309,7 +310,7 @@ describe('OperationService', () => {
 			]));
 		});
 
-		it('puts the moved operation first among the target account entries of that day', async () => {
+		it('puts the moved operation among the target account entries of that day as the latest one', async () => {
 			await insertAccount({ currency: 'BYN', id: 'account-wife' });
 
 			const service = createService();
@@ -340,7 +341,92 @@ describe('OperationService', () => {
 				accountId: 'account-wife', end: '2026-08-08', start: '2026-08-08'
 			});
 
-			expect(ledger.items.map((item) => item.id)).toEqual([moved.id, ...existingIds.reverse()]);
+			// The ledger lists a day in the order things happened; the app shows the latest entry first.
+			expect(ledger.items.map((item) => item.id)).toEqual([...existingIds, moved.id]);
+		});
+
+		it('carries the account balance through a day in the order the entries were made', async () => {
+			const service = createService();
+			const entries = [
+				{ amountMinor: 3_530, title: 'Перевод', type: 'income' },
+				{ amountMinor: 4_000, title: 'Оплати', type: 'expense' },
+				{ amountMinor: 37_800, title: 'Перевод 2', type: 'income' },
+				{ amountMinor: 35_980, title: 'Куртка', type: 'expense' }
+			] as const;
+
+			for (const entry of entries) {
+				await service.create(USER_ID, createOperationInputSchema.parse({
+					accountId: 'account-main',
+					amountMinor: entry.amountMinor,
+					categoryId: null,
+					comment: '',
+					contactId: null,
+					happenedOn: '2026-08-08',
+					title: entry.title,
+					type: entry.type
+				}));
+			}
+
+			const ledger = await service.getAccountLedger(USER_ID, {
+				accountId: 'account-main', end: '2026-08-08', start: '2026-08-08'
+			});
+
+			// The opening balance of the main account is 10 000; no balance in between dips below zero.
+			expect(ledger.items.map((item) => [item.title, item.balanceAfterMinor])).toEqual([
+				['Перевод', 13_530],
+				['Оплати', 9_530],
+				['Перевод 2', 47_330],
+				['Куртка', 11_350]
+			]);
+			expect(ledger.closingBalanceMinor).toBe(11_350);
+		});
+
+		it('keeps imported entries first and in their source order, then the entries made in the app', async () => {
+			const service = createService();
+
+			for (const [index, title] of ['Импорт 1', 'Импорт 2'].entries()) {
+				await database.insert(operations).values({
+					accountId: 'account-main',
+					amountInHouseholdBaseCurrencyMinor: 100,
+					amountMinor: 100,
+					categoryId: null,
+					comment: '',
+					contactId: null,
+					createdAt: FIXED_DATE,
+					createdByUserId: USER_ID,
+					currency: 'BYN',
+					exchangeRate: '1',
+					exchangeRateEffectiveOn: '2026-08-08',
+					exchangeRateSource: 'identity',
+					happenedOn: '2026-08-08',
+					householdBaseCurrency: 'BYN',
+					householdId: HOUSEHOLD_ID,
+					id: `imported-${index}`,
+					sourceOrder: index,
+					title,
+					type: 'expense',
+					updatedAt: FIXED_DATE,
+					updatedByUserId: USER_ID,
+					version: 1
+				});
+			}
+
+			const first = await createExpense(service);
+			const second = await service.create(USER_ID, createOperationInputSchema.parse({
+				accountId: 'account-main',
+				amountMinor: 500,
+				categoryId: null,
+				comment: '',
+				contactId: null,
+				happenedOn: '2026-08-08',
+				title: 'Позже',
+				type: 'expense'
+			}));
+			const ledger = await service.getAccountLedger(USER_ID, {
+				accountId: 'account-main', end: '2026-08-08', start: '2026-08-08'
+			});
+
+			expect(ledger.items.map((item) => item.id)).toEqual(['imported-0', 'imported-1', first.id, second.id]);
 		});
 
 		it('keeps the account when the field is missing or equals the current one', async () => {

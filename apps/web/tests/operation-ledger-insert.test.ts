@@ -191,6 +191,61 @@ describe('insertOperationIntoLedger', () => {
 		expect(result.items[1]).toMatchObject({ balanceAfterMinor: 8_600 });
 	});
 
+	it('puts an entry made in the app after the imported and earlier app entries of the same day', () => {
+		const importedRow = makeLedgerItem({
+			amountMinor: 1_000,
+			balanceAfterMinor: 9_000,
+			happenedOn: '2026-08-10',
+			id: 'operation/imported',
+			signedAmountMinor: -1_000,
+			sourceOrder: 0,
+			type: 'expense'
+		});
+		const earlierAppRow = makeLedgerItem({
+			amountMinor: 500,
+			balanceAfterMinor: 8_500,
+			happenedOn: '2026-08-10',
+			id: 'operation/app-first',
+			signedAmountMinor: -500,
+			sourceOrder: -1,
+			type: 'expense'
+		});
+		const nextDayRow = makeLedgerItem({
+			amountMinor: 100,
+			balanceAfterMinor: 8_400,
+			happenedOn: '2026-08-11',
+			id: 'operation/next-day',
+			signedAmountMinor: -100,
+			sourceOrder: 0,
+			type: 'expense'
+		});
+		const ledger = makeLedger({
+			closingBalanceMinor: 8_400,
+			items: [importedRow, earlierAppRow, nextDayRow],
+			openingBalanceMinor: 10_000
+		});
+		// The next entry made in the app is placed first by the API: it takes the next smaller number.
+		const latest = makeOperation({
+			amountMinor: 200,
+			happenedOn: '2026-08-10',
+			id: 'operation/app-latest',
+			sourceOrder: -2,
+			type: 'expense'
+		});
+
+		const result = insertOperationIntoLedger(ledger, latest);
+
+		expect(result.items.map((item) => item.id)).toEqual([
+			'operation/imported',
+			'operation/app-first',
+			'operation/app-latest',
+			'operation/next-day'
+		]);
+		expect(result.items[2]).toMatchObject({ balanceAfterMinor: 8_300 });
+		expect(result.items[3]).toMatchObject({ balanceAfterMinor: 8_200 });
+		expect(result.closingBalanceMinor).toBe(8_200);
+	});
+
 	it('shifts opening and running balances without adding a row for a date before the period', () => {
 		const existingRow = makeLedgerItem({
 			amountMinor: 500,

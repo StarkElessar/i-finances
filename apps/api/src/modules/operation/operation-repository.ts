@@ -287,7 +287,7 @@ export class OperationRepository {
 				gte(operations.happenedOn, start),
 				lte(operations.happenedOn, end)
 			))
-			.orderBy(asc(operations.happenedOn), asc(operations.sourceOrder));
+			.orderBy(asc(operations.happenedOn), ...chronologicalSourceOrder());
 
 		return rows.map((row) => ({
 			categoryName: row.categoryName,
@@ -537,8 +537,24 @@ export class OperationRepository {
 			))
 			.get();
 
-		return (result?.sourceOrder ?? 0) - 1;
+		// Never lands on a non-negative value, even when the day's smallest order is positive (its zero entry
+		// was moved away): non-negative orders are the imported entries, which come before anything made later.
+		return Math.min(result?.sourceOrder ?? 0, 0) - 1;
 	}
+}
+
+/**
+ * Orders the entries of one account's day the way they happened, which is what a running balance has to
+ * follow. Two conventions share `sourceOrder`: imported entries keep the order of the source (`>= 0`,
+ * ascending), while an entry made in the app is placed first among its day's entries and takes the next
+ * smaller negative number, so the later it was made, the further from zero it is. Imported entries
+ * therefore come first, then the app's entries from `-1` downwards (`ORDER BY order < 0, abs(order)`).
+ */
+function chronologicalSourceOrder() {
+	return [
+		asc(sql`${operations.sourceOrder} < 0`),
+		asc(sql`abs(${operations.sourceOrder})`)
+	] as const;
 }
 
 type TransactionDatabase = Parameters<AppDatabase['transaction']>[0] extends (

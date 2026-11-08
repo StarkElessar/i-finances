@@ -44,7 +44,7 @@ export function insertOperationIntoLedger(
 
 	const insertIndex = ledger.items.findIndex((item) => (
 		item.happenedOn > operation.happenedOn
-		|| (item.happenedOn === operation.happenedOn && item.sourceOrder > operation.sourceOrder)
+		|| (item.happenedOn === operation.happenedOn && compareLedgerSourceOrder(item.sourceOrder, operation.sourceOrder) > 0)
 	));
 	const targetIndex = insertIndex === -1 ? ledger.items.length : insertIndex;
 	const precedingBalance = targetIndex === 0
@@ -71,6 +71,20 @@ export function insertOperationIntoLedger(
 		closingBalanceMinor: ledger.closingBalanceMinor + signedAmountMinor,
 		items
 	};
+}
+
+/**
+ * Orders two entries of one day the way the ledger carries the balance through them, i.e. the way they
+ * happened: imported entries (`sourceOrder >= 0`) keep the order of the source, entries made in the app
+ * take the next smaller negative number, so they come after the imported ones, oldest (`-1`) first.
+ * The API sorts the ledger by the same rule.
+ */
+function compareLedgerSourceOrder(left: number, right: number): number {
+	if ((left >= 0) !== (right >= 0)) {
+		return left >= 0 ? -1 : 1;
+	}
+
+	return left >= 0 ? left - right : right - left;
 }
 
 export function filterOperationRows(
