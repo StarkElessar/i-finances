@@ -15,11 +15,10 @@ import {
 	createReceiptImageStorage,
 	createReceiptImportRepository,
 	ReceiptImportService,
-	ReceiptImportStateError,
-	ReceiptWorkerResultError
+	ReceiptImportStateError
 } from '@/modules/receipt-import';
 
-import { receiptWorkerResultSchema } from '@i-finances/contracts';
+import { type ReceiptWorkerResult, receiptWorkerResultSchema } from '@i-finances/contracts';
 import Database from 'better-sqlite3';
 import { drizzle } from 'drizzle-orm/better-sqlite3';
 import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
@@ -221,6 +220,10 @@ function createWorkerResult(
 		schemaVersion: 1,
 		warnings: []
 	});
+}
+
+function withMerchant(result: ReceiptWorkerResult, displayName: string): ReceiptWorkerResult {
+	return { ...result, receipt: { ...result.receipt, merchant: { ...result.receipt.merchant, displayName } } };
 }
 
 /**
@@ -497,27 +500,62 @@ describe('ReceiptImportService', () => {
 		expect(await service.claimNextQueuedJob()).toBeUndefined();
 	});
 
-	it('rejects a model result whose contact is not in the stored contacts snapshot', async () => {
+	it('drops a contact the model invented instead of failing the receipt, and falls back to the seller name', async () => {
 		const service = createService();
-		const created = await service.createFromImage(USER_ID, {
-			bytes: sampleImageBytes,
-			contentType: 'image/jpeg',
-			originalName: 'receipt.jpg'
-		});
-		const claimed = await service.claimNextQueuedJob();
-
-		if (claimed === undefined) {
-			throw new Error('Expected a claimed receipt job.');
-		}
-
-		expect(created.status).toBe('queued');
-
-		await expect(service.completeJob(
-			claimed.processingJobId,
+		const { completed } = await createReviewableReceipt(
+			service,
 			createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, 'contact-invented-by-the-model')
-		)).rejects.toThrow(
-			new ReceiptWorkerResultError('Результат содержит контакт, которого не было в задании.')
 		);
+
+		expect(completed.status).toBe('needs_review');
+		// The seller on the receipt is «Магазин», which is exactly the saved contact.
+		expect(completed.result?.receipt.contactId).toBe('contact-shop');
+		expect(completed.result?.warnings).toContain(
+			'Модель вернула контакт, которого не было в задании: он отброшен.'
+		);
+	});
+
+	it('leaves the contact empty when an invented id has no matching seller name', async () => {
+		const service = createService();
+		const { completed } = await createReviewableReceipt(
+			service,
+			withMerchant(createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, 'contact-invented-by-the-model'), 'Неизвестная лавка')
+		);
+
+		expect(completed.result?.receipt.contactId).toBeNull();
+		expect(completed.result?.warnings).toHaveLength(1);
+	});
+
+	it('picks the contact from the seller name when the model left it empty', async () => {
+		const service = createService();
+		const { completed } = await createReviewableReceipt(
+			service,
+			withMerchant(createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, null), 'ООО «МАГАЗИН»')
+		);
+
+		expect(completed.result?.receipt.contactId).toBe('contact-shop');
+		expect(completed.result?.warnings).toEqual([]);
+	});
+
+	it('does not guess a contact for an unknown seller', async () => {
+		const service = createService();
+		const { completed } = await createReviewableReceipt(
+			service,
+			withMerchant(createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, null), 'Неизвестная лавка')
+		);
+
+		expect(completed.result?.receipt.contactId).toBeNull();
+	});
+
+	it('accepts a repeated delivery of the same worker result after the contact was reconciled', async () => {
+		const service = createService();
+		const result = withMerchant(createWorkerResult(DEFAULT_WORKER_RESULT_ITEMS, null), 'Магазин');
+		const { claimed, completed } = await createReviewableReceipt(service, result);
+		const repeated = await service.completeJob(claimed.processingJobId, result);
+
+		expect(completed.result?.receipt.contactId).toBe('contact-shop');
+		expect(repeated.version).toBe(completed.version);
+		expect(repeated.result?.receipt.contactId).toBe('contact-shop');
 	});
 
 	it('creates the regrouped operations when a partially failed approval is resubmitted', async () => {

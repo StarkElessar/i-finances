@@ -23,6 +23,7 @@ import {
 	updateReceiptReviewInputSchema
 } from '@i-finances/contracts';
 
+import { matchReceiptContact } from './receipt-contact-matcher';
 import { sha256Hex } from './receipt-hash';
 import type { ReceiptImage, ReceiptImageStorage, SaveReceiptImageInput } from './receipt-image-storage';
 import {
@@ -116,6 +117,7 @@ export class ReceiptImportService {
 		const contactRecords = await this.dependencies.contactRepository.list(household.id, 'active');
 		const contacts: ReceiptContactSnapshot[] = contactRecords.map((record) => ({
 			id: record.id,
+			...(record.legalName === null ? {} : { legalName: record.legalName }),
 			name: record.name
 		}));
 		const receiptImportId = this.createId();
@@ -368,18 +370,17 @@ export class ReceiptImportService {
 			throw new ReceiptWorkerResultError('Результат содержит категорию, которой не было в задании.');
 		}
 
-		const allowedContactIds = new Set(
-			parseReceiptContactsSnapshot(current.import.contactsSnapshotJson).map((contact) => contact.id)
+		const stored = this.reconcileContact(
+			result,
+			parseReceiptContactsSnapshot(current.import.contactsSnapshotJson)
 		);
-
-		if (result.receipt.contactId !== null && !allowedContactIds.has(result.receipt.contactId)) {
-			throw new ReceiptWorkerResultError('Результат содержит контакт, которого не было в задании.');
-		}
 
 		const completed = await this.dependencies.receiptImportRepository.completeJob({
 			completedAt: this.now(),
 			jobId,
-			resultJson: serializedResult,
+			resultJson: JSON.stringify(stored),
+			// The digest stays that of what the worker submitted, so a repeated delivery of the same
+			// result is still recognised above after the stored copy has been reconciled.
 			resultSha256
 		});
 
@@ -388,6 +389,36 @@ export class ReceiptImportService {
 		}
 
 		return toReceiptImport(completed);
+	}
+
+	/**
+	 * Settles which contact the stored result points at. A contact id the model invented (one that was
+	 * not in the snapshot the job was created with) is dropped instead of failing the whole receipt, and
+	 * when the model left the contact empty the seller's name is matched against the snapshot.
+	 */
+	private reconcileContact(
+		result: ReceiptWorkerResult,
+		contacts: readonly ReceiptContactSnapshot[]
+	): ReceiptWorkerResult {
+		const warnings = [...result.warnings];
+		let contactId = result.receipt.contactId;
+
+		if (contactId !== null && !contacts.some((contact) => contact.id === contactId)) {
+			contactId = null;
+			warnings.push('Модель вернула контакт, которого не было в задании: он отброшен.');
+		}
+
+		contactId ??= matchReceiptContact(result.receipt.merchant, contacts);
+
+		if (contactId === result.receipt.contactId && warnings.length === result.warnings.length) {
+			return result;
+		}
+
+		return {
+			...result,
+			receipt: { ...result.receipt, contactId },
+			warnings
+		};
 	}
 
 	public async failJob(jobId: string, error: string): Promise<ReceiptImport> {

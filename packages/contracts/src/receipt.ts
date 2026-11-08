@@ -41,6 +41,8 @@ export type ReceiptCategorySnapshot = z.infer<typeof receiptCategorySnapshotSche
 
 export const receiptContactSnapshotSchema = z.object({
 	id: entityIdSchema,
+	// Absent in snapshots taken before contacts' legal names were handed to the matcher.
+	legalName: z.string().trim().min(1).max(200).nullish(),
 	name: z.string().trim().min(1).max(160)
 });
 
