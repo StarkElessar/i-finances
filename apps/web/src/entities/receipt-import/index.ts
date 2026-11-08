@@ -1,4 +1,5 @@
 export * from './api';
+export { isReceiptImportActive } from './model/is-receipt-import-active';
 export type {
 	ApproveReceiptInput,
 	ApproveReceiptOperationInput,

@@ -13,6 +13,8 @@ import type { Category } from '@/entities/category';
 import type { OperationPeriodMode, OperationSortField, OperationWithBalance } from '@/entities/operation';
 import { getOperationPeriodRange, parseLocalDateKey, useOperationsDisplayMode } from '@/entities/operation';
 
+import { ReceiptCaptureButton } from '@/features/receipt-upload';
+
 import {
 	ArrowDownWideNarrow,
 	ArrowLeftRight,
@@ -266,6 +268,7 @@ export function OperationsWorkspace(props: OperationsWorkspaceProps) {
 				<OperationsTable {...bodyProps()}/>
 			</Show>
 
+			<ReceiptCaptureButton/>
 			<Fab aria-label='Новая операция' onClick={props.onCreateOperation}>
 				<Plus size={26}/>
 			</Fab>

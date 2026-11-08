@@ -1,0 +1,13 @@
+// Not `display: none`: some mobile browsers refuse to open the picker for a field that is not rendered.
+.input {
+    pointer-events: none;
+
+    position: absolute;
+
+    overflow: hidden;
+
+    inline-size: 1px;
+    block-size: 1px;
+
+    opacity: 0;
+}

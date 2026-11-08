@@ -60,6 +60,32 @@
     svg {
         display: block;
     }
+
+    // Mockup M-ReceiptCapture: 48 px, centred over the 56 px button, 12 px above it.
+    &.secondary {
+        inset-block-end: calc(var(--bottom-nav-offset) + var(--space-6) + fn.rem(56) + var(--space-5));
+        inset-inline-end: var(--space-8);
+
+        inline-size: fn.rem(48);
+        block-size: fn.rem(48);
+        border: 1px solid var(--color-border-strong);
+
+        color: var(--color-primary);
+
+        background-color: var(--color-surface);
+
+        &:hover:not(:disabled) {
+            background-color: var(--color-surface-subtle);
+        }
+
+        &:active:not(:disabled) {
+            background-color: var(--color-surface-strong);
+        }
+
+        &:disabled {
+            border-color: var(--color-disabled-border);
+        }
+    }
 }
 
 // On-screen keyboard open: the button would sit on top of the field.

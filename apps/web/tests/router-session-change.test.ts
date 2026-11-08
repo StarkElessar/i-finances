@@ -33,6 +33,8 @@ vi.mock('@solidjs/router', () => ({
 
 vi.mock('@/features/auth', () => ({ SignInForm: () => null }));
 vi.mock('@/features/invitation', () => ({ pendingInvitation: { clear: vi.fn() } }));
+vi.mock('@/features/receipt-upload', () => ({ ReceiptUploadProvider: () => null }));
+vi.mock('@/shared/ui/toast', () => ({ ToasterProvider: () => null }));
 vi.mock('@/widgets/app-header', () => ({ AppHeader: () => null }));
 vi.mock('@/views/categories/page', () => ({ CategoriesPage: () => null }));
 vi.mock('@/views/contacts/page', () => ({ ContactsPage: () => null }));

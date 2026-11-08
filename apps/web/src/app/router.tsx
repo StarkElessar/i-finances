@@ -1,10 +1,13 @@
 import css from './router.module.scss';
 
+import { ToasterProvider } from '@/shared/ui/toast';
+
 import { CurrentViewerProvider, householdLossNotice } from '@/entities/viewer';
 
 import type { AuthClient } from '@/features/auth';
 import { SignInForm } from '@/features/auth';
 import { pendingInvitation } from '@/features/invitation';
+import { ReceiptUploadProvider } from '@/features/receipt-upload';
 
 import { AppHeader } from '@/widgets/app-header';
 
@@ -72,8 +75,10 @@ function MemberLayout(props: MemberLayoutProps) {
 
 	return (
 		<AccessGuard access='member'>
-			<AppHeader authClient={props.authClient} onSignedOut={props.onSignedOut}/>
-			{props.children}
+			<ReceiptUploadProvider>
+				<AppHeader authClient={props.authClient} onSignedOut={props.onSignedOut}/>
+				{props.children}
+			</ReceiptUploadProvider>
 		</AccessGuard>
 	);
 }
@@ -112,8 +117,10 @@ export function AppRouter(props: AppRouterProps) {
 		<SessionGate error={() => session.error} isLoading={() => session.loading} session={() => session()}>
 			{(currentSession) => (
 				<CurrentViewerProvider initialViewer={currentSession.viewer}>
-					<AccessFailureListener/>
-					{rootProps.children}
+					<ToasterProvider>
+						<AccessFailureListener/>
+						{rootProps.children}
+					</ToasterProvider>
 				</CurrentViewerProvider>
 			)}
 		</SessionGate>

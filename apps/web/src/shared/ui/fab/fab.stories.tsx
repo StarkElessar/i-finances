@@ -1,4 +1,4 @@
-import { Plus } from 'lucide-solid';
+import { Camera, Plus } from 'lucide-solid';
 import type { Meta, StoryObj } from 'storybook-solidjs-vite';
 
 import { Fab } from './fab';
@@ -37,4 +37,24 @@ export const Focus: Story = {
 /** Disabled looks like a disabled Primary button: a grey disc, no shadow. */
 export const Disabled: Story = {
 	args: { disabled: true }
+};
+
+/** The 48 px shortcut that sits above the primary button («Добавить из чека»). */
+export const Secondary: Story = {
+	args: { 'aria-label': 'Добавить из чека', variant: 'secondary' },
+	render: (args) => (
+		<Fab {...args}>
+			<Camera size={22}/>
+		</Fab>
+	)
+};
+
+export const SecondaryHover: Story = {
+	...Secondary,
+	parameters: { pseudo: { hover: true } }
+};
+
+export const SecondaryDisabled: Story = {
+	...Secondary,
+	args: { ...Secondary.args, disabled: true }
 };
