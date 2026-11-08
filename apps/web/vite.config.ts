@@ -19,7 +19,9 @@ export default defineConfig({
 	},
 	server: {
 		proxy: {
-			'/api': 'http://localhost:3001'
+			// Keep the browser's Host: the API compares the Origin of a mutation with it, so the app also opens from a
+			// phone on the local network (`vite --host`). The string shorthand turns `changeOrigin` on.
+			'/api': { changeOrigin: false, target: 'http://localhost:3001' }
 		}
 	}
 });
